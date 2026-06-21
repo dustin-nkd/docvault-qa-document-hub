@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocVault</title>
+  <link href="vendor/fonts/space-grotesk/index.css" rel="stylesheet">
+  <link href="vendor/fonts/dm-sans/index.css" rel="stylesheet">
+  <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="popup-logo">
+        <div class="popup-logo-icon">
+          <i class="fa-solid fa-vault"></i>
+        </div>
+        <span class="popup-logo-text">DocVault</span>
+      </div>
+      <button class="popup-btn-open" id="btnOpenApp" title="Open Full App">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        <span>Open App</span>
+      </button>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="popup-stats" id="statsBar">
+      <div class="stat-pill stat-total">
+        <span class="stat-count" id="statTotal">0</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-pill stat-runbook">
+        <span class="stat-dot" style="background:var(--c-run)"></span>
+        <span class="stat-count" id="statRunbook">0</span>
+      </div>
+      <div class="stat-pill stat-onboarding">
+        <span class="stat-dot" style="background:var(--c-onb)"></span>
+        <span class="stat-count" id="statOnboarding">0</span>
+      </div>
+      <div class="stat-pill stat-testcases">
+        <span class="stat-dot" style="background:var(--c-tc)"></span>
+        <span class="stat-count" id="statTestcases">0</span>
+      </div>
+      
+      <div class="stat-pill stat-knowledge">
+        <span class="stat-dot" style="background:var(--c-kn)"></span>
+        <span class="stat-count" id="statKnowledge">0</span>
+      </div>
+      <div class="stat-pill stat-task">
+        <span class="stat-dot" style="background:var(--c-task)"></span>
+        <span class="stat-count" id="statTask">0</span>
+      </div>
+      <div class="stat-pill stat-bug">
+        <span class="stat-dot" style="background:var(--c-bug)"></span>
+        <span class="stat-count" id="statBug">0</span>
+      </div>
+      <div class="stat-pill stat-tp">
+        <span class="stat-dot" style="background:var(--c-tp)"></span>
+        <span class="stat-count" id="statTestplan">0</span>
+      </div>
+      <div class="stat-pill stat-mtg">
+        <span class="stat-dot" style="background:var(--c-mtg)"></span>
+        <span class="stat-count" id="statMeeting">0</span>
+      </div>
+      <div class="stat-pill stat-api">
+        <span class="stat-dot" style="background:var(--c-api)"></span>
+        <span class="stat-count" id="statApi">0</span>
+      </div>
+      <div class="stat-pill stat-credential">
+        <span class="stat-dot" style="background:var(--c-cred)"></span>
+        <span class="stat-count" id="statCredential">0</span>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="popup-search">
+      <i class="fa-solid fa-search popup-search-icon"></i>
+      <input type="text" id="searchInput" class="popup-search-input" placeholder="Search documents..." autocomplete="off" spellcheck="false">
+    </div>
+
+    <!-- Documents List -->
+    <div class="popup-docs" id="docsList">
+      <!-- Loading State -->
+      <div class="popup-loading" id="loadingState">
+        <div class="popup-loading-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <p>Loading documents...</p>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="popup-empty hidden" id="emptyState">
+      <i class="fa-solid fa-folder-open"></i>
+      <p>No documents yet</p>
+      <span>Create your first document to get started</span>
+    </div>
+
+    <!-- No Results State -->
+    <div class="popup-empty hidden" id="noResultsState">
+      <i class="fa-solid fa-inbox"></i>
+      <p>No results found</p>
+      <span>Try a different search term</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <button class="popup-btn-new" id="btnNewDoc">
+        <i class="fa-solid fa-plus"></i>
+        <span>New Document</span>
+      </button>
+      <div class="popup-storage" id="storageInfo">
+        <i class="fa-solid fa-database"></i>
+        <span id="storageText">--</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="storage.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

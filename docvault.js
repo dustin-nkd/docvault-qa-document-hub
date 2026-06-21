@@ -1,0 +1,1920 @@
+
+window.addEventListener('error', function(e) {
+    const el = document.getElementById('debug-err');
+    if (el) { el.style.display = 'block'; el.innerText += '\n' + e.message + ' at ' + e.filename + ':' + e.lineno; }
+});
+window.addEventListener('unhandledrejection', function(e) {
+    const el = document.getElementById('debug-err');
+    if (el) { el.style.display = 'block'; el.innerText += '\nPromise Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason); }
+});
+
+// ========================
+// CONSTANTS
+// ========================
+const CAT_META = {
+    runbook: { get label() { return t('runbook'); }, icon: 'fa-book', color: 'var(--c-run)', cls: 'cat-runbook' },
+    onboarding: { get label() { return t('onboarding'); }, icon: 'fa-user-plus', color: 'var(--c-onb)', cls: 'cat-onboarding' },
+    testcases: { get label() { return t('testcases'); }, icon: 'fa-flask-vial', color: 'var(--c-tc)', cls: 'cat-testcases' },
+    knowledge: { get label() { return t('knowledge'); }, icon: 'fa-lightbulb', color: 'var(--c-kn)', cls: 'cat-knowledge' },
+    task: { get label() { return t('task'); }, icon: 'fa-list-check', color: 'var(--c-task)', cls: 'cat-task' },
+    bug: { get label() { return t('bug'); }, icon: 'fa-bug', color: 'var(--c-bug)', cls: 'cat-bug' },
+    testplan: { get label() { return t('testplan'); }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
+    meeting: { label: 'Meeting Notes', icon: 'fa-users', color: 'var(--c-mtg)', cls: 'cat-meeting' },
+    api: { label: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
+    credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' }
+};
+
+const TEMPLATES = {
+    runbook: `# [Title]
+
+## Purpose
+Mô tả mục đích của runbook này.
+
+## Prerequisites
+- Điều kiện tiên quyết 1
+- Điều kiện tiên quyết 2
+
+## Steps
+
+### Bước 1: [Tên bước]
+1. Hành động cụ thể
+2. Kiểm tra kết quả
+
+### Bước 2: [Tên bước]
+1. Hành động cụ thể
+2. Kiểm tra kết quả
+
+## Expected Results
+Mô tả kết quả mong đợi.
+
+## Troubleshooting
+| Vấn đề | Nguyên nhân | Giải pháp |
+|--------|-------------|-----------|
+| Lỗi X  | Y           | Z         |
+
+## References
+- [Link tài liệu tham khảo](#)`,
+    onboarding: `# [Title]
+
+## Welcome
+Giới thiệu tổng quan cho thành viên mới.
+
+## Week 1: Setup & Orientation
+- [ ] Cài đặt môi trường development
+- [ ] Access các hệ thống cần thiết
+- [ ] Review coding standards
+- [ ] Setup testing tools
+
+## Week 2: Learning & Practice
+- [ ] Study architecture documents
+- [ ] Pair testing với team member
+- [ ] Thực hiện test cases mẫu
+- [ ] Join daily standup
+
+## Week 3: Hands-on
+- [ ] Tự viết test cases
+- [ ] Execute test suite
+- [ ] Report bugs theo standard
+- [ ] Review session với mentor
+
+## Key Contacts
+| Role | Name | Contact |
+|------|------|---------|
+| QA Lead | - | - |
+
+## Resources
+- Wiki nội bộ
+- Training materials`,
+    testcases: `# [Title]
+
+## Module Information
+- **Module**: Tên module
+- **Version**: x.x.x
+- **Last Updated**: YYYY-MM-DD
+
+## Test Environment
+- OS, Browser, Device info
+- Test data requirements
+
+## Test Cases
+
+### TC-001: [Tên test case]
+- **Priority**: High / Medium / Low
+- **Type**: Functional / Regression / Smoke
+- **Pre-condition**: Mô tả điều kiện trước test
+
+**Steps:**
+1. Bước 1
+2. Bước 2
+3. Bước 3
+
+**Expected Result:** Mô tả kết quả mong đợi
+
+**Actual Result:** (Điền khi execute)
+
+**Status:** Pass / Fail / Blocked / Not Run
+
+---
+
+### TC-002: [Tên test case]
+- **Priority**: Medium
+- **Type**: Functional
+- **Pre-condition**: ...
+
+**Steps:**
+1. ...
+2. ...
+
+**Expected Result:** ...
+
+## Notes
+Ghi chú thêm nếu có.`,
+    knowledge: `# [Title]
+
+## Context
+Mô tả bối cảnh / vấn đề cần lưu trữ kiến thức.
+
+## Problem
+Mô tả chi tiết vấn đề đã gặp phải.
+
+## Solution
+Giải pháp đã áp dụng:
+
+1. Bước giải quyết
+2. Chi tiết implement
+3. Cấu hình cần thiết
+
+\`\`\`
+// Code example nếu cần
+\`\`\`
+
+## Key Learnings
+- Điểm học được 1
+- Điểm học được 2
+
+## Best Practices
+- Practice 1
+- Practice 2
+
+## References
+- [Tài liệu tham khảo](#)
+- Related documents`,
+    task: `# [Task Title]
+
+## Description
+Mô tả chi tiết công việc cần làm.
+
+## Sub-tasks
+- [ ] Việc 1
+- [ ] Việc 2
+- [ ] Việc 3
+
+## Notes
+Ghi chú thêm trong quá trình làm việc.`,
+    bug: `# [Bug Title]
+
+## Pre-conditions
+Điều kiện trước khi test.
+
+## Steps to Reproduce
+1. Bước 1
+2. Bước 2
+3. Bước 3
+
+## Expected Behavior
+Mô tả kết quả mong đợi.
+
+## Actual Behavior
+Mô tả kết quả thực tế (lỗi).
+
+## Logs / Payload / Data
+\`\`\`json
+{
+  "example": "data"
+}
+\`\`\``,
+    testplan: `# [Release / Feature] Test Plan
+
+## Scope
+Phạm vi test trong release/feature này.
+
+## Test Strategy
+Chiến lược test (Manual, Automation, Performance...).
+
+## Environments
+Môi trường cần test.
+
+## Devices & Browsers
+- Chrome/Edge
+- iOS/Android
+
+## Timeline
+Thời gian dự kiến.`,
+    meeting: `# [Meeting Topic]
+
+## Date: YYYY-MM-DD
+## Attendees: 
+- 
+- 
+
+## Discussion Points
+- Vấn đề 1
+- Vấn đề 2
+
+## Action Items
+- [ ] Action 1 (@nguoi_thuc_hien)
+- [ ] Action 2 (@nguoi_thuc_hien)`,
+    
+    credential: `# [System / Tool Name]
+
+## Environment Info
+- **URL / Portal**: 
+- **Type**: Staging / Production / Internal
+
+## Accounts
+**Account 1 (Admin)**
+- Username: \`admin\`
+- Password: \`password123\`
+
+**Account 2 (Test User)**
+- Username: \`test_user\`
+- Password: \`password123\`
+
+## Database Access
+- Host: 
+- User: 
+- Pass: 
+
+## Notes
+- Ghi chú về cách đổi pass, VPN cần thiết...`,
+    api: `# [API Endpoint]
+
+## Method & URL
+\`GET /api/v1/resource\`
+
+## Headers
+- Authorization: Bearer {token}
+- Content-Type: application/json
+
+## Request Payload
+\`\`\`json
+{
+  "key": "value"
+}
+\`\`\`
+
+## Response (200 OK)
+\`\`\`json
+{
+  "status": "success"
+}
+\`\`\``
+};
+
+const SAMPLE_DOCS = [
+    {
+        id: 'doc_001', title: 'Regression Test Execution Runbook', category: 'runbook',
+        tags: ['regression', 'sprint', 'automation'], status: 'published', favorite: true,
+        content: `# Regression Test Execution Runbook\n\n## Purpose\nHướng dẫn chi tiết quy trình thực hiện regression test cho mỗi sprint cycle.\n\n## Prerequisites\n- Test environment đã được deploy bản build mới\n- Test data đã được chuẩn bị sẵn trong database\n- Automation test suite đã được update latest code\n\n## Steps\n\n### Bước 1: Verify Test Environment\n1. Kiểm tra version của build trên Staging\n2. Xác nhận database migration đã chạy thành công\n3. Verify các third-party services đang hoạt động\n\n### Bước 2: Execute Automated Regression\n1. Mở terminal và chạy lệnh:\n\`\`\`bash\nnpm run test:regression -- --env=staging\n\`\`\`\n2. Monitor test execution trên Dashboard\n3. Chờ kết quả và kiểm tra report\n\n### Bước 3: Manual Regression for Critical Paths\n1. Login flow (SSO + Local)\n2. Payment checkout flow\n3. Admin panel key functions\n\n## Expected Results\n- Tất cả automated tests PASS\n- Không có critical/high bugs mới\n- Test report được gửi đến Slack channel\n\n## Troubleshooting\n| Vấn đề | Nguyên nhân | Giải pháp |\n|--------|-------------|-----------|\n| Flaky tests | Timing issue | Re-run với retry |\n| DB connection fail | Migration lỗi | Rollback và re-deploy |`,
+        createdAt: Date.now() - 86400000 * 15, updatedAt: Date.now() - 86400000 * 2
+    },
+    {
+        id: 'doc_002', title: 'CI/CD Pipeline Troubleshooting Guide', category: 'runbook',
+        tags: ['ci-cd', 'jenkins', 'troubleshooting'], status: 'published', favorite: false,
+        content: `# CI/CD Pipeline Troubleshooting Guide\n\n## Purpose\nCung cấp các bước xử lý khi CI/CD pipeline bị lỗi.\n\n## Common Issues\n\n### Build Failed\n1. Kiểm tra Jenkins console output\n2. Xác nhận không có merge conflict\n3. Verify dependencies version\n\n### Test Stage Failed\n1. Download test report artifact\n2. Phân tích failed test cases\n3. Kiểm tra test data / environment\n\n### Deploy Failed\n1. Kiểm tra Kubernetes pod logs\n2. Verify health check endpoint\n3. Rollback nếu cần thiết\n\n## Escalation\n- Level 1: QA Engineer tự xử lý (15 phút)\n- Level 2: Escalate đến DevOps (30 phút)\n- Level 3: Escalate đến Tech Lead (1 giờ)`,
+        createdAt: Date.now() - 86400000 * 30, updatedAt: Date.now() - 86400000 * 5
+    },
+    {
+        id: 'doc_003', title: 'QA Team Onboarding Guide', category: 'onboarding',
+        tags: ['onboarding', 'team', 'setup'], status: 'published', favorite: true,
+        content: `# QA Team Onboarding Guide\n\n## Welcome to QA Team!\nChào mừng bạn gia nhập đội ngũ QA. Document này sẽ giúp bạn nhanh chóng hòa nhập.\n\n## Week 1: Setup\n- [ ] Cài đặt JDK 17, Node.js 18, Python 3.11\n- [ ] Setup IDE (IntelliJ / VS Code với extensions)\n- [ ] Cài đặt Docker Desktop\n- [ ] Request access: Jira, Confluence, GitHub, Slack, Figma\n- [ ] Clone repo test-automation và chạy được sample test\n\n## Week 2: Learning\n- [ ] Đọc Architecture Overview document\n- [ ] Study Testing Strategy document\n- [ ] Join 2 pairing sessions với senior QA\n- [ ] Thực hiện 5 test cases trên Staging\n\n## Week 3: Hands-on\n- [ ] Viết 10 test cases mới cho module được assign\n- [ ] Execute full test suite cho 1 feature\n- [ ] Log 3 bugs Jira theo format chuẩn\n- [ ] Present test result trong team meeting\n\n## Key Contacts\n| Role | Name | Slack |\n|------|------|-------|\n| QA Lead | Lan N. | @lan.n |\n| Senior QA | Minh T. | @minh.t |`,
+        createdAt: Date.now() - 86400000 * 60, updatedAt: Date.now() - 86400000 * 10
+    },
+    {
+        id: 'doc_004', title: 'Testing Tools Setup Manual', category: 'onboarding',
+        tags: ['tools', 'setup', 'installation'], status: 'draft', favorite: false,
+        content: `# Testing Tools Setup Manual\n\n## Selenium WebDriver\n\`\`\`bash\nnpm install selenium-webdriver\nnpm install @wdio/cli --save-dev\n\`\`\`\n\n## Playwright\n\`\`\`bash\nnpm init playwright@latest\n\`\`\`\n\n## Postman\n1. Download từ postman.com\n2. Import collection từ shared workspace\n3. Setup environment variables\n\n## JMeter\n1. Download từ jmeter.apache.org\n2. Cài đặt JDK 11+\n3. Configure JVM args cho performance testing`,
+        createdAt: Date.now() - 86400000 * 20, updatedAt: Date.now() - 86400000 * 8
+    },
+    {
+        id: 'doc_005', title: 'Login Module Test Cases', category: 'testcases',
+        tags: ['login', 'auth', 'smoke'], status: 'published', favorite: false,
+        content: `# Login Module Test Cases\n\n## Module: Authentication\n**Version**: 2.4.0 | **Updated**: 2024-01-15\n\n### TC-L001: Login with valid credentials\n- **Priority**: High | **Type**: Smoke\n- **Pre-condition**: User account đã tồn tại và active\n\n**Steps:**\n1. Navigate đến /login\n2. Nhập valid email vào trường Email\n3. Nhập valid password vào trường Password\n4. Click button "Sign In"\n\n**Expected Result:** User đăng nhập thành công, redirect đến dashboard, hiển thị user avatar.\n\n---\n\n### TC-L002: Login with invalid password\n- **Priority**: High | **Type**: Functional\n- **Pre-condition**: User account đã tồn tại\n\n**Steps:**\n1. Navigate đến /login\n2. Nhập valid email\n3. Nhập sai password 3 lần\n\n**Expected Result:** Hiển thị lỗi "Invalid credentials", sau 3 lần hiển thị CAPTCHA.\n\n---\n\n### TC-L003: Login with empty fields\n- **Priority**: Medium | **Type**: Validation\n\n**Steps:**\n1. Navigate đến /login\n2. Để trống cả 2 trường\n3. Click "Sign In"\n\n**Expected Result:** Hiển thị validation error cho cả 2 trường.`,
+        createdAt: Date.now() - 86400000 * 45, updatedAt: Date.now() - 86400000 * 3
+    },
+    {
+        id: 'doc_006', title: 'Payment Gateway Integration Tests', category: 'testcases',
+        tags: ['payment', 'integration', 'critical'], status: 'draft', favorite: true,
+        content: `# Payment Gateway Integration Tests\n\n## Module: Payment\n**Priority**: Critical\n\n### TC-P001: Successful card payment\n1. Add item to cart\n2. Proceed to checkout\n3. Select Credit Card payment\n4. Enter valid card details (test card: 4242 4242 4242 4242)\n5. Click "Pay Now"\n\n**Expected:** Payment success, order status = Confirmed, receipt email sent.\n\n### TC-P002: Payment decline handling\n1. Same flow với declined card (4000 0000 0000 0002)\n\n**Expected:** Hiển thị "Payment declined", order status = Pending, user có thể retry.\n\n### TC-P003: Payment timeout\n1. Simulate network timeout trong payment processing\n\n**Expected:** Hiển thị timeout message, order không bị duplicate khi retry.`,
+        createdAt: Date.now() - 86400000 * 12, updatedAt: Date.now() - 86400000 * 1
+    },
+    {
+        id: 'doc_007', title: 'API Testing Best Practices', category: 'knowledge',
+        tags: ['api', 'best-practices', 'postman'], status: 'published', favorite: false,
+        content: `# API Testing Best Practices\n\n## Context\nTổng hợp các best practices khi thực hiện API testing trong project.\n\n## Core Principles\n\n### 1. Test Independence\nMỗi test case phải độc lập, không phụ thuộc vào kết quả của test khác.\n\n### 2. Use Environment Variables\n\`\`\`json\n{\n  "base_url": "{{\$env.BASE_URL}}",\n  "auth_token": "{{\$env.AUTH_TOKEN}}"\n}\n\`\`\`\n\n### 3. Verify Status Code, Headers, and Body\n\`\`\`javascript\npm.test("Status is 200", () => pm.response.to.have.status(200));\npm.test("Content-Type is JSON", () => {\n  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');\n});\npm.test("Response has id", () => {\n  pm.expect(pm.response.json()).to.have.property('id');\n});\n\`\`\`\n\n### 4. Negative Testing\n- Gửi invalid data types\n- Test missing required fields\n- Verify proper error messages\n- Check rate limiting behavior\n\n### 5. Use Assertions Effectively\n- Kiểm tra exact match cho status codes\n- Use contains/matches cho dynamic data\n- Validate schema cho response body`,
+        createdAt: Date.now() - 86400000 * 90, updatedAt: Date.now() - 86400000 * 7
+    },
+    {
+        id: 'doc_008', title: 'Performance Testing Metrics', category: 'knowledge',
+        tags: ['performance', 'metrics', 'jmeter'], status: 'published', favorite: false,
+        content: `# Performance Testing Metrics & Thresholds\n\n## Key Metrics\n\n| Metric | Threshold | Tool |\n|--------|-----------|------|\n| Response Time (p95) | < 2000ms | JMeter |\n| Throughput | > 100 req/s | JMeter |\n| Error Rate | < 1% | JMeter |\n| CPU Usage | < 80% | Grafana |\n| Memory Usage | < 85% | Grafana |\n| DB Connection Pool | < 80% max | APM |\n\n## Test Scenarios\n\n### Baseline Test\n- 10 concurrent users, 5 minutes\n- Mục đích: lấy baseline metrics\n\n### Load Test\n- 100 concurrent users, ramp-up 10 phút, steady 20 phút\n- Mục đích: verify system under normal load\n\n### Stress Test\n- Ramp lên 500 users cho đến khi hệ thống fail\n- Mục đích: tìm điểm break\n\n## Reporting\nTemplate report gồm: Executive Summary, Metrics Dashboard, Bottleneck Analysis, Recommendations.`,
+        createdAt: Date.now() - 86400000 * 50, updatedAt: Date.now() - 86400000 * 15
+    },
+    {
+        id: 'doc_009', title: 'Bug Report Template & Standards', category: 'knowledge',
+        tags: ['bug-report', 'jira', 'standards'], status: 'published', favorite: true,
+        content: `# Bug Report Template & Standards\n\n## Bug Report Format (Jira)\n\n### Title Format\n\`[Module] Brief description of the bug\`\n\nExample: \`[Login] Unable to login with special characters in password\`\n\n### Description Template\n\`\`\`\n**Environment:** Staging / Production\n**Browser:** Chrome 120 / Safari 17\n**Device:** Desktop / Mobile (iOS 17 / Android 14)\n\n**Steps to Reproduce:**\n1. Go to [URL]\n2. Click on [element]\n3. Enter [data]\n4. Observe [behavior]\n\n**Expected Result:**\nMô tả kết quả mong đợi.\n\n**Actual Result:**\nMô tả kết quả thực tế.\n\n**Attachments:**\n- Screenshot / Video\n- Console logs\n- Network har file (nếu cần)\n\`\`\`\n\n## Severity & Priority\n| Severity | Definition | Example |\n|----------|------------|--------|\n| Critical | System crash, data loss | Payment double-charge |\n| Major | Feature broken, no workaround | Cannot submit form |\n| Minor | Feature partially broken | UI misalignment |\n| Trivial | Cosmetic issue | Typos |`,
+        createdAt: Date.now() - 86400000 * 70, updatedAt: Date.now() - 86400000 * 20
+    },
+    {
+        id: 'doc_010', title: 'Database Migration Verification', category: 'runbook',
+        tags: ['database', 'migration', 'verify'], status: 'draft', favorite: false,
+        content: `# Database Migration Verification Runbook\n\n## Purpose\nĐảm bảo mỗi database migration được verify trước và sau khi apply trên Staging/Production.\n\n## Pre-Migration Checks\n1. Backup database hiện tại\n2. Review migration SQL script\n3. Estimate execution time trên staging\n4. Verify rollback script sẵn sàng\n\n## Post-Migration Verification\n1. Kiểm tra table structure: \`\\d table_name\`\n2. Verify data integrity: compare row counts\n3. Check indexes đã được tạo\n4. Verify foreign key constraints\n5. Run smoke tests trên affected modules\n\n## Rollback Procedure\n1. Stop application\n2. Apply rollback migration\n3. Verify data integrity\n4. Restart application\n5. Run smoke tests`,
+        createdAt: Date.now() - 86400000 * 5, updatedAt: Date.now() - 86400000 * 1
+    }
+];
+
+// ========================
+// STATE
+// ========================
+let state = {
+    view: 'dashboard', // dashboard | documents | favorites | editor | viewer
+    category: 'all',
+    search: '',
+    statusFilter: 'all',
+    sortBy: 'updated',
+    editingDoc: null, // null = new, object = editing
+    editorTags: [],
+    editorMode: 'edit', // edit | preview
+    sidebarOpen: false
+};
+
+let documents = [];
+
+// ========================
+// PERSISTENCE
+// ========================
+async function persist() {
+    await DocStorage.save(documents);
+}
+async function hydrate() {
+    const settings = await DocStorage.getSettings();
+    if (settings && settings.lang) state.lang = settings.lang;
+    const saved = await DocStorage.getAll();
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+        documents = saved;
+    } else {
+        documents = [...SAMPLE_DOCS];
+        await await persist();
+    }
+}
+
+// ========================
+// UTILS
+// ========================
+function uid() { return 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
+function fmtDate(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return t('justNow');
+    if (diff < 3600000) return t('minsAgo', {m: Math.floor(diff/60000)});
+    if (diff < 86400000) return t('hoursAgo', {h: Math.floor(diff/3600000)});
+    if (diff < 604800000) return t('daysAgo', {d: Math.floor(diff/86400000)});
+    return d.toLocaleDateString(state.lang === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+function excerpt(text, len = 120) {
+    if (!text) return '';
+    const clean = text.replace(/[#*`\[\]()>|-]/g, '').replace(/\n+/g, ' ').trim();
+    return clean.length > len ? clean.substring(0, len) + '...' : clean;
+}
+function escHtml(s) {
+    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+// ========================
+// MARKDOWN RENDERER
+// ========================
+function renderMd(text) {
+    if (!text) return `<p style="color:var(--tx-d)">${t('noContent')}</p>`;
+    let h = text;
+    // Code blocks
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${escHtml(code.trim())}</code></pre>`);
+    // Inline code
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Headers
+    h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    // Bold + Italic
+    h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+    // Strikethrough
+    h = h.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    // Blockquote
+    h = h.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+    // HR
+    h = h.replace(/^---+$/gm, '<hr>');
+    // Checkbox
+    h = h.replace(/^- \[x\] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" checked disabled> $1</li>');
+    h = h.replace(/^- \[ \] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" disabled> $1</li>');
+    // Unordered list
+    h = h.replace(/^- (.+)$/gm, '<li class="ul-li">$1</li>');
+    // Ordered list
+    h = h.replace(/^\d+\. (.+)$/gm, '<li class="ol-li">$1</li>');
+    
+    // Group lists
+    h = h.replace(/((?:<li class="chk-li".*?>.*<\/li>\n?)+)/g, '<ul style="list-style:none;padding-left:4px;">$1</ul>');
+    h = h.replace(/((?:<li class="ul-li".*?>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+    h = h.replace(/((?:<li class="ol-li".*?>.*<\/li>\n?)+)/g, '<ol style="list-style-type:decimal;padding-left:24px;">$1</ol>');
+    // Simple table support
+    h = h.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm, (_, headerRow, sep, bodyRows) => {
+        const headers = headerRow.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+        const rows = bodyRows.trim().split('\n').map(row => {
+            const cells = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+            return `<tr>${cells}</tr>`;
+        }).join('');
+        return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+    });
+    // Links
+    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    // Paragraphs - wrap loose lines
+    h = h.replace(/^(?!<[houblptd]|<\/|<li|<input|<tr|<table)([^\n]+)$/gm, '<p>$1</p>');
+    h = h.replace(/<p><\/p>/g, '');
+    return h;
+}
+
+// ========================
+// TOAST
+// ========================
+function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    const colors = { success: 'border-l-4 border-emerald-500', error: 'border-l-4 border-rose-500', info: 'border-l-4 border-cyan-500' };
+    const icons = { success: 'fa-check-circle text-emerald-400', error: 'fa-exclamation-circle text-rose-400', info: 'fa-info-circle text-cyan-400' };
+    el.className = `toast flex items-center gap-3 px-4 py-3 rounded-lg ${colors[type] || colors.info}`;
+    el.style.cssText = 'background:var(--card);pointer-events:auto;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.4);';
+    el.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span class="text-sm" style="color:var(--tx);">${msg}</span>`;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ========================
+// MODAL
+// ========================
+function showModal(html) {
+    const m = document.getElementById('modal');
+    m.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
+    m.innerHTML = `<div class="fade-up rounded-xl p-6 w-full max-w-lg mx-4" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto;">${html}</div>`;
+    m.onclick = (e) => { if (e.target === m) closeModal(); };
+}
+function closeModal() { document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden'; }
+
+function showDeleteModal(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.1);">
+                <i class="fa-solid fa-trash text-rose-400"></i>
+            </div>
+            <h3 class="font-heading font-semibold text-lg mb-2">${t('delTitle')}</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">${t('delConfirm').split('?')[0]} "<strong style="color:var(--tx);">${escHtml(doc.title)}</strong>"? ${t('delConfirm').split('? ')[1] || ''}</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
+                <button class="btn-d" data-onclick="confirmDelete('${id}')">${t('delConfirmBtn')}</button>
+            </div>
+        </div>
+    `);
+}
+
+async function confirmDelete(id) {
+    documents = documents.filter(d => d.id !== id);
+    await persist();
+    closeModal();
+    toast(t('docDeleted'), 'success');
+    if (state.view === 'viewer' || state.view === 'editor') navigate('documents', state.category);
+    else render();
+}
+
+// ========================
+// TEMPLATE MODAL
+// ========================
+function showTemplateModal() {
+    const cats = Object.entries(CAT_META);
+    showModal(`
+        <div>
+            <h3 class="font-heading font-semibold text-lg mb-1">${t('newDoc')}</h3>
+            <p class="text-sm mb-5" style="color:var(--tx-m);">${t('chooseTemplate')}</p>
+            <button class="tpl-card w-full mb-4 flex items-center gap-4 text-left" data-onclick="createDoc(null)">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(16,185,129,0.1);">
+                    <i class="fa-solid fa-file-circle-plus" style="color:var(--acc);"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold" style="color:var(--tx);">${t('blankPage')}</p>
+                    <p class="text-xs" style="color:var(--tx-d);">${t('startFromScratch')}</p>
+                </div>
+            </button>
+            <div class="grid grid-cols-2 gap-3">
+                ${cats.map(([key, meta]) => `
+                    <button class="tpl-card text-left" data-onclick="createDoc('${key}')">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style="background:${meta.color}15;">
+                            <i class="fa-solid ${meta.icon} text-xs" style="color:${meta.color};"></i>
+                        </div>
+                        <p class="text-sm font-semibold" style="color:var(--tx);">${meta.label}</p>
+                        <p class="text-[11px] mt-0.5" style="color:var(--tx-d);">${t('template')} ${meta.label}</p>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `);
+}
+
+// ========================
+// SIDEBAR
+// ========================
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('mob-overlay');
+    state.sidebarOpen = !state.sidebarOpen;
+    sb.classList.toggle('open', state.sidebarOpen);
+    ov.classList.toggle('hidden', !state.sidebarOpen);
+}
+
+function updateSidebar() {
+
+    const lblDash = document.getElementById('lbl-dashboard'); if (lblDash) lblDash.textContent = t('dashboard');
+    const lblDocs = document.getElementById('lbl-documents'); if (lblDocs) lblDocs.textContent = t('documents');
+    const lblFavs = document.getElementById('lbl-favorites'); if (lblFavs) lblFavs.textContent = t('favorites');
+    const lblCats = document.getElementById('lbl-categories'); if (lblCats) lblCats.textContent = t('categories') || 'Categories';
+    
+    // Also update categories in sidebar dynamically
+    const catItems = document.querySelectorAll('.nav-item[data-cat]');
+    catItems.forEach(el => {
+        const c = el.dataset.cat;
+        if (c !== 'all' && CAT_META[c]) {
+            const span = el.querySelector('span.text-sm');
+            if (span) span.textContent = CAT_META[c].label;
+        }
+    });
+
+    // Counts
+    document.getElementById('cnt-all').textContent = documents.length;
+    document.getElementById('cnt-fav').textContent = documents.filter(d => d.favorite).length;
+    Object.keys(CAT_META).forEach(k => {
+        const el = document.getElementById('cnt-' + k);
+        if (el) el.textContent = documents.filter(d => d.category === k).length;
+    });
+    document.getElementById('storage-info').textContent = documents.length + ' documents saved locally';
+
+    // Active state
+    document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.remove('active');
+        const v = n.dataset.view;
+        const c = n.dataset.cat;
+        if (v === state.view && (v === 'dashboard' || v === 'favorites' || c === state.category)) {
+            n.classList.add('active');
+        }
+    });
+}
+
+// ========================
+// HEADER
+// ========================
+function updateHeader() {
+    const h = document.getElementById('app-header');
+    let title = '', actions = '';
+
+    if (state.view === 'dashboard') {
+        title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
+        actions = `<button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+    } else if (state.view === 'documents' || state.view === 'favorites') {
+        const catLabel = state.category === 'all' ? 'All Documents' : (state.view === 'favorites' ? 'Favorites' : CAT_META[state.category]?.label + 's');
+        title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
+        actions = `<button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+    } else if (state.view === 'editor') {
+        title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
+        actions = `
+            <button class="btn-s" data-onclick="navigate('${state.editingDoc ? 'viewer' : 'documents'}', '${state.category}')"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
+            <button class="btn-p" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>
+        `;
+    } else if (state.view === 'viewer') {
+        const doc = documents.find(d => d.id === state.editingDoc?.id);
+        title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
+        actions = `
+            <button class="btn-s" data-onclick="navigate('documents', '${state.category}')"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
+            <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
+        `;
+    }
+
+    const isSearchView = state.view === 'documents' || state.view === 'favorites';
+    h.innerHTML = `
+        <button class="md:hidden mr-1 p-2 rounded-lg" style="color:var(--tx-m);" data-onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+        ${title}
+        <div class="flex-1"></div>
+        ${isSearchView ? `
+            <div class="search-w hidden sm:block" style="width:280px;">
+                <i class="fa-solid fa-search"></i>
+                <input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();">
+            </div>
+        ` : ''}
+        <div class="flex items-center gap-2">
+        <button class="btn-s text-sm mr-2 p-1.5 px-3 flex items-center gap-1.5" data-onclick="toggleLang()" style="border: 1px solid var(--brd); border-radius: 6px; background: var(--bg2); color: var(--tx);">
+    <img src="${state.lang === 'vi' ? 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5MDAgNjAwIj48cmVjdCB3aWR0aD0iOTAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iI2RhMjUxZCIvPjxwb2x5Z29uIHBvaW50cz0iNDUwLDEyMCA1NDAsNDAwIDMwMCwyMjUgNjAwLDIyNSAzNjAsNDAwIiBmaWxsPSIjZmZjZDAwIi8+PC9zdmc+' : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgNDAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iI2ZmZiIvPjxnIGZpbGw9IiNiZjBhMzAiPjxyZWN0IHk9IjAiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjYxLjUiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjEyMyIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMTg0LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjI0NiIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMzA3LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjM2OS4yIiB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMwLjciLz48L2c+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIyMTUiIGZpbGw9IiMwMDI4NjgiLz48L3N2Zz4='}" style="width:16px;height:12px;object-fit:cover;border-radius:2px;">
+    <span>${state.lang === 'vi' ? 'VN' : 'EN'}</span>
+</button>
+        ${actions}
+</div>
+    `;
+}
+
+// ========================
+// NAVIGATION
+// ========================
+function navigate(view, cat) {
+    state.view = view;
+    if (cat !== undefined) state.category = cat;
+    if (view === 'favorites') state.category = 'all';
+    state.search = '';
+    state.statusFilter = 'all';
+    state.editingDoc = null;
+    state.editorTags = [];
+    state.editorMode = 'edit';
+    // Đóng sidebar mobile
+    if (state.sidebarOpen) toggleSidebar();
+    render();
+}
+
+// ========================
+// GET FILTERED DOCS
+// ========================
+function getFiltered() {
+    let docs = [...documents];
+    if (state.view === 'favorites') docs = docs.filter(d => d.favorite);
+    else if (state.category !== 'all') docs = docs.filter(d => d.category === state.category);
+    if (state.search) {
+        const q = state.search.toLowerCase();
+        docs = docs.filter(d => d.title.toLowerCase().includes(q) || (d.content && d.content.toLowerCase().includes(q)) || d.tags.some(t => t.toLowerCase().includes(q)));
+    }
+    if (state.statusFilter !== 'all') docs = docs.filter(d => d.status === state.statusFilter);
+    docs.sort((a, b) => {
+        if (state.sortBy === 'updated') return b.updatedAt - a.updatedAt;
+        if (state.sortBy === 'created') return b.createdAt - a.createdAt;
+        if (state.sortBy === 'title') return a.title.localeCompare(b.title);
+        return 0;
+    });
+    return docs;
+}
+
+// ========================
+// RENDER CONTENT
+// ========================
+function renderContent() {
+    const c = document.getElementById('content');
+    if (state.view === 'dashboard') c.innerHTML = renderDashboard();
+    else if (state.view === 'documents' || state.view === 'favorites') c.innerHTML = renderDocList();
+    else if (state.view === 'editor') c.innerHTML = renderEditor();
+    else if (state.view === 'viewer') c.innerHTML = renderViewer();
+}
+
+function render() {
+    updateSidebar();
+    updateHeader();
+    renderContent();
+}
+
+// ========================
+// DASHBOARD
+// ========================
+function renderDashboard() {
+    const total = documents.length;
+    const favs = documents.filter(d => d.favorite).length;
+    const recent = [...documents].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
+    const catCounts = {};
+    Object.keys(CAT_META).forEach(k => catCounts[k] = documents.filter(d => d.category === k).length);
+
+    return `<div class="fade-up max-w-6xl">
+        <!-- Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div class="stat-card sc-total p-4">
+                <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">Total</p>
+                <p class="font-heading font-bold text-2xl" style="color:var(--acc);">${total}</p>
+                <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
+            </div>
+            ${Object.entries(CAT_META).map(([k, m]) => `
+                <div class="stat-card sc-${{runbook:'run',onboarding:'onb',testcases:'tc',knowledge:'kn',task:'task',bug:'bug',testplan:'tp',meeting:'mtg',api:'api',credential:'cred'}[k]} p-4">
+                    <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">${m.label}</p>
+                    <p class="font-heading font-bold text-2xl" style="color:${m.color};">${catCounts[k]}</p>
+                    <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- Recent -->
+            <div class="lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-heading font-semibold text-base">${t('recentlyUpdated')}</h3>
+                    <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('documents','all')">${t('viewAll')} <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i></button>
+                </div>
+                <div class="flex flex-col gap-2.5">
+                    ${recent.length === 0 ? `<div class="text-center py-10" style="color:var(--tx-d);"><i class="fa-solid fa-inbox text-3xl mb-3 pulse-s block"></i><p class="text-sm">${t('noDocYet')}</p></div>` :
+                    recent.map(d => `
+                        <div class="doc-card p-4 flex items-start gap-3" data-onclick="viewDoc('${d.id}')">
+                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style="background:${CAT_META[d.category].color}12;">
+                                <i class="fa-solid ${CAT_META[d.category].icon} text-xs" style="color:${CAT_META[d.category].color};"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(d.title)}</p>
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                    <span class="st-badge st-${d.status}">${d.status}</span>
+                                    <span class="text-[11px]" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
+                                </div>
+                            </div>
+                            <button class="fav-btn ${d.favorite ? 'on' : ''} text-sm p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Quick Actions + Favorites -->
+            <div class="flex flex-col gap-6">
+                <div>
+                    <h3 class="font-heading font-semibold text-base mb-4">Quick Actions</h3>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        ${Object.entries(CAT_META).map(([k, m]) => `
+                            <button class="tpl-card text-center py-4" data-onclick="createDoc('${k}')">
+                                <i class="fa-solid ${m.icon} text-lg mb-2 block" style="color:${m.color};"></i>
+                                <p class="text-xs font-semibold" style="color:var(--tx);">${m.label}</p>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-heading font-semibold text-base">${t('favorites')}</h3>
+                        <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('favorites')">${t('viewAll')}</button>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        ${favs === 0 ? `<p class="text-xs text-center py-4" style="color:var(--tx-d);">${t('noFavorites')}</p>` :
+                        documents.filter(d => d.favorite).slice(0, 4).map(d => `
+                            <div class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer" style="transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="viewDoc('${d.id}')">
+                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${CAT_META[d.category].color};"></span>
+                                <span class="text-xs truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ========================
+// DOCUMENT LIST
+// ========================
+function renderDocList() {
+    const docs = getFiltered();
+    const isMobileSearch = state.view === 'documents' || state.view === 'favorites';
+
+    if (state.category === 'task') {
+        return renderKanbanBoard(docs, isMobileSearch);
+    }
+
+    return `<div class="fade-up max-w-6xl">
+        <!-- Mobile search -->
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+            <select class="form-select text-sm" style="width:auto;min-width:130px;" data-onchange="state.statusFilter=this.value;renderContent();">
+                <option value="all" ${state.statusFilter === 'all' ? 'selected' : ''}>${t('allStatus')}</option>
+                <option value="published" ${state.statusFilter === 'published' ? 'selected' : ''}>Published</option>
+                <option value="draft" ${state.statusFilter === 'draft' ? 'selected' : ''}>Draft</option>
+                <option value="archived" ${state.statusFilter === 'archived' ? 'selected' : ''}>Archived</option>
+            </select>
+            <select class="form-select text-sm" style="width:auto;min-width:140px;" data-onchange="state.sortBy=this.value;renderContent();">
+                <option value="updated" ${state.sortBy === 'updated' ? 'selected' : ''}>${t('recentlyUpdated')}</option>
+                <option value="created" ${state.sortBy === 'created' ? 'selected' : ''}>${t('newest')}</option>
+                <option value="title" ${state.sortBy === 'title' ? 'selected' : ''}>${t('sortAZ')}</option>
+            </select>
+            <span class="text-xs ml-auto" style="color:var(--tx-d);">${docs.length} documents</span>
+        </div>
+
+        <!-- Grid -->
+        ${docs.length === 0 ? `
+            <div class="text-center py-20">
+                <i class="fa-solid fa-folder-open text-4xl mb-4 pulse-s block" style="color:var(--tx-d);"></i>
+                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">${state.search ? t('noDocFound') : t('noDocYet')}</p>
+                <p class="text-xs mb-5" style="color:var(--tx-d);">${state.search ? t('tryDiffKey') : t('createFirstDoc')}</p>
+                ${!state.search ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
+            </div>
+        ` : `
+            <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                ${docs.map(d => {
+                    if (d.category === 'credential') {
+                        const domain = guessDomain(d.title);
+                        const favUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+                        return `
+                        <div class="doc-card p-4 flex flex-col" data-onclick="viewDoc('${d.id}')">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="cred-avatar ${credAvatarColor(d.title)}">
+                                        <img class="cred-favicon" src="${favUrl}" alt="" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.remove()">
+                                        <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h4 class="text-sm font-semibold leading-snug truncate" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                                        ${d.username ? `<p class="text-[11px] truncate mt-0.5" style="color:var(--tx-m);">${escHtml(d.username)}</p>` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0 ml-2">
+                                    <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                        <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                    </button>
+                                    <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-auto flex items-center justify-between border-t" style="border-color:var(--brd); padding-top: 16px;">
+                                <span class="cat-badge cat-credential">${t('credential')}</span>
+                                <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
+                            </div>
+                        </div>`;
+                    }
+                    return `
+                    <div class="doc-card p-4 flex flex-col" data-onclick="viewDoc('${d.id}')">
+                        <div class="flex items-start justify-between mb-2.5">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                <span class="st-badge st-${d.status}">${d.status}</span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                </button>
+                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                        <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${excerpt(d.content, 100)}</p>
+                        <div class="flex items-center gap-1.5 flex-wrap mb-3">
+                            ${d.tags.slice(0, 3).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+                            ${d.tags.length > 3 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 3}</span>` : ''}
+                        </div>
+                        <p class="text-[11px]" style="color:var(--tx-d);"><i class="fa-regular fa-clock mr-1"></i>${fmtDate(d.updatedAt)}</p>
+                    </div>
+                `;}).join('')}
+            </div>
+        `}
+    </div>`;
+}
+
+// Document context menu (dropdown)
+function showDocMenu(id, btn) {
+    // Xóa menu cũ nếu có
+    const old = document.getElementById('doc-menu');
+    if (old) old.remove();
+
+    const rect = btn.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'doc-menu';
+    menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:4px;z-index:80;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);`;
+    menu.innerHTML = `
+        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
+            <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
+        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
+            <i class="fa-solid fa-copy w-4 text-center"></i> ${t('duplicate')} </button>
+        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
+            <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
+    `;
+    document.body.appendChild(menu);
+    // Đóng khi click ngoài
+    setTimeout(() => {
+        const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
+        document.addEventListener('click', close);
+    }, 10);
+}
+
+// ========================
+// EDITOR
+// ========================
+function renderEditor() {
+    const doc = state.editingDoc;
+    const isEdit = !!doc;
+    const title = isEdit ? doc.title : (state._newTitle || '');
+    const category = isEdit ? doc.category : (state._newCat || 'runbook');
+    const status = isEdit ? doc.status : 'draft';
+    const content = isEdit ? doc.content : (state._newContent || '');
+    const tags = isEdit ? doc.tags : state.editorTags;
+
+    return `<div class="fade-up max-w-4xl">
+        
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${category === 'credential' ? 'Service Name' : 'Title'}</label>
+                <input id="ed-title" class="form-input" placeholder="${category === 'credential' ? t('egCred') : t('enterTitle')}" value="${escHtml(title)}">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Category</label>
+                    <select id="ed-cat" class="form-select w-full" data-onchange="changeEditorCat(this.value)">
+                        ${Object.entries(CAT_META).map(([k, m]) => `<option value="${k}" ${category === k ? 'selected' : ''}>${m.label}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Status</label>
+                    <select id="ed-status" class="form-select w-full">
+                        <option value="draft" ${status === 'draft' ? 'selected' : ''}>Draft</option>
+                        <option value="published" ${status === 'published' ? 'selected' : ''}>Published</option>
+                        <option value="archived" ${status === 'archived' ? 'selected' : ''}>Archived</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tags -->
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Tags</label>
+            <div class="flex flex-wrap items-center gap-2 p-2.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);min-height:42px;" id="tag-container" data-onclick="document.getElementById('tag-input').focus()">
+                ${tags.map((t, i) => `<span class="tag">${escHtml(t)}<span class="rm" data-onclick="event.stopPropagation();removeTag(${i})">&times;</span></span>`).join('')}
+                <input id="tag-input" class="bg-transparent border-none outline-none text-sm flex-1 min-w-[100px]" style="color:var(--tx);" placeholder="${tags.length === 0 ? t('enterTag') : ''}" data-onkeydown="handleTagInput(event)">
+            </div>
+        </div>
+
+        ${category === 'credential' ? `
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Username / Email</label>
+                <input id="ed-username" class="form-input" placeholder="e.g. admin" value="${escHtml(doc?.username || '')}">
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Password</label>
+                <div class="flex items-center gap-2">
+                    <input type="password" id="ed-password" class="form-input" placeholder="••••••••" value="${escHtml(doc?.password || '')}">
+                    <button id="ed-password-btn" class="btn-s px-3 py-2" data-onclick="togglePasswordVisibility('ed-password')"><i class="fa-solid fa-eye"></i></button>
+                </div>
+            </div>
+        </div>
+        ` : category === 'bug' ? `
+        <div class="grid sm:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugEnv')}</label>
+                <input id="ed-bug-env" class="form-input" placeholder="${t('bugEnvPl')}" value="${escHtml(doc?.bugData?.env || '')}">
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugDevice')}</label>
+                <input id="ed-bug-browser" class="form-input" placeholder="${t('bugDevicePl')}" value="${escHtml(doc?.bugData?.browser || '')}">
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
+                <select id="ed-bug-severity" class="form-select w-full">
+                    <option value="Critical" ${doc?.bugData?.severity === 'Critical' ? 'selected' : ''}>Critical</option>
+                    <option value="Major" ${doc?.bugData?.severity === 'Major' ? 'selected' : ''}>Major</option>
+                    <option value="Minor" ${doc?.bugData?.severity === 'Minor' ? 'selected' : (!doc?.bugData ? 'selected' : '')}>Minor</option>
+                    <option value="Trivial" ${doc?.bugData?.severity === 'Trivial' ? 'selected' : ''}>Trivial</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugPrecond')}</label>
+            <textarea id="ed-bug-precond" class="form-input" style="height:60px;" placeholder="${t('bugPrecondPl')}">${escHtml(doc?.bugData?.precond || '')}</textarea>
+        </div>
+        
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSteps')}</label>
+            <div id="bug-steps-container">
+                ${(Array.isArray(doc?.bugData?.steps) ? doc.bugData.steps : (doc?.bugData?.steps ? [doc.bugData.steps] : [''])).map((step, idx) => `
+                    <div class="flex items-center gap-2 mb-2 bug-step-row">
+                        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+                        <input class="form-input flex-1 bug-step-input" placeholder="Step ${idx + 1}..." value="${escHtml(step)}">
+                        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn-s text-xs mt-1" data-onclick="addBugStep()"><i class="fa-solid fa-plus mr-1"></i> Add Step</button>
+        </div>
+        
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugExpected')}</label>
+                <textarea id="ed-bug-expected" class="form-input" style="height:100px;" placeholder="${t('bugExpectedPl')}">${escHtml(doc?.bugData?.expected || '')}</textarea>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugActual')}</label>
+                <textarea id="ed-bug-actual" class="form-input" style="height:100px;" placeholder="${t('bugActualPl')}">${escHtml(doc?.bugData?.actual || '')}</textarea>
+            </div>
+        </div>
+        ` : `
+        <!-- Editor toolbar -->
+        <div class="flex items-center gap-1 mb-2 p-2 rounded-t-lg" style="background:var(--card);border:1px solid var(--brd);border-bottom:none;">
+            <button class="px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${state.editorMode === 'edit' ? '' : ''}" style="background:${state.editorMode === 'edit' ? 'var(--acc)' : 'transparent'};color:${state.editorMode === 'edit' ? '#fff' : 'var(--tx-m)'};" data-onclick="state.editorMode='edit';renderContent();document.getElementById('ed-content').focus();">
+                <i class="fa-solid fa-code mr-1"></i> ${t('edit')}
+            </button>
+            <button class="px-2.5 py-1.5 rounded text-xs font-medium transition-colors" style="background:${state.editorMode === 'preview' ? 'var(--acc)' : 'transparent'};color:${state.editorMode === 'preview' ? '#fff' : 'var(--tx-m)'};" data-onclick="state.editorMode='preview';renderContent();">
+                <i class="fa-solid fa-eye mr-1"></i> ${t('preview')}
+            </button>
+            <div class="flex-1"></div>
+            ${state.editorMode === 'edit' ? `
+                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Bold" data-onclick="insertMd('**','**')"><i class="fa-solid fa-bold"></i></button>
+                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Italic" data-onclick="insertMd('*','*')"><i class="fa-solid fa-italic"></i></button>
+                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Code" data-onclick="insertMd('\\\`','\\\`')"><i class="fa-solid fa-code"></i></button>
+                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Link" data-onclick="insertMd('[','](url)')"><i class="fa-solid fa-link"></i></button>
+                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="List" data-onclick="insertMd('- ','')"><i class="fa-solid fa-list"></i></button>
+                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Heading" data-onclick="insertMd('## ','')"><i class="fa-solid fa-heading"></i></button>
+            ` : ''}
+        </div>
+
+        <!-- Content area -->
+        ${state.editorMode === 'edit' ? `
+            <textarea id="ed-content" class="editor-ta" style="height:calc(100vh - 340px);min-height:300px;border-top-left-radius:0;border-top-right-radius:0;" placeholder="${t('writeContent')}">${escHtml(content)}</textarea>
+        ` : `
+            <div id="ed-preview" class="md-preview p-5 overflow-y-auto rounded-b-lg" style="background:var(--bg);border:1px solid var(--brd);border-top:none;height:calc(100vh - 340px);min-height:300px;">
+                ${renderMd(content)}
+            </div>
+        `}
+        `}
+
+        <div class="flex items-center gap-3 mt-5">
+            <button class="btn-s" data-onclick="state.view='documents';render()">${t('cancel')}</button>
+            <button class="btn-p ml-auto" data-onclick="saveDoc()">${t('save')}</button>
+        </div>
+    </div>`;
+}
+function insertMd(before, after) {
+    const ta = document.getElementById('ed-content');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const sel = ta.value.substring(start, end);
+    const replacement = before + (sel || 'text') + after;
+    ta.setRangeText(replacement, start, end, 'select');
+    ta.focus();
+}
+
+function handleTagInput(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const inp = e.target;
+        const val = inp.value.trim().toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF_-]/g, '');
+        if (val && !state.editorTags.includes(val)) {
+            state.editorTags.push(val);
+            inp.value = '';
+            renderContent();
+            setTimeout(() => document.getElementById('tag-input')?.focus(), 50);
+        }
+    } else if (e.key === 'Backspace' && !e.target.value && state.editorTags.length > 0) {
+        state.editorTags.pop();
+        renderContent();
+        setTimeout(() => document.getElementById('tag-input')?.focus(), 50);
+    }
+}
+
+function removeTag(i) {
+    state.editorTags.splice(i, 1);
+    renderContent();
+    setTimeout(() => document.getElementById('tag-input')?.focus(), 50);
+}
+
+// ========================
+// VIEWER
+// ========================
+function renderViewer() {
+    const doc = documents.find(d => d.id === state.editingDoc?.id);
+    if (!doc) return `<div class="text-center py-20" style="color:var(--tx-d);">Document not found.</div>`;
+
+    return `<div class="fade-up max-w-4xl">
+        <!-- Meta -->
+        <div class="flex flex-wrap items-center gap-2.5 mb-4">
+            <span class="cat-badge ${CAT_META[doc.category].cls}">${CAT_META[doc.category].label}</span>
+            <span class="st-badge st-${doc.status}">${doc.status}</span>
+            ${doc.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+            <button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="toggleFav('${doc.id}')">
+                <i class="fa-${doc.favorite ? 'solid' : 'regular'} fa-star"></i>
+            </button>
+        </div>
+        <!-- Title -->
+        <h1 class="font-heading font-bold text-2xl mb-2" style="color:var(--tx);">${escHtml(doc.title)}</h1>
+        
+        <p class="text-xs mb-6" style="color:var(--tx-d);">
+            Created ${fmtDate(doc.createdAt)} &middot; Updated ${fmtDate(doc.updatedAt)}
+        </p>
+
+        ${doc.category === 'credential' ? `
+        <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="cred-avatar ${credAvatarColor(doc.title)}">
+                    <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${guessDomain(doc.title)}.ico" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.remove()">
+                    <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
+                </div>
+                <div>
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-0.5" style="color:var(--tx-d);">Username / Email</p>
+                    <p class="text-sm font-semibold" style="color:var(--tx);">${escHtml(doc.username || 'N/A')}</p>
+                </div>
+            </div>
+            <div>
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-1.5" style="color:var(--tx-d);">Password</p>
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+                        <input type="password" id="view-pw" value="${escHtml(doc.password || '')}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider" style="color:var(--tx);" readonly>
+                        <button id="view-pw-btn" class="text-xs p-1" style="color:var(--tx-m);transition:color .2s;" data-onmouseenter="this.style.color='var(--tx)'" data-onmouseleave="this.style.color='var(--tx-m)'" data-onclick="togglePasswordVisibility('view-pw')"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                    <button class="btn-p py-2 px-4" data-onclick="copyPassword('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>Copy</button>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Content -->
+        <div class="md-preview p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);min-height:300px;">
+            ${renderMd(doc.content)}
+        </div>
+        <!-- Actions bottom -->
+        <div class="flex items-center gap-3 mt-5">
+            <button class="btn-p" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
+            <button class="btn-s" data-onclick="duplicateDoc('${doc.id}')"><i class="fa-solid fa-copy mr-1.5"></i>${t('duplicate')}</button>
+            <button class="btn-d ml-auto" data-onclick="showDeleteModal('${doc.id}')"><i class="fa-solid fa-trash mr-1.5"></i>${t('delete')}</button>
+        </div>
+    </div>`;
+}
+
+// ========================
+// ACTIONS
+// ========================
+function createDoc(cat) {
+    closeModal();
+    state.view = 'editor';
+    state.editingDoc = null;
+    state.editorTags = [];
+    state.editorMode = 'edit';
+    state._newCat = cat || 'runbook';
+    state._newContent = cat && TEMPLATES[cat] ? TEMPLATES[cat] : '# New Document\n\nStart writing here...';
+    render();
+    setTimeout(() => document.getElementById('ed-title')?.focus(), 100);
+}
+
+function editDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    state.view = 'editor';
+    state.editingDoc = { ...doc };
+    state.editorTags = [...doc.tags];
+    state.editorMode = 'edit';
+    render();
+}
+
+function viewDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    state.view = 'viewer';
+    state.editingDoc = { ...doc };
+    render();
+}
+
+async function saveDoc() {
+    const title = document.getElementById('ed-title')?.value.trim();
+    const cat = document.getElementById('ed-cat')?.value;
+    const status = document.getElementById('ed-status')?.value;
+    
+    const content = document.getElementById('ed-content')?.value || '';
+    let finalContent = content;
+    let bugData = null;
+    
+    if (cat === 'bug') {
+        const env = document.getElementById('ed-bug-env')?.value || '';
+        const browser = document.getElementById('ed-bug-browser')?.value || '';
+        const severity = document.getElementById('ed-bug-severity')?.value || 'Minor';
+        const precond = document.getElementById('ed-bug-precond')?.value || '';
+        const stepInputs = document.querySelectorAll('.bug-step-input');
+        const steps = Array.from(stepInputs).map(inp => inp.value.trim()).filter(v => v);
+        const expected = document.getElementById('ed-bug-expected')?.value || '';
+        const actual = document.getElementById('ed-bug-actual')?.value || '';
+        
+        bugData = { env, browser, severity, precond, steps, expected, actual };
+        
+        finalContent = `# ${title}
+
+## ${t('bugEnv')}
+- **Environment:** ${env || '-'}
+- **Device/Browser:** ${browser || '-'}
+- **Severity:** ${severity}
+
+${precond ? `## ${t('bugPrecond')}\n${precond}\n` : ''}
+## ${t('bugSteps')}\n${steps.length ? steps.map((s, i) => (i + 1) + '. ' + s).join('\n') : '-'}
+
+## ${t('bugExpected')}
+${expected || '-'}
+
+## ${t('bugActual')}
+${actual || '-'}`;
+    }
+
+    const tags = [...state.editorTags];
+    const username = document.getElementById('ed-username')?.value || '';
+    const password = document.getElementById('ed-password')?.value || '';
+
+    if (!title) { toast(t('titleRequired'), 'error'); document.getElementById('ed-title')?.focus(); return; }
+
+    if (state.editingDoc && state.editingDoc.id) {
+        // Update
+        const idx = documents.findIndex(d => d.id === state.editingDoc.id);
+        if (idx !== -1) {
+            documents[idx] = { ...documents[idx], title, category: cat, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, updatedAt: Date.now() };
+        }
+        toast(t('docUpdated'), 'success');
+        state.editingDoc = { ...documents[idx] };
+        state.view = 'viewer';
+    } else {
+        // Create
+        const newDoc = { id: uid(), title, category: cat, status, content: finalContent, tags, username, password, bugData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        documents.unshift(newDoc);
+        toast(t('docCreated'), 'success');
+        state.editingDoc = { ...newDoc };
+        state.view = 'viewer';
+        state.category = cat;
+    }
+    await persist();
+    render();
+}
+
+async function toggleFav(id) {
+    const doc = documents.find(d => d.id === id);
+    if (doc) {
+        doc.favorite = !doc.favorite;
+        await persist();
+        render();
+    }
+}
+
+async function duplicateDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    const dup = { ...doc, id: uid(), title: doc.title + ' (Copy)', favorite: false, createdAt: Date.now(), updatedAt: Date.now(), tags: [...doc.tags] };
+    documents.unshift(dup);
+    await persist();
+    toast(t('docDuplicated'), 'success');
+    render();
+}
+
+// ========================
+// KEYBOARD SHORTCUTS
+// ========================
+document.addEventListener('keydown', (e) => {
+    // Ctrl/Cmd + S để save khi đang ở editor
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && state.view === 'editor') {
+        e.preventDefault();
+        saveDoc();
+    }
+    // Escape để đóng modal hoặc thoát editor
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modal');
+        if (modal && !modal.classList.contains('hidden')) { closeModal(); return; }
+        const menu = document.getElementById('doc-menu');
+        if (menu) { menu.remove(); return; }
+        if (state.view === 'editor') {
+            navigate(state.editingDoc?.id ? 'viewer' : 'documents', state.category);
+        }
+    }
+    // Ctrl/Cmd + K để focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k' && (state.view === 'documents' || state.view === 'favorites')) {
+        e.preventDefault();
+        const inp = document.querySelector('.search-w input');
+        if (inp) inp.focus();
+    }
+});
+
+// Đóng menu khi scroll
+document.getElementById('content')?.addEventListener('scroll', () => {
+    const menu = document.getElementById('doc-menu');
+    if (menu) menu.remove();
+});
+
+// ========================
+// INIT
+// ========================
+async function init() {
+    await hydrate();
+    render();
+}
+
+init();
+
+// ========================
+// URL PARAMETER HANDLING
+// ========================
+function handleUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const viewId = params.get('view');
+
+    if (action === 'new') {
+        showTemplateModal();
+    } else if (viewId) {
+        const doc = documents.find(d => d.id === viewId);
+        if (doc) {
+            viewDoc(viewId);
+        }
+    }
+}
+
+// ========================
+// CSP EVENT DELEGATOR
+// ========================
+function executeAction(code, event, element) {
+    if (!code) return;
+    
+    if (code.includes('event.stopPropagation()')) {
+        event.stopPropagation();
+    }
+    
+    const calls = code.split(';').map(s => s.trim()).filter(Boolean);
+    for (const call of calls) {
+        if (call === 'event.stopPropagation()') continue;
+        
+        // Special inline code evaluations
+        if (call === "document.getElementById('import-input').click()") {
+            document.getElementById('import-input').click();
+            continue;
+        }
+        if (call.startsWith("document.getElementById('doc-menu').remove()")) {
+            const menu = document.getElementById('doc-menu');
+            if (menu) menu.remove();
+            continue;
+        }
+        if (call === "state.search=this.value") {
+            state.search = element.value;
+            continue;
+        }
+        if (call === "state.statusFilter=this.value") {
+            state.statusFilter = element.value;
+            continue;
+        }
+        if (call === "state.sortBy=this.value") {
+            state.sortBy = element.value;
+            continue;
+        }
+        if (call === "state.editorMode='edit'") {
+            state.editorMode = 'edit';
+            continue;
+        }
+        if (call === "state.editorMode='preview'") {
+            state.editorMode = 'preview';
+            continue;
+        }
+        if (call === "document.getElementById('ed-content').focus()") {
+            setTimeout(() => document.getElementById('ed-content')?.focus(), 0);
+            continue;
+        }
+        if (call === "this.style.background='var(--card)'") {
+            element.style.background = 'var(--card)';
+            continue;
+        }
+        if (call === "this.style.background='transparent'") {
+            element.style.background = 'transparent';
+            continue;
+        }
+        if (call === "this.style.background='rgba(244,63,94,0.06)'") {
+            element.style.background = 'rgba(244,63,94,0.06)';
+            continue;
+        }
+        if (call === "this.style.color='var(--tx-m)'") {
+            element.style.color = 'var(--tx-m)';
+            continue;
+        }
+        if (call === "this.style.color='var(--tx-d)'") {
+            element.style.color = 'var(--tx-d)';
+            continue;
+        }
+        
+        // Function calls
+        const match = call.match(/^([a-zA-Z0-9_]+)\((.*)\)$/);
+        if (match) {
+            const funcName = match[1];
+            const argsStr = match[2];
+            
+            let args = [];
+            if (argsStr.trim() !== '') {
+                // simple argument parsing
+                args = argsStr.split(',').map(s => {
+                    s = s.trim();
+                    if (s === 'this') return element;
+                    if (s === 'this.value') return element.value;
+                    if (s === 'event') return event;
+                    if (s === 'null') return null;
+                    if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
+                        return s.slice(1, -1);
+                    }
+                    if (!isNaN(s)) return Number(s);
+                    return s;
+                });
+            }
+            
+            if (typeof window[funcName] === 'function') {
+                window[funcName](...args);
+            }
+        }
+    }
+}
+
+document.addEventListener('click', (e) => {
+    let target = e.target.closest('[data-onclick]');
+    if (target) {
+        executeAction(target.getAttribute('data-onclick'), e, target);
+    }
+});
+
+document.addEventListener('input', (e) => {
+    let target = e.target.closest('[data-oninput]');
+    if (target) {
+        executeAction(target.getAttribute('data-oninput'), e, target);
+    }
+});
+
+document.addEventListener('change', (e) => {
+    let target = e.target.closest('[data-onchange]');
+    if (target) {
+        executeAction(target.getAttribute('data-onchange'), e, target);
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    let target = e.target.closest('[data-onkeydown]');
+    if (target) {
+        executeAction(target.getAttribute('data-onkeydown'), e, target);
+    }
+});
+
+document.addEventListener('mouseover', (e) => {
+    let target = e.target.closest('[data-onmouseenter]');
+    if (target) {
+        executeAction(target.getAttribute('data-onmouseenter'), e, target);
+    }
+});
+
+document.addEventListener('mouseout', (e) => {
+    let target = e.target.closest('[data-onmouseleave]');
+    if (target) {
+        executeAction(target.getAttribute('data-onmouseleave'), e, target);
+    }
+});
+
+// ========================
+// CREDENTIAL HELPERS
+// ========================
+
+window.credAvatarColor = function(site) {
+    const s = site || '';
+    if (!s) return 'avatar-0';
+    return `avatar-${s.charCodeAt(0) % 8}`;
+};
+
+window.guessDomain = function(site) {
+    const s = (site || '').trim().toLowerCase();
+    if (s.includes('.')) {
+        try {
+            const url = s.startsWith('http') ? s : `https://${s}`;
+            return new URL(url).hostname;
+        } catch(e) {
+            return s;
+        }
+    }
+    return s.replace(/\s+/g, '') + '.com';
+};
+
+window.copyPassword = function(id, btn) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc || !doc.password) return;
+    
+    navigator.clipboard.writeText(doc.password).then(() => {
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check mr-1.5"></i>Copied';
+            setTimeout(() => { btn.innerHTML = orig; }, 1500);
+        }
+    });
+};
+
+window.togglePasswordVisibility = function(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+};
+
+
+// ========================
+
+
+// ========================
+// KANBAN HELPERS & DELEGATORS
+// ========================
+
+window.handleDragStart = function(event, id, element) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+    // Add visual feedback
+    setTimeout(() => { element.classList.add('opacity-50'); }, 0);
+};
+
+window.handleDragEnd = function(event, element) {
+    element.classList.remove('opacity-50');
+};
+
+window.handleDragOver = function(event) {
+    event.preventDefault(); // Necessary to allow dropping
+    event.dataTransfer.dropEffect = 'move';
+};
+
+window.handleDrop = async function(event, newStatus) {
+    event.preventDefault();
+    const id = event.dataTransfer.getData('text/plain');
+    if (!id) return;
+    
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx !== -1) {
+        if (documents[idx].kanbanStatus !== newStatus) {
+            documents[idx].kanbanStatus = newStatus;
+            documents[idx].updatedAt = Date.now();
+            await persist();
+            renderContent();
+        }
+    }
+};
+
+document.addEventListener('dragstart', (e) => {
+    let target = e.target.closest('[data-ondragstart]');
+    if (target) {
+        const action = target.getAttribute('data-ondragstart');
+        if (action.startsWith('handleDragStart')) {
+            const id = action.match(/'([^']+)'/)[1];
+            window.handleDragStart(e, id, target);
+        }
+    }
+});
+
+document.addEventListener('dragend', (e) => {
+    let target = e.target.closest('[data-ondragend]');
+    if (target) {
+        window.handleDragEnd(e, target);
+    }
+});
+
+document.addEventListener('dragover', (e) => {
+    let target = e.target.closest('[data-ondragover]');
+    if (target) {
+        window.handleDragOver(e);
+    }
+});
+
+document.addEventListener('drop', (e) => {
+    let target = e.target.closest('[data-ondrop]');
+    if (target) {
+        const action = target.getAttribute('data-ondrop');
+        if (action.startsWith('handleDrop')) {
+            const status = action.match(/'([^']+)'/)[1];
+            window.handleDrop(e, status);
+        }
+    }
+});
+
+
+
+// ========================
+// KANBAN BOARD
+// ========================
+function renderKanbanBoard(docs, isMobileSearch) {
+    const cols = [
+        { id: 'todo', get label() { return t('todo'); }, color: '#64748b' },
+        { id: 'in-progress', get label() { return t('inProgress'); }, color: '#3b82f6' },
+        { id: 'review', get label() { return t('review'); }, color: '#f59e0b' },
+        { id: 'done', get label() { return t('done'); }, color: '#10b981' }
+    ];
+
+    const kanbanHtml = cols.map(col => {
+        const colDocs = docs.filter(d => (d.kanbanStatus || 'todo') === col.id);
+        
+        return `
+        <div class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 300px; min-width: 300px;"
+             data-ondragover="handleDragOver" 
+             data-ondrop="handleDrop('${col.id}')">
+            
+            <div class="p-4 flex items-center justify-between border-b sticky top-0" style="border-color:var(--brd); background:var(--bg2); border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; z-index: 10;">
+                <h3 class="font-heading font-semibold text-sm flex items-center gap-2" style="color:${col.color};">
+                    <i class="fa-solid fa-circle" style="font-size: 8px;"></i> ${col.label}
+                </h3>
+                <span class="text-xs font-medium py-0.5 px-2 rounded-full" style="background:var(--card); color:var(--tx-m);">${colDocs.length}</span>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto flex flex-col custom-scrollbar" style="padding: 12px; gap: 12px;">
+                ${colDocs.map(d => `
+                    <div class="doc-card flex flex-col cursor-grab active:cursor-grabbing" 
+                         draggable="true" 
+                         data-ondragstart="handleDragStart('${d.id}')"
+                         data-ondragend="handleDragEnd"
+                         data-onclick="viewDoc('${d.id}')"
+                         style="background:var(--card); padding: 14px; margin-bottom: 0px; border-radius: 8px;">
+                        
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="st-badge st-${d.status}">${d.status}</span>
+                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                </button>
+                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                        
+                        <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
+                            ${d.tags.slice(0, 2).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+                            ${d.tags.length > 2 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 2}</span>` : ''}
+                            <span class="text-[10px] ml-auto" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
+                        </div>
+                    </div>
+                `).join('')}
+                
+                ${colDocs.length === 0 ? `
+                    <div class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);">
+                        <p class="text-[11px] font-medium">${t('dragTaskHere')}</p>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    return `<div class="fade-up max-w-full">
+        <!-- Mobile search -->
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchTasks')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+            <select class="form-select text-sm" style="width:auto;min-width:130px;" data-onchange="state.statusFilter=this.value;renderContent();">
+                <option value="all" ${state.statusFilter === 'all' ? 'selected' : ''}>${t('allStatus')}</option>
+                <option value="published" ${state.statusFilter === 'published' ? 'selected' : ''}>Published</option>
+                <option value="draft" ${state.statusFilter === 'draft' ? 'selected' : ''}>Draft</option>
+                <option value="archived" ${state.statusFilter === 'archived' ? 'selected' : ''}>Archived</option>
+            </select>
+            <div class="flex-1"></div>
+            <button class="btn-p text-sm" data-onclick="createDoc('task')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newTask')}</button>
+        </div>
+
+        <!-- Kanban Board Container -->
+        <div class="flex overflow-x-auto pb-4 custom-scrollbar items-start" style="min-height: 400px; gap: 1.25rem;">
+            ${kanbanHtml}
+        </div>
+    </div>`;
+}
+
+
+
+const i18n = {
+    vi: {
+        runbook: "Runbook",
+        onboarding: "Onboarding",
+        testcases: "Test Cases",
+        knowledge: "Kiến thức",
+        task: "Task",
+        bug: "Bug Report",
+        testplan: "Test Plan",
+        meeting: "Meeting Notes",
+        api: "API Specs",
+        credential: "Credentials",
+        
+        viewAll: "Xem tất cả",
+        newest: "Mới tạo",
+        sortAZ: "Theo tên A-Z",
+        blankPage: "Trang trắng",
+        startFromScratch: "Bắt đầu viết từ đầu",
+        template: "Mẫu",
+        justNow: "Vừa xong",
+        minsAgo: "{m} phút trước",
+        hoursAgo: "{h} giờ trước",
+        daysAgo: "{d} ngày trước",
+
+        noContent: "Chưa có nội dung.",
+        chooseTemplate: "Chọn template hoặc bắt đầu với trang trắng.",
+        noFavorites: "Chưa có favorite nào.",
+        enterTitle: "Nhập tiêu đề...",
+        egCred: "VD: Facebook, Database Prod",
+        enterTag: "Nhập tag, nhấn Enter...",
+        writeContent: "Viết nội dung bằng Markdown...",
+        
+                preview: "Xem trước",
+                copyPassword: "Copy Password",
+        
+        bugEnv: "Môi trường",
+        bugEnvPl: "VD: Staging, Production",
+        bugDevice: "Trình duyệt / Thiết bị",
+        bugDevicePl: "VD: Chrome 120, iOS 17",
+        bugSeverity: "Mức độ nghiêm trọng",
+        bugPrecond: "Điều kiện tiên quyết",
+        bugPrecondPl: "VD: User đã đăng nhập...",
+        bugSteps: "Các bước tái hiện",
+        bugStepsPl: "1. Mở trang...\n2. Bấm nút...",
+        bugExpected: "Kết quả mong đợi",
+        bugExpectedPl: "Hệ thống nên...",
+        bugActual: "Kết quả thực tế",
+        bugActualPl: "Lỗi hiển thị...",
+
+        dashboard: "Trang chủ",
+        categories: "Danh mục",
+        documents: "Tài liệu",
+        favorites: "Yêu thích",
+        
+        newDoc: "Tạo Document",
+        editDoc: "Chỉnh sửa",
+        save: "Lưu",
+        cancel: "Hủy",
+        back: "Quay lại",
+        edit: "Sửa",
+        duplicate: "Nhân bản",
+        delete: "Xóa",
+        
+        searchDocs: "Tìm kiếm tài liệu...",
+        searchTasks: "Tìm kiếm tasks...",
+        noDocFound: "Không tìm thấy tài liệu phù hợp",
+        noDocYet: "Chưa có tài liệu nào",
+        tryDiffKey: "Thử tìm kiếm với từ khóa khác",
+        createFirstDoc: "Bắt đầu tạo tài liệu đầu tiên của bạn",
+        recentlyUpdated: "Cập nhật gần đây",
+        allStatus: "Tất cả trạng thái",
+        
+        titleRequired: "Vui lòng nhập tiêu đề",
+        docCreated: "Đã tạo document mới",
+        docUpdated: "Đã cập nhật document",
+        docDuplicated: "Đã nhân bản document",
+        docDeleted: "Đã xóa document",
+        
+        todo: "To Do",
+        inProgress: "In Progress",
+        review: "Review",
+        done: "Done",
+        dragTaskHere: "Kéo thả task vào đây",
+        newTask: "Task Mới",
+        
+        delConfirm: "Bạn có chắc chắn muốn xóa document này không? Hành động này không thể hoàn tác.",
+        delTitle: "Xóa Document",
+        delCancel: "Hủy",
+        delConfirmBtn: "Xóa vĩnh viễn"
+    },
+    en: {
+        runbook: "Runbook",
+        onboarding: "Onboarding",
+        testcases: "Test Cases",
+        knowledge: "Knowledge",
+        task: "Task",
+        bug: "Bug Report",
+        testplan: "Test Plan",
+        meeting: "Meeting Notes",
+        api: "API Specs",
+        credential: "Credentials",
+        
+        viewAll: "View all",
+        newest: "Newest",
+        sortAZ: "Name A-Z",
+        blankPage: "Blank Page",
+        startFromScratch: "Start from scratch",
+        template: "Template",
+        justNow: "Just now",
+        minsAgo: "{m} mins ago",
+        hoursAgo: "{h} hours ago",
+        daysAgo: "{d} days ago",
+
+        noContent: "No content yet.",
+        chooseTemplate: "Choose a template or start from scratch.",
+        noFavorites: "No favorites yet.",
+        enterTitle: "Enter title...",
+        egCred: "e.g. Facebook, Database Prod",
+        enterTag: "Enter tag, press Enter...",
+        writeContent: "Write content in Markdown...",
+        
+                preview: "Preview",
+                copyPassword: "Copy Password",
+        
+        bugEnv: "Environment",
+        bugEnvPl: "e.g. Staging, Production",
+        bugDevice: "Browser / Device",
+        bugDevicePl: "e.g. Chrome 120, iOS 17",
+        bugSeverity: "Severity",
+        bugPrecond: "Pre-conditions",
+        bugPrecondPl: "e.g. User is logged in...",
+        bugSteps: "Steps to Reproduce",
+        bugStepsPl: "1. Open page...\n2. Click button...",
+        bugExpected: "Expected Behavior",
+        bugExpectedPl: "System should...",
+        bugActual: "Actual Behavior",
+        bugActualPl: "Error occurs...",
+
+        dashboard: "Dashboard",
+        categories: "Categories",
+        documents: "Documents",
+        favorites: "Favorites",
+        
+        newDoc: "New Document",
+        editDoc: "Edit Document",
+        save: "Save",
+        cancel: "Cancel",
+        back: "Back",
+        edit: "Edit",
+        duplicate: "Duplicate",
+        delete: "Delete",
+        
+        searchDocs: "Search documents...",
+        searchTasks: "Search tasks...",
+        noDocFound: "No documents found",
+        noDocYet: "No documents yet",
+        tryDiffKey: "Try searching with a different keyword",
+        createFirstDoc: "Start creating your first document",
+        recentlyUpdated: "Recently Updated",
+        allStatus: "All Statuses",
+        
+        titleRequired: "Title is required",
+        docCreated: "Document created",
+        docUpdated: "Document updated",
+        docDuplicated: "Document duplicated",
+        docDeleted: "Document deleted",
+        
+        todo: "To Do",
+        inProgress: "In Progress",
+        review: "Review",
+        done: "Done",
+        dragTaskHere: "Drag tasks here",
+        newTask: "New Task",
+        
+        delConfirm: "Are you sure you want to delete this document? This action cannot be undone.",
+        delTitle: "Delete Document",
+        delCancel: "Cancel",
+        delConfirmBtn: "Delete permanently"
+    }
+};
+
+function t(key, params = {}) {
+    let text = i18n[state.lang] && i18n[state.lang][key] ? i18n[state.lang][key] : key;
+    for (let k in params) {
+        text = text.replace('{' + k + '}', params[k]);
+    }
+    return text;
+};
+
+
+window.changeEditorCat = function(cat) {
+    if (state.editingDoc) {
+        state.editingDoc.category = cat;
+        state.editingDoc.title = document.getElementById('ed-title')?.value || '';
+        if (cat === 'bug' && !state.editingDoc.bugData) state.editingDoc.bugData = {};
+    } else {
+        state._newCat = cat;
+        state._newTitle = document.getElementById('ed-title')?.value || '';
+    }
+    render();
+    setTimeout(() => {
+        const titleInput = document.getElementById('ed-title');
+        if (titleInput) {
+            titleInput.focus();
+            titleInput.setSelectionRange(titleInput.value.length, titleInput.value.length);
+        }
+    }, 0);
+};
+
+
+window.addBugStep = function() {
+    const container = document.getElementById('bug-steps-container');
+    if (!container) return;
+    const idx = container.querySelectorAll('.bug-step-row').length;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 bug-step-row';
+    div.innerHTML = `
+        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+        <input class="form-input flex-1 bug-step-input" placeholder="Step ${idx + 1}...">
+        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)"><i class="fa-solid fa-trash"></i></button>
+    `;
+    container.appendChild(div);
+};
+
+window.removeBugStep = function(btn) {
+    const row = btn.closest('.bug-step-row');
+    row.remove();
+    const container = document.getElementById('bug-steps-container');
+    const rows = container.querySelectorAll('.bug-step-row');
+    rows.forEach((r, i) => {
+        r.querySelector('.step-idx').textContent = (i + 1) + '.';
+        r.querySelector('.bug-step-input').placeholder = 'Step ' + (i + 1) + '...';
+    });
+};
+
+window.toggleLang = async function() {
+    state.lang = state.lang === 'vi' ? 'en' : 'vi';
+    await DocStorage.saveSettings({ lang: state.lang });
+    render();
+};

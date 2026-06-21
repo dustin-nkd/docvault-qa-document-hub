@@ -1,0 +1,17 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: Emerald Green -->
+  <rect x="0" y="0" width="128" height="128" rx="28" fill="#10b981" />
+  
+  <!-- Safe Body: Solid White -->
+  <rect x="24" y="38" width="80" height="52" rx="10" fill="#ffffff" />
+  
+  <!-- Safe Feet: Solid White -->
+  <path d="M 36 90 L 36 96 A 6 6 0 0 0 48 96 L 48 90 Z" fill="#ffffff" />
+  <path d="M 80 90 L 80 96 A 6 6 0 0 0 92 96 L 92 90 Z" fill="#ffffff" />
+  
+  <!-- Dial: Green Cutout -->
+  <circle cx="52" cy="64" r="10" fill="none" stroke="#10b981" stroke-width="6" />
+  
+  <!-- Handle: Green Cutout -->
+  <line x1="84" y1="52" x2="84" y2="76" stroke="#10b981" stroke-width="6" stroke-linecap="round" />
+</svg>
