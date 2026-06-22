@@ -770,7 +770,12 @@ function getFiltered() {
 // ========================
 window.syncEditorState = function() {
     if (state.view !== 'editor') return;
-    const title = document.getElementById('ed-title')?.value || '';
+    
+    // Do not sync if the editor DOM is not actually loaded yet (prevents wiping state on initial render)
+    const titleEl = document.getElementById('ed-title');
+    if (!titleEl) return;
+    
+    const title = titleEl.value || '';
     const cat = document.getElementById('ed-cat')?.value || 'runbook';
     const status = document.getElementById('ed-status')?.value || 'draft';
     const content = document.getElementById('ed-content')?.value || '';
@@ -1179,7 +1184,7 @@ function renderEditor() {
         `}
 
         <div class="flex items-center gap-3 mt-5">
-            <button class="btn-s" data-onclick="state.view='documents';render()">${t('cancel')}</button>
+            <button class="btn-s" data-onclick="navigate('${isEdit ? 'viewer' : 'documents'}', '${category}')">${t('cancel')}</button>
             <button class="btn-p ml-auto" data-onclick="saveDoc()">${t('save')}</button>
         </div>
     </div>`;
