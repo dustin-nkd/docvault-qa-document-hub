@@ -123,7 +123,9 @@
         .md-preview ul, .md-preview ol { margin: .5rem 0; padding-left: 1.5rem; color: var(--tx-m); }
         .md-preview li { margin: .2rem 0; line-height: 1.65; }
         .md-preview code { background: rgba(16,185,129,0.1); color: var(--acc-l); padding: 1px 5px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: .85em; }
-        .md-preview pre { background: var(--bg); border: 1px solid var(--brd); border-radius: 8px; padding: 14px; overflow-x: auto; margin: .8rem 0; }
+        .md-preview pre { position: relative; background: var(--bg); border: 1px solid var(--brd); border-radius: 8px; padding: 14px; overflow-x: auto; margin: .8rem 0; }
+        .code-copy-btn { position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: var(--tx-m); font-size: 13px; cursor: pointer; opacity: 0.3; transition: opacity 0.2s, color 0.2s; padding: 6px; z-index: 10; }
+        .code-copy-btn:hover { opacity: 1; color: var(--tx); }
         .md-preview pre code { background: none; padding: 0; color: var(--tx-m); }
         .md-preview blockquote { border-left: 3px solid var(--acc); padding-left: 14px; margin: .8rem 0; color: var(--tx-d); font-style: italic; }
         .md-preview a { color: var(--acc-l); text-decoration: underline; }
