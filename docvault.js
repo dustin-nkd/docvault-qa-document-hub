@@ -781,6 +781,7 @@ window.syncEditorState = function() {
     const content = document.getElementById('ed-content')?.value || '';
     
     let bugData = null;
+    let tcData = null;
     if (cat === 'bug') {
         bugData = {
             env: document.getElementById('ed-bug-env')?.value || '',
@@ -791,6 +792,16 @@ window.syncEditorState = function() {
             expected: document.getElementById('ed-bug-expected')?.value || '',
             actual: document.getElementById('ed-bug-actual')?.value || ''
         };
+    } else if (cat === 'testcases') {
+        tcData = {
+            module: document.getElementById('ed-tc-module')?.value || '',
+            precond: document.getElementById('ed-tc-precond')?.value || '',
+            data: document.getElementById('ed-tc-data')?.value || '',
+            steps: Array.from(document.querySelectorAll('.tc-step-row')).map(row => ({
+                action: row.querySelector('.tc-step-action')?.value || '',
+                expected: row.querySelector('.tc-step-expected')?.value || ''
+            }))
+        };
     }
 
     if (state.editingDoc) {
@@ -799,12 +810,14 @@ window.syncEditorState = function() {
         state.editingDoc.status = status;
         if (document.getElementById('ed-content')) state.editingDoc.content = content;
         if (cat === 'bug') state.editingDoc.bugData = bugData;
+        if (cat === 'testcases') state.editingDoc.tcData = tcData;
     } else {
         state._newTitle = title;
         state._newCat = cat;
         state._newStatus = status;
         if (document.getElementById('ed-content')) state._newContent = content;
         state._newBugData = bugData;
+        state._newTcData = tcData;
     }
 }
 
@@ -1054,6 +1067,7 @@ function renderEditor() {
     const content = isEdit ? doc.content : (state._newContent || '');
     const tags = isEdit ? doc.tags : state.editorTags;
     const bugData = isEdit ? doc.bugData : state._newBugData;
+    const tcData = isEdit ? doc.tcData : state._newTcData;
 
     return `<div class="fade-up max-w-4xl mx-auto">
         
@@ -1151,6 +1165,45 @@ function renderEditor() {
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugActual')}</label>
                 <textarea id="ed-bug-actual" class="form-input" style="height:100px;" placeholder="${t('bugActualPl')}">${escHtml(bugData?.actual || '')}</textarea>
+            </div>
+        </div>
+        ` : category === 'testcases' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
+                    <input id="ed-tc-module" class="form-input" placeholder="${t('tcModulePl')}" value="${escHtml(tcData?.module || '')}">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcData')}</label>
+                    <input id="ed-tc-data" class="form-input" placeholder="${t('tcDataPl')}" value="${escHtml(tcData?.data || '')}">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcPrecond')}</label>
+                <textarea id="ed-tc-precond" class="form-input" style="height:60px;" placeholder="${t('tcPrecondPl')}">${escHtml(tcData?.precond || '')}</textarea>
+            </div>
+            
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('tcSteps')}</label>
+                    <div class="flex items-center gap-2" style="width: calc(100% - 30px);">
+                        <span class="text-xs font-medium flex-1 text-center" style="color:var(--tx-d);">${t('tcAction')}</span>
+                        <span class="text-xs font-medium flex-1 text-center" style="color:var(--tx-d);">${t('tcExpected')}</span>
+                    </div>
+                </div>
+                <div id="tc-steps-container">
+                    ${(tcData?.steps?.length ? tcData.steps : [{action: '', expected: ''}]).map((step, idx) => `
+                        <div class="flex items-start gap-2 mb-2 tc-step-row">
+                            <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+                            <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}">${escHtml(step.action || '')}</textarea>
+                            <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}">${escHtml(step.expected || '')}</textarea>
+                            <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="btn-s text-sm mt-2" data-onclick="addTcStep()"><i class="fa-solid fa-plus mr-1"></i> Add Step</button>
             </div>
         </div>
         ` : `
@@ -1339,6 +1392,7 @@ async function saveDoc() {
     const content = document.getElementById('ed-content')?.value || '';
     let finalContent = content;
     let bugData = null;
+    let tcData = null;
     
     if (cat === 'bug') {
         const env = document.getElementById('ed-bug-env')?.value || '';
@@ -1367,6 +1421,30 @@ ${expected || '-'}
 
 ## ${t('bugActual')}
 ${actual || '-'}`;
+    } else if (cat === 'testcases') {
+        const module = document.getElementById('ed-tc-module')?.value || '';
+        const precond = document.getElementById('ed-tc-precond')?.value || '';
+        const testData = document.getElementById('ed-tc-data')?.value || '';
+        const stepRows = document.querySelectorAll('.tc-step-row');
+        const steps = Array.from(stepRows).map(row => ({
+            action: row.querySelector('.tc-step-action')?.value.trim() || '',
+            expected: row.querySelector('.tc-step-expected')?.value.trim() || ''
+        })).filter(s => s.action || s.expected);
+        
+        tcData = { module, precond, data: testData, steps };
+        
+        finalContent = `# ${title}
+
+${module ? `**Module:** ${module}` : ''}
+
+${precond ? `## ${t('tcPrecond')}\n${precond}\n` : ''}
+${testData ? `## ${t('tcData')}\n${testData}\n` : ''}
+
+## ${t('tcSteps')}
+| Step | ${t('tcAction')} | ${t('tcExpected')} |
+|---|---|---|
+${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>')} | ${s.expected.replace(/\n/g, '<br>')} |`).join('\n') : '| - | - | - |'}
+`;
     }
 
     const tags = [...state.editorTags];
@@ -1379,14 +1457,14 @@ ${actual || '-'}`;
         // Update
         const idx = documents.findIndex(d => d.id === state.editingDoc.id);
         if (idx !== -1) {
-            documents[idx] = { ...documents[idx], title, category: cat, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, updatedAt: Date.now() };
+            documents[idx] = { ...documents[idx], title, category: cat, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, updatedAt: Date.now() };
         }
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
     } else {
         // Create
-        const newDoc = { id: uid(), title, category: cat, status, content: finalContent, tags, username, password, bugData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, status, content: finalContent, tags, username, password, bugData, tcData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
@@ -1880,6 +1958,18 @@ const i18n = {
         bugActual: "Kết quả thực tế",
         bugActualPl: "Lỗi hiển thị...",
 
+        tcModule: "Module / Tính năng",
+        tcModulePl: "VD: Đăng nhập",
+        tcPrecond: "Tiền điều kiện",
+        tcPrecondPl: "VD: User đã có tài khoản",
+        tcData: "Test Data",
+        tcDataPl: "VD: user: admin, pass: 123",
+        tcSteps: "Các bước thực hiện",
+        tcAction: "Hành động (Action)",
+        tcActionPl: "Nhập email...",
+        tcExpected: "Kết quả mong đợi (Expected)",
+        tcExpectedPl: "Hệ thống hiển thị...",
+
         dashboard: "Trang chủ",
         categories: "Danh mục",
         documents: "Tài liệu",
@@ -1969,6 +2059,18 @@ const i18n = {
         bugActual: "Actual Behavior",
         bugActualPl: "Error occurs...",
 
+        tcModule: "Module / Feature",
+        tcModulePl: "e.g. Login",
+        tcPrecond: "Pre-conditions",
+        tcPrecondPl: "e.g. User has an account",
+        tcData: "Test Data",
+        tcDataPl: "e.g. user: admin, pass: 123",
+        tcSteps: "Test Steps",
+        tcAction: "Action",
+        tcActionPl: "Enter email...",
+        tcExpected: "Expected Result",
+        tcExpectedPl: "System displays...",
+
         dashboard: "Dashboard",
         categories: "Categories",
         documents: "Documents",
@@ -2026,9 +2128,11 @@ window.changeEditorCat = function(cat) {
         state.editingDoc.category = cat;
         state.editingDoc.title = document.getElementById('ed-title')?.value || '';
         if (cat === 'bug' && !state.editingDoc.bugData) state.editingDoc.bugData = {};
+        if (cat === 'testcases' && !state.editingDoc.tcData) state.editingDoc.tcData = {};
     } else {
         state._newCat = cat;
         state._newTitle = document.getElementById('ed-title')?.value || '';
+        if (cat === 'testcases' && !state._newTcData) state._newTcData = {};
     }
     render();
     setTimeout(() => {
@@ -2059,10 +2163,33 @@ window.removeBugStep = function(btn) {
     const row = btn.closest('.bug-step-row');
     row.remove();
     const container = document.getElementById('bug-steps-container');
-    const rows = container.querySelectorAll('.bug-step-row');
-    rows.forEach((r, i) => {
+    container.querySelectorAll('.bug-step-row').forEach((r, i) => {
         r.querySelector('.step-idx').textContent = (i + 1) + '.';
         r.querySelector('.bug-step-input').placeholder = 'Step ' + (i + 1) + '...';
+    });
+};
+
+window.addTcStep = function() {
+    const container = document.getElementById('tc-steps-container');
+    if (!container) return;
+    const idx = container.querySelectorAll('.tc-step-row').length;
+    const div = document.createElement('div');
+    div.className = 'flex items-start gap-2 mb-2 tc-step-row';
+    div.innerHTML = `
+        <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+        <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}"></textarea>
+        <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}"></textarea>
+        <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)"><i class="fa-solid fa-trash"></i></button>
+    `;
+    container.appendChild(div);
+};
+
+window.removeTcStep = function(btn) {
+    const row = btn.closest('.tc-step-row');
+    const container = row.parentElement;
+    row.remove();
+    container.querySelectorAll('.tc-step-row').forEach((r, i) => {
+        r.querySelector('.step-idx').textContent = (i + 1) + '.';
     });
 };
 
