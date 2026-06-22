@@ -398,10 +398,20 @@ function escHtml(s) {
 function renderMd(text) {
     if (!text) return `<p style="color:var(--tx-d)">${t('noContent')}</p>`;
     let h = text;
-    // Code blocks
-    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${escHtml(code.trim())}</code></pre>`);
-    // Inline code
-    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Extract code blocks and inline code
+    const codeBlocks = [];
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+        codeBlocks.push(`<pre><code>${escHtml(code.trim())}</code></pre>`);
+        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+    });
+    
+    const inlineCodes = [];
+    h = h.replace(/`([^`]+)`/g, (_, code) => {
+        inlineCodes.push(`<code>${escHtml(code)}</code>`);
+        return `__INLINE_CODE_${inlineCodes.length - 1}__`;
+    });
+
     // Headers
     h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
     h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
@@ -439,9 +449,15 @@ function renderMd(text) {
     });
     // Links
     h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    
     // Paragraphs - wrap loose lines
-    h = h.replace(/^(?!<[houblptd]|<\/|<li|<input|<tr|<table)([^\n]+)$/gm, '<p>$1</p>');
+    h = h.replace(/^(?!<[houblptd]|<\/|<li|<input|<tr|<table|__CODE_BLOCK_|__INLINE_CODE_)([^\n]+)$/gm, '<p>$1</p>');
     h = h.replace(/<p><\/p>/g, '');
+
+    // Restore inline codes and code blocks
+    h = h.replace(/__INLINE_CODE_(\d+)__/g, (_, idx) => inlineCodes[idx]);
+    h = h.replace(/__CODE_BLOCK_(\d+)__/g, (_, idx) => codeBlocks[idx]);
+
     return h;
 }
 
