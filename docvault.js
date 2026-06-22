@@ -540,10 +540,10 @@ window.showSyncModal = function() {
             <p class="text-sm mb-6" style="color:var(--tx-m)">Keep your QA documents synchronized across multiple devices using your own Google Drive. Data is securely stored in a hidden app folder.</p>
             
             <div class="flex flex-col gap-3">
-                <button class="btn-p w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPush()">
+                <button class="btn-p w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPush(this)">
                     <i class="fa-solid fa-cloud-arrow-up"></i> Push Local Data to Drive
                 </button>
-                <button class="btn-s w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPull()">
+                <button class="btn-s w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPull(this)">
                     <i class="fa-solid fa-cloud-arrow-down"></i> Pull Data from Drive
                 </button>
                 <button class="btn-s w-full flex items-center justify-center gap-2 py-2.5" style="border-color:rgba(244,63,94,0.3); color:var(--c-kn);" data-onclick="syncLogout()">
@@ -554,9 +554,8 @@ window.showSyncModal = function() {
     `);
 }
 
-window.syncPush = async function() {
+window.syncPush = async function(btn) {
     try {
-        const btn = event.currentTarget;
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
         btn.disabled = true;
@@ -569,16 +568,15 @@ window.syncPush = async function() {
     } catch (err) {
         toast("Failed to push: " + err.message, "error");
     } finally {
-        if (event.currentTarget) {
-            event.currentTarget.disabled = false;
-            event.currentTarget.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Push Local Data to Drive';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Push Local Data to Drive';
         }
     }
 }
 
-window.syncPull = async function() {
+window.syncPull = async function(btn) {
     try {
-        const btn = event.currentTarget;
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Downloading...';
         btn.disabled = true;
@@ -599,9 +597,9 @@ window.syncPull = async function() {
     } catch (err) {
         toast("Failed to pull: " + err.message, "error");
     } finally {
-        if (event.currentTarget) {
-            event.currentTarget.disabled = false;
-            event.currentTarget.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Pull Data from Drive';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Pull Data from Drive';
         }
     }
 }
