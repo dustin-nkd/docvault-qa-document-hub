@@ -1,14 +1,28 @@
 const SyncService = {
-    // Authenticate with Google
+    // Authenticate with Google (Cross-Browser via Web Auth Flow)
     async getAuthToken() {
         return new Promise((resolve, reject) => {
-            chrome.identity.getAuthToken({ interactive: true }, function(token) {
-                if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
-                } else if (token) {
+            const manifest = chrome.runtime.getManifest();
+            const clientId = manifest.oauth2.client_id;
+            const scopes = encodeURIComponent(manifest.oauth2.scopes.join(' '));
+            const redirectUri = encodeURIComponent(chrome.identity.getRedirectURL());
+            
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${scopes}`;
+
+            chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, function(redirectUrl) {
+                if (chrome.runtime.lastError || !redirectUrl) {
+                    reject(chrome.runtime.lastError || new Error("Authentication flow failed."));
+                    return;
+                }
+                
+                const urlObj = new URL(redirectUrl);
+                const params = new URLSearchParams(urlObj.hash.substring(1));
+                const token = params.get('access_token');
+                
+                if (token) {
                     resolve(token);
                 } else {
-                    reject(new Error("Failed to get auth token"));
+                    reject(new Error("No access token returned from Google."));
                 }
             });
         });
@@ -105,19 +119,10 @@ const SyncService = {
     
     // Revoke token / Logout
     async logout() {
-        return new Promise((resolve) => {
-            chrome.identity.getAuthToken({ interactive: false }, function(token) {
-                if (token) {
-                    chrome.identity.removeCachedAuthToken({ token: token }, function() {
-                        fetch('https://accounts.google.com/o/oauth2/revoke?token=' + token).then(() => {
-                            resolve();
-                        });
-                    });
-                } else {
-                    resolve();
-                }
-            });
-        });
+        // Since launchWebAuthFlow doesn't use Chrome's internal token cache,
+        // we simply "sign out" the user by assuming they are logged out in our app state.
+        // To truly log out of Google, they would log out of the browser.
+        return Promise.resolve();
     }
 };
 
