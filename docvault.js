@@ -404,11 +404,9 @@ function renderMd(text) {
     h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
         const rawCodeB64 = btoa(unescape(encodeURIComponent(code.trim())));
         codeBlocks.push(`
-<div class="relative group my-3">
-    <div class="absolute right-2 top-2 z-10">
-        <button class="btn-s px-2 py-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity" style="background:var(--bg2); border:1px solid var(--brd); color:var(--tx-m);" onclick="copyCodeBlock(this, '${rawCodeB64}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
-    </div>
-    <pre><code>${escHtml(code.trim())}</code></pre>
+<div style="position:relative; margin:12px 0;">
+    <button class="code-copy-btn" onclick="copyCodeBlock(this, '${rawCodeB64}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
+    <pre style="margin:0;"><code>${escHtml(code.trim())}</code></pre>
 </div>`);
         return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
     });

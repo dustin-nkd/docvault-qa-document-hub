@@ -522,3 +522,24 @@ body {
 .popup-storage i {
   font-size: 10px;
 }
+
+
+/* Code Block Copy Button */
+.code-copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--tx-m);
+    font-size: 13px;
+    cursor: pointer;
+    opacity: 0.3;
+    transition: opacity 0.2s, color 0.2s;
+    padding: 6px;
+}
+.code-copy-btn:hover {
+    opacity: 1;
+    color: var(--tx);
+}
+
