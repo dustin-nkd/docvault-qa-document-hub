@@ -694,7 +694,7 @@ function updateHeader() {
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
-            <button class="btn-s" data-onclick="navigate('${state.editingDoc ? 'viewer' : 'documents'}', '${state.category}')"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
+            <button class="btn-s" data-onclick="cancelEdit()"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
             <button class="btn-p" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>
         `;
     } else if (state.view === 'viewer') {
@@ -1184,7 +1184,7 @@ function renderEditor() {
         `}
 
         <div class="flex items-center gap-3 mt-5">
-            <button class="btn-s" data-onclick="navigate('${isEdit ? 'viewer' : 'documents'}', '${category}')">${t('cancel')}</button>
+            <button class="btn-s" data-onclick="cancelEdit()">${t('cancel')}</button>
             <button class="btn-p ml-auto" data-onclick="saveDoc()">${t('save')}</button>
         </div>
     </div>`;
@@ -1316,6 +1316,18 @@ function viewDoc(id) {
     if (!doc) return;
     state.view = 'viewer';
     state.editingDoc = { ...doc };
+    render();
+}
+
+window.cancelEdit = function() {
+    if (state.editingDoc && documents.some(d => d.id === state.editingDoc.id)) {
+        state.view = 'viewer';
+    } else {
+        state.editingDoc = null;
+        state.view = 'documents';
+    }
+    state.editorTags = [];
+    state.editorMode = 'edit';
     render();
 }
 
