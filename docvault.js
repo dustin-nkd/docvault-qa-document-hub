@@ -1283,11 +1283,17 @@ function renderEditor() {
 
             <div class="grid sm:grid-cols-2 gap-6 mb-2">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiBody')}</label>
+                    <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
+                        <span>${t('apiBody')}</span>
+                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-body')" title="Format JSON"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                    </label>
                     <textarea id="ed-api-body" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(apiData?.body || '')}</textarea>
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiResponse')}</label>
+                    <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
+                        <span>${t('apiResponse')}</span>
+                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="Format JSON"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                    </label>
                     <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
                 </div>
             </div>
@@ -1552,7 +1558,6 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>
         const body = document.getElementById('ed-api-body')?.value || '';
         const response = document.getElementById('ed-api-response')?.value || '';
         
-        let apiData = { method, endpoint, headers, params, body, response };
         apiData = { method, endpoint, headers, params, body, response };
         
         finalContent = `# ${title}
@@ -2366,6 +2371,17 @@ window.addApiParam = function() {
     container.appendChild(div);
 };
 window.removeApiParam = function(btn) { btn.closest('.api-param-row').remove(); };
+
+window.formatJson = function(id) {
+    const el = document.getElementById(id);
+    if (!el || !el.value.trim()) return;
+    try {
+        const obj = JSON.parse(el.value);
+        el.value = JSON.stringify(obj, null, 2);
+    } catch (e) {
+        toast('Invalid JSON format', 'error');
+    }
+};
 
 window.toggleLang = async function() {
     state.lang = state.lang === 'vi' ? 'en' : 'vi';
