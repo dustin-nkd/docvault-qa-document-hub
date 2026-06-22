@@ -533,15 +533,9 @@ function showTemplateModal() {
 // ========================
 // SIDEBAR
 // ========================
-window.closeModal = function() {
-    document.getElementById('modal').style.display = 'none';
-    document.getElementById('modal-overlay').style.display = 'none';
-}
-
 window.showSyncModal = function() {
-    const modal = document.getElementById('modal');
-    modal.innerHTML = `
-        <div class="p-6">
+    showModal(`
+        <div>
             <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2"><i class="fa-brands fa-google text-[var(--c-mtg)]"></i> Google Drive Sync</h3>
             <p class="text-sm mb-6" style="color:var(--tx-m)">Keep your QA documents synchronized across multiple devices using your own Google Drive. Data is securely stored in a hidden app folder.</p>
             
@@ -557,9 +551,7 @@ window.showSyncModal = function() {
                 </button>
             </div>
         </div>
-    `;
-    modal.style.display = 'block';
-    document.getElementById('modal-overlay').style.display = 'block';
+    `);
 }
 
 window.syncPush = async function() {
