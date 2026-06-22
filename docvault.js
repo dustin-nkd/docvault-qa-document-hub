@@ -782,6 +782,7 @@ window.syncEditorState = function() {
     
     let bugData = null;
     let tcData = null;
+    let apiData = null;
     if (cat === 'bug') {
         bugData = {
             env: document.getElementById('ed-bug-env')?.value || '',
@@ -802,6 +803,23 @@ window.syncEditorState = function() {
                 expected: row.querySelector('.tc-step-expected')?.value || ''
             }))
         };
+    } else if (cat === 'api') {
+        apiData = {
+            method: document.getElementById('ed-api-method')?.value || 'GET',
+            endpoint: document.getElementById('ed-api-endpoint')?.value || '',
+            headers: Array.from(document.querySelectorAll('.api-header-row')).map(row => ({
+                key: row.querySelector('.api-key')?.value || '',
+                value: row.querySelector('.api-value')?.value || '',
+                req: row.querySelector('.api-req')?.checked || false
+            })),
+            params: Array.from(document.querySelectorAll('.api-param-row')).map(row => ({
+                key: row.querySelector('.api-key')?.value || '',
+                value: row.querySelector('.api-value')?.value || '',
+                req: row.querySelector('.api-req')?.checked || false
+            })),
+            body: document.getElementById('ed-api-body')?.value || '',
+            response: document.getElementById('ed-api-response')?.value || ''
+        };
     }
 
     if (state.editingDoc) {
@@ -811,6 +829,7 @@ window.syncEditorState = function() {
         if (document.getElementById('ed-content')) state.editingDoc.content = content;
         if (cat === 'bug') state.editingDoc.bugData = bugData;
         if (cat === 'testcases') state.editingDoc.tcData = tcData;
+        if (cat === 'api') state.editingDoc.apiData = apiData;
     } else {
         state._newTitle = title;
         state._newCat = cat;
@@ -818,6 +837,7 @@ window.syncEditorState = function() {
         if (document.getElementById('ed-content')) state._newContent = content;
         state._newBugData = bugData;
         state._newTcData = tcData;
+        state._newApiData = apiData;
     }
 }
 
@@ -1068,6 +1088,7 @@ function renderEditor() {
     const tags = isEdit ? doc.tags : state.editorTags;
     const bugData = isEdit ? doc.bugData : state._newBugData;
     const tcData = isEdit ? doc.tcData : state._newTcData;
+    const apiData = isEdit ? doc.apiData : state._newApiData;
 
     return `<div class="fade-up max-w-4xl mx-auto">
         
@@ -1204,6 +1225,71 @@ function renderEditor() {
                     `).join('')}
                 </div>
                 <button class="btn-s text-sm mt-2" data-onclick="addTcStep()"><i class="fa-solid fa-plus mr-1"></i> Add Step</button>
+            </div>
+        </div>
+        ` : category === 'api' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiMethod')}</label>
+                    <select id="ed-api-method" class="form-select w-full font-mono text-xs">
+                        ${['GET','POST','PUT','PATCH','DELETE'].map(m => `<option value="${m}" ${apiData?.method===m ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiEndpoint')}</label>
+                    <input id="ed-api-endpoint" class="form-input font-mono text-sm w-full" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
+                </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-6 mb-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('apiHeaders')}</label>
+                    </div>
+                    <div id="api-headers-container">
+                        ${(apiData?.headers?.length ? apiData.headers : []).map(h => `
+                            <div class="flex items-center gap-2 mb-2 api-header-row">
+                                <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(h.key)}">
+                                <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(h.value)}">
+                                <div class="flex items-center gap-1">
+                                    <input type="checkbox" class="api-req" title="${t('apiRequired')}" ${h.req ? 'checked' : ''}>
+                                    <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn-s text-xs mt-1" data-onclick="addApiHeader()"><i class="fa-solid fa-plus mr-1"></i> Add Header</button>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('apiParams')}</label>
+                    </div>
+                    <div id="api-params-container">
+                        ${(apiData?.params?.length ? apiData.params : []).map(p => `
+                            <div class="flex items-center gap-2 mb-2 api-param-row">
+                                <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(p.key)}">
+                                <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(p.value)}">
+                                <div class="flex items-center gap-1">
+                                    <input type="checkbox" class="api-req" title="${t('apiRequired')}" ${p.req ? 'checked' : ''}>
+                                    <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn-s text-xs mt-1" data-onclick="addApiParam()"><i class="fa-solid fa-plus mr-1"></i> Add Param</button>
+                </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-6 mb-2">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiBody')}</label>
+                    <textarea id="ed-api-body" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(apiData?.body || '')}</textarea>
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiResponse')}</label>
+                    <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
+                </div>
             </div>
         </div>
         ` : `
@@ -1445,6 +1531,38 @@ ${testData ? `## ${t('tcData')}\n${testData}\n` : ''}
 |---|---|---|
 ${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>')} | ${s.expected.replace(/\n/g, '<br>')} |`).join('\n') : '| - | - | - |'}
 `;
+    } else if (cat === 'api') {
+        const method = document.getElementById('ed-api-method')?.value || 'GET';
+        const endpoint = document.getElementById('ed-api-endpoint')?.value || '';
+        
+        const hRows = document.querySelectorAll('.api-header-row');
+        const headers = Array.from(hRows).map(row => ({
+            key: row.querySelector('.api-key')?.value.trim() || '',
+            value: row.querySelector('.api-value')?.value.trim() || '',
+            req: row.querySelector('.api-req')?.checked || false
+        })).filter(s => s.key || s.value);
+        
+        const pRows = document.querySelectorAll('.api-param-row');
+        const params = Array.from(pRows).map(row => ({
+            key: row.querySelector('.api-key')?.value.trim() || '',
+            value: row.querySelector('.api-value')?.value.trim() || '',
+            req: row.querySelector('.api-req')?.checked || false
+        })).filter(s => s.key || s.value);
+
+        const body = document.getElementById('ed-api-body')?.value || '';
+        const response = document.getElementById('ed-api-response')?.value || '';
+        
+        let apiData = { method, endpoint, headers, params, body, response };
+        apiData = { method, endpoint, headers, params, body, response };
+        
+        finalContent = `# ${title}
+
+**Method:** \`${method}\` | **Endpoint:** \`${endpoint}\`
+
+${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${headers.map(h => `| ${h.key || '-'} | ${h.value || '-'} | ${h.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
+${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${p.key || '-'} | ${p.value || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
+${body ? `## ${t('apiBody')}\n\`\`\`json\n${body}\n\`\`\`\n` : ''}
+${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
     }
 
     const tags = [...state.editorTags];
@@ -1457,7 +1575,7 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>
         // Update
         const idx = documents.findIndex(d => d.id === state.editingDoc.id);
         if (idx !== -1) {
-            documents[idx] = { ...documents[idx], title, category: cat, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, updatedAt: Date.now() };
+            documents[idx] = { ...documents[idx], title, category: cat, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, updatedAt: Date.now() };
         }
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
@@ -1970,6 +2088,16 @@ const i18n = {
         tcExpected: "Kết quả mong đợi (Expected)",
         tcExpectedPl: "Hệ thống hiển thị...",
 
+        apiMethod: "Method",
+        apiEndpoint: "Endpoint / Path",
+        apiHeaders: "Headers",
+        apiParams: "Query Parameters",
+        apiBody: "Request Body (JSON)",
+        apiResponse: "Response (JSON)",
+        apiKey: "Key",
+        apiValue: "Value",
+        apiRequired: "Required",
+
         dashboard: "Trang chủ",
         categories: "Danh mục",
         documents: "Tài liệu",
@@ -2071,6 +2199,16 @@ const i18n = {
         tcExpected: "Expected Result",
         tcExpectedPl: "System displays...",
 
+        apiMethod: "Method",
+        apiEndpoint: "Endpoint / Path",
+        apiHeaders: "Headers",
+        apiParams: "Query Parameters",
+        apiBody: "Request Body (JSON)",
+        apiResponse: "Response (JSON)",
+        apiKey: "Key",
+        apiValue: "Value",
+        apiRequired: "Required",
+
         dashboard: "Dashboard",
         categories: "Categories",
         documents: "Documents",
@@ -2129,10 +2267,12 @@ window.changeEditorCat = function(cat) {
         state.editingDoc.title = document.getElementById('ed-title')?.value || '';
         if (cat === 'bug' && !state.editingDoc.bugData) state.editingDoc.bugData = {};
         if (cat === 'testcases' && !state.editingDoc.tcData) state.editingDoc.tcData = {};
+        if (cat === 'api' && !state.editingDoc.apiData) state.editingDoc.apiData = {};
     } else {
         state._newCat = cat;
         state._newTitle = document.getElementById('ed-title')?.value || '';
         if (cat === 'testcases' && !state._newTcData) state._newTcData = {};
+        if (cat === 'api' && !state._newApiData) state._newApiData = {};
     }
     render();
     setTimeout(() => {
@@ -2192,6 +2332,40 @@ window.removeTcStep = function(btn) {
         r.querySelector('.step-idx').textContent = (i + 1) + '.';
     });
 };
+
+window.addApiHeader = function() {
+    const container = document.getElementById('api-headers-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 api-header-row';
+    div.innerHTML = `
+        <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}">
+        <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
+        <div class="flex items-center gap-1">
+            <input type="checkbox" class="api-req" title="${t('apiRequired')}">
+            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    `;
+    container.appendChild(div);
+};
+window.removeApiHeader = function(btn) { btn.closest('.api-header-row').remove(); };
+
+window.addApiParam = function() {
+    const container = document.getElementById('api-params-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 api-param-row';
+    div.innerHTML = `
+        <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}">
+        <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
+        <div class="flex items-center gap-1">
+            <input type="checkbox" class="api-req" title="${t('apiRequired')}">
+            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    `;
+    container.appendChild(div);
+};
+window.removeApiParam = function(btn) { btn.closest('.api-param-row').remove(); };
 
 window.toggleLang = async function() {
     state.lang = state.lang === 'vi' ? 'en' : 'vi';
