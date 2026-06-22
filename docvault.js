@@ -752,7 +752,43 @@ function getFiltered() {
 // ========================
 // RENDER CONTENT
 // ========================
+window.syncEditorState = function() {
+    if (state.view !== 'editor') return;
+    const title = document.getElementById('ed-title')?.value || '';
+    const cat = document.getElementById('ed-cat')?.value || 'runbook';
+    const status = document.getElementById('ed-status')?.value || 'draft';
+    const content = document.getElementById('ed-content')?.value || '';
+    
+    let bugData = null;
+    if (cat === 'bug') {
+        bugData = {
+            env: document.getElementById('ed-bug-env')?.value || '',
+            browser: document.getElementById('ed-bug-browser')?.value || '',
+            severity: document.getElementById('ed-bug-severity')?.value || 'Minor',
+            precond: document.getElementById('ed-bug-precond')?.value || '',
+            steps: Array.from(document.querySelectorAll('.bug-step-input')).map(inp => inp.value),
+            expected: document.getElementById('ed-bug-expected')?.value || '',
+            actual: document.getElementById('ed-bug-actual')?.value || ''
+        };
+    }
+
+    if (state.editingDoc) {
+        state.editingDoc.title = title;
+        state.editingDoc.category = cat;
+        state.editingDoc.status = status;
+        if (document.getElementById('ed-content')) state.editingDoc.content = content;
+        if (cat === 'bug') state.editingDoc.bugData = bugData;
+    } else {
+        state._newTitle = title;
+        state._newCat = cat;
+        state._newStatus = status;
+        if (document.getElementById('ed-content')) state._newContent = content;
+        state._newBugData = bugData;
+    }
+}
+
 function renderContent() {
+    if (state.view === 'editor') syncEditorState();
     const c = document.getElementById('content');
     if (state.view === 'dashboard') c.innerHTML = renderDashboard();
     else if (state.view === 'documents' || state.view === 'favorites') c.innerHTML = renderDocList();
@@ -993,9 +1029,10 @@ function renderEditor() {
     const isEdit = !!doc;
     const title = isEdit ? doc.title : (state._newTitle || '');
     const category = isEdit ? doc.category : (state._newCat || 'runbook');
-    const status = isEdit ? doc.status : 'draft';
+    const status = isEdit ? doc.status : (state._newStatus || 'draft');
     const content = isEdit ? doc.content : (state._newContent || '');
     const tags = isEdit ? doc.tags : state.editorTags;
+    const bugData = isEdit ? doc.bugData : state._newBugData;
 
     return `<div class="fade-up max-w-4xl mx-auto">
         
@@ -1049,32 +1086,32 @@ function renderEditor() {
         <div class="grid sm:grid-cols-3 gap-4 mb-4">
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugEnv')}</label>
-                <input id="ed-bug-env" class="form-input" placeholder="${t('bugEnvPl')}" value="${escHtml(doc?.bugData?.env || '')}">
+                <input id="ed-bug-env" class="form-input" placeholder="${t('bugEnvPl')}" value="${escHtml(bugData?.env || '')}">
             </div>
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugDevice')}</label>
-                <input id="ed-bug-browser" class="form-input" placeholder="${t('bugDevicePl')}" value="${escHtml(doc?.bugData?.browser || '')}">
+                <input id="ed-bug-browser" class="form-input" placeholder="${t('bugDevicePl')}" value="${escHtml(bugData?.browser || '')}">
             </div>
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
                 <select id="ed-bug-severity" class="form-select w-full">
-                    <option value="Critical" ${doc?.bugData?.severity === 'Critical' ? 'selected' : ''}>Critical</option>
-                    <option value="Major" ${doc?.bugData?.severity === 'Major' ? 'selected' : ''}>Major</option>
-                    <option value="Minor" ${doc?.bugData?.severity === 'Minor' ? 'selected' : (!doc?.bugData ? 'selected' : '')}>Minor</option>
-                    <option value="Trivial" ${doc?.bugData?.severity === 'Trivial' ? 'selected' : ''}>Trivial</option>
+                    <option value="Critical" ${bugData?.severity === 'Critical' ? 'selected' : ''}>Critical</option>
+                    <option value="Major" ${bugData?.severity === 'Major' ? 'selected' : ''}>Major</option>
+                    <option value="Minor" ${bugData?.severity === 'Minor' ? 'selected' : (!bugData ? 'selected' : '')}>Minor</option>
+                    <option value="Trivial" ${bugData?.severity === 'Trivial' ? 'selected' : ''}>Trivial</option>
                 </select>
             </div>
         </div>
         
         <div class="mb-4">
             <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugPrecond')}</label>
-            <textarea id="ed-bug-precond" class="form-input" style="height:60px;" placeholder="${t('bugPrecondPl')}">${escHtml(doc?.bugData?.precond || '')}</textarea>
+            <textarea id="ed-bug-precond" class="form-input" style="height:60px;" placeholder="${t('bugPrecondPl')}">${escHtml(bugData?.precond || '')}</textarea>
         </div>
         
         <div class="mb-4">
             <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSteps')}</label>
             <div id="bug-steps-container">
-                ${(Array.isArray(doc?.bugData?.steps) ? doc.bugData.steps : (doc?.bugData?.steps ? [doc.bugData.steps] : [''])).map((step, idx) => `
+                ${(Array.isArray(bugData?.steps) ? bugData.steps : (bugData?.steps ? [bugData.steps] : [''])).map((step, idx) => `
                     <div class="flex items-center gap-2 mb-2 bug-step-row">
                         <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
                         <input class="form-input flex-1 bug-step-input" placeholder="Step ${idx + 1}..." value="${escHtml(step)}">
@@ -1088,11 +1125,11 @@ function renderEditor() {
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugExpected')}</label>
-                <textarea id="ed-bug-expected" class="form-input" style="height:100px;" placeholder="${t('bugExpectedPl')}">${escHtml(doc?.bugData?.expected || '')}</textarea>
+                <textarea id="ed-bug-expected" class="form-input" style="height:100px;" placeholder="${t('bugExpectedPl')}">${escHtml(bugData?.expected || '')}</textarea>
             </div>
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugActual')}</label>
-                <textarea id="ed-bug-actual" class="form-input" style="height:100px;" placeholder="${t('bugActualPl')}">${escHtml(doc?.bugData?.actual || '')}</textarea>
+                <textarea id="ed-bug-actual" class="form-input" style="height:100px;" placeholder="${t('bugActualPl')}">${escHtml(bugData?.actual || '')}</textarea>
             </div>
         </div>
         ` : `
