@@ -776,7 +776,7 @@ function renderDashboard() {
     const catCounts = {};
     Object.keys(CAT_META).forEach(k => catCounts[k] = documents.filter(d => d.category === k).length);
 
-    return `<div class="fade-up max-w-6xl">
+    return `<div class="fade-up max-w-6xl mx-auto">
         <!-- Stats -->
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <div class="stat-card sc-total p-4">
@@ -867,7 +867,7 @@ function renderDocList() {
         return renderKanbanBoard(docs, isMobileSearch);
     }
 
-    return `<div class="fade-up max-w-6xl">
+    return `<div class="fade-up max-w-6xl mx-auto">
         <!-- Mobile search -->
         ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
 
@@ -997,7 +997,7 @@ function renderEditor() {
     const content = isEdit ? doc.content : (state._newContent || '');
     const tags = isEdit ? doc.tags : state.editorTags;
 
-    return `<div class="fade-up max-w-4xl">
+    return `<div class="fade-up max-w-4xl mx-auto">
         
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
@@ -1173,7 +1173,7 @@ function renderViewer() {
     const doc = documents.find(d => d.id === state.editingDoc?.id);
     if (!doc) return `<div class="text-center py-20" style="color:var(--tx-d);">Document not found.</div>`;
 
-    return `<div class="fade-up max-w-4xl">
+    return `<div class="fade-up max-w-4xl mx-auto">
         <!-- Meta -->
         <div class="flex flex-wrap items-center gap-2.5 mb-4">
             <span class="cat-badge ${CAT_META[doc.category].cls}">${CAT_META[doc.category].label}</span>
