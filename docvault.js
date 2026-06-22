@@ -402,7 +402,14 @@ function renderMd(text) {
     // Extract code blocks and inline code
     const codeBlocks = [];
     h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-        codeBlocks.push(`<pre><code>${escHtml(code.trim())}</code></pre>`);
+        const rawCodeB64 = btoa(unescape(encodeURIComponent(code.trim())));
+        codeBlocks.push(`
+<div class="relative group my-3">
+    <div class="absolute right-2 top-2 z-10">
+        <button class="btn-s px-2 py-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity" style="background:var(--bg2); border:1px solid var(--brd); color:var(--tx-m);" onclick="copyCodeBlock(this, '${rawCodeB64}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
+    </div>
+    <pre><code>${escHtml(code.trim())}</code></pre>
+</div>`);
         return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
     });
     
@@ -2380,6 +2387,20 @@ window.formatJson = function(id) {
         el.value = JSON.stringify(obj, null, 2);
     } catch (e) {
         toast('Invalid JSON format', 'error');
+    }
+};
+
+window.copyCodeBlock = function(btn, b64) {
+    try {
+        const text = decodeURIComponent(escape(atob(b64)));
+        navigator.clipboard.writeText(text);
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = 'fa-solid fa-check text-green-500';
+            setTimeout(() => { icon.className = 'fa-regular fa-copy'; }, 2000);
+        }
+    } catch (e) {
+        toast('Failed to copy', 'error');
     }
 };
 
