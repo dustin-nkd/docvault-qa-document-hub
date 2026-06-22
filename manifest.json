@@ -5,8 +5,15 @@
   "description": "Quản lý tài liệu QA - Lưu trữ offline trên trình duyệt. Hỗ trợ Runbook, Onboarding, Test Cases, Knowledge Base.",
   "permissions": [
     "storage",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "identity"
   ],
+  "oauth2": {
+    "client_id": "821273695892-5n7f9l4aq0t5iul6duo52dspvs1ai4sg.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.appdata"
+    ]
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

@@ -533,6 +533,97 @@ function showTemplateModal() {
 // ========================
 // SIDEBAR
 // ========================
+window.closeModal = function() {
+    document.getElementById('modal').style.display = 'none';
+    document.getElementById('modal-overlay').style.display = 'none';
+}
+
+window.showSyncModal = function() {
+    const modal = document.getElementById('modal');
+    modal.innerHTML = `
+        <div class="p-6">
+            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2"><i class="fa-brands fa-google text-[var(--c-mtg)]"></i> Google Drive Sync</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m)">Keep your QA documents synchronized across multiple devices using your own Google Drive. Data is securely stored in a hidden app folder.</p>
+            
+            <div class="flex flex-col gap-3">
+                <button class="btn-p w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPush()">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Push Local Data to Drive
+                </button>
+                <button class="btn-s w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPull()">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Pull Data from Drive
+                </button>
+                <button class="btn-s w-full flex items-center justify-center gap-2 py-2.5" style="border-color:rgba(244,63,94,0.3); color:var(--c-kn);" data-onclick="syncLogout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                </button>
+            </div>
+        </div>
+    `;
+    modal.style.display = 'block';
+    document.getElementById('modal-overlay').style.display = 'block';
+}
+
+window.syncPush = async function() {
+    try {
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+        btn.disabled = true;
+
+        const data = await DocStorage.getAll();
+        await window.SyncService.uploadData(data);
+        
+        toast("Data successfully pushed to Google Drive!", "success");
+        closeModal();
+    } catch (err) {
+        toast("Failed to push: " + err.message, "error");
+    } finally {
+        if (event.currentTarget) {
+            event.currentTarget.disabled = false;
+            event.currentTarget.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Push Local Data to Drive';
+        }
+    }
+}
+
+window.syncPull = async function() {
+    try {
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Downloading...';
+        btn.disabled = true;
+
+        const data = await window.SyncService.downloadData();
+        if (data && Array.isArray(data)) {
+            // Overwrite local data
+            for (const doc of data) {
+                await DocStorage.save(doc);
+            }
+            // Trigger refresh
+            await init();
+            toast("Data successfully pulled from Google Drive!", "success");
+            closeModal();
+        } else {
+            toast("No existing data found on Drive.", "warning");
+        }
+    } catch (err) {
+        toast("Failed to pull: " + err.message, "error");
+    } finally {
+        if (event.currentTarget) {
+            event.currentTarget.disabled = false;
+            event.currentTarget.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Pull Data from Drive';
+        }
+    }
+}
+
+window.syncLogout = async function() {
+    try {
+        await window.SyncService.logout();
+        toast("Logged out from Google Drive.", "success");
+        closeModal();
+    } catch (err) {
+        toast("Error logging out.", "error");
+    }
+}
+
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const ov = document.getElementById('mob-overlay');
@@ -587,11 +678,13 @@ function updateHeader() {
 
     if (state.view === 'dashboard') {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
-        actions = `<button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-s flex items-center gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
+        <button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
         const catLabel = state.category === 'all' ? 'All Documents' : (state.view === 'favorites' ? 'Favorites' : CAT_META[state.category]?.label + 's');
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
-        actions = `<button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-s flex items-center gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
+        <button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
