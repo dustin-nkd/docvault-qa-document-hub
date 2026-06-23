@@ -1,0 +1,19 @@
+const puppeteer = require('puppeteer');
+(async () => {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    const htmlPath = 'file:///' + process.cwd().replace(/\\/g, '/') + '/test3.html';
+    await page.goto(htmlPath);
+    const result = await page.evaluate(() => {
+        const el = document.createElement('div');
+        document.body.appendChild(el);
+        const viewer = toastui.Editor.factory({
+            el: el,
+            viewer: true,
+            initialValue: '`js\nconst a = 1;\n`'
+        });
+        return el.innerHTML;
+    });
+    console.log(result);
+    await browser.close();
+})();

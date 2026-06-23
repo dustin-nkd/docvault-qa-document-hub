@@ -720,6 +720,9 @@ function updateHeader() {
             </div>
         ` : ''}
         <div class="flex items-center gap-2">
+        <button class="btn-s text-sm mr-2 p-1.5 px-3 flex items-center gap-1.5" data-onclick="openSearch()" style="border: 1px solid var(--brd); border-radius: 6px; background: var(--bg2); color: var(--tx);" title="Global Search (Ctrl+K)">
+            <i class="fa-solid fa-magnifying-glass"></i> <span class="hidden sm:inline text-xs">Ctrl+K</span>
+        </button>
         <button class="btn-s text-sm mr-2 p-1.5 px-3 flex items-center gap-1.5" data-onclick="toggleLang()" style="border: 1px solid var(--brd); border-radius: 6px; background: var(--bg2); color: var(--tx);">
     <img src="${state.lang === 'vi' ? 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5MDAgNjAwIj48cmVjdCB3aWR0aD0iOTAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iI2RhMjUxZCIvPjxwb2x5Z29uIHBvaW50cz0iNDUwLDEyMCA1NDAsNDAwIDMwMCwyMjUgNjAwLDIyNSAzNjAsNDAwIiBmaWxsPSIjZmZjZDAwIi8+PC9zdmc+' : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgNDAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iI2ZmZiIvPjxnIGZpbGw9IiNiZjBhMzAiPjxyZWN0IHk9IjAiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjYxLjUiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjEyMyIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMTg0LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjI0NiIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMzA3LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjM2OS4yIiB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMwLjciLz48L2c+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIyMTUiIGZpbGw9IiMwMDI4NjgiLz48L3N2Zz4='}" style="width:16px;height:12px;object-fit:cover;border-radius:2px;">
     <span>${state.lang === 'vi' ? 'VN' : 'EN'}</span>
@@ -862,7 +865,10 @@ function renderContent() {
                 initialEditType: 'markdown',
                 previewStyle: 'vertical',
                 initialValue: initialVal,
-                theme: 'dark'
+                theme: 'dark',
+                hooks: {
+                    addImageBlobHook: uploadImageToCloud
+                }
             });
         }
     }
@@ -1127,6 +1133,35 @@ function showDocMenu(id, btn) {
         const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
         document.addEventListener('click', close);
     }, 10);
+}
+
+// ========================
+// IMAGE UPLOAD (FreeImage.host)
+// ========================
+async function uploadImageToCloud(blob, callback) {
+    toast("Uploading image to Cloud...", "info");
+    const formData = new FormData();
+    // Public API Key for FreeImage.host
+    formData.append("key", "6d207e02198a847aa98d0a2a901485a5");
+    formData.append("source", blob);
+    formData.append("format", "json");
+
+    try {
+        const res = await fetch("https://freeimage.host/api/1/upload", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+        if (data && data.status_code === 200) {
+            callback(data.image.url, data.image.name || 'image');
+            toast("Image uploaded successfully!", "success");
+        } else {
+            throw new Error(data?.error?.message || "Upload failed");
+        }
+    } catch (err) {
+        console.error("Image Upload Error:", err);
+        toast("Failed to upload image. Please try again.", "error");
+    }
 }
 
 // ========================
@@ -2430,3 +2465,125 @@ window.toggleLang = async function() {
     await DocStorage.saveSettings({ lang: state.lang });
     render();
 };
+
+// ========================
+// GLOBAL SEARCH (Ctrl+K)
+// ========================
+let searchSelectedIndex = -1;
+let currentSearchResults = [];
+
+window.openSearch = function() {
+    const modal = document.getElementById('search-modal');
+    const input = document.getElementById('search-input');
+    if (!modal || !input) return;
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    input.value = '';
+    searchSelectedIndex = -1;
+    currentSearchResults = [];
+    renderSearchResults('');
+    setTimeout(() => input.focus(), 50);
+};
+
+window.closeSearch = function() {
+    const modal = document.getElementById('search-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
+function renderSearchResults(query) {
+    const container = document.getElementById('search-results');
+    if (!container) return;
+    
+    if (!query.trim()) {
+        container.innerHTML = '<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">Type to start searching...</div>';
+        return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    currentSearchResults = documents.filter(doc => {
+        return doc.title.toLowerCase().includes(lowerQuery) || 
+               doc.tags.some(t => t.toLowerCase().includes(lowerQuery)) ||
+               (doc.content && doc.content.toLowerCase().includes(lowerQuery));
+    }).slice(0, 15); // Limit to 15 results
+    
+    if (currentSearchResults.length === 0) {
+        container.innerHTML = '<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">No documents found.</div>';
+        return;
+    }
+    
+    container.innerHTML = currentSearchResults.map((doc, idx) => {
+        let matchHint = '';
+        if (doc.title.toLowerCase().includes(lowerQuery)) matchHint = 'Title match';
+        else if (doc.tags.some(t => t.toLowerCase().includes(lowerQuery))) matchHint = 'Tag match';
+        else matchHint = 'Content match';
+        
+        return `
+            <div class="search-item ${idx === searchSelectedIndex ? 'active' : ''}" data-idx="${idx}" data-onclick="selectSearchResult(${idx})">
+                <div class="search-item-title">${escHtml(doc.title)}</div>
+                <div class="search-item-meta">
+                    <span class="cat-badge ${CAT_META[doc.category]?.cls}">${CAT_META[doc.category]?.label}</span>
+                    <span class="search-item-match">${matchHint}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.selectSearchResult = function(idx) {
+    if (idx < 0 || idx >= currentSearchResults.length) return;
+    const doc = currentSearchResults[idx];
+    closeSearch();
+    navigate('documents', doc.category);
+    setTimeout(() => viewDoc(doc.id), 50);
+};
+
+// Global Keydown Listener
+window.addEventListener('keydown', function(e) {
+    // Ctrl+K or Cmd+K
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        openSearch();
+    }
+    
+    const searchModal = document.getElementById('search-modal');
+    if (searchModal && !searchModal.classList.contains('hidden')) {
+        if (e.key === 'Escape') {
+            closeSearch();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (searchSelectedIndex < currentSearchResults.length - 1) {
+                searchSelectedIndex++;
+                renderSearchResults(document.getElementById('search-input').value);
+                const activeEl = document.querySelector('.search-item.active');
+                if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (searchSelectedIndex > 0) {
+                searchSelectedIndex--;
+                renderSearchResults(document.getElementById('search-input').value);
+                const activeEl = document.querySelector('.search-item.active');
+                if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchSelectedIndex >= 0) {
+                selectSearchResult(searchSelectedIndex);
+            } else if (currentSearchResults.length > 0) {
+                selectSearchResult(0);
+            }
+        }
+    }
+});
+
+// Search input listener
+document.addEventListener('input', function(e) {
+    if (e.target && e.target.id === 'search-input') {
+        searchSelectedIndex = -1;
+        renderSearchResults(e.target.value);
+    }
+});
