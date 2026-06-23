@@ -605,3 +605,47 @@ body {
     background-color: var(--card) !important;
     border-color: var(--brd) !important;
 }
+/* Minimalist Toolbar Icons */
+.toastui-editor-dark .toastui-editor-toolbar-icons {
+    border: none !important;
+    background-color: transparent !important;
+    opacity: 0.6;
+    transition: opacity 0.2s, background-color 0.2s;
+    border-radius: 4px !important;
+}
+
+.toastui-editor-dark .toastui-editor-toolbar-icons:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.toastui-editor-dark .toastui-editor-toolbar-icons.active {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.toastui-editor-dark .toastui-editor-toolbar-divider {
+    background-color: var(--brd) !important;
+    width: 1px !important;
+    margin: 0 4px !important;
+}
+
+/* Minimalist Mode Switch */
+.toastui-editor-dark .toastui-editor-mode-switch {
+    background-color: transparent !important;
+    border-top-color: var(--brd) !important;
+}
+
+.toastui-editor-dark .toastui-editor-mode-switch .tab-item {
+    border: none !important;
+    background-color: transparent !important;
+    color: var(--tx-m) !important;
+    opacity: 0.6;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+.toastui-editor-dark .toastui-editor-mode-switch .tab-item.active {
+    opacity: 1;
+    color: var(--acc) !important;
+    font-weight: 600;
+}
