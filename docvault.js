@@ -1462,6 +1462,11 @@ function createDoc(cat) {
     state.editorTags = [];
     state.editorMode = 'edit';
     state._newCat = cat || 'runbook';
+    state._newTitle = '';
+    state._newStatus = 'draft';
+    state._newBugData = null;
+    state._newTcData = null;
+    state._newApiData = null;
     state._newContent = cat && TEMPLATES[cat] ? TEMPLATES[cat] : '# New Document\n\nStart writing here...';
     render();
     setTimeout(() => document.getElementById('ed-title')?.focus(), 100);
