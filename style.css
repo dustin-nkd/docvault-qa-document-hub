@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ============================================
    DocVault Popup — Premium Dark Theme
    ============================================ */
@@ -542,4 +546,5 @@ body {
     opacity: 1;
     color: var(--tx);
 }
+
 
