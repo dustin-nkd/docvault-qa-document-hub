@@ -844,8 +844,8 @@ window.syncEditorState = function() {
 }
 
 function renderContent() {
-    window.tuiEditor = null;
     if (state.view === 'editor') syncEditorState();
+    window.tuiEditor = null;
     const c = document.getElementById('content');
     if (state.view === 'dashboard') c.innerHTML = renderDashboard();
     else if (state.view === 'documents' || state.view === 'favorites') c.innerHTML = renderDocList();
