@@ -866,7 +866,20 @@ function renderContent() {
             });
         }
     }
-    else if (state.view === 'viewer') c.innerHTML = renderViewer();
+    else if (state.view === 'viewer') {
+        c.innerHTML = renderViewer();
+        const container = document.getElementById('viewer-container');
+        if (container) {
+            const hiddenTa = document.getElementById('vw-content-hidden');
+            const initialVal = hiddenTa ? hiddenTa.value : '';
+            window.tuiViewer = toastui.Editor.factory({
+                el: container,
+                viewer: true,
+                initialValue: initialVal,
+                theme: 'dark'
+            });
+        }
+    }
 }
 
 function render() {
@@ -1405,9 +1418,9 @@ function renderViewer() {
         ` : ''}
 
         <!-- Content -->
-        <div class="md-preview p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);min-height:300px;">
-            ${renderMd(doc.content)}
+        <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:300px;">
         </div>
+        <textarea id="vw-content-hidden" style="display:none;">${escHtml(doc.content)}</textarea>
         <!-- Actions bottom -->
         <div class="flex items-center gap-3 mt-5">
             <button class="btn-p" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
