@@ -880,24 +880,26 @@ function renderContent() {
             });
             
             // Inject copy buttons into code blocks
-            container.querySelectorAll('pre').forEach(pre => {
-                pre.style.position = 'relative';
-                const codeEl = pre.querySelector('code');
-                const textToCopy = codeEl ? codeEl.innerText : pre.innerText;
-                
-                const btn = document.createElement('button');
-                btn.className = 'code-copy-btn';
-                btn.title = 'Copy';
-                btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
-                btn.onclick = function(e) {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
-                        setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
-                    });
-                };
-                pre.appendChild(btn);
-            });
+            setTimeout(() => {
+                container.querySelectorAll('pre').forEach(pre => {
+                    pre.style.position = 'relative';
+                    const codeEl = pre.querySelector('code');
+                    const textToCopy = codeEl ? codeEl.innerText : pre.innerText;
+                    
+                    const btn = document.createElement('button');
+                    btn.className = 'code-copy-btn';
+                    btn.title = 'Copy';
+                    btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                    btn.onclick = function(e) {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                            setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
+                        });
+                    };
+                    pre.appendChild(btn);
+                });
+            }, 100);
         }
     }
 }
