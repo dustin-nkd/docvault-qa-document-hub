@@ -546,3 +546,62 @@ body {
 }
 
 
+/* TUI Editor Custom Theme Overrides */
+.toastui-editor-dark .toastui-editor-defaultUI {
+    border-color: var(--brd) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+
+.toastui-editor-dark .toastui-editor-toolbar {
+    background-color: var(--bg2) !important;
+    border-bottom-color: var(--brd) !important;
+}
+
+.toastui-editor-dark .toastui-editor-defaultUI-toolbar {
+    background-color: var(--bg2) !important;
+    border-bottom-color: var(--brd) !important;
+}
+
+.toastui-editor-dark .toastui-editor-md-container,
+.toastui-editor-dark .toastui-editor-ww-container {
+    background-color: var(--bg) !important;
+}
+
+.toastui-editor-dark .toastui-editor-md-splitter {
+    background-color: var(--brd) !important;
+}
+
+.toastui-editor-dark .toastui-editor-contents {
+    font-family: 'DM Sans', sans-serif !important;
+    color: var(--tx) !important;
+}
+
+.toastui-editor-dark .toastui-editor-contents h1,
+.toastui-editor-dark .toastui-editor-contents h2,
+.toastui-editor-dark .toastui-editor-contents h3,
+.toastui-editor-dark .toastui-editor-contents h4,
+.toastui-editor-dark .toastui-editor-contents h5,
+.toastui-editor-dark .toastui-editor-contents h6 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    color: var(--tx) !important;
+    border-bottom-color: var(--brd) !important;
+}
+
+.toastui-editor-dark .ProseMirror {
+    font-family: 'DM Sans', sans-serif !important;
+    color: var(--tx) !important;
+}
+
+/* Fix popup background in toolbar */
+.toastui-editor-dark .toastui-editor-popup {
+    background-color: var(--card) !important;
+    border-color: var(--brd) !important;
+}
+.toastui-editor-dark .toastui-editor-popup-body {
+    background-color: var(--card) !important;
+}
+.toastui-editor-dark .toastui-editor-dropdown-toolbar {
+    background-color: var(--card) !important;
+    border-color: var(--brd) !important;
+}

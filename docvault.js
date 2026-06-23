@@ -1318,7 +1318,7 @@ function renderEditor() {
         </div>
         ` : `
         <!-- Content area -->
-        <div id="editor-container" class="mt-4" style="background:var(--bg); border:1px solid var(--brd); border-radius:8px; text-align:left;"></div>
+        <div id="editor-container" class="mt-4 text-left"></div>
         <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
         `}
 
