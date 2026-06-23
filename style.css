@@ -660,3 +660,13 @@ body {
 .toastui-editor-dark .toastui-editor-defaultUI-toolbar {
     padding: 0 8px !important;
 }
+/* Restore Tailwind reset for TUI Editor contents */
+.toastui-editor-dark .toastui-editor-contents h1 { font-size: 2em !important; font-weight: 700 !important; margin-bottom: 0.5em !important; }
+.toastui-editor-dark .toastui-editor-contents h2 { font-size: 1.5em !important; font-weight: 600 !important; margin-bottom: 0.5em !important; }
+.toastui-editor-dark .toastui-editor-contents h3 { font-size: 1.25em !important; font-weight: 600 !important; margin-bottom: 0.5em !important; }
+.toastui-editor-dark .toastui-editor-contents h4 { font-size: 1.1em !important; font-weight: 600 !important; }
+.toastui-editor-dark .toastui-editor-contents strong { font-weight: 700 !important; }
+.toastui-editor-dark .toastui-editor-contents ul { list-style-type: disc !important; padding-left: 1.5em !important; margin-bottom: 1em !important; }
+.toastui-editor-dark .toastui-editor-contents ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin-bottom: 1em !important; }
+.toastui-editor-dark .toastui-editor-contents blockquote { border-left: 4px solid var(--brd) !important; padding-left: 1em !important; color: var(--tx-m) !important; }
+.toastui-editor-dark .toastui-editor-contents a { color: var(--acc) !important; text-decoration: underline !important; }
