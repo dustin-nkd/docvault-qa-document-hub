@@ -1,30 +1,27 @@
 const SyncService = {
-    // Authenticate with Google (Cross-Browser via Web Auth Flow)
+    clientId: '821273695892-0n81gju50nenhne1ohmkedmvv2ik09qv.apps.googleusercontent.com',
+    scopes: 'https://www.googleapis.com/auth/drive.appdata',
+
+    // Authenticate with Google (Web GSI)
     async getAuthToken() {
         return new Promise((resolve, reject) => {
-            const manifest = chrome.runtime.getManifest();
-            const clientId = manifest.oauth2.client_id;
-            const scopes = encodeURIComponent(manifest.oauth2.scopes.join(' '));
-            const redirectUri = encodeURIComponent(chrome.identity.getRedirectURL());
-            
-            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${scopes}`;
+            if (!window.google || !window.google.accounts) {
+                reject(new Error("Google Identity Services library not loaded. Please wait or reload."));
+                return;
+            }
 
-            chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, function(redirectUrl) {
-                if (chrome.runtime.lastError || !redirectUrl) {
-                    reject(chrome.runtime.lastError || new Error("Authentication flow failed."));
-                    return;
-                }
-                
-                const urlObj = new URL(redirectUrl);
-                const params = new URLSearchParams(urlObj.hash.substring(1));
-                const token = params.get('access_token');
-                
-                if (token) {
-                    resolve(token);
-                } else {
-                    reject(new Error("No access token returned from Google."));
-                }
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: this.clientId,
+                scope: this.scopes,
+                callback: (response) => {
+                    if (response.error !== undefined) {
+                        reject(new Error(response.error));
+                        return;
+                    }
+                    resolve(response.access_token);
+                },
             });
+            tokenClient.requestAccessToken();
         });
     },
 

@@ -220,3 +220,6 @@ const DocStorage = {
         }
     }
 };
+
+window.DocStorage = DocStorage;
+
