@@ -780,7 +780,7 @@ window.syncEditorState = function() {
     const title = titleEl.value || '';
     const cat = document.getElementById('ed-cat')?.value || 'runbook';
     const status = document.getElementById('ed-status')?.value || 'draft';
-    const content = document.getElementById('ed-content')?.value || '';
+    const content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
     
     let bugData = null;
     let tcData = null;
@@ -828,7 +828,7 @@ window.syncEditorState = function() {
         state.editingDoc.title = title;
         state.editingDoc.category = cat;
         state.editingDoc.status = status;
-        if (document.getElementById('ed-content')) state.editingDoc.content = content;
+        if (window.tuiEditor || document.getElementById('ed-content-hidden')) state.editingDoc.content = content;
         if (cat === 'bug') state.editingDoc.bugData = bugData;
         if (cat === 'testcases') state.editingDoc.tcData = tcData;
         if (cat === 'api') state.editingDoc.apiData = apiData;
@@ -836,7 +836,7 @@ window.syncEditorState = function() {
         state._newTitle = title;
         state._newCat = cat;
         state._newStatus = status;
-        if (document.getElementById('ed-content')) state._newContent = content;
+        if (window.tuiEditor || document.getElementById('ed-content-hidden')) state._newContent = content;
         state._newBugData = bugData;
         state._newTcData = tcData;
         state._newApiData = apiData;
@@ -844,11 +844,27 @@ window.syncEditorState = function() {
 }
 
 function renderContent() {
+    window.tuiEditor = null;
     if (state.view === 'editor') syncEditorState();
     const c = document.getElementById('content');
     if (state.view === 'dashboard') c.innerHTML = renderDashboard();
     else if (state.view === 'documents' || state.view === 'favorites') c.innerHTML = renderDocList();
-    else if (state.view === 'editor') c.innerHTML = renderEditor();
+    else if (state.view === 'editor') {
+        c.innerHTML = renderEditor();
+        const container = document.getElementById('editor-container');
+        if (container) {
+            const hiddenTa = document.getElementById('ed-content-hidden');
+            const initialVal = hiddenTa ? hiddenTa.value : '';
+            window.tuiEditor = new toastui.Editor({
+                el: container,
+                height: 'calc(100vh - 300px)',
+                initialEditType: 'markdown',
+                previewStyle: 'vertical',
+                initialValue: initialVal,
+                theme: 'dark'
+            });
+        }
+    }
     else if (state.view === 'viewer') c.innerHTML = renderViewer();
 }
 
@@ -1301,33 +1317,9 @@ function renderEditor() {
             </div>
         </div>
         ` : `
-        <!-- Editor toolbar -->
-        <div class="flex items-center gap-1 mb-2 p-2 rounded-t-lg" style="background:var(--card);border:1px solid var(--brd);border-bottom:none;">
-            <button class="px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${state.editorMode === 'edit' ? '' : ''}" style="background:${state.editorMode === 'edit' ? 'var(--acc)' : 'transparent'};color:${state.editorMode === 'edit' ? '#fff' : 'var(--tx-m)'};" data-onclick="state.editorMode='edit';renderContent();document.getElementById('ed-content').focus();">
-                <i class="fa-solid fa-code mr-1"></i> ${t('edit')}
-            </button>
-            <button class="px-2.5 py-1.5 rounded text-xs font-medium transition-colors" style="background:${state.editorMode === 'preview' ? 'var(--acc)' : 'transparent'};color:${state.editorMode === 'preview' ? '#fff' : 'var(--tx-m)'};" data-onclick="state.editorMode='preview';renderContent();">
-                <i class="fa-solid fa-eye mr-1"></i> ${t('preview')}
-            </button>
-            <div class="flex-1"></div>
-            ${state.editorMode === 'edit' ? `
-                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Bold" data-onclick="insertMd('**','**')"><i class="fa-solid fa-bold"></i></button>
-                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Italic" data-onclick="insertMd('*','*')"><i class="fa-solid fa-italic"></i></button>
-                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Code" data-onclick="insertMd('\\\`','\\\`')"><i class="fa-solid fa-code"></i></button>
-                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Link" data-onclick="insertMd('[','](url)')"><i class="fa-solid fa-link"></i></button>
-                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="List" data-onclick="insertMd('- ','')"><i class="fa-solid fa-list"></i></button>
-                <button class="px-2 py-1.5 rounded text-xs" style="color:var(--tx-d);" title="Heading" data-onclick="insertMd('## ','')"><i class="fa-solid fa-heading"></i></button>
-            ` : ''}
-        </div>
-
         <!-- Content area -->
-        ${state.editorMode === 'edit' ? `
-            <textarea id="ed-content" class="editor-ta" style="height:calc(100vh - 340px);min-height:300px;border-top-left-radius:0;border-top-right-radius:0;" placeholder="${t('writeContent')}">${escHtml(content)}</textarea>
-        ` : `
-            <div id="ed-preview" class="md-preview p-5 overflow-y-auto rounded-b-lg" style="background:var(--bg);border:1px solid var(--brd);border-top:none;height:calc(100vh - 340px);min-height:300px;">
-                ${renderMd(content)}
-            </div>
-        `}
+        <div id="editor-container" class="mt-4" style="background:var(--bg); border:1px solid var(--brd); border-radius:8px; text-align:left;"></div>
+        <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
         `}
 
         <div class="flex items-center gap-3 mt-5">
@@ -1336,16 +1328,7 @@ function renderEditor() {
         </div>
     </div>`;
 }
-function insertMd(before, after) {
-    const ta = document.getElementById('ed-content');
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const sel = ta.value.substring(start, end);
-    const replacement = before + (sel || 'text') + after;
-    ta.setRangeText(replacement, start, end, 'select');
-    ta.focus();
-}
+
 
 function handleTagInput(e) {
     if (e.key === 'Enter') {
@@ -1467,6 +1450,10 @@ function viewDoc(id) {
 }
 
 window.cancelEdit = function() {
+    if (window.tuiEditor) {
+        window.tuiEditor.destroy();
+        window.tuiEditor = null;
+    }
     if (state.editingDoc && documents.some(d => d.id === state.editingDoc.id)) {
         state.view = 'viewer';
     } else {
@@ -1483,7 +1470,7 @@ async function saveDoc() {
     const cat = document.getElementById('ed-cat')?.value;
     const status = document.getElementById('ed-status')?.value;
     
-    const content = document.getElementById('ed-content')?.value || '';
+    const content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
     let finalContent = content;
     let bugData = null;
     let tcData = null;
