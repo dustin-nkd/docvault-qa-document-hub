@@ -531,18 +531,24 @@ body {
     position: absolute;
     top: 8px;
     right: 8px;
-    background: transparent;
-    border: none;
-    color: var(--tx-m);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--tx);
     font-size: 13px;
+    padding: 5px 10px;
+    border-radius: 6px;
     cursor: pointer;
-    opacity: 0.3;
-    transition: opacity 0.2s, color 0.2s;
-    padding: 6px;
+    opacity: 0.6;
+    z-index: 10;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .code-copy-btn:hover {
     opacity: 1;
-    color: var(--tx);
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 

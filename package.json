@@ -20,6 +20,7 @@
     "@fontsource/space-grotesk": "^5.2.10",
     "@fortawesome/fontawesome-free": "^7.2.0",
     "canvas": "^3.2.3",
-    "jsdom": "^29.1.1"
+    "jsdom": "^29.1.1",
+    "puppeteer": "^25.2.0"
   }
 }
