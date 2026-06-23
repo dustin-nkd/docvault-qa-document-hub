@@ -846,6 +846,7 @@ window.syncEditorState = function() {
 function renderContent() {
     if (state.view === 'editor') syncEditorState();
     window.tuiEditor = null;
+    
     const c = document.getElementById('content');
     if (state.view === 'dashboard') c.innerHTML = renderDashboard();
     else if (state.view === 'documents' || state.view === 'favorites') c.innerHTML = renderDocList();
@@ -1450,10 +1451,7 @@ function viewDoc(id) {
 }
 
 window.cancelEdit = function() {
-    if (window.tuiEditor) {
-        window.tuiEditor.destroy();
-        window.tuiEditor = null;
-    }
+    window.tuiEditor = null;
     if (state.editingDoc && documents.some(d => d.id === state.editingDoc.id)) {
         state.view = 'viewer';
     } else {
