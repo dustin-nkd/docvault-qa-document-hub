@@ -8,7 +8,20 @@
     <link href="vendor/fonts/space-grotesk/index.css" rel="stylesheet">
     <link href="vendor/fonts/dm-sans/index.css" rel="stylesheet">
     <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
-    <link href="/style.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              heading: ['Space Grotesk', 'sans-serif'],
+              body: ['DM Sans', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <style>
