@@ -1472,6 +1472,7 @@ async function saveDoc() {
     let finalContent = content;
     let bugData = null;
     let tcData = null;
+    let apiData = null;
     
     if (cat === 'bug') {
         const env = document.getElementById('ed-bug-env')?.value || '';
