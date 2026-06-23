@@ -1247,14 +1247,14 @@ function renderEditor() {
         </div>
         ` : category === 'api' ? `
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
-            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div class="grid sm:grid-cols-4 gap-4 mb-4">
                 <div>
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiMethod')}</label>
-                    <select id="ed-api-method" class="form-select w-full font-mono text-xs">
+                    <select id="ed-api-method" class="form-select w-full font-mono text-sm">
                         ${['GET','POST','PUT','PATCH','DELETE'].map(m => `<option value="${m}" ${apiData?.method===m ? 'selected' : ''}>${m}</option>`).join('')}
                     </select>
                 </div>
-                <div>
+                <div class="sm:col-span-3">
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiEndpoint')}</label>
                     <input id="ed-api-endpoint" class="form-input font-mono text-sm w-full" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
                 </div>
