@@ -649,3 +649,14 @@ body {
     color: var(--acc) !important;
     font-weight: 600;
 }
+/* Make toolbar icons smaller */
+.toastui-editor-dark .toastui-editor-toolbar-icons {
+    transform: scale(0.85);
+}
+
+.toastui-editor-dark .toastui-editor-toolbar {
+    height: 40px !important;
+}
+.toastui-editor-dark .toastui-editor-defaultUI-toolbar {
+    padding: 0 8px !important;
+}
