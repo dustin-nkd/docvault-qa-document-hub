@@ -51,7 +51,7 @@ const E2EESyncService = {
             
             if (payload.record && payload.record.data) {
                 const plainData = this.decryptData(payload.record.data, password);
-                localStorage.setItem('docvault_data', JSON.stringify(plainData));
+                localStorage.setItem('docvault_docs', JSON.stringify(plainData));
                 sessionStorage.setItem('e2ee_master_password', password);
                 return true;
             } else {
@@ -68,7 +68,7 @@ const E2EESyncService = {
         if (!this.isConfigured() || !this.isUnlocked()) return;
 
         const s = this.getSettings();
-        const rawData = localStorage.getItem('docvault_data');
+        const rawData = localStorage.getItem('docvault_docs');
         if (!rawData) return;
         
         try {
