@@ -570,6 +570,11 @@ window.showSyncModal = function() {
                     <label class="block text-xs font-bold mb-1" style="color:var(--tx-m)">JSONBin Bin ID</label>
                     <input type="text" id="sync-bin-id" class="form-input w-full" placeholder="Enter Bin ID" value="${s.binId}">
                 </div>
+                <div class="mt-2 pt-4 border-t border-[var(--brd)]">
+                    <label class="block text-xs font-bold mb-1" style="color:var(--tx-m)">Change Master Password (Optional)</label>
+                    <input type="password" id="sync-new-password" class="form-input w-full" placeholder="Enter new password to change it">
+                    <p class="text-[10px] mt-1 text-[var(--tx-d)]">Leave blank if you don't want to change your current password.</p>
+                </div>
                 
                 <div class="pt-4 border-t border-[var(--brd)]">
                     <button type="submit" class="btn-p w-full py-2.5 flex items-center justify-center gap-2">
@@ -584,14 +589,19 @@ window.showSyncModal = function() {
 window.saveSyncSettings = async function() {
     const apiKey = document.getElementById('sync-api-key').value.trim();
     const binId = document.getElementById('sync-bin-id').value.trim();
+    const newPassword = document.getElementById('sync-new-password').value;
     
     if (!apiKey || !binId) {
         toast("API Key and Bin ID are required", "warning");
         return;
     }
     
-    // We keep the master password currently in session
-    const masterPassword = window.SyncService.getSettings().masterPassword || 'skipped';
+    // Determine the master password to use
+    let masterPassword = window.SyncService.getSettings().masterPassword || 'skipped';
+    if (newPassword) {
+        masterPassword = newPassword;
+        toast("Master Password Updated", "info");
+    }
     
     window.SyncService.saveSettings(apiKey, binId, masterPassword);
     toast("Settings Saved", "success");
