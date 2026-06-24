@@ -2580,8 +2580,10 @@ function renderKanbanBoard(docs, isMobileSearch) {
         </div>
 
         <!-- Kanban Board Container -->
-        <div class="flex overflow-x-auto pb-4 custom-scrollbar items-start" style="min-height: 400px; gap: 1.25rem;">
-            ${kanbanHtml}
+        <div class="overflow-x-auto pb-4 custom-scrollbar">
+            <div class="flex items-start mx-auto w-max" style="min-height: 400px; gap: 1.25rem;">
+                ${kanbanHtml}
+            </div>
         </div>
     </div>`;
 }
