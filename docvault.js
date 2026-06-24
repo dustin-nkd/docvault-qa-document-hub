@@ -21,7 +21,8 @@ const CAT_META = {
     testplan: { get label() { return t('testplan'); }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
     meeting: { label: 'Meeting Notes', icon: 'fa-users', color: 'var(--c-mtg)', cls: 'cat-meeting' },
     api: { label: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
-    credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' }
+    credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
+    testrun: { get label() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' }
 };
 
 const TEMPLATES = {
@@ -268,7 +269,8 @@ Thời gian dự kiến.`,
 {
   "status": "success"
 }
-\`\`\``
+\`\`\``,
+    testrun: ``
 };
 
 const SAMPLE_DOCS = [
@@ -1594,6 +1596,24 @@ function renderEditor() {
                 </div>
             </div>
         </div>
+        ` : category === 'testrun' ? `
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Select Test Cases for Execution</label>
+            <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
+                ${documents.filter(d => d.category === 'testcases').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases').map(tc => {
+                    const isChecked = (doc?.runData?.targetIds || state._newRunData?.targetIds || []).includes(tc.id);
+                    return \`
+                    <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" onmouseenter="this.style.background='var(--card)'" onmouseleave="this.style.background='transparent'">
+                        <input type="checkbox" class="testrun-tc-cb w-4 h-4" value="\${tc.id}" \${isChecked ? 'checked' : ''}>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium" style="color:var(--tx);">\${escHtml(tc.title)}</div>
+                            <div class="text-[11px]" style="color:var(--tx-d);">\${tc.tcData?.steps?.length || 0} steps</div>
+                        </div>
+                    </label>
+                    \`;
+                }).join('')}
+            </div>
+        </div>
         ` : `
         <!-- Content area -->
         <div id="editor-container" class="mt-4 text-left"></div>
@@ -1682,7 +1702,97 @@ function renderViewer() {
         </div>
         ` : ''}
 
-        ${(!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
+        ${doc.category === 'testrun' ? `
+        <!-- Test Run Execution UI -->
+        ${(() => {
+            const results = doc.runData?.results || {};
+            const targetIds = doc.runData?.targetIds || [];
+            const targets = documents.filter(d => targetIds.includes(d.id));
+            
+            let totalSteps = 0;
+            let passCount = 0;
+            let failCount = 0;
+            let blockedCount = 0;
+            
+            targets.forEach(tc => {
+                const steps = tc.tcData?.steps || [];
+                totalSteps += steps.length;
+                steps.forEach((_, i) => {
+                    const st = results[tc.id]?.[i];
+                    if (st === 'pass') passCount++;
+                    if (st === 'fail') failCount++;
+                    if (st === 'blocked') blockedCount++;
+                });
+            });
+            
+            const untestedCount = totalSteps - (passCount + failCount + blockedCount);
+            const passPct = totalSteps ? (passCount / totalSteps * 100) : 0;
+            const failPct = totalSteps ? (failCount / totalSteps * 100) : 0;
+            const blockedPct = totalSteps ? (blockedCount / totalSteps * 100) : 0;
+            const untestedPct = totalSteps ? (untestedCount / totalSteps * 100) : 100;
+            
+            let html = \`
+            <div class="mb-6 p-4 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold" style="color:var(--tx);">\${t('testRunProgress')} (\${totalSteps} steps)</h3>
+                    <div class="flex gap-3 text-[11px] font-medium">
+                        <span style="color:#10b981">\${passCount} \${t('pass')}</span>
+                        <span style="color:#ef4444">\${failCount} \${t('fail')}</span>
+                        <span style="color:#f59e0b">\${blockedCount} \${t('blocked')}</span>
+                        <span style="color:var(--tx-m)">\${untestedCount} \${t('untested')}</span>
+                    </div>
+                </div>
+                <!-- Progress Bar -->
+                <div class="w-full h-2 rounded-full overflow-hidden flex" style="background:var(--card);">
+                    <div style="width:\${passPct}%;background:#10b981;transition:width .3s;"></div>
+                    <div style="width:\${failPct}%;background:#ef4444;transition:width .3s;"></div>
+                    <div style="width:\${blockedPct}%;background:#f59e0b;transition:width .3s;"></div>
+                    <div style="width:\${untestedPct}%;background:transparent;"></div>
+                </div>
+            </div>
+            <div class="space-y-4">
+            \`;
+            
+            if (targets.length === 0) {
+                html += \`<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases selected.</div>\`;
+            } else {
+                targets.forEach(tc => {
+                    const steps = tc.tcData?.steps || [];
+                    html += \`
+                    <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+                        <div class="px-4 py-3 flex items-center gap-3" style="background:var(--bg2); border-bottom:1px solid var(--brd);">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
+                            <span class="font-medium text-sm" style="color:var(--tx);">\${escHtml(tc.title)}</span>
+                            <button class="btn-s text-xs ml-auto" data-onclick="viewDoc('\${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+                        </div>
+                        <div class="bg-transparent p-4">
+                            \${steps.length === 0 ? \`<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>\` : 
+                            steps.map((step, idx) => {
+                                const status = results[tc.id]?.[idx] || 'untested';
+                                return \`
+                                <div class="flex flex-col sm:flex-row gap-4 py-3 \${idx !== steps.length - 1 ? 'border-b' : ''}" style="border-color:var(--brd);">
+                                    <div class="flex-1">
+                                        <div class="text-xs font-semibold mb-1" style="color:var(--tx-m);">Step \${idx + 1}</div>
+                                        <div class="text-sm mb-2" style="color:var(--tx);">\${escHtml(step.action).replace(/\\n/g, '<br>')}</div>
+                                        <div class="text-xs p-2 rounded" style="background:rgba(255,255,255,0.03); color:var(--tx-m);"><strong>Expected:</strong><br>\${escHtml(step.expected).replace(/\\n/g, '<br>')}</div>
+                                    </div>
+                                    <div class="sm:w-32 flex sm:flex-col gap-2 justify-center sm:justify-start shrink-0 pt-5 sm:pt-0">
+                                        <button class="flex-1 sm:flex-none text-[11px] py-1.5 px-2 rounded font-medium transition-colors \${status === 'pass' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-transparent text-gray-400 border border-gray-700 hover:border-gray-500'}" data-onclick="updateTestRunStep('\${doc.id}', '\${tc.id}', \${idx}, 'pass')"><i class="fa-solid fa-check mr-1.5"></i>\${t('pass')}</button>
+                                        <button class="flex-1 sm:flex-none text-[11px] py-1.5 px-2 rounded font-medium transition-colors \${status === 'fail' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/50' : 'bg-transparent text-gray-400 border border-gray-700 hover:border-gray-500'}" data-onclick="updateTestRunStep('\${doc.id}', '\${tc.id}', \${idx}, 'fail')"><i class="fa-solid fa-xmark mr-1.5"></i>\${t('fail')}</button>
+                                        <button class="flex-1 sm:flex-none text-[11px] py-1.5 px-2 rounded font-medium transition-colors \${status === 'blocked' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50' : 'bg-transparent text-gray-400 border border-gray-700 hover:border-gray-500'}" data-onclick="updateTestRunStep('\${doc.id}', '\${tc.id}', \${idx}, 'blocked')"><i class="fa-solid fa-ban mr-1.5"></i>\${t('blocked')}</button>
+                                    </div>
+                                </div>
+                                \`;
+                            }).join('')}
+                        </div>
+                    </div>
+                    \`;
+                });
+            }
+            html += \`</div>\`;
+            return html;
+        })()}
+        ` : (!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:300px;">
         </div>
@@ -1703,6 +1813,24 @@ function renderViewer() {
 // ========================
 // ACTIONS
 // ========================
+window.updateTestRunStep = async function(runDocId, tcId, stepIdx, status) {
+    const doc = documents.find(d => d.id === runDocId);
+    if (!doc || !doc.runData) return;
+    
+    if (!doc.runData.results) doc.runData.results = {};
+    if (!doc.runData.results[tcId]) doc.runData.results[tcId] = {};
+    
+    doc.runData.results[tcId][stepIdx] = status;
+    doc.updatedAt = Date.now();
+    
+    if (state.editingDoc?.id === runDocId) {
+        state.editingDoc = { ...doc };
+    }
+    
+    await persist();
+    render();
+};
+
 function createDoc(cat) {
     closeModal();
     state.view = 'editor';
@@ -1716,6 +1844,7 @@ function createDoc(cat) {
     state._newBugData = null;
     state._newTcData = null;
     state._newApiData = null;
+    state._newRunData = null;
     state._newContent = cat && TEMPLATES[cat] ? TEMPLATES[cat] : '# New Document\n\nStart writing here...';
     render();
     setTimeout(() => document.getElementById('ed-title')?.focus(), 100);
@@ -1763,6 +1892,7 @@ async function saveDoc() {
     let bugData = null;
     let tcData = null;
     let apiData = null;
+    let runData = null;
     
     if (cat === 'bug') {
         const env = document.getElementById('ed-bug-env')?.value || '';
@@ -1846,6 +1976,11 @@ ${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} |
 ${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${p.key || '-'} | ${p.value || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
 ${body ? `## ${t('apiBody')}\n\`\`\`json\n${body}\n\`\`\`\n` : ''}
 ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
+    } else if (cat === 'testrun') {
+        const checkboxes = document.querySelectorAll('.testrun-tc-cb:checked');
+        const targetIds = Array.from(checkboxes).map(cb => cb.value);
+        const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
+        runData = { targetIds, results: existingResults };
     }
 
     const tags = [...state.editorTags];
@@ -1858,14 +1993,14 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         // Update
         const idx = documents.findIndex(d => d.id === state.editingDoc.id);
         if (idx !== -1) {
-            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, updatedAt: Date.now() };
+            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, updatedAt: Date.now() };
         }
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
     } else {
         // Create
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
@@ -2504,6 +2639,12 @@ const i18n = {
         docDeletedForever: "Đã xóa vĩnh viễn",
         trashEmptied: "Đã dọn sạch thùng rác",
         copied: "Đã copy vào clipboard",
+        testrun: "Chạy Kiểm Thử",
+        untested: "Chưa test",
+        pass: "Pass",
+        fail: "Fail",
+        blocked: "Blocked",
+        testRunProgress: "Tiến độ",
         
         todo: "To Do",
         inProgress: "In Progress",
@@ -2636,6 +2777,12 @@ const i18n = {
         docDeletedForever: "Permanently deleted",
         trashEmptied: "Trash emptied",
         copied: "Copied to clipboard",
+        testrun: "Test Runs",
+        untested: "Untested",
+        pass: "Pass",
+        fail: "Fail",
+        blocked: "Blocked",
+        testRunProgress: "Progress",
         
         todo: "To Do",
         inProgress: "In Progress",
