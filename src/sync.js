@@ -8,8 +8,8 @@ const E2EESyncService = {
 
     getSettings() {
         return {
-            apiKey: localStorage.getItem('e2ee_api_key') || '',
-            binId: localStorage.getItem('e2ee_bin_id') || '',
+            apiKey: localStorage.getItem('e2ee_api_key') || '$2a$10$taCC8A46/1HYhSkqCEPyJejJ8iJrKyCRBy7xfzBECpMLJWshJ5P9u',
+            binId: localStorage.getItem('e2ee_bin_id') || '6a3bcc60da38895dfef72f76',
             masterPassword: sessionStorage.getItem('e2ee_master_password') || ''
         };
     },
