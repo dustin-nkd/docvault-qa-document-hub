@@ -548,6 +548,30 @@ async function hardDeleteDoc(id) {
     render();
 }
 
+function showEmptyTrashModal() {
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.1);">
+                <i class="fa-solid fa-dumpster-fire text-rose-400"></i>
+            </div>
+            <h3 class="font-heading font-semibold text-lg mb-2">${t('emptyTrashTitle') || 'Empty Trash'}</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">${t('emptyTrashConfirm') || 'Are you sure you want to permanently delete all items in the Trash? This action cannot be undone.'}</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
+                <button class="btn-d" data-onclick="emptyTrash()">${t('emptyTrashBtn') || 'Empty Trash'}</button>
+            </div>
+        </div>
+    `);
+}
+
+async function emptyTrash() {
+    documents = documents.filter(d => d.status !== 'deleted');
+    await persist();
+    closeModal();
+    toast(t('trashEmptied') || "Trash Emptied", 'success');
+    render();
+}
+
 // ========================
 // TEMPLATE MODAL
 // ========================
@@ -1073,6 +1097,7 @@ function renderDocList() {
                 <option value="title" ${state.sortBy === 'title' ? 'selected' : ''}>${t('sortAZ')}</option>
             </select>
             <span class="text-xs ml-auto" style="color:var(--tx-d);">${docs.length} documents</span>
+            ${state.view === 'trash' && docs.length > 0 ? `<button class="btn-d text-xs py-1 px-2.5 ml-3" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
         </div>
 
         <!-- Grid -->
@@ -2259,6 +2284,10 @@ const i18n = {
         delTitleForever: "Xóa Vĩnh Viễn",
         delConfirmBtn: "Xóa",
         delConfirmBtnForever: "Xóa Vĩnh Viễn",
+        emptyTrash: "Dọn rác",
+        emptyTrashTitle: "Dọn Sạch Thùng Rác",
+        emptyTrashConfirm: "Bạn có chắc chắn muốn dọn sạch thùng rác không? Toàn bộ tài liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.",
+        emptyTrashBtn: "Dọn Sạch",
         
         searchDocs: "Tìm kiếm tài liệu...",
         searchTasks: "Tìm kiếm tasks...",
@@ -2276,6 +2305,7 @@ const i18n = {
         docDeleted: "Đã chuyển vào Thùng rác",
         docRestored: "Đã khôi phục tài liệu",
         docDeletedForever: "Đã xóa vĩnh viễn",
+        trashEmptied: "Đã dọn sạch thùng rác",
         copied: "Đã copy vào clipboard",
         
         todo: "To Do",
@@ -2378,6 +2408,10 @@ const i18n = {
         delTitleForever: "Delete Permanently",
         delConfirmBtn: "Delete",
         delConfirmBtnForever: "Delete Permanently",
+        emptyTrash: "Empty Trash",
+        emptyTrashTitle: "Empty Trash",
+        emptyTrashConfirm: "Are you sure you want to empty the trash? All documents will be permanently deleted and cannot be recovered.",
+        emptyTrashBtn: "Empty Trash",
         
         searchDocs: "Search documents...",
         searchTasks: "Search tasks...",
@@ -2395,6 +2429,7 @@ const i18n = {
         docDeleted: "Moved to Trash",
         docRestored: "Document restored",
         docDeletedForever: "Permanently deleted",
+        trashEmptied: "Trash emptied",
         copied: "Copied to clipboard",
         
         todo: "To Do",
