@@ -698,25 +698,53 @@ function updateSidebar() {
     const lblTrash = document.getElementById('lbl-trash'); if (lblTrash) lblTrash.textContent = t('trash') || 'Trash';
     const lblCats = document.getElementById('lbl-categories'); if (lblCats) lblCats.textContent = t('categories') || 'Categories';
     
-    // Also update categories in sidebar dynamically
-    const catItems = document.querySelectorAll('.nav-item[data-cat]');
-    catItems.forEach(el => {
-        const c = el.dataset.cat;
-        if (c !== 'all' && CAT_META[c]) {
-            const span = el.querySelector('span.text-sm');
-            if (span) span.textContent = CAT_META[c].label;
-        }
-    });
-
-    // Counts
     const activeDocs = documents.filter(d => d.status !== 'deleted');
     document.getElementById('cnt-all').textContent = activeDocs.length;
     document.getElementById('cnt-fav').textContent = activeDocs.filter(d => d.favorite).length;
-    Object.keys(CAT_META).forEach(k => {
-        const el = document.getElementById('cnt-' + k);
-        if (el) el.textContent = activeDocs.filter(d => d.category === k).length;
-    });
-    
+
+    // Render categories dynamically
+    const catNav = document.getElementById('cat-nav');
+    if (catNav) {
+        let catHtml = '';
+        Object.entries(CAT_META).forEach(([k, m]) => {
+            const catDocs = activeDocs.filter(d => d.category === k);
+            const isActiveCat = state.view === 'documents' && state.category === k && !state.subfolder;
+            const cls = isActiveCat ? 'nav-item active flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm' : 'nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm';
+            
+            catHtml += `
+                <div class="${cls}" style="color:var(--tx-m); cursor:pointer;" data-onclick="navigate('documents','${k}')">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background:${m.color};"></span>
+                    <span class="truncate">${m.label}</span>
+                    <span class="count ml-auto">${catDocs.length}</span>
+                </div>
+            `;
+            
+            // Subfolders
+            const subfolders = [...new Set(catDocs.filter(d => d.subfolder).map(d => d.subfolder))];
+            if (subfolders.length > 0) {
+                subfolders.sort().forEach(sf => {
+                    const sfCount = catDocs.filter(d => d.subfolder === sf).length;
+                    const isActiveSf = state.view === 'documents' && state.category === k && state.subfolder === sf;
+                    const sfCls = isActiveSf ? 'nav-item active flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2' : 'nav-item flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2';
+                    
+                    catHtml += `
+                        <div class="${sfCls}" style="color:var(--tx-m); cursor:pointer; border-color:${isActiveSf ? m.color : 'transparent'}; transition:all 0.2s;" data-onclick="navigate('documents','${k}','${sf.replace(/'/g, "\\'")}')">
+                            <i class="fa-regular fa-folder w-3 text-center opacity-50"></i>
+                            <span class="truncate">${escHtml(sf)}</span>
+                            <span class="count ml-auto" style="font-size:10px;">${sfCount}</span>
+                        </div>
+                    `;
+                });
+            }
+        });
+        
+        if (typeof morphdom !== 'undefined') {
+            morphdom(catNav, `<nav class="px-3 flex flex-col gap-0.5" id="cat-nav">${catHtml}</nav>`);
+        } else {
+            catNav.innerHTML = catHtml;
+        }
+    }
+
     const trashCount = documents.filter(d => d.status === 'deleted').length;
     const cntTrash = document.getElementById('cnt-trash');
     if (cntTrash) cntTrash.textContent = trashCount;
@@ -760,6 +788,7 @@ function updateHeader() {
         const doc = documents.find(d => d.id === state.editingDoc?.id);
         title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
         actions = `
+            <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
             <button class="btn-s" data-onclick="navigate('documents', '${state.category}')"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
             <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
         `;
@@ -792,16 +821,16 @@ function updateHeader() {
 // ========================
 // NAVIGATION
 // ========================
-function navigate(view, cat) {
+function navigate(view, cat, subfolder = '') {
     state.view = view;
     if (cat !== undefined) state.category = cat;
     if (view === 'favorites') state.category = 'all';
+    state.subfolder = subfolder;
     state.search = '';
     state.statusFilter = 'all';
     state.editingDoc = null;
     state.editorTags = [];
     state.editorMode = 'edit';
-    // Đóng sidebar mobile
     if (state.sidebarOpen) toggleSidebar();
     render();
 }
@@ -816,7 +845,10 @@ function getFiltered() {
     } else {
         docs = docs.filter(d => d.status !== 'deleted');
         if (state.view === 'favorites') docs = docs.filter(d => d.favorite);
-        else if (state.category !== 'all') docs = docs.filter(d => d.category === state.category);
+        else if (state.category !== 'all') {
+            docs = docs.filter(d => d.category === state.category);
+            if (state.subfolder) docs = docs.filter(d => d.subfolder === state.subfolder);
+        }
     }
     if (state.search) {
         const q = state.search.toLowerCase();
@@ -891,6 +923,7 @@ window.syncEditorState = function() {
 
     if (state.editingDoc) {
         state.editingDoc.title = title;
+        state.editingDoc.subfolder = subfolder;
         state.editingDoc.category = cat;
         state.editingDoc.status = status;
         if (window.tuiEditor || document.getElementById('ed-content-hidden')) state.editingDoc.content = content;
@@ -899,6 +932,7 @@ window.syncEditorState = function() {
         if (cat === 'api') state.editingDoc.apiData = apiData;
     } else {
         state._newTitle = title;
+        state._newSubfolder = subfolder;
         state._newCat = cat;
         state._newStatus = status;
         if (window.tuiEditor || document.getElementById('ed-content-hidden')) state._newContent = content;
@@ -908,15 +942,31 @@ window.syncEditorState = function() {
     }
 }
 
+function updateDOM(el, htmlStr) {
+    if (typeof morphdom !== 'undefined') {
+        morphdom(el, `<div id="${el.id}" class="${el.className}">${htmlStr}</div>`, {
+            onBeforeElUpdated: function(fromEl, toEl) {
+                if (fromEl.id === 'editor-container' || fromEl.id === 'viewer-container') {
+                    return false;
+                }
+                return true;
+            }
+        });
+    } else {
+        el.innerHTML = htmlStr;
+    }
+}
+
 function renderContent() {
     if (state.view === 'editor') syncEditorState();
-    window.tuiEditor = null;
     
     const c = document.getElementById('content');
-    if (state.view === 'dashboard') c.innerHTML = renderDashboard();
-    else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') c.innerHTML = renderDocList();
+    if (state.view === 'dashboard') updateDOM(c, renderDashboard());
+    else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') updateDOM(c, renderDocList());
     else if (state.view === 'editor') {
+        // Always recreate editor completely to avoid state issues
         c.innerHTML = renderEditor();
+        window.tuiEditor = null;
         const container = document.getElementById('editor-container');
         if (container) {
             const hiddenTa = document.getElementById('ed-content-hidden');
@@ -1172,6 +1222,73 @@ function renderDocList() {
     </div>`;
 }
 
+async function shareDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.1);">
+                <i class="fa-solid fa-spinner fa-spin text-emerald-400"></i>
+            </div>
+            <h3 class="font-heading font-semibold text-lg mb-2">${t('generatingLink') || 'Generating Secure Link...'}</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">${t('pleaseWait') || 'Please wait while we encrypt your document.'}</p>
+        </div>
+    `);
+
+    try {
+        const apiKey = localStorage.getItem('e2ee_api_key') || '$2a$10$taCC8A46/1HYhSkqCEPyJejJ8iJrKyCRBy7xfzBECpMLJWshJ5P9u';
+        
+        // 1. Generate random key
+        const randomKey = CryptoJS.lib.WordArray.random(16).toString();
+        
+        // 2. Encrypt document
+        const encryptedData = CryptoJS.AES.encrypt(JSON.stringify(doc), randomKey).toString();
+        
+        // 3. Post to JSONBin
+        const response = await fetch('https://api.jsonbin.io/v3/b', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': apiKey,
+                'X-Bin-Private': 'false'
+            },
+            body: JSON.stringify({ data: encryptedData })
+        });
+        
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Failed to create bin');
+        
+        const binId = result.metadata.id;
+        
+        // 4. Generate URL
+        const url = new URL(window.location.href);
+        url.search = '?shareId=' + binId;
+        url.hash = 'key=' + randomKey;
+        
+        showModal(`
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.1);">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                </div>
+                <h3 class="font-heading font-semibold text-lg mb-2">${t('linkReady') || 'Link Ready!'}</h3>
+                <p class="text-sm mb-4" style="color:var(--tx-m);">${t('linkDesc') || 'Anyone with this link can view the document. It is encrypted with a unique key.'}</p>
+                <div class="bg-black/20 p-3 rounded border mb-6 flex items-center gap-2" style="border-color:var(--brd);">
+                    <input type="text" readonly value="${url.href}" class="w-full bg-transparent text-sm" style="color:var(--tx);outline:none;" id="share-link-input">
+                    <button class="shrink-0 p-2 rounded hover:bg-white/5" onclick="navigator.clipboard.writeText(document.getElementById('share-link-input').value);toast('${t('copied') || 'Copied'}', 'success')">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+                <button class="btn-d" style="background:var(--card);color:var(--tx);" data-onclick="closeModal()">${t('close') || 'Close'}</button>
+            </div>
+        `);
+    } catch (e) {
+        console.error(e);
+        toast('Failed to share: ' + e.message, 'error');
+        closeModal();
+    }
+}
+
 // Document context menu (dropdown)
 function showDocMenu(id, btn) {
     // Xóa menu cũ nếu có
@@ -1192,6 +1309,8 @@ function showDocMenu(id, btn) {
         `;
     } else {
         menuHtml = `
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--c-run);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();shareDoc('${id}')">
+                <i class="fa-solid fa-share-nodes w-4 text-center"></i> ${t('share') || 'Share Link'} </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
                 <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
@@ -1253,12 +1372,24 @@ function renderEditor() {
     const tcData = isEdit ? doc.tcData : state._newTcData;
     const apiData = isEdit ? doc.apiData : state._newApiData;
 
+    const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
+    const existingFolders = [...new Set(documents.filter(d => d.subfolder).map(d => d.subfolder))];
+
     return `<div class="fade-up max-w-4xl mx-auto">
         
-        <div class="grid sm:grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${category === 'credential' ? 'Service Name' : 'Title'}</label>
-                <input id="ed-title" class="form-input" placeholder="${category === 'credential' ? t('egCred') : t('enterTitle')}" value="${escHtml(title)}">
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div class="md:col-span-2 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${category === 'credential' ? 'Service Name' : 'Title'}</label>
+                    <input id="ed-title" class="form-input" placeholder="${category === 'credential' ? t('egCred') : t('enterTitle')}" value="${escHtml(title)}">
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Sub-folder <span style="color:var(--tx-d)">(Optional)</span></label>
+                    <input id="ed-subfolder" list="folder-list" class="form-input" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}">
+                    <datalist id="folder-list">
+                        ${existingFolders.map(f => `<option value="${escHtml(f)}"></option>`).join('')}
+                    </datalist>
+                </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
@@ -1614,6 +1745,7 @@ window.cancelEdit = function() {
 
 async function saveDoc() {
     const title = document.getElementById('ed-title')?.value.trim();
+    const subfolder = document.getElementById('ed-subfolder')?.value.trim() || '';
     const cat = document.getElementById('ed-cat')?.value;
     const status = document.getElementById('ed-status')?.value;
     
@@ -1811,11 +1943,59 @@ window.initAppAfterUnlock = async function(skipSync = false) {
     handleUrlParams();
 }
 
-if (window.SyncService && !window.SyncService.isUnlocked()) {
+const urlParams = new URLSearchParams(window.location.search);
+const shareId = urlParams.get('shareId');
+
+if (shareId) {
+    const ls = document.getElementById('lock-screen');
+    if (ls) ls.classList.add('hidden');
+    loadSharedDoc(shareId, window.location.hash.replace('#key=', ''));
+} else if (window.SyncService && !window.SyncService.isUnlocked()) {
     const ls = document.getElementById('lock-screen');
     if (ls) ls.classList.remove('hidden');
 } else {
     window.initAppAfterUnlock();
+}
+
+async function loadSharedDoc(binId, key) {
+    try {
+        toast("Loading shared document...", "info");
+        const res = await fetch('https://api.jsonbin.io/v3/b/' + binId);
+        const payload = await res.json();
+        
+        if (payload.record && payload.record.data) {
+            const bytes = CryptoJS.AES.decrypt(payload.record.data, key);
+            const decStr = bytes.toString(CryptoJS.enc.Utf8);
+            if (!decStr) throw new Error("Invalid share key");
+            const doc = JSON.parse(decStr);
+            
+            state.view = 'viewer';
+            state.editingDoc = doc;
+            documents = [doc];
+            
+            updateHeader();
+            renderContent();
+            
+            // Hide sidebar and toggle
+            document.getElementById('sidebar').style.display = 'none';
+            const sbToggle = document.querySelector('button[data-onclick="toggleSidebar()"]');
+            if (sbToggle) sbToggle.style.display = 'none';
+            
+            // Modify header actions
+            const header = document.getElementById('app-header');
+            const actionsDiv = header.querySelector('.flex.items-center.gap-2');
+            if (actionsDiv) {
+                actionsDiv.innerHTML = `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open QA Hub</button>`;
+            }
+            
+            toast("Document loaded securely", "success");
+        } else {
+            throw new Error("Invalid document data");
+        }
+    } catch (e) {
+        console.error(e);
+        document.body.innerHTML = `<div class="flex items-center justify-center h-screen bg-grid"><div class="p-10 text-center max-w-md"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-lock text-rose-400 text-2xl"></i></div><h1 class="font-heading text-2xl font-bold mb-4" style="color:var(--tx)">Access Denied</h1><p class="text-sm mb-8" style="color:var(--tx-m)">${e.message || 'Unable to decrypt this document. The link may be invalid or expired.'}</p><button class="btn-p" onclick="window.location.href=window.location.pathname">Go to QA Hub</button></div></div>`;
+    }
 }
 
 // ========================
@@ -2454,12 +2634,14 @@ window.changeEditorCat = function(cat) {
     if (state.editingDoc) {
         state.editingDoc.category = cat;
         state.editingDoc.title = document.getElementById('ed-title')?.value || '';
+        state.editingDoc.subfolder = document.getElementById('ed-subfolder')?.value || '';
         if (cat === 'bug' && !state.editingDoc.bugData) state.editingDoc.bugData = {};
         if (cat === 'testcases' && !state.editingDoc.tcData) state.editingDoc.tcData = {};
         if (cat === 'api' && !state.editingDoc.apiData) state.editingDoc.apiData = {};
     } else {
         state._newCat = cat;
         state._newTitle = document.getElementById('ed-title')?.value || '';
+        state._newSubfolder = document.getElementById('ed-subfolder')?.value || '';
         if (cat === 'testcases' && !state._newTcData) state._newTcData = {};
         if (cat === 'api' && !state._newApiData) state._newApiData = {};
     }
