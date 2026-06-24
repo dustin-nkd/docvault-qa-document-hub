@@ -1682,16 +1682,21 @@ function renderViewer() {
         </div>
         ` : ''}
 
+        ${(!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:300px;">
         </div>
+        `}
         <textarea id="vw-content-hidden" style="display:none;">${escHtml(doc.content)}</textarea>
+        
         <!-- Actions bottom -->
+        ${window.location.search.includes('shareId') ? '' : `
         <div class="flex items-center gap-3 mt-5">
             <button class="btn-p" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
             <button class="btn-s" data-onclick="duplicateDoc('${doc.id}')"><i class="fa-solid fa-copy mr-1.5"></i>${t('duplicate')}</button>
             <button class="btn-d ml-auto" data-onclick="showDeleteModal('${doc.id}')"><i class="fa-solid fa-trash mr-1.5"></i>${t('delete')}</button>
         </div>
+        `}
     </div>`;
 }
 
