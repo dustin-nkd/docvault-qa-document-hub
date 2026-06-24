@@ -348,7 +348,8 @@ let state = {
     editingDoc: null, // null = new, object = editing
     editorTags: [],
     editorMode: 'edit', // edit | preview
-    sidebarOpen: false
+    sidebarOpen: false,
+    history: []
 };
 
 let documents = [];
@@ -791,7 +792,7 @@ function updateHeader() {
         title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
         actions = `
             <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
-            <button class="btn-s" data-onclick="navigate('documents', '${state.category}')"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
+            <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
             <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
         `;
     }
@@ -823,7 +824,57 @@ function updateHeader() {
 // ========================
 // NAVIGATION
 // ========================
-function navigate(view, cat, subfolder = '') {
+window.pushHistory = function() {
+    if (!state.history) state.history = [];
+    const last = state.history[state.history.length - 1];
+    const current = {
+        view: state.view,
+        category: state.category,
+        subfolder: state.subfolder || '',
+        docId: state.editingDoc?.id || null
+    };
+    
+    // Only push if something actually changed
+    if (!last || last.view !== current.view || last.category !== current.category || last.subfolder !== current.subfolder || last.docId !== current.docId) {
+        state.history.push(current);
+        if (state.history.length > 20) state.history.shift(); // Keep max 20 history items
+    }
+};
+
+window.navigateBack = function() {
+    if (state.history && state.history.length > 0) {
+        const prev = state.history.pop();
+        state.view = prev.view;
+        state.category = prev.category;
+        state.subfolder = prev.subfolder;
+        state.search = '';
+        state.statusFilter = 'all';
+        
+        if (prev.docId) {
+            const doc = documents.find(d => d.id === prev.docId);
+            if (doc) {
+                state.editingDoc = { ...doc };
+                state.editorTags = [...doc.tags];
+            } else {
+                state.editingDoc = null;
+            }
+        } else {
+            state.editingDoc = null;
+        }
+        render();
+    } else {
+        // Fallback
+        if (state.view === 'editor' || state.view === 'viewer') {
+            navigate('documents', state.category);
+        } else {
+            navigate('dashboard');
+        }
+    }
+};
+
+window.navigate = function(view, cat, subfolder = '') {
+    if (state.view === 'editor') syncEditorState();
+    pushHistory();
     state.view = view;
     if (cat !== undefined) state.category = cat;
     if (view === 'favorites') state.category = 'all';
@@ -1859,6 +1910,7 @@ window.updateTestRunStep = async function(runDocId, tcId, stepIdx, status) {
 
 function createDoc(cat) {
     closeModal();
+    pushHistory();
     state.view = 'editor';
     state.editingDoc = null;
     state.editorTags = [];
@@ -1879,6 +1931,7 @@ function createDoc(cat) {
 function editDoc(id) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
+    pushHistory();
     state.view = 'editor';
     state.editingDoc = { ...doc };
     state.editorTags = [...doc.tags];
@@ -1889,6 +1942,7 @@ function editDoc(id) {
 function viewDoc(id) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
+    pushHistory();
     state.view = 'viewer';
     state.editingDoc = { ...doc };
     render();
@@ -1896,15 +1950,9 @@ function viewDoc(id) {
 
 window.cancelEdit = function() {
     window.tuiEditor = null;
-    if (state.editingDoc && documents.some(d => d.id === state.editingDoc.id)) {
-        state.view = 'viewer';
-    } else {
-        state.editingDoc = null;
-        state.view = 'documents';
-    }
     state.editorTags = [];
     state.editorMode = 'edit';
-    render();
+    navigateBack();
 }
 
 async function saveDoc() {
