@@ -1198,6 +1198,7 @@ function renderDocList() {
                         <div class="flex items-start justify-between mb-2.5">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                ${d.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(d.subfolder)}</span>` : ''}
                                 <span class="st-badge st-${d.status}">${d.status}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2">
@@ -1642,6 +1643,7 @@ function renderViewer() {
         <!-- Meta -->
         <div class="flex flex-wrap items-center gap-2.5 mb-4">
             <span class="cat-badge ${CAT_META[doc.category].cls}">${CAT_META[doc.category].label}</span>
+            ${doc.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(doc.subfolder)}</span>` : ''}
             <span class="st-badge st-${doc.status}">${doc.status}</span>
             ${doc.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
             <button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="toggleFav('${doc.id}')">
@@ -1704,6 +1706,7 @@ function createDoc(cat) {
     state.editorMode = 'edit';
     state._newCat = cat || 'runbook';
     state._newTitle = '';
+    state._newSubfolder = '';
     state._newStatus = 'draft';
     state._newBugData = null;
     state._newTcData = null;
@@ -2475,6 +2478,7 @@ const i18n = {
         linkReady: "Link đã sẵn sàng!",
         linkDesc: "Bất kỳ ai có link này đều có thể xem tài liệu. Dữ liệu đã được mã hóa an toàn.",
         share: "Chia sẻ",
+        close: "Đóng",
         
         searchDocs: "Tìm kiếm tài liệu...",
         searchTasks: "Tìm kiếm tasks...",
@@ -2606,6 +2610,7 @@ const i18n = {
         linkReady: "Link Ready!",
         linkDesc: "Anyone with this link can view the document. It is encrypted with a unique key.",
         share: "Share Link",
+        close: "Close",
         
         searchDocs: "Search documents...",
         searchTasks: "Search tasks...",
