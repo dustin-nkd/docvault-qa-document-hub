@@ -26,7 +26,7 @@
         }
       }
     </script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     
     <style>
         :root {
@@ -221,6 +221,27 @@
 
     <!-- Mobile overlay -->
     <div id="mob-overlay" class="fixed inset-0 z-[45] bg-black/50 hidden md:hidden" data-onclick="toggleSidebar()"></div>
+
+    <!-- Lock Screen -->
+    <div id="lock-screen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--bg)] hidden">
+        <div class="text-center fade-up max-w-sm w-full px-6">
+            <div class="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6" style="background:var(--acc);">
+                <i class="fa-solid fa-lock text-white text-2xl"></i>
+            </div>
+            <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
+            <p class="text-sm text-[var(--tx-m)] mb-8">Please enter your Master Password to decrypt your synchronized data.</p>
+            
+            <form onsubmit="event.preventDefault(); window.SyncService.unlock(document.getElementById('master-password').value);">
+                <input type="password" id="master-password" class="form-input text-center text-lg tracking-widest mb-4" placeholder="••••••••" autocomplete="current-password" required>
+                <button type="submit" class="btn-p w-full py-3">Unlock Vault</button>
+            </form>
+            
+            <div class="mt-6 pt-6 border-t border-[var(--brd)] text-xs text-[var(--tx-d)]">
+                <p>First time? The password you enter will become your new Master Password.</p>
+                <button class="mt-3 text-[var(--acc)] underline" onclick="window.SyncService.skipSync()">Skip sync & Use local data</button>
+            </div>
+        </div>
+    </div>
 
     <div class="flex h-screen w-full">
         <!-- Sidebar -->

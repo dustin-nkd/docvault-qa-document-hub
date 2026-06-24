@@ -1,135 +1,122 @@
-const SyncService = {
-    clientId: '821273695892-0n81gju50nenhne1ohmkedmvv2ik09qv.apps.googleusercontent.com',
-    scopes: 'https://www.googleapis.com/auth/drive.appdata',
-
-    // Authenticate with Google (Web GSI)
-    async getAuthToken() {
-        return new Promise((resolve, reject) => {
-            if (!window.google || !window.google.accounts) {
-                reject(new Error("Google Identity Services library not loaded. Please wait or reload."));
-                return;
-            }
-
-            const tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: this.clientId,
-                scope: this.scopes,
-                callback: (response) => {
-                    if (response.error !== undefined) {
-                        reject(new Error(response.error));
-                        return;
-                    }
-                    resolve(response.access_token);
-                },
-            });
-            tokenClient.requestAccessToken();
-        });
+// E2EE Sync Service using JSONBin.io and CryptoJS
+const E2EESyncService = {
+    saveSettings(apiKey, binId, masterPassword) {
+        localStorage.setItem('e2ee_api_key', apiKey || '');
+        localStorage.setItem('e2ee_bin_id', binId || '');
+        sessionStorage.setItem('e2ee_master_password', masterPassword || '');
     },
 
-    // Get user info (optional, just to show logged in email)
-    async getUserInfo(token) {
-        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        return await response.json();
+    getSettings() {
+        return {
+            apiKey: localStorage.getItem('e2ee_api_key') || '',
+            binId: localStorage.getItem('e2ee_bin_id') || '',
+            masterPassword: sessionStorage.getItem('e2ee_master_password') || ''
+        };
     },
 
-    // Search for docvault_data.json in appDataFolder
-    async getDriveFileId(token) {
-        const response = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='docvault_data.json'&fields=files(id,name,createdTime)&orderBy=createdTime desc&t=${Date.now()}`, {
-            headers: { 
-                'Authorization': 'Bearer ' + token,
-                'Cache-Control': 'no-cache'
-            }
-        });
-        if (!response.ok) throw new Error("Failed to query drive files");
-        const data = await response.json();
-        return data.files && data.files.length > 0 ? data.files[0].id : null;
+    isConfigured() {
+        const s = this.getSettings();
+        return !!s.apiKey && !!s.binId;
     },
 
-    // Download data from Drive
-    async downloadData() {
+    isUnlocked() {
+        return !!sessionStorage.getItem('e2ee_master_password');
+    },
+
+    encryptData(data, password) {
+        if (!window.CryptoJS) throw new Error("CryptoJS not loaded");
+        const jsonStr = JSON.stringify(data);
+        return CryptoJS.AES.encrypt(jsonStr, password).toString();
+    },
+
+    decryptData(cipherText, password) {
+        if (!window.CryptoJS) throw new Error("CryptoJS not loaded");
+        const bytes = CryptoJS.AES.decrypt(cipherText, password);
+        const decStr = bytes.toString(CryptoJS.enc.Utf8);
+        if (!decStr) throw new Error("Decryption failed. Incorrect password.");
+        return JSON.parse(decStr);
+    },
+
+    async pullAndUnlock(password) {
+        const s = this.getSettings();
+        if (!s.apiKey || !s.binId) return false;
+
+        toast("Fetching data from Cloud...", "info");
         try {
-            const token = await this.getAuthToken();
-            const fileId = await this.getDriveFileId(token);
-            if (!fileId) return null; // No data on drive
-
-            const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&t=${Date.now()}`, {
-                headers: { 
-                    'Authorization': 'Bearer ' + token,
-                    'Cache-Control': 'no-cache'
-                }
+            const res = await fetch('https://api.jsonbin.io/v3/b/' + s.binId + '/latest', {
+                headers: { 'X-Master-Key': s.apiKey }
             });
-            if (!response.ok) throw new Error("Failed to download data");
-            return await response.json();
+            if (!res.ok) throw new Error("Failed to fetch from JSONBin");
+            const payload = await res.json();
+            
+            if (payload.record && payload.record.data) {
+                const plainData = this.decryptData(payload.record.data, password);
+                localStorage.setItem('docvault_data', JSON.stringify(plainData));
+                sessionStorage.setItem('e2ee_master_password', password);
+                return true;
+            } else {
+                sessionStorage.setItem('e2ee_master_password', password);
+                return true;
+            }
         } catch (err) {
-            console.error("Sync Download Error:", err);
+            console.error(err);
             throw err;
         }
     },
 
-    // Upload data to Drive
-    async uploadData(localData) {
-        try {
-            const token = await this.getAuthToken();
-            const fileId = await this.getDriveFileId(token);
-            const fileContent = JSON.stringify(localData);
+    async pushData() {
+        if (!this.isConfigured() || !this.isUnlocked()) return;
 
-            if (fileId) {
-                // UPDATE existing file using uploadType=media (safest for content-only updates)
-                const url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`;
-                const response = await fetch(url, {
-                    method: 'PATCH',
-                    headers: { 
-                        'Authorization': 'Bearer ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    body: fileContent
-                });
-                if (!response.ok) throw new Error("Failed to update data on Drive");
-                return await response.json();
-            } else {
-                // CREATE new file: Two-step process
-                // 1. Create empty file with metadata
-                const metaRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name: 'docvault_data.json',
-                        parents: ['appDataFolder']
-                    })
-                });
-                if (!metaRes.ok) throw new Error("Failed to create file metadata");
-                const meta = await metaRes.json();
-                
-                // 2. Upload content
-                const url = `https://www.googleapis.com/upload/drive/v3/files/${meta.id}?uploadType=media`;
-                const response = await fetch(url, {
-                    method: 'PATCH',
-                    headers: { 
-                        'Authorization': 'Bearer ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    body: fileContent
-                });
-                if (!response.ok) throw new Error("Failed to upload new data content");
-                return await response.json();
-            }
+        const s = this.getSettings();
+        const rawData = localStorage.getItem('docvault_data');
+        if (!rawData) return;
+        
+        try {
+            const parsedData = JSON.parse(rawData);
+            const cipherText = this.encryptData(parsedData, s.masterPassword);
+
+            const res = await fetch('https://api.jsonbin.io/v3/b/' + s.binId, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': s.apiKey
+                },
+                body: JSON.stringify({ data: cipherText })
+            });
+            
+            if (!res.ok) throw new Error("Failed to push to JSONBin");
+            console.log("Auto-Sync Complete");
         } catch (err) {
-            console.error("Sync Upload Error:", err);
-            throw err;
+            console.error("Auto-Sync Error:", err);
+            toast("Auto-sync failed. Check your network.", "error");
         }
     },
     
-    // Revoke token / Logout
-    async logout() {
-        // Since launchWebAuthFlow doesn't use Chrome's internal token cache,
-        // we simply "sign out" the user by assuming they are logged out in our app state.
-        // To truly log out of Google, they would log out of the browser.
-        return Promise.resolve();
+    async unlock(password) {
+        const btn = document.querySelector('#lock-screen button[type="submit"]');
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Decrypting...';
+        
+        try {
+            if (this.isConfigured()) {
+                await this.pullAndUnlock(password);
+            } else {
+                sessionStorage.setItem('e2ee_master_password', password);
+            }
+            document.getElementById('lock-screen').classList.add('hidden');
+            toast("Vault Unlocked", "success");
+            
+            if (window.initAppAfterUnlock) await window.initAppAfterUnlock();
+        } catch (err) {
+            toast(err.message === "Failed to fetch from JSONBin" ? "JSONBin API Error" : "Incorrect Password!", "error");
+            if (btn) btn.innerHTML = 'Unlock Vault';
+        }
+    },
+    
+    skipSync() {
+        sessionStorage.setItem('e2ee_master_password', 'skipped');
+        document.getElementById('lock-screen').classList.add('hidden');
+        if (window.initAppAfterUnlock) window.initAppAfterUnlock();
     }
 };
 
-window.SyncService = SyncService;
+window.SyncService = E2EESyncService;
