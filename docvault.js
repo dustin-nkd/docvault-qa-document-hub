@@ -988,39 +988,46 @@ function renderContent() {
         }
     }
     else if (state.view === 'viewer') {
-        c.innerHTML = renderViewer();
-        const container = document.getElementById('viewer-container');
-        if (container) {
-            const hiddenTa = document.getElementById('vw-content-hidden');
-            const initialVal = hiddenTa ? hiddenTa.value : '';
-            window.tuiViewer = toastui.Editor.factory({
-                el: container,
-                viewer: true,
-                initialValue: initialVal,
-                theme: 'dark'
-            });
+        const isSameDoc = window.currentViewerDocId === state.editingDoc?.id;
+        if (isSameDoc) {
+            updateDOM(c, renderViewer());
+        } else {
+            c.innerHTML = renderViewer();
+            window.currentViewerDocId = state.editingDoc?.id;
             
-            // Inject copy buttons into code blocks
-            setTimeout(() => {
-                container.querySelectorAll('pre').forEach(pre => {
-                    pre.style.position = 'relative';
-                    const codeEl = pre.querySelector('code');
-                    const textToCopy = codeEl ? codeEl.innerText : pre.innerText;
-                    
-                    const btn = document.createElement('button');
-                    btn.className = 'code-copy-btn';
-                    btn.title = 'Copy';
-                    btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
-                    btn.onclick = function(e) {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(textToCopy).then(() => {
-                            btn.innerHTML = '<i class="fa-solid fa-check"></i>';
-                            setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
-                        });
-                    };
-                    pre.appendChild(btn);
+            const container = document.getElementById('viewer-container');
+            if (container) {
+                const hiddenTa = document.getElementById('vw-content-hidden');
+                const initialVal = hiddenTa ? hiddenTa.value : '';
+                window.tuiViewer = toastui.Editor.factory({
+                    el: container,
+                    viewer: true,
+                    initialValue: initialVal,
+                    theme: 'dark'
                 });
-            }, 100);
+                
+                // Inject copy buttons into code blocks
+                setTimeout(() => {
+                    container.querySelectorAll('pre').forEach(pre => {
+                        pre.style.position = 'relative';
+                        const codeEl = pre.querySelector('code');
+                        const textToCopy = codeEl ? codeEl.innerText : pre.innerText;
+                        
+                        const btn = document.createElement('button');
+                        btn.className = 'code-copy-btn';
+                        btn.title = 'Copy';
+                        btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                        btn.onclick = function(e) {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                                setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
+                            });
+                        };
+                        pre.appendChild(btn);
+                    });
+                }, 100);
+            }
         }
     }
 }
