@@ -596,20 +596,35 @@ window.saveSyncSettings = async function() {
         return;
     }
     
-    // Determine the master password to use
+    const btn = document.querySelector('#sync-modal button[type="submit"]');
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Syncing...';
+    
     let masterPassword = window.SyncService.getSettings().masterPassword || 'skipped';
     if (newPassword) {
         masterPassword = newPassword;
-        toast("Master Password Updated", "info");
     }
     
     window.SyncService.saveSettings(apiKey, binId, masterPassword);
-    toast("Settings Saved", "success");
-    closeModal();
     
-    // Trigger push immediately if unlocked
-    if (window.SyncService.isUnlocked() && masterPassword !== 'skipped') {
-        await window.SyncService.pushData();
+    try {
+        if (masterPassword !== 'skipped') {
+            // Try to pull first
+            const hasData = await window.SyncService.pullAndUnlock(masterPassword);
+            if (hasData) {
+                toast("Data pulled from Cloud!", "success");
+                setTimeout(() => window.location.reload(), 1000);
+                return;
+            } else {
+                // Bin is empty, push local data
+                await window.SyncService.pushData();
+                toast("Local data pushed to Cloud!", "success");
+            }
+        }
+        closeModal();
+    } catch (err) {
+        console.error(err);
+        toast("Error: " + (err.message || "Failed to sync"), "error");
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Settings & Sync';
     }
 }
 
