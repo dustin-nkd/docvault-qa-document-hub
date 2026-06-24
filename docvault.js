@@ -356,6 +356,9 @@ let documents = [];
 // ========================
 async function persist() {
     await DocStorage.save(documents);
+    if (window.SyncService && window.SyncService.isUnlocked()) {
+        window.SyncService.pushData(); // async background push
+    }
 }
 async function hydrate() {
     const settings = await DocStorage.getSettings();
@@ -552,83 +555,51 @@ function showTemplateModal() {
 // SIDEBAR
 // ========================
 window.showSyncModal = function() {
+    const s = window.SyncService.getSettings();
     showModal(`
         <div>
-            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2"><i class="fa-brands fa-google text-[var(--c-mtg)]"></i> Google Drive Sync</h3>
-            <p class="text-sm mb-6" style="color:var(--tx-m)">Keep your QA documents synchronized across multiple devices using your own Google Drive. Data is securely stored in a hidden app folder.</p>
+            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2"><i class="fa-solid fa-cloud text-[var(--acc)]"></i> Cloud Sync Settings</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m)">Configure your JSONBin.io backend for Real-time E2EE Synchronization.</p>
             
-            <div class="flex flex-col gap-3">
-                <button class="btn-p w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPush(this)">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Push Local Data to Drive
-                </button>
-                <button class="btn-s w-full flex items-center justify-center gap-2 py-2.5" data-onclick="syncPull(this)">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> Pull Data from Drive
-                </button>
-                <button class="btn-s w-full flex items-center justify-center gap-2 py-2.5" style="border-color:rgba(244,63,94,0.3); color:var(--c-kn);" data-onclick="syncLogout()">
-                    <i class="fa-solid fa-right-from-bracket"></i> Sign Out
-                </button>
-            </div>
+            <form onsubmit="event.preventDefault(); saveSyncSettings();" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs font-bold mb-1" style="color:var(--tx-m)">JSONBin X-Master-Key</label>
+                    <input type="password" id="sync-api-key" class="form-input w-full" placeholder="Enter X-Master-Key" value="${s.apiKey}">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1" style="color:var(--tx-m)">JSONBin Bin ID</label>
+                    <input type="text" id="sync-bin-id" class="form-input w-full" placeholder="Enter Bin ID" value="${s.binId}">
+                </div>
+                
+                <div class="pt-4 border-t border-[var(--brd)]">
+                    <button type="submit" class="btn-p w-full py-2.5 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-save"></i> Save Settings & Sync
+                    </button>
+                </div>
+            </form>
         </div>
     `);
 }
 
-window.syncPush = async function(btn) {
-    try {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
-        btn.disabled = true;
-
-        const data = await DocStorage.getAll();
-        await window.SyncService.uploadData(data);
-        
-        toast("Data successfully pushed to Google Drive!", "success");
-        closeModal();
-    } catch (err) {
-        toast("Failed to push: " + err.message, "error");
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Push Local Data to Drive';
-        }
+window.saveSyncSettings = async function() {
+    const apiKey = document.getElementById('sync-api-key').value.trim();
+    const binId = document.getElementById('sync-bin-id').value.trim();
+    
+    if (!apiKey || !binId) {
+        toast("API Key and Bin ID are required", "warning");
+        return;
     }
-}
-
-window.syncPull = async function(btn) {
-    try {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Downloading...';
-        btn.disabled = true;
-
-        const data = await window.SyncService.downloadData();
-        if (data && Array.isArray(data)) {
-            // Overwrite local data
-            for (const doc of data) {
-                await DocStorage.save(doc);
-            }
-            // Trigger refresh
-            await init();
-            toast("Data successfully pulled from Google Drive!", "success");
-            closeModal();
-        } else {
-            toast("No existing data found on Drive.", "warning");
-        }
-    } catch (err) {
-        toast("Failed to pull: " + err.message, "error");
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Pull Data from Drive';
-        }
-    }
-}
-
-window.syncLogout = async function() {
-    try {
-        await window.SyncService.logout();
-        toast("Logged out from Google Drive.", "success");
-        closeModal();
-    } catch (err) {
-        toast("Error logging out.", "error");
+    
+    // We keep the master password currently in session
+    const masterPassword = window.SyncService.getSettings().masterPassword || 'skipped';
+    
+    window.SyncService.saveSettings(apiKey, binId, masterPassword);
+    toast("Settings Saved", "success");
+    closeModal();
+    
+    // Trigger push immediately if unlocked
+    if (window.SyncService.isUnlocked() && masterPassword !== 'skipped') {
+        await window.SyncService.pushData();
     }
 }
 
@@ -1721,7 +1692,17 @@ async function init() {
     render();
 }
 
-init();
+window.initAppAfterUnlock = async function() {
+    await init();
+    handleUrlParams();
+}
+
+if (window.SyncService && !window.SyncService.isUnlocked()) {
+    const ls = document.getElementById('lock-screen');
+    if (ls) ls.classList.remove('hidden');
+} else {
+    window.initAppAfterUnlock();
+}
 
 // ========================
 // URL PARAMETER HANDLING
