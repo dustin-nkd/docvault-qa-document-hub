@@ -1446,6 +1446,8 @@ function renderEditor() {
     const bugData = isEdit ? doc.bugData : state._newBugData;
     const tcData = isEdit ? doc.tcData : state._newTcData;
     const apiData = isEdit ? doc.apiData : state._newApiData;
+    const runData = isEdit ? doc.runData : state._newRunData;
+    const envData = isEdit ? doc.envData : state._newEnvData;
 
     const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
     const existingFolders = [...new Set(documents.filter(d => d.subfolder).map(d => d.subfolder))];
