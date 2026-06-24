@@ -20,6 +20,7 @@ const CAT_META = {
     testplan: { get label() { return t('testplan'); }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
     api: { label: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
     credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
+    environment: { label: 'Environments', icon: 'fa-network-wired', color: 'var(--c-env)', cls: 'cat-environment' },
     testrun: { get label() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' }
 };
 
@@ -1120,7 +1121,7 @@ function renderDashboard() {
                 <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
             </div>
             ${Object.entries(CAT_META).map(([k, m]) => `
-                <div class="stat-card sc-${{runbook:'run',testcases:'tc',knowledge:'kn',task:'task',bug:'bug',testplan:'tp',api:'api',credential:'cred',testrun:'testrun'}[k]} p-4">
+                <div class="stat-card sc-${{runbook:'run',testcases:'tc',knowledge:'kn',task:'task',bug:'bug',testplan:'tp',api:'api',credential:'cred',environment:'env',testrun:'testrun'}[k]} p-4">
                     <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">${m.label}</p>
                     <p class="font-heading font-bold text-2xl" style="color:${m.color};">${catCounts[k]}</p>
                     <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
