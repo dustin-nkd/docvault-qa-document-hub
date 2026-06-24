@@ -1154,10 +1154,10 @@ function renderDocList() {
         <!-- Grid -->
         ${docs.length === 0 ? `
             <div class="text-center py-20">
-                <i class="fa-solid fa-folder-open text-4xl mb-4 pulse-s block" style="color:var(--tx-d);"></i>
-                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">${state.search ? t('noDocFound') : t('noDocYet')}</p>
-                <p class="text-xs mb-5" style="color:var(--tx-d);">${state.search ? t('tryDiffKey') : t('createFirstDoc')}</p>
-                ${!state.search ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
+                <i class="fa-solid ${state.view === 'trash' ? 'fa-trash' : 'fa-folder-open'} text-4xl mb-4 pulse-s block" style="color:var(--tx-d);"></i>
+                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">${state.search ? t('noDocFound') : (state.view === 'trash' ? (t('trashEmpty') || 'Trash is empty') : t('noDocYet'))}</p>
+                <p class="text-xs mb-5" style="color:var(--tx-d);">${state.search ? t('tryDiffKey') : (state.view === 'trash' ? '' : t('createFirstDoc'))}</p>
+                ${!state.search && state.view !== 'trash' ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
             </div>
         ` : `
             <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -2480,6 +2480,7 @@ const i18n = {
         searchTasks: "Tìm kiếm tasks...",
         noDocFound: "Không tìm thấy tài liệu phù hợp",
         noDocYet: "Chưa có tài liệu nào",
+        trashEmpty: "Thùng rác trống",
         tryDiffKey: "Thử tìm kiếm với từ khóa khác",
         createFirstDoc: "Bắt đầu tạo tài liệu đầu tiên của bạn",
         recentlyUpdated: "Cập nhật gần đây",
@@ -2610,6 +2611,7 @@ const i18n = {
         searchTasks: "Search tasks...",
         noDocFound: "No documents found",
         noDocYet: "No documents yet",
+        trashEmpty: "Trash is empty",
         tryDiffKey: "Try searching with a different keyword",
         createFirstDoc: "Start creating your first document",
         recentlyUpdated: "Recently Updated",
