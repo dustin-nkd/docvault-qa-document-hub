@@ -543,6 +543,7 @@ async function restoreDoc(id) {
 async function hardDeleteDoc(id) {
     documents = documents.filter(d => d.id !== id);
     await persist();
+    closeModal();
     toast(t('docDeletedForever') || "Permanently Deleted", 'success');
     render();
 }
@@ -2401,12 +2402,7 @@ const i18n = {
         review: "Review",
         done: "Done",
         dragTaskHere: "Drag tasks here",
-        newTask: "New Task",
-        
-        delConfirm: "Are you sure you want to delete this document? This action cannot be undone.",
-        delTitle: "Delete Document",
-        delCancel: "Cancel",
-        delConfirmBtn: "Delete permanently"
+        newTask: "New Task"
     }
 };
 
