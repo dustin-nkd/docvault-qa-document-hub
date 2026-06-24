@@ -35,8 +35,11 @@ const SyncService = {
 
     // Search for docvault_data.json in appDataFolder
     async getDriveFileId(token) {
-        const response = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name="docvault_data.json"', {
-            headers: { 'Authorization': 'Bearer ' + token }
+        const response = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='docvault_data.json'&fields=files(id,name,createdTime)&orderBy=createdTime desc&t=${Date.now()}`, {
+            headers: { 
+                'Authorization': 'Bearer ' + token,
+                'Cache-Control': 'no-cache'
+            }
         });
         if (!response.ok) throw new Error("Failed to query drive files");
         const data = await response.json();
@@ -50,8 +53,11 @@ const SyncService = {
             const fileId = await this.getDriveFileId(token);
             if (!fileId) return null; // No data on drive
 
-            const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-                headers: { 'Authorization': 'Bearer ' + token }
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&t=${Date.now()}`, {
+                headers: { 
+                    'Authorization': 'Bearer ' + token,
+                    'Cache-Control': 'no-cache'
+                }
             });
             if (!response.ok) throw new Error("Failed to download data");
             return await response.json();
@@ -66,46 +72,49 @@ const SyncService = {
         try {
             const token = await this.getAuthToken();
             const fileId = await this.getDriveFileId(token);
-            
-            const metadata = {
-                name: 'docvault_data.json',
-                parents: ['appDataFolder']
-            };
-            
             const fileContent = JSON.stringify(localData);
-            const file = new Blob([fileContent], {type: 'application/json'});
-            
-            const form = new FormData();
-            form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-            form.append('file', file);
 
-            let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-            let method = 'POST';
-
-            // If file already exists, we must PATCH it instead of creating a new one
             if (fileId) {
-                url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`;
-                method = 'PATCH';
-                // Remove parents for patch
-                delete metadata.parents;
-                const updateForm = new FormData();
-                updateForm.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-                updateForm.append('file', file);
-                
+                // UPDATE existing file using uploadType=media (safest for content-only updates)
+                const url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`;
                 const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Authorization': 'Bearer ' + token },
-                    body: updateForm
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: fileContent
                 });
                 if (!response.ok) throw new Error("Failed to update data on Drive");
                 return await response.json();
             } else {
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Authorization': 'Bearer ' + token },
-                    body: form
+                // CREATE new file: Two-step process
+                // 1. Create empty file with metadata
+                const metaRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: 'docvault_data.json',
+                        parents: ['appDataFolder']
+                    })
                 });
-                if (!response.ok) throw new Error("Failed to upload new data to Drive");
+                if (!metaRes.ok) throw new Error("Failed to create file metadata");
+                const meta = await metaRes.json();
+                
+                // 2. Upload content
+                const url = `https://www.googleapis.com/upload/drive/v3/files/${meta.id}?uploadType=media`;
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: fileContent
+                });
+                if (!response.ok) throw new Error("Failed to upload new data content");
                 return await response.json();
             }
         } catch (err) {
