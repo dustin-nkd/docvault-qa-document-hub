@@ -1595,6 +1595,48 @@ function renderEditor() {
                 <button class="btn-s text-sm mt-2" data-onclick="addTcStep()"><i class="fa-solid fa-plus mr-1"></i> Add Step</button>
             </div>
         </div>
+        ` : category === 'environment' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Health Status</label>
+                    <select id="ed-env-status" class="form-select w-full text-sm">
+                        <option value="healthy" ${envData?.status === 'healthy' ? 'selected' : ''}>🟢 Healthy (Up & Running)</option>
+                        <option value="maintenance" ${envData?.status === 'maintenance' ? 'selected' : ''}>🟡 Maintenance</option>
+                        <option value="down" ${envData?.status === 'down' ? 'selected' : ''}>🔴 Down (Offline)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Frontend URL</label>
+                    <input id="ed-env-fe" class="form-input text-sm w-full font-mono" placeholder="https://stg.app.com" value="${escHtml(envData?.frontendUrl || '')}">
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Backend API URL</label>
+                    <input id="ed-env-be" class="form-input text-sm w-full font-mono" placeholder="https://api-stg.app.com" value="${escHtml(envData?.backendUrl || '')}">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Database Connection String</label>
+                <input id="ed-env-db" class="form-input text-sm w-full font-mono" placeholder="mongodb://user:pass@host:27017/db" value="${escHtml(envData?.dbInfo || '')}">
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Credentials</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'credential').map(c => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="ed-env-cred rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-transparent" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
+                            <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(c.title)}</span>
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No credentials found</div>`}
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Notes</label>
+                <textarea id="ed-env-notes" class="form-input text-sm w-full" style="height:80px;" placeholder="Add any specific notes for this environment...">${escHtml(envData?.notes || '')}</textarea>
+            </div>
+        </div>
         ` : category === 'api' ? `
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
             <div class="grid sm:grid-cols-4 gap-4 mb-4">
@@ -1769,6 +1811,62 @@ function renderViewer() {
                     <button class="btn-p py-2 px-4" data-onclick="copyPassword('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>Copy</button>
                 </div>
             </div>
+        </div>
+        ` : ''}
+
+        ${doc.category === 'environment' ? `
+        <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-heading font-semibold text-lg" style="color:var(--tx);">Environment Details</h3>
+                <span class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${doc.envData?.status === 'healthy' ? '#10b98122' : doc.envData?.status === 'down' ? '#ef444422' : '#f59e0b22'}; color:${doc.envData?.status === 'healthy' ? '#10b981' : doc.envData?.status === 'down' ? '#ef4444' : '#f59e0b'}; border:1px solid ${doc.envData?.status === 'healthy' ? '#10b98155' : doc.envData?.status === 'down' ? '#ef444455' : '#f59e0b55'};">
+                    <i class="fa-solid fa-circle text-[8px] mr-1.5"></i>${doc.envData?.status || 'Unknown'}
+                </span>
+            </div>
+            
+            <div class="grid sm:grid-cols-2 gap-4 mb-5">
+                ${doc.envData?.frontendUrl ? `
+                <div class="p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Frontend URL</p>
+                    <div class="flex items-center gap-2">
+                        <a href="${escHtml(doc.envData.frontendUrl)}" target="_blank" class="text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(doc.envData.frontendUrl)}</a>
+                        <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(doc.envData.frontendUrl)}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                </div>` : ''}
+                ${doc.envData?.backendUrl ? `
+                <div class="p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Backend API URL</p>
+                    <div class="flex items-center gap-2">
+                        <a href="${escHtml(doc.envData.backendUrl)}" target="_blank" class="text-sm font-mono text-blue-400 hover:underline truncate flex-1">${escHtml(doc.envData.backendUrl)}</a>
+                        <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(doc.envData.backendUrl)}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                </div>` : ''}
+            </div>
+
+            ${doc.envData?.dbInfo ? `
+            <div class="p-4 rounded-lg mb-5" style="background:var(--card);border:1px solid var(--brd);">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Database Connection</p>
+                <div class="flex items-center gap-2">
+                    <input type="password" id="view-env-db" value="${escHtml(doc.envData.dbInfo)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
+                    <button class="btn-s px-2 py-1 text-xs" data-onclick="togglePasswordVisibility('view-env-db')"><i class="fa-solid fa-eye"></i></button>
+                    <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(doc.envData.dbInfo)}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
+                </div>
+            </div>` : ''}
+
+            ${doc.envData?.linkedCreds?.length ? `
+            <div>
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Credentials</p>
+                <div class="flex flex-wrap gap-2">
+                    ${doc.envData.linkedCreds.map(id => {
+                        const cred = documents.find(d => d.id === id);
+                        if (!cred) return '';
+                        return `
+                        <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'" data-onclick="viewDoc('${cred.id}')">
+                            <i class="fa-solid fa-key text-xs" style="color:var(--c-cred);"></i>
+                            <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(cred.title)}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
         </div>
         ` : ''}
 
