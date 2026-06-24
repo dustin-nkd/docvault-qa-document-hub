@@ -876,6 +876,7 @@ window.syncEditorState = function() {
     
     const title = titleEl.value || '';
     const cat = document.getElementById('ed-cat')?.value || 'runbook';
+    const subfolder = document.getElementById('ed-subfolder')?.value || '';
     const status = document.getElementById('ed-status')?.value || 'draft';
     const content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
     
@@ -2469,6 +2470,12 @@ const i18n = {
         emptyTrashConfirm: "Bạn có chắc chắn muốn dọn sạch thùng rác không? Toàn bộ tài liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.",
         emptyTrashBtn: "Dọn Sạch",
         
+        generatingLink: "Đang tạo Link bảo mật...",
+        pleaseWait: "Vui lòng đợi trong khi chúng tôi mã hóa tài liệu.",
+        linkReady: "Link đã sẵn sàng!",
+        linkDesc: "Bất kỳ ai có link này đều có thể xem tài liệu. Dữ liệu đã được mã hóa an toàn.",
+        share: "Chia sẻ",
+        
         searchDocs: "Tìm kiếm tài liệu...",
         searchTasks: "Tìm kiếm tasks...",
         noDocFound: "Không tìm thấy tài liệu phù hợp",
@@ -2592,6 +2599,12 @@ const i18n = {
         emptyTrashTitle: "Empty Trash",
         emptyTrashConfirm: "Are you sure you want to empty the trash? All documents will be permanently deleted and cannot be recovered.",
         emptyTrashBtn: "Empty Trash",
+        
+        generatingLink: "Generating Secure Link...",
+        pleaseWait: "Please wait while we encrypt your document.",
+        linkReady: "Link Ready!",
+        linkDesc: "Anyone with this link can view the document. It is encrypted with a unique key.",
+        share: "Share Link",
         
         searchDocs: "Search documents...",
         searchTasks: "Search tasks...",
