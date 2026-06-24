@@ -681,13 +681,13 @@ function updateHeader() {
 
     if (state.view === 'dashboard') {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
-        actions = `<button class="btn-s flex items-center gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
-        <button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-s flex items-center justify-center h-[38px] gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
+        <button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
         const catLabel = state.category === 'all' ? 'All Documents' : (state.view === 'favorites' ? 'Favorites' : CAT_META[state.category]?.label + 's');
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
-        actions = `<button class="btn-s flex items-center gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
-        <button class="btn-p flex items-center gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-s flex items-center justify-center h-[38px] gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
+        <button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
@@ -715,10 +715,10 @@ function updateHeader() {
             </div>
         ` : ''}
         <div class="flex items-center gap-2">
-        <button class="btn-s flex items-center gap-1.5" data-onclick="openSearch()" title="Global Search (Ctrl+K)">
+        <button class="btn-s flex items-center justify-center h-[38px] gap-1.5" data-onclick="openSearch()" title="Global Search (Ctrl+K)">
             <i class="fa-solid fa-magnifying-glass"></i> <span class="hidden sm:inline">Ctrl+K</span>
         </button>
-        <button class="btn-s flex items-center gap-1.5" data-onclick="toggleLang()">
+        <button class="btn-s flex items-center justify-center h-[38px] gap-1.5" data-onclick="toggleLang()">
     <img src="${state.lang === 'vi' ? 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5MDAgNjAwIj48cmVjdCB3aWR0aD0iOTAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iI2RhMjUxZCIvPjxwb2x5Z29uIHBvaW50cz0iNDUwLDEyMCA1NDAsNDAwIDMwMCwyMjUgNjAwLDIyNSAzNjAsNDAwIiBmaWxsPSIjZmZjZDAwIi8+PC9zdmc+' : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgNDAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iI2ZmZiIvPjxnIGZpbGw9IiNiZjBhMzAiPjxyZWN0IHk9IjAiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjYxLjUiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjEyMyIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMTg0LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjI0NiIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMzA3LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjM2OS4yIiB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMwLjciLz48L2c+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIyMTUiIGZpbGw9IiMwMDI4NjgiLz48L3N2Zz4='}" style="width:18px;height:14px;object-fit:cover;border-radius:2px;">
     <span>${state.lang === 'vi' ? 'VN' : 'EN'}</span>
 </button>
