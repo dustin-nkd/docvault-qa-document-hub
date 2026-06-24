@@ -368,7 +368,6 @@ async function hydrate() {
         documents = saved;
     } else {
         documents = [...SAMPLE_DOCS];
-        await await persist();
     }
 }
 

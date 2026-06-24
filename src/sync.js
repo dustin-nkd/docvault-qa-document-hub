@@ -98,7 +98,11 @@ const E2EESyncService = {
         
         try {
             if (this.isConfigured()) {
-                await this.pullAndUnlock(password);
+                const hasData = await this.pullAndUnlock(password);
+                if (!hasData) {
+                    // Bin is empty! Push local data to initialize it
+                    await this.pushData();
+                }
             } else {
                 sessionStorage.setItem('e2ee_master_password', password);
             }
