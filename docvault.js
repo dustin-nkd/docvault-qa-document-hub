@@ -2080,6 +2080,7 @@ async function saveDoc() {
     let tcData = null;
     let apiData = null;
     let runData = null;
+    let envData = null;
     
     if (cat === 'bug') {
         const env = document.getElementById('ed-bug-env')?.value || '';
@@ -2168,6 +2169,16 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
         const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
         runData = { targetIds, results: existingResults };
+    } else if (cat === 'environment') {
+        const envStatus = document.getElementById('ed-env-status')?.value || 'healthy';
+        const frontendUrl = document.getElementById('ed-env-fe')?.value || '';
+        const backendUrl = document.getElementById('ed-env-be')?.value || '';
+        const dbInfo = document.getElementById('ed-env-db')?.value || '';
+        const linkedCreds = Array.from(document.querySelectorAll('.ed-env-cred:checked')).map(cb => cb.value);
+        const notes = document.getElementById('ed-env-notes')?.value || '';
+        
+        envData = { status: envStatus, frontendUrl, backendUrl, dbInfo, linkedCreds, notes };
+        finalContent = `# Environment Notes\n${notes}`;
     }
 
     const tags = [...state.editorTags];
@@ -2180,14 +2191,14 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         // Update
         const idx = documents.findIndex(d => d.id === state.editingDoc.id);
         if (idx !== -1) {
-            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, updatedAt: Date.now() };
+            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, updatedAt: Date.now() };
         }
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
     } else {
         // Create
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
