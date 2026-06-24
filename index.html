@@ -52,6 +52,7 @@
             --c-mtg: #f97316;
             --c-api: #ec4899;
             --c-cred: #eab308;
+            --c-testrun: #6366f1;
         }
         * { box-sizing: border-box; }
         body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--tx); margin: 0; overflow: hidden; height: 100vh; }
@@ -88,6 +89,7 @@
         .cat-meeting { background: rgba(249,115,22,0.12); color: var(--c-mtg); }
         .cat-api { background: rgba(236,72,153,0.12); color: var(--c-api); }
         .cat-credential { background: rgba(234,179,8,0.12); color: var(--c-cred); }
+        .cat-testrun { background: rgba(99,102,241,0.12); color: var(--c-testrun); }
 
         .avatar-0 { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
         .avatar-1 { background: linear-gradient(135deg, #dc2626, #b91c1c); }
@@ -122,6 +124,7 @@
         .sc-mtg::before { background: var(--c-mtg); }
         .sc-api::before { background: var(--c-api); }
         .sc-cred::before { background: var(--c-cred); }
+        .sc-testrun::before { background: var(--c-testrun); }
 
         .form-input { background: var(--bg); border: 1px solid var(--brd); color: var(--tx); padding: 10px 14px; border-radius: 8px; outline: none; transition: border-color .2s; font-family: 'DM Sans', sans-serif; font-size: 14px; width: 100%; }
         .form-input:focus { border-color: var(--acc); }
@@ -308,6 +311,9 @@
                 </div>
                 <div class="nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="documents" data-cat="credential" data-onclick="navigate('documents','credential')">
                     <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-cred);"></span><span>Credentials</span><span class="count ml-auto" id="cnt-credential">0</span>
+                </div>
+                <div class="nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="documents" data-cat="testrun" data-onclick="navigate('documents','testrun')">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-testrun);"></span><span id="label-testrun">Test Runs</span><span class="count ml-auto" id="cnt-testrun">0</span>
                 </div>
             </nav>
 
