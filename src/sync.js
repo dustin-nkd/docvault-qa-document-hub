@@ -56,7 +56,7 @@ const E2EESyncService = {
                 return true;
             } else {
                 sessionStorage.setItem('e2ee_master_password', password);
-                return true;
+                return false;
             }
         } catch (err) {
             console.error(err);
