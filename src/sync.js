@@ -119,7 +119,7 @@ const E2EESyncService = {
             document.getElementById('lock-screen').classList.add('hidden');
             toast("Vault Unlocked", "success");
             
-            if (window.initAppAfterUnlock) await window.initAppAfterUnlock();
+            if (window.initAppAfterUnlock) await window.initAppAfterUnlock(true);
         } catch (err) {
             toast(err.message === "Failed to fetch from JSONBin" ? "JSONBin API Error" : "Incorrect Password!", "error");
             if (btn) btn.innerHTML = 'Unlock Vault';

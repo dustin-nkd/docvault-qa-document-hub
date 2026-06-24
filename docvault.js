@@ -1716,7 +1716,18 @@ async function init() {
     render();
 }
 
-window.initAppAfterUnlock = async function() {
+window.initAppAfterUnlock = async function(skipSync = false) {
+    if (!skipSync && window.SyncService && window.SyncService.isUnlocked()) {
+        try {
+            const pwd = sessionStorage.getItem('e2ee_master_password');
+            const hasData = await window.SyncService.pullAndUnlock(pwd);
+            if (!hasData) {
+                await window.SyncService.pushData();
+            }
+        } catch (e) {
+            console.error("Initial sync failed", e);
+        }
+    }
     await init();
     handleUrlParams();
 }
