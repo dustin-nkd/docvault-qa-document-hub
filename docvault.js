@@ -490,31 +490,61 @@ function showModal(html) {
 }
 function closeModal() { document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden'; }
 
-function showDeleteModal(id) {
+function showDeleteModal(id, isPermanent = false) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
+    
+    const actionStr = isPermanent ? `hardDeleteDoc('${id}')` : `confirmDelete('${id}')`;
+    const titleStr = isPermanent ? (t('delTitleForever') || 'Delete Permanently') : t('delTitle');
+    const warningStr = isPermanent ? (t('delConfirmForever') || 'Are you sure you want to permanently delete this? It cannot be recovered.') : t('delConfirm');
+    const btnStr = isPermanent ? (t('delConfirmBtnForever') || 'Permanently Delete') : t('delConfirmBtn');
+
     showModal(`
         <div class="text-center">
             <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.1);">
                 <i class="fa-solid fa-trash text-rose-400"></i>
             </div>
-            <h3 class="font-heading font-semibold text-lg mb-2">${t('delTitle')}</h3>
-            <p class="text-sm mb-6" style="color:var(--tx-m);">${t('delConfirm').split('?')[0]} "<strong style="color:var(--tx);">${escHtml(doc.title)}</strong>"? ${t('delConfirm').split('? ')[1] || ''}</p>
+            <h3 class="font-heading font-semibold text-lg mb-2">${titleStr}</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">${warningStr} "<strong style="color:var(--tx);">${escHtml(doc.title)}</strong>"?</p>
             <div class="flex gap-3 justify-center">
                 <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
-                <button class="btn-d" data-onclick="confirmDelete('${id}')">${t('delConfirmBtn')}</button>
+                <button class="btn-d" data-onclick="${actionStr}">${btnStr}</button>
             </div>
         </div>
     `);
 }
 
 async function confirmDelete(id) {
-    documents = documents.filter(d => d.id !== id);
+    const doc = documents.find(d => d.id === id);
+    if (doc) {
+        doc.status = 'deleted';
+        doc.deletedAt = Date.now();
+        doc.updatedAt = Date.now();
+    }
     await persist();
     closeModal();
     toast(t('docDeleted'), 'success');
     if (state.view === 'viewer' || state.view === 'editor') navigate('documents', state.category);
     else render();
+}
+
+async function restoreDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (doc) {
+        doc.status = 'draft';
+        delete doc.deletedAt;
+        doc.updatedAt = Date.now();
+    }
+    await persist();
+    toast(t('docRestored') || "Document Restored", 'success');
+    render();
+}
+
+async function hardDeleteDoc(id) {
+    documents = documents.filter(d => d.id !== id);
+    await persist();
+    toast(t('docDeletedForever') || "Permanently Deleted", 'success');
+    render();
 }
 
 // ========================
@@ -640,6 +670,7 @@ function updateSidebar() {
     const lblDash = document.getElementById('lbl-dashboard'); if (lblDash) lblDash.textContent = t('dashboard');
     const lblDocs = document.getElementById('lbl-documents'); if (lblDocs) lblDocs.textContent = t('documents');
     const lblFavs = document.getElementById('lbl-favorites'); if (lblFavs) lblFavs.textContent = t('favorites');
+    const lblTrash = document.getElementById('lbl-trash'); if (lblTrash) lblTrash.textContent = t('trash') || 'Trash';
     const lblCats = document.getElementById('lbl-categories'); if (lblCats) lblCats.textContent = t('categories') || 'Categories';
     
     // Also update categories in sidebar dynamically
@@ -653,13 +684,19 @@ function updateSidebar() {
     });
 
     // Counts
-    document.getElementById('cnt-all').textContent = documents.length;
-    document.getElementById('cnt-fav').textContent = documents.filter(d => d.favorite).length;
+    const activeDocs = documents.filter(d => d.status !== 'deleted');
+    document.getElementById('cnt-all').textContent = activeDocs.length;
+    document.getElementById('cnt-fav').textContent = activeDocs.filter(d => d.favorite).length;
     Object.keys(CAT_META).forEach(k => {
         const el = document.getElementById('cnt-' + k);
-        if (el) el.textContent = documents.filter(d => d.category === k).length;
+        if (el) el.textContent = activeDocs.filter(d => d.category === k).length;
     });
-    document.getElementById('storage-info').textContent = documents.length + ' documents saved locally';
+    
+    const trashCount = documents.filter(d => d.status === 'deleted').length;
+    const cntTrash = document.getElementById('cnt-trash');
+    if (cntTrash) cntTrash.textContent = trashCount;
+    
+    document.getElementById('storage-info').textContent = activeDocs.length + ' documents saved locally';
 
     // Active state
     document.querySelectorAll('.nav-item').forEach(n => {
@@ -749,8 +786,13 @@ function navigate(view, cat) {
 // ========================
 function getFiltered() {
     let docs = [...documents];
-    if (state.view === 'favorites') docs = docs.filter(d => d.favorite);
-    else if (state.category !== 'all') docs = docs.filter(d => d.category === state.category);
+    if (state.view === 'trash') {
+        docs = docs.filter(d => d.status === 'deleted');
+    } else {
+        docs = docs.filter(d => d.status !== 'deleted');
+        if (state.view === 'favorites') docs = docs.filter(d => d.favorite);
+        else if (state.category !== 'all') docs = docs.filter(d => d.category === state.category);
+    }
     if (state.search) {
         const q = state.search.toLowerCase();
         docs = docs.filter(d => d.title.toLowerCase().includes(q) || (d.content && d.content.toLowerCase().includes(q)) || d.tags.some(t => t.toLowerCase().includes(q)));
@@ -847,7 +889,7 @@ function renderContent() {
     
     const c = document.getElementById('content');
     if (state.view === 'dashboard') c.innerHTML = renderDashboard();
-    else if (state.view === 'documents' || state.view === 'favorites') c.innerHTML = renderDocList();
+    else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') c.innerHTML = renderDocList();
     else if (state.view === 'editor') {
         c.innerHTML = renderEditor();
         const container = document.getElementById('editor-container');
@@ -1114,14 +1156,25 @@ function showDocMenu(id, btn) {
     const menu = document.createElement('div');
     menu.id = 'doc-menu';
     menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:4px;z-index:80;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);`;
-    menu.innerHTML = `
-        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
-            <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
-        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
-            <i class="fa-solid fa-copy w-4 text-center"></i> ${t('duplicate')} </button>
-        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
-            <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
-    `;
+    let menuHtml = '';
+    if (state.view === 'trash') {
+        menuHtml = `
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--acc);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();restoreDoc('${id}')">
+                <i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('restore') || 'Restore'} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}', true)">
+                <i class="fa-solid fa-trash w-4 text-center"></i> ${t('deleteForever') || 'Delete Forever'} </button>
+        `;
+    } else {
+        menuHtml = `
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
+                <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
+                <i class="fa-solid fa-copy w-4 text-center"></i> ${t('duplicate')} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
+                <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
+        `;
+    }
+    menu.innerHTML = menuHtml;
     document.body.appendChild(menu);
     // Đóng khi click ngoài
     setTimeout(() => {
@@ -1720,8 +1773,8 @@ window.initAppAfterUnlock = async function(skipSync = false) {
     if (!skipSync && window.SyncService && window.SyncService.isUnlocked()) {
         try {
             const pwd = sessionStorage.getItem('e2ee_master_password');
-            const hasData = await window.SyncService.pullAndUnlock(pwd);
-            if (!hasData) {
+            const resObj = await window.SyncService.pullAndUnlock(pwd);
+            if (resObj && resObj.needPush) {
                 await window.SyncService.pushData();
             }
         } catch (e) {
@@ -2195,6 +2248,16 @@ const i18n = {
         edit: "Sửa",
         duplicate: "Nhân bản",
         delete: "Xóa",
+        trash: "Thùng rác",
+        restore: "Khôi phục",
+        deleteForever: "Xóa vĩnh viễn",
+        
+        delConfirm: "Bạn có chắc chắn muốn xóa document này không?",
+        delConfirmForever: "Bạn có chắc chắn muốn xóa vĩnh viễn tài liệu này không? Hành động này không thể hoàn tác.",
+        delTitle: "Xóa Document",
+        delTitleForever: "Xóa Vĩnh Viễn",
+        delConfirmBtn: "Xóa",
+        delConfirmBtnForever: "Xóa Vĩnh Viễn",
         
         searchDocs: "Tìm kiếm tài liệu...",
         searchTasks: "Tìm kiếm tasks...",
@@ -2209,19 +2272,17 @@ const i18n = {
         docCreated: "Đã tạo document mới",
         docUpdated: "Đã cập nhật document",
         docDuplicated: "Đã nhân bản document",
-        docDeleted: "Đã xóa document",
+        docDeleted: "Đã chuyển vào Thùng rác",
+        docRestored: "Đã khôi phục tài liệu",
+        docDeletedForever: "Đã xóa vĩnh viễn",
+        copied: "Đã copy vào clipboard",
         
         todo: "To Do",
         inProgress: "In Progress",
         review: "Review",
         done: "Done",
         dragTaskHere: "Kéo thả task vào đây",
-        newTask: "Task Mới",
-        
-        delConfirm: "Bạn có chắc chắn muốn xóa document này không? Hành động này không thể hoàn tác.",
-        delTitle: "Xóa Document",
-        delCancel: "Hủy",
-        delConfirmBtn: "Xóa vĩnh viễn"
+        newTask: "Task Mới"
     },
     en: {
         runbook: "Runbook",
@@ -2306,6 +2367,16 @@ const i18n = {
         edit: "Edit",
         duplicate: "Duplicate",
         delete: "Delete",
+        trash: "Trash",
+        restore: "Restore",
+        deleteForever: "Delete Forever",
+        
+        delConfirm: "Are you sure you want to move this document to Trash?",
+        delConfirmForever: "Are you sure you want to permanently delete this document? This action cannot be undone.",
+        delTitle: "Delete Document",
+        delTitleForever: "Delete Permanently",
+        delConfirmBtn: "Delete",
+        delConfirmBtnForever: "Delete Permanently",
         
         searchDocs: "Search documents...",
         searchTasks: "Search tasks...",
@@ -2320,7 +2391,10 @@ const i18n = {
         docCreated: "Document created",
         docUpdated: "Document updated",
         docDuplicated: "Document duplicated",
-        docDeleted: "Document deleted",
+        docDeleted: "Moved to Trash",
+        docRestored: "Document restored",
+        docDeletedForever: "Permanently deleted",
+        copied: "Copied to clipboard",
         
         todo: "To Do",
         inProgress: "In Progress",
