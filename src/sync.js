@@ -51,16 +51,49 @@ const E2EESyncService = {
             
             if (payload.record && payload.record.data) {
                 const plainData = this.decryptData(payload.record.data, password);
+                let localData = [];
                 if (window.DocStorage) {
-                    await window.DocStorage.save(plainData);
+                    localData = await window.DocStorage.getAll() || [];
                 } else {
-                    localStorage.setItem('docvault_docs', JSON.stringify(plainData));
+                    const rawData = localStorage.getItem('docvault_docs');
+                    if (rawData) localData = JSON.parse(rawData);
+                }
+
+                // Two-way Merge Logic
+                const mergedMap = new Map();
+                localData.forEach(d => mergedMap.set(d.id, d));
+                let needPush = false;
+
+                const remoteData = Array.isArray(plainData) ? plainData : [];
+                remoteData.forEach(rDoc => {
+                    const lDoc = mergedMap.get(rDoc.id);
+                    if (!lDoc) {
+                        mergedMap.set(rDoc.id, rDoc);
+                    } else {
+                        if (rDoc.updatedAt > lDoc.updatedAt) {
+                            mergedMap.set(rDoc.id, rDoc);
+                        } else if (lDoc.updatedAt > rDoc.updatedAt) {
+                            needPush = true;
+                        }
+                    }
+                });
+
+                localData.forEach(lDoc => {
+                    if (!remoteData.find(r => r.id === lDoc.id)) needPush = true;
+                });
+
+                const mergedDocs = Array.from(mergedMap.values());
+
+                if (window.DocStorage) {
+                    await window.DocStorage.save(mergedDocs);
+                } else {
+                    localStorage.setItem('docvault_docs', JSON.stringify(mergedDocs));
                 }
                 sessionStorage.setItem('e2ee_master_password', password);
-                return true;
+                return { hasData: true, needPush };
             } else {
                 sessionStorage.setItem('e2ee_master_password', password);
-                return false;
+                return { hasData: false, needPush: true };
             }
         } catch (err) {
             console.error(err);
@@ -108,9 +141,8 @@ const E2EESyncService = {
         
         try {
             if (this.isConfigured()) {
-                const hasData = await this.pullAndUnlock(password);
-                if (!hasData) {
-                    // Bin is empty! Push local data to initialize it
+                const resObj = await this.pullAndUnlock(password);
+                if (resObj && resObj.needPush) {
                     await this.pushData();
                 }
             } else {
