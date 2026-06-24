@@ -51,7 +51,11 @@ const E2EESyncService = {
             
             if (payload.record && payload.record.data) {
                 const plainData = this.decryptData(payload.record.data, password);
-                localStorage.setItem('docvault_docs', JSON.stringify(plainData));
+                if (window.DocStorage) {
+                    await window.DocStorage.save(plainData);
+                } else {
+                    localStorage.setItem('docvault_docs', JSON.stringify(plainData));
+                }
                 sessionStorage.setItem('e2ee_master_password', password);
                 return true;
             } else {
@@ -68,11 +72,17 @@ const E2EESyncService = {
         if (!this.isConfigured() || !this.isUnlocked()) return;
 
         const s = this.getSettings();
-        const rawData = localStorage.getItem('docvault_docs');
-        if (!rawData) return;
+        let parsedData = [];
+        if (window.DocStorage) {
+            parsedData = await window.DocStorage.getAll();
+        } else {
+            const rawData = localStorage.getItem('docvault_docs');
+            if (rawData) parsedData = JSON.parse(rawData);
+        }
+        
+        if (!parsedData || parsedData.length === 0) return;
         
         try {
-            const parsedData = JSON.parse(rawData);
             const cipherText = this.encryptData(parsedData, s.masterPassword);
 
             const res = await fetch('https://api.jsonbin.io/v3/b/' + s.binId, {
