@@ -13,13 +13,11 @@ window.addEventListener('unhandledrejection', function(e) {
 // ========================
 const CAT_META = {
     runbook: { get label() { return t('runbook'); }, icon: 'fa-book', color: 'var(--c-run)', cls: 'cat-runbook' },
-    onboarding: { get label() { return t('onboarding'); }, icon: 'fa-user-plus', color: 'var(--c-onb)', cls: 'cat-onboarding' },
     testcases: { get label() { return t('testcases'); }, icon: 'fa-flask-vial', color: 'var(--c-tc)', cls: 'cat-testcases' },
     knowledge: { get label() { return t('knowledge'); }, icon: 'fa-lightbulb', color: 'var(--c-kn)', cls: 'cat-knowledge' },
     task: { get label() { return t('task'); }, icon: 'fa-list-check', color: 'var(--c-task)', cls: 'cat-task' },
     bug: { get label() { return t('bug'); }, icon: 'fa-bug', color: 'var(--c-bug)', cls: 'cat-bug' },
     testplan: { get label() { return t('testplan'); }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
-    meeting: { label: 'Meeting Notes', icon: 'fa-users', color: 'var(--c-mtg)', cls: 'cat-meeting' },
     api: { label: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
     credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
     testrun: { get label() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' }
@@ -372,6 +370,20 @@ async function hydrate() {
     } else {
         documents = [...SAMPLE_DOCS];
     }
+    
+    let migrated = false;
+    documents.forEach(d => {
+        if (d.category === 'onboarding') {
+            d.category = 'knowledge';
+            d.subfolder = d.subfolder || 'Onboarding';
+            migrated = true;
+        } else if (d.category === 'meeting') {
+            d.category = 'knowledge';
+            d.subfolder = d.subfolder || 'Meeting Notes';
+            migrated = true;
+        }
+    });
+    if (migrated) await persist();
 }
 
 // ========================
@@ -1108,7 +1120,7 @@ function renderDashboard() {
                 <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
             </div>
             ${Object.entries(CAT_META).map(([k, m]) => `
-                <div class="stat-card sc-${{runbook:'run',onboarding:'onb',testcases:'tc',knowledge:'kn',task:'task',bug:'bug',testplan:'tp',meeting:'mtg',api:'api',credential:'cred'}[k]} p-4">
+                <div class="stat-card sc-${{runbook:'run',testcases:'tc',knowledge:'kn',task:'task',bug:'bug',testplan:'tp',api:'api',credential:'cred',testrun:'testrun'}[k]} p-4">
                     <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">${m.label}</p>
                     <p class="font-heading font-bold text-2xl" style="color:${m.color};">${catCounts[k]}</p>
                     <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
