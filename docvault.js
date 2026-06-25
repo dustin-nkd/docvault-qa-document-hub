@@ -1490,22 +1490,25 @@ async function uploadImageToCloud(blob, callback) {
         toast("Firebase not configured!", "error");
         return;
     }
-    toast("Uploading image to Firebase...", "info");
+    if (blob.size > 800000) {
+        toast("Fallback mode: Image should be under 800KB to fit in database.", "warning");
+    }
+    toast("Processing image inline...", "info");
     
     try {
-        const storage = firebase.storage();
-        const ext = blob.type.split('/')[1] || 'png';
-        const filename = `images/docvault_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
-        const storageRef = storage.ref().child(filename);
-        
-        const snapshot = await storageRef.put(blob);
-        const url = await snapshot.ref.getDownloadURL();
-        
-        callback(url, blob.name || 'image');
-        toast("Image uploaded successfully!", "success");
+        const reader = new FileReader();
+        reader.onloadend = function() {
+            const base64data = reader.result;
+            callback(base64data, blob.name || 'image');
+            toast("Image loaded successfully!", "success");
+        };
+        reader.onerror = function() {
+            toast("Failed to read image file.", "error");
+        };
+        reader.readAsDataURL(blob);
     } catch (err) {
-        console.error("Image Upload Error:", err);
-        toast("Failed to upload image. Please try again.", "error");
+        console.error("Image Conversion Error:", err);
+        toast("Failed to process image. Please try again.", "error");
     }
 }
 
