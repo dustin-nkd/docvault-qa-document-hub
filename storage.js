@@ -34,12 +34,20 @@ const DocStorage = {
         if (!this.isFirebaseReady) return null;
 
         try {
-            const snapshot = await this.db.collection('documents').get();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("Firebase connection timeout (6s). Project may be deleted or offline.")), 6000)
+            );
+            const fetchPromise = this.db.collection('documents').get();
+            const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+            
             const docs = [];
             snapshot.forEach(doc => docs.push(doc.data()));
             return docs;
         } catch (err) {
             console.error('Error fetching docs from Firebase:', err);
+            if (typeof toast === 'function') {
+                toast("Lỗi kết nối Firebase. Nhấp vào biểu tượng Răng cưa ở góc trái dưới cùng để reset lại cấu hình.", "error");
+            }
             return null;
         }
     },
@@ -175,6 +183,8 @@ const DocStorage = {
                     const docs = [];
                     snapshot.forEach(doc => docs.push(doc.data()));
                     callback(docs);
+                }, (err) => {
+                    console.error("Firestore onSnapshot error:", err);
                 });
             }
         });

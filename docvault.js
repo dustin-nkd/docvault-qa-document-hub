@@ -1647,6 +1647,13 @@ window.showGitHubSettingsModal = function() {
                     </button>
                 </div>
             </form>
+            
+            <div class="pt-3 mt-4 border-t border-[var(--brd)] text-left">
+                <p class="text-xs mb-2 font-bold text-red-500">Firebase Connection</p>
+                <button type="button" class="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-200 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5" data-onclick="resetFirebaseConfig()">
+                    <i class="fa-solid fa-power-off text-xs"></i> Disconnect / Reset Firebase Connection
+                </button>
+            </div>
         </div>
     `);
 }
@@ -1669,6 +1676,13 @@ window.saveGitHubSettings = function() {
         closeModal();
     } else {
         toast("Please fill in Owner, Repo and Token fields.", "warning");
+    }
+}
+
+window.resetFirebaseConfig = function() {
+    if (confirm("Bạn có chắc chắn muốn ngắt kết nối với Firebase? Dữ liệu của bạn ở local vẫn sẽ được giữ nguyên, nhưng bạn sẽ cần cấu hình lại Firebase mới.")) {
+        localStorage.removeItem('firebase_config');
+        window.location.reload();
     }
 }
 
