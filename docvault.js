@@ -1210,17 +1210,17 @@ function renderDocList() {
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
-            <select class="form-select text-sm" style="width:auto;min-width:130px;" data-onchange="state.statusFilter=this.value;renderContent();">
-                <option value="all" ${state.statusFilter === 'all' ? 'selected' : ''}>${t('allStatus')}</option>
-                <option value="published" ${state.statusFilter === 'published' ? 'selected' : ''}>Published</option>
-                <option value="draft" ${state.statusFilter === 'draft' ? 'selected' : ''}>Draft</option>
-                <option value="archived" ${state.statusFilter === 'archived' ? 'selected' : ''}>Archived</option>
-            </select>
-            <select class="form-select text-sm" style="width:auto;min-width:140px;" data-onchange="state.sortBy=this.value;renderContent();">
-                <option value="updated" ${state.sortBy === 'updated' ? 'selected' : ''}>${t('recentlyUpdated')}</option>
-                <option value="created" ${state.sortBy === 'created' ? 'selected' : ''}>${t('newest')}</option>
-                <option value="title" ${state.sortBy === 'title' ? 'selected' : ''}>${t('sortAZ')}</option>
-            </select>
+            ${renderSelect('hdr-status-filter', [
+                {value: 'all', label: t('allStatus')},
+                {value: 'published', label: 'Published'},
+                {value: 'draft', label: 'Draft'},
+                {value: 'archived', label: 'Archived'}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'state.statusFilter=this.value;renderContent();')}
+            ${renderSelect('hdr-sort-by', [
+                {value: 'updated', label: t('recentlyUpdated')},
+                {value: 'created', label: t('newest')},
+                {value: 'title', label: t('sortAZ')}
+            ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'state.sortBy=this.value;renderContent();')}
             <span class="text-xs ml-auto" style="color:var(--tx-d);">${docs.length} documents</span>
             ${state.view === 'trash' && docs.length > 0 ? `<button class="btn-d text-xs py-1 px-2.5 ml-3" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
         </div>
@@ -1514,17 +1514,15 @@ function renderEditor() {
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Category</label>
-                    <select id="ed-cat" class="form-select w-full" data-onchange="changeEditorCat(this.value)">
-                        ${Object.entries(CAT_META).map(([k, m]) => `<option value="${k}" ${category === k ? 'selected' : ''}>${m.label}</option>`).join('')}
-                    </select>
+                    ${renderSelect('ed-cat', Object.entries(CAT_META).map(([k, m]) => ({value: k, label: m.label})), category, 'w-full', 'changeEditorCat(this.value)')}
                 </div>
                 <div>
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Status</label>
-                    <select id="ed-status" class="form-select w-full">
-                        <option value="draft" ${status === 'draft' ? 'selected' : ''}>Draft</option>
-                        <option value="published" ${status === 'published' ? 'selected' : ''}>Published</option>
-                        <option value="archived" ${status === 'archived' ? 'selected' : ''}>Archived</option>
-                    </select>
+                    ${renderSelect('ed-status', [
+                        {value: 'draft', label: 'Draft'},
+                        {value: 'published', label: 'Published'},
+                        {value: 'archived', label: 'Archived'}
+                    ], status, 'w-full')}
                 </div>
             </div>
         </div>
@@ -1564,12 +1562,12 @@ function renderEditor() {
             </div>
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
-                <select id="ed-bug-severity" class="form-select w-full">
-                    <option value="Critical" ${bugData?.severity === 'Critical' ? 'selected' : ''}>Critical</option>
-                    <option value="Major" ${bugData?.severity === 'Major' ? 'selected' : ''}>Major</option>
-                    <option value="Minor" ${bugData?.severity === 'Minor' ? 'selected' : (!bugData ? 'selected' : '')}>Minor</option>
-                    <option value="Trivial" ${bugData?.severity === 'Trivial' ? 'selected' : ''}>Trivial</option>
-                </select>
+                ${renderSelect('ed-bug-severity', [
+                    {value: 'Critical', label: 'Critical'},
+                    {value: 'Major', label: 'Major'},
+                    {value: 'Minor', label: 'Minor'},
+                    {value: 'Trivial', label: 'Trivial'}
+                ], bugData?.severity || 'Minor', 'w-full')}
             </div>
         </div>
         
@@ -1646,11 +1644,11 @@ function renderEditor() {
             <div class="grid sm:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Health Status</label>
-                    <select id="ed-env-status" class="form-select w-full text-sm">
-                        <option value="healthy" ${envData?.status === 'healthy' ? 'selected' : ''}>🟢 Healthy (Up & Running)</option>
-                        <option value="maintenance" ${envData?.status === 'maintenance' ? 'selected' : ''}>🟡 Maintenance</option>
-                        <option value="down" ${envData?.status === 'down' ? 'selected' : ''}>🔴 Down (Offline)</option>
-                    </select>
+                    ${renderSelect('ed-env-status', [
+                        {value: 'healthy', label: '🟢 Healthy (Up & Running)'},
+                        {value: 'maintenance', label: '🟡 Maintenance'},
+                        {value: 'down', label: '🔴 Down (Offline)'}
+                    ], envData?.status || 'healthy', 'w-full text-sm')}
                 </div>
             </div>
             <div class="mb-4">
@@ -1700,9 +1698,7 @@ function renderEditor() {
             <div class="grid sm:grid-cols-4 gap-4 mb-4">
                 <div>
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiMethod')}</label>
-                    <select id="ed-api-method" class="form-select w-full font-mono text-sm">
-                        ${['GET','POST','PUT','PATCH','DELETE'].map(m => `<option value="${m}" ${apiData?.method===m ? 'selected' : ''}>${m}</option>`).join('')}
-                    </select>
+                    ${renderSelect('ed-api-method', ['GET','POST','PUT','PATCH','DELETE'].map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono text-sm')}
                 </div>
                 <div class="sm:col-span-3">
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiEndpoint')}</label>
@@ -2824,12 +2820,12 @@ function renderKanbanBoard(docs, isMobileSearch) {
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
-            <select class="form-select text-sm" style="width:auto;min-width:130px;" data-onchange="state.statusFilter=this.value;renderContent();">
-                <option value="all" ${state.statusFilter === 'all' ? 'selected' : ''}>${t('allStatus')}</option>
-                <option value="published" ${state.statusFilter === 'published' ? 'selected' : ''}>Published</option>
-                <option value="draft" ${state.statusFilter === 'draft' ? 'selected' : ''}>Draft</option>
-                <option value="archived" ${state.statusFilter === 'archived' ? 'selected' : ''}>Archived</option>
-            </select>
+            ${renderSelect('kb-status-filter', [
+                {value: 'all', label: t('allStatus')},
+                {value: 'published', label: 'Published'},
+                {value: 'draft', label: 'Draft'},
+                {value: 'archived', label: 'Archived'}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'state.statusFilter=this.value;renderContent();')}
             <div class="flex-1"></div>
             <button class="btn-p text-sm" data-onclick="createDoc('task')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newTask')}</button>
         </div>
@@ -3260,6 +3256,64 @@ window.addEnvProp = function() {
     div.querySelector('.env-prop-label').focus();
 };
 window.removeEnvProp = function(btn) { btn.closest('.env-prop-row').remove(); };
+
+// Generic custom select helpers
+window.renderSelect = function(id, options, selectedValue, customClass = '', onChangeCode = '') {
+    const selOpt = options.find(o => o.value === selectedValue) || options[0] || {label:'', value:''};
+    const optionsHtml = options.map(o => `
+        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectCustomOption('${id}', '${escHtml(o.value.replace(/'/g, "\\'"))}', '${escHtml(o.label.replace(/'/g, "\\'"))}', \`${onChangeCode.replace(/`/g, '\\`')}\`)">${escHtml(o.label)}</div>
+    `).join('');
+
+    return `
+        <div class="custom-select-wrapper" style="position:relative;">
+            <input type="hidden" id="${id}" value="${escHtml(selOpt.value)}">
+            <input id="${id}-display" class="form-select ${customClass}" readonly style="cursor:pointer;" value="${escHtml(selOpt.label)}" data-onclick="toggleCustomSelect('${id}')">
+            <div id="${id}-dropdown" class="hidden custom-select-list" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+                ${optionsHtml}
+            </div>
+        </div>
+    `;
+};
+
+window.toggleCustomSelect = function(id) {
+    document.querySelectorAll('.custom-select-list').forEach(el => {
+        if (el.id !== id + '-dropdown') el.classList.add('hidden');
+    });
+
+    const dd = document.getElementById(id + '-dropdown');
+    if (!dd) return;
+    
+    if (!dd.classList.contains('hidden')) {
+        dd.classList.add('hidden');
+        return;
+    }
+    
+    dd.classList.remove('hidden');
+    
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!e.target.closest('#' + id + '-display')) {
+                dd.classList.add('hidden');
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
+};
+
+window.selectCustomOption = function(id, val, label, onChangeCode) {
+    const hid = document.getElementById(id);
+    const disp = document.getElementById(id + '-display');
+    const dd = document.getElementById(id + '-dropdown');
+    if (hid) hid.value = val;
+    if (disp) disp.value = label;
+    if (dd) dd.classList.add('hidden');
+    
+    if (onChangeCode) {
+        // Evaluate the string as code. We replace this.value with the selected value string.
+        eval(onChangeCode.replace(/this\.value/g, `'${val}'`));
+    }
+};
 
 // Subfolder custom dropdown helpers
 window.toggleSubfolderDropdown = function() {
