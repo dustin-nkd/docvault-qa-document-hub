@@ -31,7 +31,9 @@ const DocStorage = {
 
     async getAll() {
         await this.init();
-        if (!this.isFirebaseReady) return null;
+        if (!this.isFirebaseReady) {
+            return await this.getOldLocalData();
+        }
 
         try {
             const timeoutPromise = new Promise((_, reject) => 
@@ -44,16 +46,28 @@ const DocStorage = {
             snapshot.forEach(doc => docs.push(doc.data()));
             return docs;
         } catch (err) {
-            console.error('Error fetching docs from Firebase:', err);
-            if (typeof toast === 'function') {
-                toast("Lỗi kết nối Firebase. Nhấp vào biểu tượng Răng cưa ở góc trái dưới cùng để reset lại cấu hình.", "error");
-            }
-            return null;
+            console.error('Error fetching docs from Firebase, falling back to local:', err);
+            return await this.getOldLocalData();
         }
     },
 
     async save(docs) {
         await this.init();
+        
+        // Always save a copy to local storage to support local/offline mode and backups
+        const STORAGE_KEY = 'docvault_docs';
+        try {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                await new Promise((resolve) => {
+                    chrome.storage.local.set({ [STORAGE_KEY]: docs }, () => resolve());
+                });
+            } else {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+            }
+        } catch (err) {
+            console.error('Error saving docs locally:', err);
+        }
+
         if (!this.isFirebaseReady) return;
 
         try {
