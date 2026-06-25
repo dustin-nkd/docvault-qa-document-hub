@@ -1504,7 +1504,7 @@ function renderEditor() {
                 <div class="relative">
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Sub-folder <span style="color:var(--tx-d)">(Optional)</span></label>
                     <div class="subfolder-select-wrapper" style="position:relative;">
-                        <input id="ed-subfolder" class="form-select w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onfocus="toggleSubfolderDropdown(true)" data-onclick="toggleSubfolderDropdown(true)" data-oninput="filterSubfolderDropdown()">
+                        <input id="ed-subfolder" class="form-select w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onclick="toggleSubfolderDropdown()" data-oninput="filterSubfolderDropdown()">
                         <div id="subfolder-dropdown" class="hidden" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
                             ${existingFolders.map(f => `<div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectSubfolder('${escHtml(f.replace(/'/g, "\\'"))}')">${escHtml(f)}</div>`).join('')}
                         </div>
@@ -3262,26 +3262,31 @@ window.addEnvProp = function() {
 window.removeEnvProp = function(btn) { btn.closest('.env-prop-row').remove(); };
 
 // Subfolder custom dropdown helpers
-window.toggleSubfolderDropdown = function(show) {
+window.toggleSubfolderDropdown = function() {
     const dd = document.getElementById('subfolder-dropdown');
     if (!dd) return;
-    if (show) {
-        dd.classList.remove('hidden');
-        // Filter based on current value
-        filterSubfolderDropdown();
-        // Close when clicking outside
-        setTimeout(() => {
-            const closeHandler = (e) => {
-                if (!e.target.closest('.subfolder-select-wrapper')) {
-                    dd.classList.add('hidden');
-                    document.removeEventListener('click', closeHandler);
-                }
-            };
-            document.addEventListener('click', closeHandler);
-        }, 10);
-    } else {
+    
+    if (!dd.classList.contains('hidden')) {
         dd.classList.add('hidden');
+        return;
     }
+    
+    dd.classList.remove('hidden');
+    // Show all options when explicitly opened
+    dd.querySelectorAll('.subfolder-option').forEach(opt => {
+        opt.style.display = '';
+    });
+    
+    // Close when clicking outside
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!e.target.closest('.subfolder-select-wrapper')) {
+                dd.classList.add('hidden');
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
 };
 
 window.filterSubfolderDropdown = function() {
