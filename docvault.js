@@ -3261,7 +3261,7 @@ window.removeEnvProp = function(btn) { btn.closest('.env-prop-row').remove(); };
 window.renderSelect = function(id, options, selectedValue, customClass = '', onChangeCode = '') {
     const selOpt = options.find(o => o.value === selectedValue) || options[0] || {label:'', value:''};
     const optionsHtml = options.map(o => `
-        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectCustomOption('${id}', '${escHtml(o.value.replace(/'/g, "\\'"))}', '${escHtml(o.label.replace(/'/g, "\\'"))}', \`${onChangeCode.replace(/`/g, '\\`')}\`)">${escHtml(o.label)}</div>
+        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectCustomOption('${id}', '${escHtml(o.value.replace(/'/g, "\\'"))}', '${escHtml(o.label.replace(/'/g, "\\'"))}', '${onChangeCode.replace(/'/g, "\\'")}')">${escHtml(o.label)}</div>
     `).join('');
 
     return `
