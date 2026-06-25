@@ -127,11 +127,15 @@ const E2EESyncService = {
                 body: JSON.stringify({ data: cipherText })
             });
             
-            if (!res.ok) throw new Error("Failed to push to JSONBin");
+            if (!res.ok) {
+                if (res.status === 413) throw new Error("Data too large for Cloud Sync (100KB Limit)");
+                throw new Error("Failed to push to JSONBin: " + res.status);
+            }
             console.log("Auto-Sync Complete");
         } catch (err) {
             console.error("Auto-Sync Error:", err);
-            toast("Auto-sync failed. Check your network.", "error");
+            const msg = err.message.includes("100KB Limit") ? err.message : "Auto-sync failed. Check your network.";
+            toast(msg, "error");
         }
     },
     

@@ -1974,6 +1974,12 @@ function renderViewer() {
                                 </div>
                                 `;
                             }).join('')}
+                            
+                            <!-- Test Case Execution Note -->
+                            <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+                                <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
+                                <textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution..." data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(doc.runData?.results?.[tc.id]?.note || '')}</textarea>
+                            </div>
                         </div>
                     </div>
                     `;
@@ -2019,6 +2025,23 @@ window.updateTestRunStep = async function(runDocId, tcId, stepIdx, status) {
     
     await persist();
     render();
+};
+
+window.updateTestRunNote = async function(runDocId, tcId, note) {
+    const doc = documents.find(d => d.id === runDocId);
+    if (!doc || !doc.runData) return;
+    
+    if (!doc.runData.results) doc.runData.results = {};
+    if (!doc.runData.results[tcId]) doc.runData.results[tcId] = {};
+    
+    doc.runData.results[tcId].note = note;
+    doc.updatedAt = Date.now();
+    
+    if (state.editingDoc?.id === runDocId) {
+        state.editingDoc = { ...doc };
+    }
+    
+    await persist();
 };
 
 function createDoc(cat) {
@@ -2254,6 +2277,52 @@ document.addEventListener('keydown', (e) => {
         if (inp) inp.focus();
     }
 });
+
+// Image Upload handlers for generic textareas
+document.addEventListener('paste', async (e) => {
+    const target = e.target;
+    if (target.tagName === 'TEXTAREA' && !target.closest('.toastui-editor-defaultUI')) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let index in items) {
+            const item = items[index];
+            if (item.kind === 'file') {
+                const blob = item.getAsFile();
+                if (blob && blob.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const startPos = target.selectionStart;
+                    const endPos = target.selectionEnd;
+                    const uploadingText = '![Uploading image...]()';
+                    target.value = target.value.substring(0, startPos) + uploadingText + target.value.substring(endPos);
+                    
+                    uploadImageToCloud(blob, (url) => {
+                        target.value = target.value.replace(uploadingText, `![Image](${url})`);
+                        if(target.onchange) target.onchange();
+                    });
+                }
+            }
+        }
+    }
+});
+
+document.addEventListener('drop', async (e) => {
+    const target = e.target;
+    if (target.tagName === 'TEXTAREA' && !target.closest('.toastui-editor-defaultUI')) {
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+            e.preventDefault();
+            const blob = files[0];
+            const startPos = target.selectionStart || target.value.length;
+            const uploadingText = '![Uploading image...]()\n';
+            target.value = target.value.substring(0, startPos) + uploadingText + target.value.substring(startPos);
+            
+            uploadImageToCloud(blob, (url) => {
+                target.value = target.value.replace(uploadingText, `![Image](${url})\n`);
+                if(target.onchange) target.onchange();
+            });
+        }
+    }
+});
+
 
 // Đóng menu khi scroll
 document.getElementById('content')?.addEventListener('scroll', () => {
