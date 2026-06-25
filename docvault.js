@@ -1057,14 +1057,29 @@ function renderFirebaseSetup() {
 }
 
 window.saveFirebaseConfig = function() {
-    const input = document.getElementById('fb-config-input').value;
+    const input = document.getElementById('fb-config-input').value.trim();
     try {
-        const config = JSON.parse(input);
-        if (!config.apiKey || !config.projectId) throw new Error("Invalid config format");
+        let config;
+        const firstBrace = input.indexOf('{');
+        const lastBrace = input.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            const jsonText = input.substring(firstBrace, lastBrace + 1);
+            try {
+                // Try executing as JS object literal first (supports unquoted keys)
+                config = Function(`"use strict"; return (${jsonText});`)();
+            } catch (err) {
+                config = JSON.parse(jsonText);
+            }
+        } else {
+            config = JSON.parse(input);
+        }
+
+        if (!config || !config.apiKey || !config.projectId) throw new Error("Invalid config format");
         localStorage.setItem('firebase_config', JSON.stringify(config));
         window.location.reload(); // Reload to init Firebase
     } catch (e) {
-        toast("Invalid JSON configuration. Please check again.", "error");
+        toast("Invalid configuration. Please copy the entire config object.", "error");
     }
 };
 
