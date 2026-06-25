@@ -1669,8 +1669,8 @@ function renderEditor() {
                             <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)" value="${escHtml(prop.value || '')}">
                             <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="Toggle Secret" style="color:var(--tx-m);">
                                 <input type="checkbox" class="env-prop-secret peer hidden" ${prop.secret ? 'checked' : ''}>
-                                <i class="fa-solid fa-eye peer-checked:hidden"></i>
-                                <i class="fa-solid fa-eye-slash hidden peer-checked:block text-emerald-500"></i>
+                                <span class="peer-checked:hidden flex"><i class="fa-solid fa-eye"></i></span>
+                                <span class="hidden peer-checked:flex text-emerald-500"><i class="fa-solid fa-eye-slash"></i></span>
                             </label>
                             <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
                         </div>
@@ -3249,8 +3249,8 @@ window.addEnvProp = function() {
         <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)">
         <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="Toggle Secret" style="color:var(--tx-m);">
             <input type="checkbox" class="env-prop-secret peer hidden">
-            <i class="fa-solid fa-eye peer-checked:hidden"></i>
-            <i class="fa-solid fa-eye-slash hidden peer-checked:block text-emerald-500"></i>
+            <span class="peer-checked:hidden flex"><i class="fa-solid fa-eye"></i></span>
+            <span class="hidden peer-checked:flex text-emerald-500"><i class="fa-solid fa-eye-slash"></i></span>
         </label>
         <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
     `;
