@@ -447,8 +447,8 @@ function renderMd(text) {
     // HR
     h = h.replace(/^---+$/gm, '<hr>');
     // Checkbox
-    h = h.replace(/^- \[x\] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" checked disabled> $1</li>');
-    h = h.replace(/^- \[ \] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" disabled> $1</li>');
+    h = h.replace(/^- \[x\] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" class="form-checkbox" checked disabled> <span class="align-middle">$1</span></li>');
+    h = h.replace(/^- \[ \] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" class="form-checkbox" disabled> <span class="align-middle">$1</span></li>');
     // Unordered list
     h = h.replace(/^- (.+)$/gm, '<li class="ul-li">$1</li>');
     // Ordered list
@@ -1667,9 +1667,10 @@ function renderEditor() {
                         <div class="flex items-center gap-2 mb-2 env-prop-row">
                             <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="Label (e.g. Frontend URL)" value="${escHtml(prop.label || '')}">
                             <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)" value="${escHtml(prop.value || '')}">
-                            <label class="flex items-center gap-1 shrink-0 cursor-pointer" title="Mask as secret">
-                                <input type="checkbox" class="env-prop-secret rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-transparent" ${prop.secret ? 'checked' : ''}>
-                                <i class="fa-solid fa-eye-slash text-xs" style="color:var(--tx-d);"></i>
+                            <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="Toggle Secret" style="color:var(--tx-m);">
+                                <input type="checkbox" class="env-prop-secret peer hidden" ${prop.secret ? 'checked' : ''}>
+                                <i class="fa-solid fa-eye peer-checked:hidden"></i>
+                                <i class="fa-solid fa-eye-slash hidden peer-checked:block text-emerald-500"></i>
                             </label>
                             <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
                         </div>
@@ -1682,7 +1683,7 @@ function renderEditor() {
                 <div class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'credential').map(c => `
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" class="ed-env-cred rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-transparent" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
+                            <input type="checkbox" class="form-checkbox ed-env-cred" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
                             <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(c.title)}</span>
                         </label>
                     `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No credentials found</div>`}
@@ -1717,7 +1718,7 @@ function renderEditor() {
                                 <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(h.key)}">
                                 <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(h.value)}">
                                 <div class="flex items-center gap-1">
-                                    <input type="checkbox" class="api-req" title="${t('apiRequired')}" ${h.req ? 'checked' : ''}>
+                                    <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${h.req ? 'checked' : ''}>
                                     <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
                                 </div>
                             </div>
@@ -1735,7 +1736,7 @@ function renderEditor() {
                                 <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(p.key)}">
                                 <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(p.value)}">
                                 <div class="flex items-center gap-1">
-                                    <input type="checkbox" class="api-req" title="${t('apiRequired')}" ${p.req ? 'checked' : ''}>
+                                    <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${p.req ? 'checked' : ''}>
                                     <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
                                 </div>
                             </div>
@@ -1770,7 +1771,7 @@ function renderEditor() {
                     const isChecked = (doc?.runData?.targetIds || state._newRunData?.targetIds || []).includes(tc.id);
                     return `
                     <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" onmouseenter="this.style.background='var(--card)'" onmouseleave="this.style.background='transparent'">
-                        <input type="checkbox" class="testrun-tc-cb w-4 h-4" value="${tc.id}" ${isChecked ? 'checked' : ''}>
+                        <input type="checkbox" class="form-checkbox testrun-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
                         <div class="flex-1">
                             <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
                             <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.steps?.length || 0} steps</div>
@@ -3212,7 +3213,7 @@ window.addApiHeader = function() {
         <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}">
         <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
         <div class="flex items-center gap-1">
-            <input type="checkbox" class="api-req" title="${t('apiRequired')}">
+            <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}">
             <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
         </div>
     `;
@@ -3229,7 +3230,7 @@ window.addApiParam = function() {
         <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}">
         <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
         <div class="flex items-center gap-1">
-            <input type="checkbox" class="api-req" title="${t('apiRequired')}">
+            <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}">
             <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
         </div>
     `;
@@ -3246,9 +3247,10 @@ window.addEnvProp = function() {
     div.innerHTML = `
         <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="Label (e.g. Frontend URL)">
         <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)">
-        <label class="flex items-center gap-1 shrink-0 cursor-pointer" title="Mask as secret">
-            <input type="checkbox" class="env-prop-secret rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-transparent">
-            <i class="fa-solid fa-eye-slash text-xs" style="color:var(--tx-d);"></i>
+        <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="Toggle Secret" style="color:var(--tx-m);">
+            <input type="checkbox" class="env-prop-secret peer hidden">
+            <i class="fa-solid fa-eye peer-checked:hidden"></i>
+            <i class="fa-solid fa-eye-slash hidden peer-checked:block text-emerald-500"></i>
         </label>
         <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
     `;
