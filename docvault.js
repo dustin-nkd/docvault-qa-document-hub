@@ -1085,11 +1085,6 @@ window.saveFirebaseConfig = function() {
 
 
 function renderContent() {
-    if (!localStorage.getItem('firebase_config')) {
-        const c = document.getElementById('content');
-        c.innerHTML = renderFirebaseSetup();
-        return;
-    }
 
     if (state.view === 'editor') syncEditorState();
     
@@ -1604,55 +1599,91 @@ async function uploadImageToCloud(blob, callback) {
 }
 
 window.showGitHubSettingsModal = function() {
-    let settings = { owner: '', repo: '', branch: 'main', token: '', path: 'images' };
-    const stored = localStorage.getItem('github_settings');
-    if (stored) {
+    // 1. GitHub settings
+    let ghSettings = { owner: '', repo: '', branch: 'main', token: '', path: 'images' };
+    const storedGh = localStorage.getItem('github_settings');
+    if (storedGh) {
         try {
-            settings = { ...settings, ...JSON.parse(stored) };
+            ghSettings = { ...ghSettings, ...JSON.parse(storedGh) };
         } catch (e) {}
     }
     
+    // 2. Firebase settings
+    const storedFb = localStorage.getItem('firebase_config');
+    let fbStatusHtml = '';
+    if (storedFb) {
+        try {
+            const fbConfig = JSON.parse(storedFb);
+            fbStatusHtml = `
+                <div class="bg-emerald-950/20 border border-emerald-800/40 rounded-lg p-3 text-xs text-emerald-200 mb-3 text-left">
+                    <i class="fa-solid fa-check-circle mr-1 text-emerald-500"></i> Đang kết nối Firebase Project: <strong>${fbConfig.projectId}</strong>
+                </div>
+                <button type="button" class="w-full bg-red-950/30 hover:bg-red-900/50 border border-red-900/60 text-red-200 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5" data-onclick="resetFirebaseConfig()">
+                    <i class="fa-solid fa-power-off text-[10px]"></i> Ngắt kết nối Firebase (Chuyển sang Offline Local)
+                </button>
+            `;
+        } catch (e) {
+            fbStatusHtml = `<p class="text-xs text-red-400 text-left">Cấu hình Firebase không hợp lệ.</p>`;
+        }
+    } else {
+        fbStatusHtml = `
+            <div class="bg-amber-950/20 border border-amber-800/40 rounded-lg p-3 text-xs text-amber-200 mb-3 text-left">
+                <i class="fa-solid fa-info-circle mr-1 text-amber-500"></i> Đang chạy ở chế độ **Offline Local** (Dữ liệu lưu trình duyệt).
+            </div>
+            <div class="text-left">
+                <label class="block text-[11px] font-bold mb-1 text-[var(--tx-m)]">Kết nối Cloud Firestore (Tùy chọn)</label>
+                <textarea id="settings-fb-config" class="w-full bg-[var(--bg)] border border-[var(--brd)] rounded-lg p-2.5 text-[var(--tx)] font-mono text-[10px] h-20 focus:border-[var(--acc)] outline-none" placeholder='Dán firebaseConfig JSON vào đây...'></textarea>
+                <button type="button" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs mt-2 transition-colors" data-onclick="saveSettingsFirebaseConfig()">Kết nối Cloud Firestore</button>
+            </div>
+        `;
+    }
+
     showModal(`
         <div>
-            <h3 class="font-heading font-bold text-lg mb-2 flex items-center gap-2"><i class="fa-solid fa-image text-[var(--acc)]"></i> GitHub Image Hosting</h3>
-            <p class="text-xs mb-4" style="color:var(--tx-m)">Configure a GitHub repository as a free CDN to host images for DocVault, keeping your database tiny and fast.</p>
+            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> Cài Đặt Ứng Dụng DocVault</h3>
             
-            <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3 text-left">
-                <div>
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Owner / Username</label>
-                    <input type="text" id="gh-owner" class="form-input w-full py-1.5 px-3 text-sm" placeholder="e.g. github-username" value="${escHtml(settings.owner)}">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Repository Name</label>
-                    <input type="text" id="gh-repo" class="form-input w-full py-1.5 px-3 text-sm" placeholder="e.g. docvault-assets" value="${escHtml(settings.repo)}">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Branch</label>
-                    <input type="text" id="gh-branch" class="form-input w-full py-1.5 px-3 text-sm" placeholder="main" value="${escHtml(settings.branch)}">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Target Path in Repository</label>
-                    <input type="text" id="gh-path" class="form-input w-full py-1.5 px-3 text-sm" placeholder="images" value="${escHtml(settings.path)}">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Fine-grained Personal Access Token (PAT)</label>
-                    <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-sm" placeholder="github_pat_..." value="${escHtml(settings.token)}">
-                    <p class="text-[10px] mt-1 text-[var(--tx-d)]">Token needs <strong>Write</strong> access to <strong>Repository contents</strong>.</p>
-                </div>
+            <!-- PHẦN 1: DATABASE -->
+            <div class="mb-5 pb-5 border-b border-[var(--brd)]">
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5 text-left" style="color:var(--tx-m);"><i class="fa-solid fa-database text-[var(--acc)] text-[10px]"></i> 1. Cấu hình Database</h4>
+                ${fbStatusHtml}
+            </div>
+
+            <!-- PHẦN 2: GITHUB ASSETS -->
+            <div class="text-left">
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-image text-[var(--acc)] text-[10px]"></i> 2. GitHub Image Hosting (CDN)</h4>
+                <p class="text-[11px] mb-3" style="color:var(--tx-d)">Upload ảnh chụp màn hình lên GitHub để bỏ qua phần khai báo thanh toán (Billing) của Firebase. Cơ sở dữ liệu sẽ siêu nhẹ và sync mượt mà.</p>
                 
-                <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2">
-                    <button type="button" class="btn-s flex-1 py-2 text-sm" data-onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn-p flex-1 py-2 text-sm flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-save"></i> Save Settings
-                    </button>
-                </div>
-            </form>
-            
-            <div class="pt-3 mt-4 border-t border-[var(--brd)] text-left">
-                <p class="text-xs mb-2 font-bold text-red-500">Firebase Connection</p>
-                <button type="button" class="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-200 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5" data-onclick="resetFirebaseConfig()">
-                    <i class="fa-solid fa-power-off text-xs"></i> Disconnect / Reset Firebase Connection
-                </button>
+                <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Owner / Username</label>
+                        <input type="text" id="gh-owner" class="form-input w-full py-1.5 px-3 text-xs" placeholder="e.g. github-username" value="${escHtml(ghSettings.owner)}">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Repository Name</label>
+                        <input type="text" id="gh-repo" class="form-input w-full py-1.5 px-3 text-xs" placeholder="e.g. docvault-assets" value="${escHtml(ghSettings.repo)}">
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Branch</label>
+                            <input type="text" id="gh-branch" class="form-input w-full py-1.5 px-3 text-xs" placeholder="main" value="${escHtml(ghSettings.branch)}">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Path</label>
+                            <input type="text" id="gh-path" class="form-input w-full py-1.5 px-3 text-xs" placeholder="images" value="${escHtml(ghSettings.path)}">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Fine-grained Personal Access Token (PAT)</label>
+                        <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token)}">
+                    </div>
+                    
+                    <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
+                        <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Đóng</button>
+                        <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-save text-[10px]"></i> Lưu Cấu Hình CDN
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     `);
@@ -1680,11 +1711,37 @@ window.saveGitHubSettings = function() {
 }
 
 window.resetFirebaseConfig = function() {
-    if (confirm("Bạn có chắc chắn muốn ngắt kết nối với Firebase? Dữ liệu của bạn ở local vẫn sẽ được giữ nguyên, nhưng bạn sẽ cần cấu hình lại Firebase mới.")) {
+    if (confirm("Bạn có chắc chắn muốn ngắt kết nối với Firebase? Dữ liệu của bạn ở local vẫn sẽ được giữ nguyên, nhưng bạn sẽ chuyển sang chế độ lưu trữ Offline.")) {
         localStorage.removeItem('firebase_config');
         window.location.reload();
     }
 }
+
+window.saveSettingsFirebaseConfig = function() {
+    const input = document.getElementById('settings-fb-config').value.trim();
+    try {
+        let config;
+        const firstBrace = input.indexOf('{');
+        const lastBrace = input.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            const jsonText = input.substring(firstBrace, lastBrace + 1);
+            try {
+                config = Function(`"use strict"; return (${jsonText});`)();
+            } catch (err) {
+                config = JSON.parse(jsonText);
+            }
+        } else {
+            config = JSON.parse(input);
+        }
+
+        if (!config || !config.apiKey || !config.projectId) throw new Error("Invalid config format");
+        localStorage.setItem('firebase_config', JSON.stringify(config));
+        window.location.reload(); // Reload to init Firebase
+    } catch (e) {
+        toast("Cấu hình Firebase không hợp lệ. Vui lòng kiểm tra lại.", "error");
+    }
+};
 
 
 // ========================
