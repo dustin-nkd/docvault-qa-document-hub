@@ -1501,12 +1501,15 @@ function renderEditor() {
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${category === 'credential' ? 'Service Name' : 'Title'}</label>
                     <input id="ed-title" class="form-input" placeholder="${category === 'credential' ? t('egCred') : t('enterTitle')}" value="${escHtml(title)}">
                 </div>
-                <div>
+                <div class="relative">
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Sub-folder <span style="color:var(--tx-d)">(Optional)</span></label>
-                    <input id="ed-subfolder" list="folder-list" class="form-input" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}">
-                    <datalist id="folder-list">
-                        ${existingFolders.map(f => `<option value="${escHtml(f)}"></option>`).join('')}
-                    </datalist>
+                    <div class="subfolder-select-wrapper" style="position:relative;">
+                        <input id="ed-subfolder" class="form-input w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onfocus="toggleSubfolderDropdown(true)" data-oninput="filterSubfolderDropdown()">
+                        ${existingFolders.length > 0 ? `<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--tx-d);"><i class="fa-solid fa-chevron-down text-[10px]"></i></span>` : ''}
+                        <div id="subfolder-dropdown" class="hidden" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+                            ${existingFolders.map(f => `<div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectSubfolder('${escHtml(f.replace(/'/g, "\\'"))}')">${escHtml(f)}</div>`).join('')}
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -1651,19 +1654,31 @@ function renderEditor() {
                     </select>
                 </div>
             </div>
-            <div class="grid sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Frontend URL</label>
-                    <input id="ed-env-fe" class="form-input text-sm w-full font-mono" placeholder="https://stg.app.com" value="${escHtml(envData?.frontendUrl || '')}">
-                </div>
-                <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Backend API URL</label>
-                    <input id="ed-env-be" class="form-input text-sm w-full font-mono" placeholder="https://api-stg.app.com" value="${escHtml(envData?.backendUrl || '')}">
-                </div>
-            </div>
             <div class="mb-4">
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Database Connection String</label>
-                <input id="ed-env-db" class="form-input text-sm w-full font-mono" placeholder="mongodb://user:pass@host:27017/db" value="${escHtml(envData?.dbInfo || '')}">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium block" style="color:var(--tx-m);">Properties</label>
+                </div>
+                <div id="env-props-container">
+                    ${((envData?.properties && envData.properties.length > 0) ? envData.properties : (envData?.frontendUrl || envData?.backendUrl || envData?.dbInfo) ? 
+                        // Migrate old format to new
+                        [
+                            ...(envData?.frontendUrl ? [{label: 'Frontend URL', value: envData.frontendUrl, secret: false}] : []),
+                            ...(envData?.backendUrl ? [{label: 'Backend API URL', value: envData.backendUrl, secret: false}] : []),
+                            ...(envData?.dbInfo ? [{label: 'Database Connection', value: envData.dbInfo, secret: true}] : [])
+                        ] : [{label: '', value: '', secret: false}]
+                    ).map((prop, idx) => `
+                        <div class="flex items-center gap-2 mb-2 env-prop-row">
+                            <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="Label (e.g. Frontend URL)" value="${escHtml(prop.label || '')}">
+                            <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)" value="${escHtml(prop.value || '')}">
+                            <label class="flex items-center gap-1 shrink-0 cursor-pointer" title="Mask as secret">
+                                <input type="checkbox" class="env-prop-secret rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-transparent" ${prop.secret ? 'checked' : ''}>
+                                <i class="fa-solid fa-eye-slash text-xs" style="color:var(--tx-d);"></i>
+                            </label>
+                            <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="btn-s text-sm mt-2" data-onclick="addEnvProp()"><i class="fa-solid fa-plus mr-1"></i> Add Property</button>
             </div>
             <div class="mb-4">
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Credentials</label>
@@ -1867,34 +1882,38 @@ function renderViewer() {
                 </span>
             </div>
             
-            <div class="grid sm:grid-cols-2 gap-4 mb-5">
-                ${doc.envData?.frontendUrl ? `
-                <div class="p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
-                    <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Frontend URL</p>
-                    <div class="flex items-center gap-2">
-                        <a href="${escHtml(doc.envData.frontendUrl)}" target="_blank" class="text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(doc.envData.frontendUrl)}</a>
-                        <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(doc.envData.frontendUrl)}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
+            ${(() => {
+                // Support both new (properties[]) and old (frontendUrl/backendUrl/dbInfo) format
+                const props = doc.envData?.properties || [];
+                const legacyProps = [];
+                if (!props.length) {
+                    if (doc.envData?.frontendUrl) legacyProps.push({label: 'Frontend URL', value: doc.envData.frontendUrl, secret: false});
+                    if (doc.envData?.backendUrl) legacyProps.push({label: 'Backend API URL', value: doc.envData.backendUrl, secret: false});
+                    if (doc.envData?.dbInfo) legacyProps.push({label: 'Database Connection', value: doc.envData.dbInfo, secret: true});
+                }
+                const allProps = props.length ? props : legacyProps;
+                if (!allProps.length) return '';
+                
+                return `<div class="grid sm:grid-cols-2 gap-4 mb-5">
+                    ${allProps.map(prop => `
+                    <div class="p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                        <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${escHtml(prop.label)}</p>
+                        <div class="flex items-center gap-2">
+                            ${prop.secret ? `
+                                <input type="password" id="view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}" value="${escHtml(prop.value)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
+                                <button class="btn-s px-2 py-1 text-xs" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}')"><i class="fa-solid fa-eye"></i></button>
+                            ` : `
+                                ${prop.value.startsWith('http') ? 
+                                    `<a href="${escHtml(prop.value)}" target="_blank" class="text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(prop.value)}</a>` :
+                                    `<span class="text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`
+                                }
+                            `}
+                            <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(prop.value.replace(/'/g, "\\'"))}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
+                        </div>
                     </div>
-                </div>` : ''}
-                ${doc.envData?.backendUrl ? `
-                <div class="p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
-                    <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Backend API URL</p>
-                    <div class="flex items-center gap-2">
-                        <a href="${escHtml(doc.envData.backendUrl)}" target="_blank" class="text-sm font-mono text-blue-400 hover:underline truncate flex-1">${escHtml(doc.envData.backendUrl)}</a>
-                        <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(doc.envData.backendUrl)}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
-                    </div>
-                </div>` : ''}
-            </div>
-
-            ${doc.envData?.dbInfo ? `
-            <div class="p-4 rounded-lg mb-5" style="background:var(--card);border:1px solid var(--brd);">
-                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Database Connection</p>
-                <div class="flex items-center gap-2">
-                    <input type="password" id="view-env-db" value="${escHtml(doc.envData.dbInfo)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
-                    <button class="btn-s px-2 py-1 text-xs" data-onclick="togglePasswordVisibility('view-env-db')"><i class="fa-solid fa-eye"></i></button>
-                    <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(doc.envData.dbInfo)}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
-                </div>
-            </div>` : ''}
+                    `).join('')}
+                </div>`;
+            })()}
 
             ${doc.envData?.linkedCreds?.length ? `
             <div>
@@ -2235,13 +2254,16 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         runData = { targetIds, results: existingResults };
     } else if (cat === 'environment') {
         const envStatus = document.getElementById('ed-env-status')?.value || 'healthy';
-        const frontendUrl = document.getElementById('ed-env-fe')?.value || '';
-        const backendUrl = document.getElementById('ed-env-be')?.value || '';
-        const dbInfo = document.getElementById('ed-env-db')?.value || '';
+        const propRows = document.querySelectorAll('.env-prop-row');
+        const properties = Array.from(propRows).map(row => ({
+            label: row.querySelector('.env-prop-label')?.value.trim() || '',
+            value: row.querySelector('.env-prop-value')?.value.trim() || '',
+            secret: row.querySelector('.env-prop-secret')?.checked || false
+        })).filter(p => p.label || p.value);
         const linkedCreds = Array.from(document.querySelectorAll('.ed-env-cred:checked')).map(cb => cb.value);
         const notes = document.getElementById('ed-env-notes')?.value || '';
         
-        envData = { status: envStatus, frontendUrl, backendUrl, dbInfo, linkedCreds, notes };
+        envData = { status: envStatus, properties, linkedCreds, notes };
         finalContent = `# Environment Notes\n${notes}`;
     }
 
@@ -3219,6 +3241,70 @@ window.addApiParam = function() {
     container.appendChild(div);
 };
 window.removeApiParam = function(btn) { btn.closest('.api-param-row').remove(); };
+
+// Environment property helpers
+window.addEnvProp = function() {
+    const container = document.getElementById('env-props-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 env-prop-row';
+    div.innerHTML = `
+        <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="Label (e.g. Frontend URL)">
+        <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)">
+        <label class="flex items-center gap-1 shrink-0 cursor-pointer" title="Mask as secret">
+            <input type="checkbox" class="env-prop-secret rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-transparent">
+            <i class="fa-solid fa-eye-slash text-xs" style="color:var(--tx-d);"></i>
+        </label>
+        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+    `;
+    container.appendChild(div);
+    div.querySelector('.env-prop-label').focus();
+};
+window.removeEnvProp = function(btn) { btn.closest('.env-prop-row').remove(); };
+
+// Subfolder custom dropdown helpers
+window.toggleSubfolderDropdown = function(show) {
+    const dd = document.getElementById('subfolder-dropdown');
+    if (!dd) return;
+    if (show) {
+        dd.classList.remove('hidden');
+        // Filter based on current value
+        filterSubfolderDropdown();
+        // Close when clicking outside
+        setTimeout(() => {
+            const closeHandler = (e) => {
+                if (!e.target.closest('.subfolder-select-wrapper')) {
+                    dd.classList.add('hidden');
+                    document.removeEventListener('click', closeHandler);
+                }
+            };
+            document.addEventListener('click', closeHandler);
+        }, 10);
+    } else {
+        dd.classList.add('hidden');
+    }
+};
+
+window.filterSubfolderDropdown = function() {
+    const input = document.getElementById('ed-subfolder');
+    const dd = document.getElementById('subfolder-dropdown');
+    if (!input || !dd) return;
+    const val = input.value.toLowerCase();
+    let hasVisible = false;
+    dd.querySelectorAll('.subfolder-option').forEach(opt => {
+        const matches = opt.textContent.toLowerCase().includes(val);
+        opt.style.display = matches ? '' : 'none';
+        if (matches) hasVisible = true;
+    });
+    dd.classList.toggle('hidden', !hasVisible);
+};
+
+window.selectSubfolder = function(value) {
+    const input = document.getElementById('ed-subfolder');
+    if (input) input.value = value;
+    const dd = document.getElementById('subfolder-dropdown');
+    if (dd) dd.classList.add('hidden');
+};
 
 window.formatJson = function(id) {
     const el = document.getElementById(id);
