@@ -362,6 +362,7 @@ async function persist() {
         window.SyncService.pushData(); // async background push
     }
 }
+window.localDocsCountToMigrate = 0;
 async function hydrate() {
     const settings = await DocStorage.getSettings();
     if (settings && settings.lang) state.lang = settings.lang;
@@ -370,6 +371,13 @@ async function hydrate() {
         documents = saved;
     } else {
         documents = [...SAMPLE_DOCS];
+    }
+    
+    if (localStorage.getItem('firebase_config')) {
+        const oldData = await DocStorage.getOldLocalData();
+        if (oldData && oldData.length > 0) {
+            window.localDocsCountToMigrate = oldData.length;
+        }
     }
     
     let migrated = false;
@@ -1024,7 +1032,50 @@ function updateDOM(el, htmlStr) {
     }
 }
 
+// ========================
+// FIREBASE SETUP
+// ========================
+function renderFirebaseSetup() {
+    return `
+    <div class="flex items-center justify-center h-full">
+        <div class="bg-[var(--card)] border border-[var(--brd)] rounded-xl p-8 max-w-lg w-full shadow-2xl">
+            <div class="text-center mb-6">
+                <i class="fa-brands fa-envira text-4xl text-emerald-500 mb-3"></i>
+                <h2 class="text-2xl font-bold font-heading text-[var(--tx)]">Firebase Setup Required</h2>
+                <p class="text-sm text-[var(--tx-m)] mt-2">Please enter your Firebase Configuration object to connect to the new cloud database.</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-[var(--tx-m)] mb-2">Firebase Config JSON</label>
+                <textarea id="fb-config-input" class="w-full bg-[var(--bg)] border border-[var(--brd)] rounded-lg p-4 text-[var(--tx)] font-mono text-xs h-40 focus:border-[var(--acc)] outline-none" placeholder='{\n  "apiKey": "...",\n  "authDomain": "...",\n  "projectId": "...",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}'></textarea>
+            </div>
+            
+            <button class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-lg transition-colors" data-onclick="saveFirebaseConfig()">Connect to Firebase</button>
+        </div>
+    </div>
+    `;
+}
+
+window.saveFirebaseConfig = function() {
+    const input = document.getElementById('fb-config-input').value;
+    try {
+        const config = JSON.parse(input);
+        if (!config.apiKey || !config.projectId) throw new Error("Invalid config format");
+        localStorage.setItem('firebase_config', JSON.stringify(config));
+        window.location.reload(); // Reload to init Firebase
+    } catch (e) {
+        toast("Invalid JSON configuration. Please check again.", "error");
+    }
+};
+
+
 function renderContent() {
+    if (!localStorage.getItem('firebase_config')) {
+        const c = document.getElementById('content');
+        c.innerHTML = renderFirebaseSetup();
+        return;
+    }
+
     if (state.view === 'editor') syncEditorState();
     
     const c = document.getElementById('content');
@@ -1105,6 +1156,19 @@ function render() {
 // ========================
 // DASHBOARD
 // ========================
+window.doMigration = async function() {
+    try {
+        toast("Migrating data to cloud... Please wait.", "info");
+        const count = await DocStorage.migrateDataToCloud();
+        window.localDocsCountToMigrate = 0;
+        toast(`Successfully migrated ${count} documents!`, "success");
+        setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+        console.error(e);
+        toast("Migration failed. Check console.", "error");
+    }
+};
+
 function renderDashboard() {
     const activeDocs = documents.filter(d => d.status !== 'deleted');
     const total = activeDocs.length;
@@ -1114,6 +1178,20 @@ function renderDashboard() {
     Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
 
     return `<div class="fade-up max-w-6xl mx-auto">
+        ${window.localDocsCountToMigrate > 0 ? `
+        <div class="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <div>
+                    <h4 class="font-heading font-bold text-[var(--tx)]">Migrate Old Data to Cloud</h4>
+                    <p class="text-sm text-[var(--tx-m)]">Found ${window.localDocsCountToMigrate} old documents stored locally. Migrate them to Firebase now!</p>
+                </div>
+            </div>
+            <button class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" data-onclick="doMigration()">Migrate Now</button>
+        </div>
+        ` : ''}
         <!-- Stats -->
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <div class="stat-card sc-total p-4">
@@ -1405,66 +1483,24 @@ function showDocMenu(id, btn) {
 }
 
 // ========================
-// IMAGE UPLOAD (FreeImage.host)
+// IMAGE UPLOAD (Firebase Storage)
 // ========================
 async function uploadImageToCloud(blob, callback) {
-    toast("Uploading image to Cloud...", "info");
-
-    // Helper: convert blob to base64
-    function blobToBase64(b) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(b);
-        });
+    if (!localStorage.getItem('firebase_config')) {
+        toast("Firebase not configured!", "error");
+        return;
     }
-
-    // Strategy 1: imgBB
-    async function tryImgBB() {
-        const base64 = await blobToBase64(blob);
-        const fd = new FormData();
-        fd.append('key', '44ab2a2adba02ef24ebaff295c0c75e5');
-        fd.append('image', base64);
-        const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd });
-        const data = await res.json();
-        if (data && data.success) return data.data.url;
-        throw new Error('imgBB failed');
-    }
-
-    // Strategy 2: FreeImage.host
-    async function tryFreeImage() {
-        const fd = new FormData();
-        fd.append('key', '6d207e02198a847aa98d0a2a901485a5');
-        fd.append('source', blob);
-        fd.append('format', 'json');
-        const res = await fetch('https://freeimage.host/api/1/upload', { method: 'POST', body: fd });
-        const data = await res.json();
-        if (data && data.status_code === 200) return data.image.url;
-        throw new Error('FreeImage failed');
-    }
-
-    // Strategy 3: Inline base64 data URI (always works, but large)
-    async function toDataUri() {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    }
-
+    toast("Uploading image to Firebase...", "info");
+    
     try {
-        let url;
-        try { url = await tryImgBB(); }
-        catch(e1) {
-            console.warn('imgBB failed, trying FreeImage...', e1);
-            try { url = await tryFreeImage(); }
-            catch(e2) {
-                console.warn('FreeImage failed, using inline base64...', e2);
-                url = await toDataUri();
-            }
-        }
+        const storage = firebase.storage();
+        const ext = blob.type.split('/')[1] || 'png';
+        const filename = `images/docvault_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
+        const storageRef = storage.ref().child(filename);
+        
+        const snapshot = await storageRef.put(blob);
+        const url = await snapshot.ref.getDownloadURL();
+        
         callback(url, blob.name || 'image');
         toast("Image uploaded successfully!", "success");
     } catch (err) {
