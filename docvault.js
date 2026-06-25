@@ -1106,11 +1106,12 @@ function render() {
 // DASHBOARD
 // ========================
 function renderDashboard() {
-    const total = documents.length;
-    const favs = documents.filter(d => d.favorite).length;
-    const recent = [...documents].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
+    const activeDocs = documents.filter(d => d.status !== 'deleted');
+    const total = activeDocs.length;
+    const favs = activeDocs.filter(d => d.favorite).length;
+    const recent = [...activeDocs].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
     const catCounts = {};
-    Object.keys(CAT_META).forEach(k => catCounts[k] = documents.filter(d => d.category === k).length);
+    Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
 
     return `<div class="fade-up max-w-6xl mx-auto">
         <!-- Stats -->
@@ -1179,7 +1180,7 @@ function renderDashboard() {
                     </div>
                     <div class="flex flex-col gap-2">
                         ${favs === 0 ? `<p class="text-xs text-center py-4" style="color:var(--tx-d);">${t('noFavorites')}</p>` :
-                        documents.filter(d => d.favorite).slice(0, 4).map(d => `
+                        activeDocs.filter(d => d.favorite).slice(0, 4).map(d => `
                             <div class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer" style="transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="viewDoc('${d.id}')">
                                 <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${CAT_META[d.category].color};"></span>
                                 <span class="text-xs truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
@@ -1408,24 +1409,64 @@ function showDocMenu(id, btn) {
 // ========================
 async function uploadImageToCloud(blob, callback) {
     toast("Uploading image to Cloud...", "info");
-    const formData = new FormData();
-    // Public API Key for FreeImage.host
-    formData.append("key", "6d207e02198a847aa98d0a2a901485a5");
-    formData.append("source", blob);
-    formData.append("format", "json");
+
+    // Helper: convert blob to base64
+    function blobToBase64(b) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(b);
+        });
+    }
+
+    // Strategy 1: imgBB
+    async function tryImgBB() {
+        const base64 = await blobToBase64(blob);
+        const fd = new FormData();
+        fd.append('key', '44ab2a2adba02ef24ebaff295c0c75e5');
+        fd.append('image', base64);
+        const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data && data.success) return data.data.url;
+        throw new Error('imgBB failed');
+    }
+
+    // Strategy 2: FreeImage.host
+    async function tryFreeImage() {
+        const fd = new FormData();
+        fd.append('key', '6d207e02198a847aa98d0a2a901485a5');
+        fd.append('source', blob);
+        fd.append('format', 'json');
+        const res = await fetch('https://freeimage.host/api/1/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data && data.status_code === 200) return data.image.url;
+        throw new Error('FreeImage failed');
+    }
+
+    // Strategy 3: Inline base64 data URI (always works, but large)
+    async function toDataUri() {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
 
     try {
-        const res = await fetch("https://freeimage.host/api/1/upload", {
-            method: "POST",
-            body: formData
-        });
-        const data = await res.json();
-        if (data && data.status_code === 200) {
-            callback(data.image.url, data.image.name || 'image');
-            toast("Image uploaded successfully!", "success");
-        } else {
-            throw new Error(data?.error?.message || "Upload failed");
+        let url;
+        try { url = await tryImgBB(); }
+        catch(e1) {
+            console.warn('imgBB failed, trying FreeImage...', e1);
+            try { url = await tryFreeImage(); }
+            catch(e2) {
+                console.warn('FreeImage failed, using inline base64...', e2);
+                url = await toDataUri();
+            }
         }
+        callback(url, blob.name || 'image');
+        toast("Image uploaded successfully!", "success");
     } catch (err) {
         console.error("Image Upload Error:", err);
         toast("Failed to upload image. Please try again.", "error");
