@@ -1498,24 +1498,100 @@ function showDocMenu(id, btn) {
 }
 
 // ========================
-// IMAGE UPLOAD (Firebase Storage)
+// IMAGE UPLOAD (GitHub CDN & Base64 Fallback)
 // ========================
+async function uploadImageToGitHub(blob, callback) {
+    const settingsStr = localStorage.getItem('github_settings');
+    if (!settingsStr) return false;
+    
+    let settings;
+    try {
+        settings = JSON.parse(settingsStr);
+    } catch (e) {
+        return false;
+    }
+    
+    if (!settings.owner || !settings.repo || !settings.token) {
+        return false;
+    }
+    
+    toast("Uploading image to GitHub...", "info");
+    
+    try {
+        // Convert blob to base64 for GitHub API
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        await new Promise((resolve, reject) => {
+            reader.onloadend = () => resolve();
+            reader.onerror = () => reject(new Error("Failed to read blob"));
+        });
+        
+        // Remove the data URL prefix (e.g., "data:image/png;base64,")
+        const base64Content = reader.result.split(',')[1];
+        
+        const ext = blob.type.split('/')[1] || 'png';
+        const filename = `img_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
+        const path = (settings.path || 'images').replace(/\/+$/, '') + '/' + filename;
+        const branch = settings.branch || 'main';
+        
+        const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`;
+        
+        const body = {
+            message: `Upload image from DocVault: ${filename}`,
+            content: base64Content,
+            branch: branch
+        };
+        
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${settings.token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github+json'
+            },
+            body: JSON.stringify(body)
+        });
+        
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || `GitHub API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const downloadUrl = data.content.download_url;
+        
+        callback(downloadUrl, blob.name || 'image');
+        toast("Image uploaded to GitHub successfully!", "success");
+        return true;
+    } catch (err) {
+        console.error("GitHub Upload Error:", err);
+        toast("GitHub upload failed. Falling back to inline image.", "error");
+        return false;
+    }
+}
+
 async function uploadImageToCloud(blob, callback) {
     if (!localStorage.getItem('firebase_config')) {
         toast("Firebase not configured!", "error");
         return;
     }
+    
+    // Attempt GitHub upload first
+    const uploaded = await uploadImageToGitHub(blob, callback);
+    if (uploaded) return;
+    
+    // Fallback to inline Base64
     if (blob.size > 800000) {
         toast("Fallback mode: Image should be under 800KB to fit in database.", "warning");
     }
-    toast("Processing image inline...", "info");
+    toast("Processing image inline (Base64 fallback)...", "info");
     
     try {
         const reader = new FileReader();
         reader.onloadend = function() {
             const base64data = reader.result;
             callback(base64data, blob.name || 'image');
-            toast("Image loaded successfully!", "success");
+            toast("Image loaded inline. Connect GitHub for better sync performance!", "success");
         };
         reader.onerror = function() {
             toast("Failed to read image file.", "error");
@@ -1526,6 +1602,76 @@ async function uploadImageToCloud(blob, callback) {
         toast("Failed to process image. Please try again.", "error");
     }
 }
+
+window.showGitHubSettingsModal = function() {
+    let settings = { owner: '', repo: '', branch: 'main', token: '', path: 'images' };
+    const stored = localStorage.getItem('github_settings');
+    if (stored) {
+        try {
+            settings = { ...settings, ...JSON.parse(stored) };
+        } catch (e) {}
+    }
+    
+    showModal(`
+        <div>
+            <h3 class="font-heading font-bold text-lg mb-2 flex items-center gap-2"><i class="fa-solid fa-image text-[var(--acc)]"></i> GitHub Image Hosting</h3>
+            <p class="text-xs mb-4" style="color:var(--tx-m)">Configure a GitHub repository as a free CDN to host images for DocVault, keeping your database tiny and fast.</p>
+            
+            <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3 text-left">
+                <div>
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Owner / Username</label>
+                    <input type="text" id="gh-owner" class="form-input w-full py-1.5 px-3 text-sm" placeholder="e.g. github-username" value="${escHtml(settings.owner)}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Repository Name</label>
+                    <input type="text" id="gh-repo" class="form-input w-full py-1.5 px-3 text-sm" placeholder="e.g. docvault-assets" value="${escHtml(settings.repo)}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Branch</label>
+                    <input type="text" id="gh-branch" class="form-input w-full py-1.5 px-3 text-sm" placeholder="main" value="${escHtml(settings.branch)}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Target Path in Repository</label>
+                    <input type="text" id="gh-path" class="form-input w-full py-1.5 px-3 text-sm" placeholder="images" value="${escHtml(settings.path)}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Fine-grained Personal Access Token (PAT)</label>
+                    <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-sm" placeholder="github_pat_..." value="${escHtml(settings.token)}">
+                    <p class="text-[10px] mt-1 text-[var(--tx-d)]">Token needs <strong>Write</strong> access to <strong>Repository contents</strong>.</p>
+                </div>
+                
+                <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2">
+                    <button type="button" class="btn-s flex-1 py-2 text-sm" data-onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-p flex-1 py-2 text-sm flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-save"></i> Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    `);
+}
+
+window.saveGitHubSettings = function() {
+    const owner = document.getElementById('gh-owner').value.trim();
+    const repo = document.getElementById('gh-repo').value.trim();
+    const branch = document.getElementById('gh-branch').value.trim() || 'main';
+    const path = document.getElementById('gh-path').value.trim() || 'images';
+    const token = document.getElementById('gh-token').value.trim();
+    
+    if (owner && repo && token) {
+        const settings = { owner, repo, branch, path, token };
+        localStorage.setItem('github_settings', JSON.stringify(settings));
+        toast("GitHub Settings saved successfully!", "success");
+        closeModal();
+    } else if (!owner && !repo && !token) {
+        localStorage.removeItem('github_settings');
+        toast("GitHub Settings cleared. Using Base64 fallback.", "info");
+        closeModal();
+    } else {
+        toast("Please fill in Owner, Repo and Token fields.", "warning");
+    }
+}
+
 
 // ========================
 // EDITOR
