@@ -1,144 +1,146 @@
 /**
- * DocVault Storage Module
- * Wraps chrome.storage.local with localStorage fallback for development.
- * All methods are async to support chrome.storage.local's async API.
+ * DocVault Storage Module - Firebase Edition
+ * Wraps Firebase Firestore for data persistence and Firebase Storage for files.
  */
 const DocStorage = {
-    STORAGE_KEY: 'docvault_docs',
-    SETTINGS_KEY: 'docvault_settings',
+    // Flag to check if Firebase is initialized
+    isFirebaseReady: false,
 
-    /**
-     * Check if running as Chrome extension
-     */
-    _isChromeExt() {
-        return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
-    },
-
-    /**
-     * Get all documents
-     * @returns {Promise<Array|null>} Array of documents or null if none saved
-     */
-    async getAll() {
-        if (this._isChromeExt()) {
-            return new Promise((resolve) => {
-                chrome.storage.local.get(this.STORAGE_KEY, (result) => {
-                    resolve(result[this.STORAGE_KEY] || null);
-                });
-            });
-        } else {
-            const data = localStorage.getItem(this.STORAGE_KEY);
-            try {
-                return data ? JSON.parse(data) : null;
-            } catch (e) {
-                return null;
-            }
-        }
-    },
-
-    /**
-     * Save all documents (replaces entire collection)
-     * @param {Array} docs - Array of document objects
-     */
-    async save(docs) {
-        if (this._isChromeExt()) {
-            return new Promise((resolve) => {
-                chrome.storage.local.set({ [this.STORAGE_KEY]: docs }, () => {
-                    resolve();
-                });
-            });
-        } else {
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(docs));
-        }
-    },
-
-    /**
-     * Get storage usage info
-     * @returns {Promise<{used: number, total: number}>} Bytes used and total
-     */
-    async getUsage() {
-        if (this._isChromeExt()) {
-            return new Promise((resolve) => {
-                chrome.storage.local.getBytesInUse(null, (bytesInUse) => {
-                    resolve({
-                        used: bytesInUse,
-                        total: chrome.storage.local.QUOTA_BYTES || 10485760
+    async init() {
+        if (this.isFirebaseReady) return;
+        try {
+            // Get config from localStorage
+            const storedConfigStr = localStorage.getItem('firebase_config');
+            if (storedConfigStr) {
+                const config = JSON.parse(storedConfigStr);
+                if (config.apiKey && !firebase.apps.length) {
+                    firebase.initializeApp(config);
+                    this.db = firebase.firestore();
+                    this.db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+                    this.db.enablePersistence().catch(err => {
+                        console.warn('Firebase offline persistence error:', err);
                     });
-                });
-            });
-        } else {
-            let used = 0;
-            for (let key in localStorage) {
-                if (localStorage.hasOwnProperty(key)) {
-                    used += localStorage.getItem(key).length * 2; // rough estimate (UTF-16)
+                    this.isFirebaseReady = true;
+                    console.log("Firebase initialized successfully.");
                 }
             }
-            return { used, total: 5242880 }; // ~5MB for localStorage
+        } catch (e) {
+            console.error("Firebase init failed:", e);
         }
     },
 
-    /**
-     * Export all documents as a JSON file download
-     */
+    async getAll() {
+        await this.init();
+        if (!this.isFirebaseReady) return null;
+
+        try {
+            const snapshot = await this.db.collection('documents').get();
+            const docs = [];
+            snapshot.forEach(doc => docs.push(doc.data()));
+            return docs;
+        } catch (err) {
+            console.error('Error fetching docs from Firebase:', err);
+            return null;
+        }
+    },
+
+    async save(docs) {
+        await this.init();
+        if (!this.isFirebaseReady) return;
+
+        try {
+            const batch = this.db.batch();
+            const collectionRef = this.db.collection('documents');
+            
+            for (const doc of docs) {
+                const docRef = collectionRef.doc(doc.id);
+                batch.set(docRef, doc, { merge: true });
+            }
+            
+            const snapshot = await collectionRef.get();
+            const currentIds = new Set(docs.map(d => d.id));
+            snapshot.forEach(docSnap => {
+                if (!currentIds.has(docSnap.id)) {
+                    batch.delete(docSnap.ref);
+                }
+            });
+
+            await batch.commit();
+        } catch (err) {
+            console.error('Error saving docs to Firebase:', err);
+        }
+    },
+
+    async getOldLocalData() {
+        const STORAGE_KEY = 'docvault_docs';
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            return new Promise((resolve) => {
+                chrome.storage.local.get(STORAGE_KEY, (result) => {
+                    resolve(result[STORAGE_KEY] || null);
+                });
+            });
+        }
+        const data = localStorage.getItem(STORAGE_KEY);
+        try { return data ? JSON.parse(data) : null; } 
+        catch (e) { return null; }
+    },
+
+    async migrateDataToCloud() {
+        const oldDocs = await this.getOldLocalData();
+        if (oldDocs && oldDocs.length > 0) {
+            await this.init();
+            if (!this.isFirebaseReady) throw new Error("Firebase not ready");
+            await this.save(oldDocs);
+            
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.remove('docvault_docs');
+            }
+            localStorage.removeItem('docvault_docs');
+            return oldDocs.length;
+        }
+        return 0;
+    },
+
+    async getUsage() {
+        return { used: 0, total: 1048576000 }; // 1GB fake quota for Firebase
+    },
+
     async exportData() {
         const docs = await this.getAll();
-        if (!docs || docs.length === 0) {
-            throw new Error('Không có dữ liệu để export.');
-        }
+        if (!docs || docs.length === 0) throw new Error('Không có dữ liệu để export.');
+        
         const exportObj = {
             version: '1.0.0',
             exportedAt: new Date().toISOString(),
             documentCount: docs.length,
             documents: docs
         };
-        const data = JSON.stringify(exportObj, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const date = new Date().toISOString().split('T')[0];
         a.href = url;
-        a.download = `docvault-backup-${date}.json`;
+        a.download = `docvault-backup-${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     },
 
-    /**
-     * Import documents from a JSON file
-     * @param {File} file - JSON file to import
-     * @param {string} mode - 'replace' or 'merge'
-     * @returns {Promise<{imported: number, total: number}>} Import result
-     */
     async importData(file, mode = 'merge') {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
                     const parsed = JSON.parse(e.target.result);
-                    let importDocs;
-
-                    // Support both raw array and wrapped format
-                    if (Array.isArray(parsed)) {
-                        importDocs = parsed;
-                    } else if (parsed.documents && Array.isArray(parsed.documents)) {
-                        importDocs = parsed.documents;
-                    } else {
-                        reject(new Error('File không đúng định dạng DocVault.'));
-                        return;
-                    }
-
-                    // Validate each document has required fields
-                    const valid = importDocs.every(d => d.id && d.title && d.category);
-                    if (!valid) {
-                        reject(new Error('Dữ liệu document không hợp lệ.'));
-                        return;
+                    let importDocs = Array.isArray(parsed) ? parsed : (parsed.documents || null);
+                    if (!importDocs || !importDocs.every(d => d.id && d.title && d.category)) {
+                        return reject(new Error('Dữ liệu document không hợp lệ.'));
                     }
 
                     if (mode === 'replace') {
                         await this.save(importDocs);
                         resolve({ imported: importDocs.length, total: importDocs.length });
                     } else {
-                        // Merge mode: add new, skip duplicates by ID
                         const existing = (await this.getAll()) || [];
                         const existingIds = new Set(existing.map(d => d.id));
                         let imported = 0;
@@ -151,75 +153,32 @@ const DocStorage = {
                         await this.save(existing);
                         resolve({ imported, total: existing.length });
                     }
-                } catch (err) {
-                    reject(new Error('Lỗi đọc file: ' + err.message));
-                }
+                } catch (err) { reject(new Error('Lỗi đọc file: ' + err.message)); }
             };
             reader.onerror = () => reject(new Error('Không thể đọc file.'));
             reader.readAsText(file);
         });
     },
 
-    
-    /**
-     * Get settings
-     */
     async getSettings() {
-        if (this._isChromeExt()) {
-            return new Promise((resolve) => {
-                chrome.storage.local.get(this.SETTINGS_KEY, (result) => {
-                    resolve(result[this.SETTINGS_KEY] || {});
-                });
-            });
-        } else {
-            const data = localStorage.getItem(this.SETTINGS_KEY);
-            try {
-                return data ? JSON.parse(data) : {};
-            } catch (e) {
-                return {};
-            }
-        }
+        const data = localStorage.getItem('docvault_settings');
+        try { return data ? JSON.parse(data) : {}; } catch(e) { return {}; }
     },
-
-    /**
-     * Save settings
-     */
     async saveSettings(settings) {
-        if (this._isChromeExt()) {
-            return new Promise((resolve) => {
-                chrome.storage.local.set({ [this.SETTINGS_KEY]: settings }, () => {
-                    resolve();
-                });
-            });
-        } else {
-            localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings));
-        }
+        localStorage.setItem('docvault_settings', JSON.stringify(settings));
     },
 
-    /**
-     * Listen for storage changes (useful for syncing across tabs/popup)
-     * @param {Function} callback - Called with updated documents array
-     */
     onChanged(callback) {
-        if (this._isChromeExt()) {
-            chrome.storage.onChanged.addListener((changes, area) => {
-                if (area === 'local' && changes[this.STORAGE_KEY]) {
-                    callback(changes[this.STORAGE_KEY].newValue || []);
-                }
-            });
-        } else {
-            // localStorage doesn't have a cross-tab change event built-in
-            // but we can use the storage event
-            window.addEventListener('storage', (e) => {
-                if (e.key === this.STORAGE_KEY) {
-                    try {
-                        callback(JSON.parse(e.newValue) || []);
-                    } catch (err) { /* ignore */ }
-                }
-            });
-        }
+        this.init().then(() => {
+            if (this.isFirebaseReady) {
+                this.db.collection('documents').onSnapshot((snapshot) => {
+                    const docs = [];
+                    snapshot.forEach(doc => docs.push(doc.data()));
+                    callback(docs);
+                });
+            }
+        });
     }
 };
 
 window.DocStorage = DocStorage;
-
