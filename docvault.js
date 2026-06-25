@@ -1504,8 +1504,7 @@ function renderEditor() {
                 <div class="relative">
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Sub-folder <span style="color:var(--tx-d)">(Optional)</span></label>
                     <div class="subfolder-select-wrapper" style="position:relative;">
-                        <input id="ed-subfolder" class="form-input w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onfocus="toggleSubfolderDropdown(true)" data-oninput="filterSubfolderDropdown()">
-                        ${existingFolders.length > 0 ? `<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--tx-d);"><i class="fa-solid fa-chevron-down text-[10px]"></i></span>` : ''}
+                        <input id="ed-subfolder" class="form-select w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onfocus="toggleSubfolderDropdown(true)" data-onclick="toggleSubfolderDropdown(true)" data-oninput="filterSubfolderDropdown()">
                         <div id="subfolder-dropdown" class="hidden" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
                             ${existingFolders.map(f => `<div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectSubfolder('${escHtml(f.replace(/'/g, "\\'"))}')">${escHtml(f)}</div>`).join('')}
                         </div>
