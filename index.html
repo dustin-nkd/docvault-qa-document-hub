@@ -355,11 +355,14 @@
 
             
             <!-- Bottom -->
-            <div class="mt-auto px-5 py-4 border-t" style="border-color:var(--brd);">
+            <div class="mt-auto px-5 py-4 border-t flex items-center justify-between" style="border-color:var(--brd);">
                 <div class="flex items-center gap-2 text-[11px]" style="color:var(--tx-d);">
                     <i class="fa-solid fa-database text-[10px]"></i>
                     <span id="storage-info">0 documents saved locally</span>
                 </div>
+                <button class="text-[var(--tx-m)] hover:text-[var(--acc)] cursor-pointer transition-colors" data-onclick="showGitHubSettingsModal()" title="GitHub Image Settings">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
             </div>
         </aside>
 
