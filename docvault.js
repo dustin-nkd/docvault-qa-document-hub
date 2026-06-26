@@ -718,11 +718,11 @@ function updateHeader() {
 
     if (state.view === 'dashboard') {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
-        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
-        const catLabel = state.category === 'all' ? 'All Documents' : (state.view === 'favorites' ? 'Favorites' : CAT_META[state.category]?.label + 's');
+        const catLabel = state.category === 'all' ? t('allDocuments') : (state.view === 'favorites' ? t('favorites') : CAT_META[state.category]?.label + 's');
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
-        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
@@ -1285,7 +1285,7 @@ async function uploadImageToGitHub(blob, callback) {
         return false;
     }
     
-    toast("Uploading image to GitHub...", "info");
+    toast(t('imgUploading'), "info");
     
     try {
         // Convert blob to base64 for GitHub API
@@ -1331,11 +1331,11 @@ async function uploadImageToGitHub(blob, callback) {
         const downloadUrl = data.content.download_url;
         
         callback(downloadUrl, blob.name || 'image');
-        toast("Image uploaded to GitHub successfully!", "success");
+        toast(t('imgUploadSuccess'), "success");
         return true;
     } catch (err) {
         console.error("GitHub Upload Error:", err);
-        toast("GitHub upload failed. Falling back to inline image.", "error");
+        toast(t('imgUploadFail'), "error");
         return false;
     }
 }
@@ -1347,24 +1347,24 @@ async function uploadImageToCloud(blob, callback) {
 
     // Fallback to inline Base64
     if (blob.size > 800000) {
-        toast("Fallback mode: Image should be under 800KB to fit in database.", "warning");
+        toast(t('imgFallbackSize'), "warning");
     }
-    toast("Processing image inline (Base64 fallback)...", "info");
+    toast(t('imgFallbackProcessing'), "info");
 
     try {
         const reader = new FileReader();
         reader.onloadend = function() {
             const base64data = reader.result;
             callback(base64data, blob.name || 'image');
-            toast("Image loaded inline. Connect GitHub for better sync performance!", "success");
+            toast(t('imgFallbackDone'), "success");
         };
         reader.onerror = function() {
-            toast("Failed to read image file.", "error");
+            toast(t('imgReadFail'), "error");
         };
         reader.readAsDataURL(blob);
     } catch (err) {
         console.error("Image Conversion Error:", err);
-        toast("Failed to process image. Please try again.", "error");
+        toast(t('imgProcessFail'), "error");
     }
 }
 
@@ -1454,14 +1454,14 @@ window.saveGitHubSettings = function() {
     if (owner && repo && token) {
         const settings = { owner, repo, branch, path, token };
         localStorage.setItem('github_settings', JSON.stringify(settings));
-        toast("GitHub Settings saved successfully!", "success");
+        toast(t('ghSaveSuccess'), "success");
         closeModal();
     } else if (!owner && !repo && !token) {
         localStorage.removeItem('github_settings');
-        toast("GitHub Settings cleared. Using Base64 fallback.", "info");
+        toast(t('ghCleared'), "info");
         closeModal();
     } else {
-        toast("Please fill in Owner, Repo and Token fields.", "warning");
+        toast(t('ghFillRequired'), "warning");
     }
 }
 
@@ -1471,26 +1471,26 @@ window.changeMasterPassword = async function() {
     const confirm = document.getElementById('mp-confirm').value;
 
     if (!current || !newPwd || !confirm) {
-        toast("Vui lòng điền đầy đủ 3 trường.", "warning");
+        toast(t('mpFillAll'), "warning");
         return;
     }
     if (newPwd !== confirm) {
-        toast("Password mới không khớp.", "error");
+        toast(t('mpMismatch'), "error");
         return;
     }
     if (newPwd.length < 4) {
-        toast("Password phải có ít nhất 4 ký tự.", "warning");
+        toast(t('mpTooShort'), "warning");
         return;
     }
 
     try {
         await window.LocalAuth.changePassword(current, newPwd);
-        toast("Đổi Master Password thành công!", "success");
+        toast(t('mpChanged'), "success");
         document.getElementById('mp-current').value = '';
         document.getElementById('mp-new').value = '';
         document.getElementById('mp-confirm').value = '';
     } catch (e) {
-        toast(e.message || "Đổi password thất bại.", "error");
+        toast(e.message || t('mpChangeFail'), "error");
     }
 }
 
@@ -1534,15 +1534,15 @@ function renderEditor() {
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Category</label>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('category')}</label>
                     ${renderSelect('ed-cat', Object.entries(CAT_META).map(([k, m]) => ({value: k, label: m.label})), category, 'w-full', 'changeEditorCat(this.value)')}
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Status</label>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('status')}</label>
                     ${renderSelect('ed-status', [
-                        {value: 'draft', label: 'Draft'},
-                        {value: 'published', label: 'Published'},
-                        {value: 'archived', label: 'Archived'}
+                        {value: 'draft', label: t('statusDraft')},
+                        {value: 'published', label: t('statusPublished')},
+                        {value: 'archived', label: t('statusArchived')}
                     ], status, 'w-full')}
                 </div>
             </div>
@@ -1550,7 +1550,7 @@ function renderEditor() {
 
         <!-- Tags -->
         <div class="mb-4">
-            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Tags</label>
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tags')}</label>
             <div class="flex flex-wrap items-center gap-2 p-2.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);min-height:42px;" id="tag-container" data-onclick="document.getElementById('tag-input').focus()">
                 ${tags.map((t, i) => `<span class="tag">${escHtml(t)}<span class="rm" data-onclick="event.stopPropagation();removeTag(${i})">&times;</span></span>`).join('')}
                 <input id="tag-input" class="bg-transparent border-none outline-none text-sm flex-1 min-w-[100px]" style="color:var(--tx);" placeholder="${tags.length === 0 ? t('enterTag') : ''}" data-onkeydown="handleTagInput(event)">
@@ -1560,11 +1560,11 @@ function renderEditor() {
         ${category === 'credential' ? `
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Username / Email</label>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('usernameEmail')}</label>
                 <input id="ed-username" class="form-input" placeholder="e.g. admin" value="${escHtml(doc?.username || '')}">
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Password</label>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('passwordField')}</label>
                 <div class="flex items-center gap-2">
                     <input type="password" id="ed-password" class="form-input" placeholder="••••••••" value="${escHtml(doc?.password || '')}">
                     <button id="ed-password-btn" class="btn-s px-3 py-2" data-onclick="togglePasswordVisibility('ed-password')"><i class="fa-solid fa-eye"></i></button>
@@ -1584,10 +1584,10 @@ function renderEditor() {
             <div>
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
                 ${renderSelect('ed-bug-severity', [
-                    {value: 'Critical', label: 'Critical'},
-                    {value: 'Major', label: 'Major'},
-                    {value: 'Minor', label: 'Minor'},
-                    {value: 'Trivial', label: 'Trivial'}
+                    {value: 'Critical', label: t('severityCritical')},
+                    {value: 'Major', label: t('severityMajor')},
+                    {value: 'Minor', label: t('severityMinor')},
+                    {value: 'Trivial', label: t('severityTrivial')}
                 ], bugData?.severity || 'Minor', 'w-full')}
             </div>
         </div>
@@ -1603,12 +1603,12 @@ function renderEditor() {
                 ${(Array.isArray(bugData?.steps) ? bugData.steps : (bugData?.steps ? [bugData.steps] : [''])).map((step, idx) => `
                     <div class="flex items-center gap-2 mb-2 bug-step-row">
                         <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
-                        <input class="form-input flex-1 bug-step-input" placeholder="Step ${idx + 1}..." value="${escHtml(step)}">
+                        <input class="form-input flex-1 bug-step-input" placeholder="${t('stepPl', {idx: idx + 1})}" value="${escHtml(step)}">
                         <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 `).join('')}
             </div>
-            <button class="btn-s text-xs mt-1" data-onclick="addBugStep()"><i class="fa-solid fa-plus mr-1"></i> Add Step</button>
+            <button class="btn-s text-xs mt-1" data-onclick="addBugStep()"><i class="fa-solid fa-plus mr-1"></i> ${t('addStep')}</button>
         </div>
         
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
@@ -1657,14 +1657,14 @@ function renderEditor() {
                         </div>
                     `).join('')}
                 </div>
-                <button class="btn-s text-sm mt-2" data-onclick="addTcStep()"><i class="fa-solid fa-plus mr-1"></i> Add Step</button>
+                <button class="btn-s text-sm mt-2" data-onclick="addTcStep()"><i class="fa-solid fa-plus mr-1"></i> ${t('addStep')}</button>
             </div>
         </div>
         ` : category === 'environment' ? `
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
             <div class="grid sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Health Status</label>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('healthStatus')}</label>
                     ${renderSelect('ed-env-status', [
                         {value: 'healthy', label: '🟢 Healthy (Up & Running)'},
                         {value: 'maintenance', label: '🟡 Maintenance'},
@@ -1674,10 +1674,10 @@ function renderEditor() {
             </div>
             <div class="mb-4">
                 <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium block" style="color:var(--tx-m);">Properties</label>
+                    <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('properties')}</label>
                 </div>
                 <div id="env-props-container">
-                    ${((envData?.properties && envData.properties.length > 0) ? envData.properties : (envData?.frontendUrl || envData?.backendUrl || envData?.dbInfo) ? 
+                    ${((envData?.properties && envData.properties.length > 0) ? envData.properties : (envData?.frontendUrl || envData?.backendUrl || envData?.dbInfo) ?
                         // Migrate old format to new
                         [
                             ...(envData?.frontendUrl ? [{label: 'Frontend URL', value: envData.frontendUrl, secret: false}] : []),
@@ -1686,9 +1686,9 @@ function renderEditor() {
                         ] : [{label: '', value: '', secret: false}]
                     ).map((prop, idx) => `
                         <div class="flex items-center gap-2 mb-2 env-prop-row">
-                            <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="Label (e.g. Frontend URL)" value="${escHtml(prop.label || '')}">
-                            <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)" value="${escHtml(prop.value || '')}">
-                            <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="Toggle Secret" style="color:var(--tx-m);">
+                            <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="${t('envLabelPl')}" value="${escHtml(prop.label || '')}">
+                            <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="${t('envValuePl')}" value="${escHtml(prop.value || '')}">
+                            <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="${t('toggleSecret')}" style="color:var(--tx-m);">
                                 <input type="checkbox" class="env-prop-secret peer hidden" ${prop.secret ? 'checked' : ''}>
                                 <span class="peer-checked:hidden flex"><i class="fa-solid fa-eye"></i></span>
                                 <span class="hidden peer-checked:flex text-emerald-500"><i class="fa-solid fa-eye-slash"></i></span>
@@ -1697,22 +1697,22 @@ function renderEditor() {
                         </div>
                     `).join('')}
                 </div>
-                <button class="btn-s text-sm mt-2" data-onclick="addEnvProp()"><i class="fa-solid fa-plus mr-1"></i> Add Property</button>
+                <button class="btn-s text-sm mt-2" data-onclick="addEnvProp()"><i class="fa-solid fa-plus mr-1"></i> ${t('addProperty')}</button>
             </div>
             <div class="mb-4">
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Credentials</label>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('linkedCreds')}</label>
                 <div class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'credential').map(c => `
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" class="form-checkbox ed-env-cred" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
                             <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(c.title)}</span>
                         </label>
-                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No credentials found</div>`}
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">${t('noCredFound')}</div>`}
                 </div>
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Notes</label>
-                <textarea id="ed-env-notes" class="form-input text-sm w-full" style="height:80px;" placeholder="Add any specific notes for this environment...">${escHtml(envData?.notes || '')}</textarea>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('notes')}</label>
+                <textarea id="ed-env-notes" class="form-input text-sm w-full" style="height:80px;" placeholder="${t('envNotesPl')}">${escHtml(envData?.notes || '')}</textarea>
             </div>
         </div>
         ` : category === 'api' ? `
@@ -1745,7 +1745,7 @@ function renderEditor() {
                             </div>
                         `).join('')}
                     </div>
-                    <button class="btn-s text-xs mt-1" data-onclick="addApiHeader()"><i class="fa-solid fa-plus mr-1"></i> Add Header</button>
+                    <button class="btn-s text-xs mt-1" data-onclick="addApiHeader()"><i class="fa-solid fa-plus mr-1"></i> ${t('addHeader')}</button>
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-2">
@@ -1763,7 +1763,7 @@ function renderEditor() {
                             </div>
                         `).join('')}
                     </div>
-                    <button class="btn-s text-xs mt-1" data-onclick="addApiParam()"><i class="fa-solid fa-plus mr-1"></i> Add Param</button>
+                    <button class="btn-s text-xs mt-1" data-onclick="addApiParam()"><i class="fa-solid fa-plus mr-1"></i> ${t('addParam')}</button>
                 </div>
             </div>
 
@@ -1771,14 +1771,14 @@ function renderEditor() {
                 <div>
                     <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
                         <span>${t('apiBody')}</span>
-                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-body')" title="Format JSON"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-body')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
                     </label>
                     <textarea id="ed-api-body" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(apiData?.body || '')}</textarea>
                 </div>
                 <div>
                     <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
                         <span>${t('apiResponse')}</span>
-                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="Format JSON"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
                     </label>
                     <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
                 </div>
@@ -2945,7 +2945,69 @@ const i18n = {
         review: "Review",
         done: "Done",
         dragTaskHere: "Kéo thả task vào đây",
-        newTask: "Task Mới"
+        newTask: "Task Mới",
+
+        allDocuments: "Tất cả tài liệu",
+        status: "Trạng thái",
+        tags: "Tags",
+        category: "Danh mục",
+        usernameEmail: "Tên đăng nhập / Email",
+        passwordField: "Mật khẩu",
+        addStep: "Thêm bước",
+        addHeader: "Thêm Header",
+        addParam: "Thêm Param",
+        addProperty: "Thêm thuộc tính",
+        toggleSecret: "Ẩn/hiện",
+        formatJson: "Định dạng JSON",
+        moreActions: "Thêm thao tác",
+        copy: "Sao chép",
+        healthStatus: "Trạng thái hệ thống",
+        properties: "Thuộc tính",
+        linkedCreds: "Credentials liên kết",
+        noCredFound: "Không tìm thấy credentials",
+        notes: "Ghi chú",
+        envLabelPl: "VD: Frontend URL",
+        envValuePl: "VD: https://app.com",
+        envNotesPl: "Thêm ghi chú về môi trường này...",
+        stepPl: "Bước {idx}...",
+
+        statusDraft: "Bản nháp",
+        statusPublished: "Đã xuất bản",
+        statusArchived: "Lưu trữ",
+
+        severityCritical: "Critical",
+        severityMajor: "Major",
+        severityMinor: "Minor",
+        severityTrivial: "Trivial",
+
+        imgUploading: "Đang tải ảnh lên GitHub...",
+        imgUploadSuccess: "Tải ảnh lên GitHub thành công!",
+        imgUploadFail: "Tải ảnh lên GitHub thất bại. Chuyển sang ảnh inline.",
+        imgFallbackSize: "Chế độ dự phòng: Ảnh nên dưới 800KB.",
+        imgFallbackProcessing: "Đang xử lý ảnh inline (Base64)...",
+        imgFallbackDone: "Ảnh đã được tải inline. Kết nối GitHub để cải thiện hiệu suất!",
+        imgReadFail: "Không thể đọc file ảnh.",
+        imgProcessFail: "Không thể xử lý ảnh. Vui lòng thử lại.",
+
+        ghSaveSuccess: "Lưu cài đặt GitHub thành công!",
+        ghCleared: "Đã xóa cài đặt GitHub. Dùng Base64 dự phòng.",
+        ghFillRequired: "Vui lòng điền Owner, Repo và Token.",
+
+        mpFillAll: "Vui lòng điền đầy đủ 3 trường.",
+        mpMismatch: "Password mới không khớp.",
+        mpTooShort: "Password phải có ít nhất 4 ký tự.",
+        mpChanged: "Đổi Master Password thành công!",
+        mpChangeFail: "Đổi password thất bại.",
+        mpIncorrect: "Mật khẩu không đúng.",
+        vaultUnlocked: "Đã mở khóa Vault",
+
+        searchTypeHint: "Nhập để tìm kiếm...",
+        searchNoResult: "Không tìm thấy tài liệu.",
+        matchTitle: "Trùng tiêu đề",
+        matchTag: "Trùng tag",
+        matchContent: "Trùng nội dung",
+        invalidJson: "Định dạng JSON không hợp lệ",
+        copyFail: "Sao chép thất bại"
     },
     en: {
         runbook: "Runbook",
@@ -3083,7 +3145,69 @@ const i18n = {
         review: "Review",
         done: "Done",
         dragTaskHere: "Drag tasks here",
-        newTask: "New Task"
+        newTask: "New Task",
+
+        allDocuments: "All Documents",
+        status: "Status",
+        tags: "Tags",
+        category: "Category",
+        usernameEmail: "Username / Email",
+        passwordField: "Password",
+        addStep: "Add Step",
+        addHeader: "Add Header",
+        addParam: "Add Param",
+        addProperty: "Add Property",
+        toggleSecret: "Toggle Secret",
+        formatJson: "Format JSON",
+        moreActions: "More actions",
+        copy: "Copy",
+        healthStatus: "Health Status",
+        properties: "Properties",
+        linkedCreds: "Linked Credentials",
+        noCredFound: "No credentials found",
+        notes: "Notes",
+        envLabelPl: "e.g. Frontend URL",
+        envValuePl: "e.g. https://app.com",
+        envNotesPl: "Add any specific notes for this environment...",
+        stepPl: "Step {idx}...",
+
+        statusDraft: "Draft",
+        statusPublished: "Published",
+        statusArchived: "Archived",
+
+        severityCritical: "Critical",
+        severityMajor: "Major",
+        severityMinor: "Minor",
+        severityTrivial: "Trivial",
+
+        imgUploading: "Uploading image to GitHub...",
+        imgUploadSuccess: "Image uploaded to GitHub successfully!",
+        imgUploadFail: "GitHub upload failed. Falling back to inline image.",
+        imgFallbackSize: "Fallback mode: Image should be under 800KB to fit in database.",
+        imgFallbackProcessing: "Processing image inline (Base64 fallback)...",
+        imgFallbackDone: "Image loaded inline. Connect GitHub for better sync performance!",
+        imgReadFail: "Failed to read image file.",
+        imgProcessFail: "Failed to process image. Please try again.",
+
+        ghSaveSuccess: "GitHub Settings saved successfully!",
+        ghCleared: "GitHub Settings cleared. Using Base64 fallback.",
+        ghFillRequired: "Please fill in Owner, Repo and Token fields.",
+
+        mpFillAll: "Please fill in all 3 fields.",
+        mpMismatch: "New passwords do not match.",
+        mpTooShort: "Password must be at least 4 characters.",
+        mpChanged: "Master Password changed successfully!",
+        mpChangeFail: "Failed to change password.",
+        mpIncorrect: "Incorrect password.",
+        vaultUnlocked: "Vault Unlocked",
+
+        searchTypeHint: "Type to start searching...",
+        searchNoResult: "No documents found.",
+        matchTitle: "Title match",
+        matchTag: "Tag match",
+        matchContent: "Content match",
+        invalidJson: "Invalid JSON format",
+        copyFail: "Failed to copy"
     }
 };
 
@@ -3211,9 +3335,9 @@ window.addEnvProp = function() {
     const div = document.createElement('div');
     div.className = 'flex items-center gap-2 mb-2 env-prop-row';
     div.innerHTML = `
-        <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="Label (e.g. Frontend URL)">
-        <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="Value (e.g. https://app.com)">
-        <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="Toggle Secret" style="color:var(--tx-m);">
+        <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="${t('envLabelPl')}">
+        <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="${t('envValuePl')}">
+        <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="${t('toggleSecret')}" style="color:var(--tx-m);">
             <input type="checkbox" class="env-prop-secret peer hidden">
             <span class="peer-checked:hidden flex"><i class="fa-solid fa-eye"></i></span>
             <span class="hidden peer-checked:flex text-emerald-500"><i class="fa-solid fa-eye-slash"></i></span>
@@ -3339,7 +3463,7 @@ window.formatJson = function(id) {
         const obj = JSON.parse(el.value);
         el.value = JSON.stringify(obj, null, 2);
     } catch (e) {
-        toast('Invalid JSON format', 'error');
+        toast(t('invalidJson'), 'error');
     }
 };
 
@@ -3353,7 +3477,7 @@ window.copyCodeBlock = function(btn, b64) {
             setTimeout(() => { icon.className = 'fa-regular fa-copy'; }, 2000);
         }
     } catch (e) {
-        toast('Failed to copy', 'error');
+        toast(t('copyFail'), 'error');
     }
 };
 
@@ -3396,7 +3520,7 @@ function renderSearchResults(query) {
     if (!container) return;
     
     if (!query.trim()) {
-        container.innerHTML = '<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">Type to start searching...</div>';
+        container.innerHTML = `<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">${t('searchTypeHint')}</div>`;
         return;
     }
     
@@ -3408,15 +3532,15 @@ function renderSearchResults(query) {
     }).slice(0, 15); // Limit to 15 results
     
     if (currentSearchResults.length === 0) {
-        container.innerHTML = '<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">No documents found.</div>';
+        container.innerHTML = `<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">${t('searchNoResult')}</div>`;
         return;
     }
     
     container.innerHTML = currentSearchResults.map((doc, idx) => {
         let matchHint = '';
-        if (doc.title.toLowerCase().includes(lowerQuery)) matchHint = 'Title match';
-        else if (doc.tags.some(t => t.toLowerCase().includes(lowerQuery))) matchHint = 'Tag match';
-        else matchHint = 'Content match';
+        if (doc.title.toLowerCase().includes(lowerQuery)) matchHint = t('matchTitle');
+        else if (doc.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) matchHint = t('matchTag');
+        else matchHint = t('matchContent');
         
         return `
             <div class="search-item ${idx === searchSelectedIndex ? 'active' : ''}" data-idx="${idx}" data-onclick="selectSearchResult(${idx})">

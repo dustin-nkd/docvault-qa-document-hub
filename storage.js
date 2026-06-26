@@ -133,13 +133,13 @@ const LocalAuth = {
                 localStorage.setItem(this.HASH_KEY, hash);
             } else if (hash !== stored) {
                 if (btn) btn.innerHTML = 'Unlock Vault';
-                if (typeof toast === 'function') toast('Incorrect password.', 'error');
+                if (typeof toast === 'function') toast(typeof t === 'function' ? t('mpIncorrect') : 'Incorrect password.', 'error');
                 return;
             }
 
             sessionStorage.setItem(this.SESSION_KEY, '1');
             document.getElementById('lock-screen').classList.add('hidden');
-            if (typeof toast === 'function') toast('Vault Unlocked', 'success');
+            if (typeof toast === 'function') toast(typeof t === 'function' ? t('vaultUnlocked') : 'Vault Unlocked', 'success');
             if (window._afterUnlock) window._afterUnlock();
         } catch (e) {
             console.error(e);
