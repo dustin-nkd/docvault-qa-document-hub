@@ -1366,7 +1366,7 @@ window.shareDoc = async function(id) {
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
             : doc.category === 'environment' && doc.envData?.linkedCreds?.length
             ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
-                  .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status }))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
             : [];
         const plain = new TextEncoder().encode(JSON.stringify({
             title: doc.title, category: doc.category, content: doc.content,
@@ -1986,7 +1986,7 @@ function renderViewer() {
             <span class="cat-badge ${CAT_META[doc.category].cls}">${CAT_META[doc.category].label}</span>
             ${doc.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(doc.subfolder)}</span>` : ''}
             <span class="st-badge st-${doc.status}">${doc.status}</span>
-            ${doc.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+            ${(doc.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
             ${state.sharedView ? '' : `<button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="toggleFav('${doc.id}')">
                 <i class="fa-${doc.favorite ? 'solid' : 'regular'} fa-star"></i>
             </button>`}
