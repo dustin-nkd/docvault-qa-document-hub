@@ -1221,7 +1221,10 @@ function renderDocList() {
                             </div>
                             <div class="mt-auto flex items-center justify-between border-t" style="border-color:var(--brd); padding-top: 16px;">
                                 <span class="cat-badge cat-credential">${t('credential')}</span>
-                                <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
+                                <div class="flex items-center gap-1">
+                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-user"></i> ${t('copyUsername')}</button>` : ''}
+                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
+                                </div>
                             </div>
                         </div>`;
                     }
@@ -1303,10 +1306,10 @@ function _copyText(text, btn) {
         const icon = btn.querySelector('i');
         if (icon) {
             const origClass = icon.className;
-            // fa-check only exists in fa-solid in FA Free — replace variant prefix too
+            const origColor = btn.style.color;
             icon.className = icon.className.replace(/fa-regular|fa-light/, 'fa-solid').replace('fa-copy', 'fa-check');
             btn.style.color = '#10b981';
-            setTimeout(() => { icon.className = origClass; btn.style.color = ''; }, 2000);
+            setTimeout(() => { icon.className = origClass; btn.style.color = origColor; }, 2000);
         }
     }).catch(() => toast(t('copyFail'), 'error'));
 }
@@ -1990,9 +1993,14 @@ function renderViewer() {
                     <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${guessDomain(doc.title)}.ico" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.remove()">
                     <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
                 </div>
-                <div>
-                    <p class="text-[11px] font-medium tracking-wide uppercase mb-0.5" style="color:var(--tx-d);">Username / Email</p>
-                    <p class="text-sm font-semibold" style="color:var(--tx);">${escHtml(doc.username || 'N/A')}</p>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-1.5" style="color:var(--tx-d);">Username / Email</p>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+                            <span class="text-sm font-mono truncate" style="color:var(--tx);">${escHtml(doc.username || 'N/A')}</span>
+                        </div>
+                        ${doc.username ? `<button class="btn-s py-2 px-4 shrink-0" data-onclick="copyUsername('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>${t('copy')}</button>` : ''}
+                    </div>
                 </div>
             </div>
             <div>
@@ -2812,6 +2820,12 @@ window.copyPassword = function(id, btn) {
     _copyText(doc.password, btn);
 };
 
+window.copyUsername = function(id, btn) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc || !doc.username) return;
+    _copyText(doc.username, btn);
+};
+
 window.togglePasswordVisibility = function(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -3025,7 +3039,8 @@ const i18n = {
         
                 preview: "Xem trước",
                 copyPassword: "Copy Password",
-        
+                copyUsername: "Copy Username",
+
         bugEnv: "Môi trường",
         bugEnvPl: "VD: Staging, Production",
         bugDevice: "Trình duyệt / Thiết bị",
@@ -3227,7 +3242,8 @@ const i18n = {
         
                 preview: "Preview",
                 copyPassword: "Copy Password",
-        
+                copyUsername: "Copy Username",
+
         bugEnv: "Environment",
         bugEnvPl: "e.g. Staging, Production",
         bugDevice: "Browser / Device",
