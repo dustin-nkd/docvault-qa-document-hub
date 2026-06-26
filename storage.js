@@ -51,6 +51,9 @@ window.Vault = Vault;
 // GITHUB DATA SYNC
 // ========================
 const GitHubSync = {
+    // Hardcoded vault repo — same on every device, no config needed
+    DEFAULTS: { owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main', path: 'images' },
+
     DATA_PATH: 'database/docvault-data.json',
     SHA_KEY: 'github_data_sha',
     SETTINGS_KEY: 'github_settings',
@@ -59,17 +62,22 @@ const GitHubSync = {
         return sessionStorage.getItem('docvault_pwd') || null;
     },
 
+    // Returns merged settings: hardcoded defaults + stored overrides (token from stored)
     async getSettings() {
         const raw = localStorage.getItem(this.SETTINGS_KEY);
-        if (!raw) return null;
-        try {
-            if (Vault.isEncrypted(raw)) {
-                const pwd = this._pwd();
-                if (!pwd) return null; // vault locked — do not expose PAT
-                return await Vault.decrypt(raw, pwd);
-            }
-            return JSON.parse(raw); // legacy plaintext — migrated on next save
-        } catch(e) { return null; }
+        let stored = null;
+        if (raw) {
+            try {
+                if (Vault.isEncrypted(raw)) {
+                    const pwd = this._pwd();
+                    stored = pwd ? await Vault.decrypt(raw, pwd) : null;
+                } else {
+                    stored = JSON.parse(raw);
+                }
+            } catch(e) { stored = null; }
+        }
+        // Merge: defaults for owner/repo/branch/path, stored for token
+        return { ...this.DEFAULTS, ...(stored || {}) };
     },
 
     async saveSettings(settings) {
@@ -84,9 +92,10 @@ const GitHubSync = {
         localStorage.removeItem(this.SETTINGS_KEY);
     },
 
+    // Only needs a token — owner/repo are hardcoded defaults
     async isConfigured() {
         const s = await this.getSettings();
-        return !!(s && s.owner && s.repo && s.token);
+        return !!(s && s.token);
     },
 
     _headers(token) {
@@ -97,24 +106,86 @@ const GitHubSync = {
         };
     },
 
-    // Encode docs for GitHub API — encrypts if unlocked, plaintext otherwise
+    // Parse raw content string → {docs, cfg}  (handles both old array format and new wrapper)
+    async _parseContent(content) {
+        const pwd = this._pwd();
+        let payload;
+        if (Vault.isEncrypted(content)) {
+            if (!pwd) throw new Error('Vault is locked');
+            payload = await Vault.decrypt(content, pwd);
+        } else {
+            payload = JSON.parse(content);
+        }
+        if (Array.isArray(payload)) return { docs: payload, cfg: null }; // old format
+        return { docs: payload.docs || [], cfg: payload.cfg || null };
+    },
+
+    // Encode docs + cfg for GitHub API (base64 of UTF-8 file content)
     async _encode(docs) {
         const pwd = this._pwd();
+        const cfg = await this.getSettings();
+        // Always embed cfg so other devices can bootstrap automatically
+        const wrapper = { docs, cfg: cfg || null };
         const content = pwd
-            ? await Vault.encrypt(docs, pwd)          // "ENC:..." string
-            : JSON.stringify(docs, null, 2);
+            ? await Vault.encrypt(wrapper, pwd)
+            : JSON.stringify(wrapper, null, 2);
         return btoa(unescape(encodeURIComponent(content)));
     },
 
-    // Decode GitHub API content
+    // Decode GitHub API base64 content → {docs, cfg}
     async _decode(b64) {
         const content = decodeURIComponent(escape(atob(b64.replace(/\n/g, ''))));
-        if (Vault.isEncrypted(content)) {
-            const pwd = this._pwd();
-            if (!pwd) throw new Error('Data is encrypted but vault is locked');
-            return await Vault.decrypt(content, pwd);
+        return this._parseContent(content);
+    },
+
+    // Fetch from raw.githubusercontent.com — no token needed for public repos
+    async fetchPublic(owner, repo, branch) {
+        const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch || 'main'}/${this.DATA_PATH}`;
+        try {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const content = await res.text();
+            return await this._parseContent(content);
+        } catch(e) {
+            console.error('[GitHubSync] public fetch failed:', e);
+            return null;
         }
-        try { return JSON.parse(content); } catch(e) { return null; }
+    },
+
+    // Bootstrap a new device: fetch data + embedded cfg, save settings locally
+    // For public repos: only owner+repo needed (no token)
+    // For private repos: token required
+    async bootstrap(owner, repo, branch, token) {
+        branch = branch || 'main';
+
+        // Try without token first (public repo)
+        let result = await this.fetchPublic(owner, repo, branch);
+
+        // Fallback: try with token (private repo or auth required)
+        if (!result && token) {
+            const tempSettings = { owner, repo, branch, path: 'images', token };
+            await this.saveSettings(tempSettings);
+            result = await this.pull();
+            if (!result) {
+                this.clearSettings();
+                return false;
+            }
+        }
+
+        if (!result) return false;
+
+        const { docs, cfg } = result;
+
+        // Use embedded cfg if available, else build minimal one from inputs
+        const finalCfg = cfg || { owner, repo, branch, path: 'images', token: token || '' };
+        await this.saveSettings(finalCfg);
+
+        // Save docs locally
+        if (docs && docs.length > 0) {
+            await DocStorage._saveLocal(docs);
+        }
+
+        return true;
     },
 
     async pull() {
@@ -129,7 +200,8 @@ const GitHubSync = {
 
             const data = await res.json();
             localStorage.setItem(this.SHA_KEY, data.sha);
-            return await this._decode(data.content);
+            const { docs } = await this._decode(data.content);
+            return docs;
         } catch(e) {
             console.error('[GitHubSync] pull failed:', e);
             return null;
@@ -219,7 +291,7 @@ const DocStorage = {
         try {
             if (Vault.isEncrypted(raw)) {
                 const pwd = this._pwd();
-                if (!pwd) return null; // locked
+                if (!pwd) return null;
                 return await Vault.decrypt(raw, pwd);
             }
             return typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -373,7 +445,6 @@ const LocalAuth = {
                 return;
             }
 
-            // Store password in session — used to derive AES key for decrypt on every read
             sessionStorage.setItem(this.SESSION_PWD, password);
             sessionStorage.setItem(this.SESSION_KEY, '1');
             document.getElementById('lock-screen').classList.add('hidden');
@@ -390,14 +461,12 @@ const LocalAuth = {
         const stored = localStorage.getItem(this.HASH_KEY);
         if (stored && oldHash !== stored) throw new Error('Current password is incorrect.');
 
-        // Re-encrypt docs with new password
         const rawDocs = localStorage.getItem(DocStorage.STORAGE_KEY);
         if (rawDocs && Vault.isEncrypted(rawDocs)) {
             const dec = await Vault.decrypt(rawDocs, oldPassword);
             localStorage.setItem(DocStorage.STORAGE_KEY, await Vault.encrypt(dec, newPassword));
         }
 
-        // Re-encrypt github_settings with new password
         const rawGh = localStorage.getItem(GitHubSync.SETTINGS_KEY);
         if (rawGh && Vault.isEncrypted(rawGh)) {
             const dec = await Vault.decrypt(rawGh, oldPassword);
