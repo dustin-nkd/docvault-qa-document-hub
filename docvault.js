@@ -1650,12 +1650,11 @@ function renderEditor() {
                         <div class="flex items-center gap-2 mb-2 env-prop-row">
                             <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="${t('envLabelPl')}" value="${escHtml(prop.label || '')}">
                             <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="${t('envValuePl')}" value="${escHtml(prop.value || '')}">
-                            <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="${t('toggleSecret')}" style="color:var(--tx-m);">
-                                <input type="checkbox" class="env-prop-secret peer hidden" ${prop.secret ? 'checked' : ''}>
-                                <span class="peer-checked:hidden flex"><i class="fa-solid fa-eye"></i></span>
-                                <span class="hidden peer-checked:flex text-emerald-500"><i class="fa-solid fa-eye-slash"></i></span>
-                            </label>
-                            <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+                            <input type="checkbox" class="env-prop-secret hidden" ${prop.secret ? 'checked' : ''}>
+                            <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:${prop.secret ? 'var(--acc)' : 'var(--tx-m)'};" title="${t('toggleSecret')}" data-onclick="toggleEnvSecret(this)">
+                                <i class="fa-solid ${prop.secret ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                            </button>
+                            <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     `).join('')}
                 </div>
@@ -3316,17 +3315,29 @@ window.addEnvProp = function() {
     div.innerHTML = `
         <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="${t('envLabelPl')}">
         <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="${t('envValuePl')}">
-        <label class="btn-s px-2 py-1.5 flex items-center justify-center cursor-pointer" title="${t('toggleSecret')}" style="color:var(--tx-m);">
-            <input type="checkbox" class="env-prop-secret peer hidden">
-            <span class="peer-checked:hidden flex"><i class="fa-solid fa-eye"></i></span>
-            <span class="hidden peer-checked:flex text-emerald-500"><i class="fa-solid fa-eye-slash"></i></span>
-        </label>
-        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+        <input type="checkbox" class="env-prop-secret hidden">
+        <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" title="${t('toggleSecret')}" data-onclick="toggleEnvSecret(this)">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+        <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
     `;
     container.appendChild(div);
     div.querySelector('.env-prop-label').focus();
 };
 window.removeEnvProp = function(btn) { btn.closest('.env-prop-row').remove(); };
+window.toggleEnvSecret = function(btn) {
+    const row = btn.closest('.env-prop-row');
+    const cb = row.querySelector('.env-prop-secret');
+    cb.checked = !cb.checked;
+    const icon = btn.querySelector('i');
+    if (cb.checked) {
+        icon.className = 'fa-solid fa-eye-slash';
+        btn.style.color = 'var(--acc)';
+    } else {
+        icon.className = 'fa-solid fa-eye';
+        btn.style.color = 'var(--tx-m)';
+    }
+};
 
 // Generic custom select helpers
 window.renderSelect = function(id, options, selectedValue, customClass = '', onChangeCode = '') {
