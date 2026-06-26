@@ -1566,21 +1566,16 @@ async function uploadImageToGitHub(blob, callback) {
 }
 
 async function uploadImageToCloud(blob, callback) {
-    if (!localStorage.getItem('firebase_config')) {
-        toast("Firebase not configured!", "error");
-        return;
-    }
-    
-    // Attempt GitHub upload first
+    // Attempt GitHub upload first (works independently of Firebase)
     const uploaded = await uploadImageToGitHub(blob, callback);
     if (uploaded) return;
-    
+
     // Fallback to inline Base64
     if (blob.size > 800000) {
         toast("Fallback mode: Image should be under 800KB to fit in database.", "warning");
     }
     toast("Processing image inline (Base64 fallback)...", "info");
-    
+
     try {
         const reader = new FileReader();
         reader.onloadend = function() {
