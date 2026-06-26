@@ -353,7 +353,10 @@ let state = {
     editorMode: 'edit', // edit | preview
     sidebarOpen: false,
     history: [],
-    sharedView: false  // true when viewing a public share link (read-only)
+    sharedView: false,  // true when viewing a public share link (read-only)
+    batchMode: false,
+    selectedIds: new Set(),
+    lastSelectedId: null
 };
 
 let documents = [];
@@ -850,6 +853,9 @@ window.navigate = function(view, cat, subfolder = '') {
     state.editingDoc = null;
     state.editorTags = [];
     state.editorMode = 'edit';
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
     if (state.sidebarOpen) toggleSidebar();
     history.replaceState({}, '', location.pathname);
     render();
@@ -1168,6 +1174,21 @@ function renderDocList() {
         return renderKanbanBoard(docs, isMobileSearch);
     }
 
+    const bm = state.batchMode;
+    const sel = state.selectedIds;
+    const inTrash = state.view === 'trash';
+    const allSelected = docs.length > 0 && docs.every(d => sel.has(d.id));
+
+    const batchCheckbox = (id) => bm ? `
+        <div style="position:absolute;top:10px;left:10px;z-index:5;pointer-events:none;">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd2)'};background:${sel.has(id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
+                ${sel.has(id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
+            </div>
+        </div>` : '';
+
+    const cardAction = (id) => bm ? `toggleSelectDoc('${id}', event)` : `viewDoc('${id}')`;
+    const cardCls = (id) => `doc-card p-4 flex flex-col${bm && sel.has(id) ? ' batch-selected' : ''}`;
+
     return `<div class="fade-up max-w-6xl mx-auto">
         <!-- Mobile search -->
         ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
@@ -1185,17 +1206,28 @@ function renderDocList() {
                 {value: 'created', label: t('newest')},
                 {value: 'title', label: t('sortAZ')}
             ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'state.sortBy=this.value;renderContent();')}
-            <span class="text-xs ml-auto" style="color:var(--tx-d);">${docs.length} documents</span>
-            ${state.view === 'trash' && docs.length > 0 ? `<button class="btn-d text-xs py-1 px-2.5 ml-3" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
+            <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents</span>
+            <div class="flex items-center gap-2 ml-auto">
+                ${!inTrash && docs.length > 0 ? `
+                    ${bm ? `<span class="text-xs font-semibold" style="color:var(--acc);">${sel.size} selected</span>
+                    <button class="text-xs py-1 px-2.5 rounded-md font-medium" style="color:var(--acc);border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.06);" data-onclick="selectAllDocs()">
+                        ${allSelected ? 'Deselect all' : 'Select all'}
+                    </button>` : ''}
+                    <button class="text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
+                        ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
+                    </button>
+                ` : ''}
+                ${inTrash && docs.length > 0 ? `<button class="btn-d text-xs py-1 px-2.5" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
+            </div>
         </div>
 
         <!-- Grid -->
         ${docs.length === 0 ? `
             <div class="text-center py-20">
-                <i class="fa-solid ${state.view === 'trash' ? 'fa-trash' : 'fa-folder-open'} text-4xl mb-4 pulse-s block" style="color:var(--tx-d);"></i>
-                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">${state.search ? t('noDocFound') : (state.view === 'trash' ? (t('trashEmpty') || 'Trash is empty') : t('noDocYet'))}</p>
-                <p class="text-xs mb-5" style="color:var(--tx-d);">${state.search ? t('tryDiffKey') : (state.view === 'trash' ? '' : t('createFirstDoc'))}</p>
-                ${!state.search && state.view !== 'trash' ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
+                <i class="fa-solid ${inTrash ? 'fa-trash' : 'fa-folder-open'} text-4xl mb-4 pulse-s block" style="color:var(--tx-d);"></i>
+                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">${state.search ? t('noDocFound') : (inTrash ? (t('trashEmpty') || 'Trash is empty') : t('noDocYet'))}</p>
+                <p class="text-xs mb-5" style="color:var(--tx-d);">${state.search ? t('tryDiffKey') : (inTrash ? '' : t('createFirstDoc'))}</p>
+                ${!state.search && !inTrash ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
             </div>
         ` : `
             <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1204,7 +1236,8 @@ function renderDocList() {
                         const domain = guessDomain(d.title);
                         const favUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
                         return `
-                        <div class="doc-card p-4 flex flex-col" data-onclick="viewDoc('${d.id}')">
+                        <div class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
+                            ${batchCheckbox(d.id)}
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-3">
                                     <div class="cred-avatar ${credAvatarColor(d.title)}">
@@ -1216,40 +1249,41 @@ function renderDocList() {
                                         ${d.username ? `<p class="text-[11px] truncate mt-0.5" style="color:var(--tx-m);">${escHtml(d.username)}</p>` : ''}
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-1 shrink-0 ml-2">
+                                ${!bm ? `<div class="flex items-center gap-1 shrink-0 ml-2">
                                     <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                         <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                     </button>
                                     <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
-                                </div>
+                                </div>` : ''}
                             </div>
                             <div class="mt-auto flex items-center justify-between border-t" style="border-color:var(--brd); padding-top: 16px;">
                                 <span class="cat-badge cat-credential">${t('credential')}</span>
-                                <div class="flex items-center gap-1">
+                                ${!bm ? `<div class="flex items-center gap-1">
                                     ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
                                     <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
-                                </div>
+                                </div>` : ''}
                             </div>
                         </div>`;
                     }
                     return `
-                    <div class="doc-card p-4 flex flex-col" data-onclick="viewDoc('${d.id}')">
+                    <div class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
+                        ${batchCheckbox(d.id)}
                         <div class="flex items-start justify-between mb-2.5">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
                                 ${d.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(d.subfolder)}</span>` : ''}
                                 <span class="st-badge st-${d.status}">${d.status}</span>
                             </div>
-                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                            ${!bm ? `<div class="flex items-center gap-1 shrink-0 ml-2">
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
                                 <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
-                            </div>
+                            </div>` : ''}
                         </div>
                         <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
                         <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${excerpt(d.content, 100)}</p>
@@ -1262,9 +1296,175 @@ function renderDocList() {
                 `;}).join('')}
             </div>
         `}
+
+        <!-- Batch action toolbar -->
+        <div class="batch-toolbar${bm && sel.size > 0 ? ' visible' : ''}">
+            <span style="font-size:12px;font-weight:700;color:var(--tx);">${sel.size}</span>
+            <span style="font-size:11px;color:var(--tx-m);">selected</span>
+            <div style="width:1px;height:16px;background:var(--brd);margin:0 2px;"></div>
+            <button class="batch-action-btn" style="color:var(--acc);" data-onclick="showBatchTagModal()">
+                <i class="fa-solid fa-tag" style="font-size:10px;"></i> Add tag
+            </button>
+            <button class="batch-action-btn" style="color:#818cf8;" data-onclick="showBatchFolderModal()">
+                <i class="fa-regular fa-folder" style="font-size:10px;"></i> Move
+            </button>
+            <button class="batch-action-btn" style="color:#f87171;" data-onclick="batchDelete()">
+                <i class="fa-solid fa-trash" style="font-size:10px;"></i> Delete
+            </button>
+        </div>
     </div>`;
 }
 
+
+// ========================
+// BATCH OPERATIONS
+// ========================
+window.toggleBatchMode = function() {
+    state.batchMode = !state.batchMode;
+    if (!state.batchMode) {
+        state.selectedIds = new Set();
+        state.lastSelectedId = null;
+    }
+    renderContent();
+};
+
+window.toggleSelectDoc = function(id, event) {
+    if (!state.batchMode) {
+        state.batchMode = true;
+        state.selectedIds = new Set([id]);
+        state.lastSelectedId = id;
+        renderContent();
+        return;
+    }
+    // Shift+click range selection
+    if (event && event.shiftKey && state.lastSelectedId && state.lastSelectedId !== id) {
+        const docs = getFiltered();
+        const ids = docs.map(d => d.id);
+        const a = ids.indexOf(state.lastSelectedId);
+        const b = ids.indexOf(id);
+        if (a !== -1 && b !== -1) {
+            const [from, to] = a < b ? [a, b] : [b, a];
+            for (let i = from; i <= to; i++) state.selectedIds.add(ids[i]);
+        }
+    } else {
+        if (state.selectedIds.has(id)) state.selectedIds.delete(id);
+        else state.selectedIds.add(id);
+        state.lastSelectedId = id;
+    }
+    renderContent();
+};
+
+window.selectAllDocs = function() {
+    const docs = getFiltered();
+    const allSelected = docs.every(d => state.selectedIds.has(d.id));
+    if (allSelected) {
+        state.selectedIds = new Set();
+    } else {
+        docs.forEach(d => state.selectedIds.add(d.id));
+    }
+    renderContent();
+};
+
+window.batchDelete = function() {
+    const n = state.selectedIds.size;
+    if (!n) return;
+    showModal(`
+        <div class="p-6 text-center">
+            <i class="fa-solid fa-trash text-3xl mb-4" style="color:#f87171;"></i>
+            <h3 class="font-heading font-bold text-lg mb-2">Delete ${n} document${n > 1 ? 's' : ''}?</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">They will be moved to trash and can be restored later.</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-d" data-onclick="confirmBatchDelete()">Delete ${n}</button>
+            </div>
+        </div>
+    `);
+};
+
+window.confirmBatchDelete = async function() {
+    const ids = [...state.selectedIds];
+    ids.forEach(id => {
+        const doc = documents.find(d => d.id === id);
+        if (doc) { doc.status = 'deleted'; doc.deletedAt = Date.now(); doc.updatedAt = Date.now(); }
+    });
+    await persist();
+    closeModal();
+    const n = ids.length;
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    toast(`${n} document${n > 1 ? 's' : ''} moved to trash`, 'success');
+    renderContent();
+};
+
+window.showBatchTagModal = function() {
+    const n = state.selectedIds.size;
+    if (!n) return;
+    showModal(`
+        <div class="p-6">
+            <h3 class="font-heading font-bold text-lg mb-1">Add tag</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">Will be added to ${n} selected document${n > 1 ? 's' : ''}.</p>
+            <input type="text" id="batch-tag-input" class="form-input w-full mb-5" placeholder="Tag name..." autocomplete="off">
+            <div class="flex gap-3 justify-end">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-p" data-onclick="confirmBatchAddTag()">Add tag</button>
+            </div>
+        </div>
+    `);
+    setTimeout(() => document.getElementById('batch-tag-input')?.focus(), 50);
+};
+
+window.confirmBatchAddTag = async function() {
+    const tag = document.getElementById('batch-tag-input')?.value?.trim();
+    if (!tag) return;
+    let changed = 0;
+    state.selectedIds.forEach(id => {
+        const doc = documents.find(d => d.id === id);
+        if (doc && !doc.tags.includes(tag)) { doc.tags.push(tag); doc.updatedAt = Date.now(); changed++; }
+    });
+    if (changed > 0) await persist();
+    closeModal();
+    toast(`Tag "${tag}" added to ${changed} document${changed !== 1 ? 's' : ''}`, 'success');
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    renderContent();
+};
+
+window.showBatchFolderModal = function() {
+    const n = state.selectedIds.size;
+    if (!n) return;
+    const folders = [...new Set(documents.filter(d => d.subfolder && d.status !== 'deleted').map(d => d.subfolder))].sort();
+    showModal(`
+        <div class="p-6">
+            <h3 class="font-heading font-bold text-lg mb-1">Move to folder</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">${n} document${n > 1 ? 's' : ''} will be moved. Leave blank to clear folder.</p>
+            <input type="text" id="batch-folder-input" class="form-input w-full mb-2" placeholder="Folder name..." autocomplete="off" list="batch-folder-list">
+            <datalist id="batch-folder-list">${folders.map(f => `<option value="${escHtml(f)}">`).join('')}</datalist>
+            <div class="flex gap-3 justify-end mt-5">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-p" data-onclick="confirmBatchMoveFolder()">Move</button>
+            </div>
+        </div>
+    `);
+    setTimeout(() => document.getElementById('batch-folder-input')?.focus(), 50);
+};
+
+window.confirmBatchMoveFolder = async function() {
+    const folder = document.getElementById('batch-folder-input')?.value?.trim() || '';
+    state.selectedIds.forEach(id => {
+        const doc = documents.find(d => d.id === id);
+        if (doc) { doc.subfolder = folder; doc.updatedAt = Date.now(); }
+    });
+    await persist();
+    closeModal();
+    const n = state.selectedIds.size;
+    toast(`${n} document${n > 1 ? 's' : ''} moved to ${folder || 'no folder'}`, 'success');
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    renderContent();
+};
 
 // Document context menu (dropdown)
 function showDocMenu(id, btn) {
@@ -2698,6 +2898,9 @@ function viewDoc(id) {
     pushHistory();
     state.view = 'viewer';
     state.editingDoc = { ...doc };
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
     history.replaceState({}, '', '?view=' + id);
     render();
 }
