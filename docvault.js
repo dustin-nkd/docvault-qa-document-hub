@@ -3322,6 +3322,97 @@ document.addEventListener('drop', (e) => {
     }
 });
 
+// ========================
+// KANBAN TOUCH DRAG
+// ========================
+let _touchDragId = null;
+let _touchGhost = null;
+let _touchCurrentCol = null;
+let _touchStartPos = null;
+let _touchDragging = false;
+
+document.addEventListener('touchstart', (e) => {
+    const card = e.target.closest('[data-ondragstart]');
+    if (!card) return;
+    const action = card.getAttribute('data-ondragstart');
+    if (!action || !action.startsWith('handleDragStart')) return;
+
+    _touchDragId = action.match(/'([^']+)'/)[1];
+    _touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY, card };
+    _touchDragging = false;
+    // No preventDefault here — lets tap-to-open still work
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    if (!_touchDragId || !_touchStartPos) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - _touchStartPos.x;
+    const dy = touch.clientY - _touchStartPos.y;
+
+    if (!_touchDragging && Math.sqrt(dx * dx + dy * dy) < 8) return;
+
+    // First time crossing drag threshold — spawn ghost
+    if (!_touchDragging) {
+        _touchDragging = true;
+        const { card } = _touchStartPos;
+        const rect = card.getBoundingClientRect();
+        _touchGhost = card.cloneNode(true);
+        Object.assign(_touchGhost.style, {
+            position: 'fixed', zIndex: 9999, pointerEvents: 'none',
+            width: rect.width + 'px', opacity: '0.9',
+            left: rect.left + 'px', top: rect.top + 'px',
+            transform: 'scale(1.03) rotate(1deg)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+            borderRadius: '8px', transition: 'none'
+        });
+        document.body.appendChild(_touchGhost);
+        card.style.opacity = '0.35';
+    }
+
+    const gw = _touchGhost.offsetWidth;
+    _touchGhost.style.left = (touch.clientX - gw / 2) + 'px';
+    _touchGhost.style.top = (touch.clientY - 40) + 'px';
+
+    _touchGhost.style.display = 'none';
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    _touchGhost.style.display = '';
+
+    const col = el && el.closest('[data-ondrop]');
+    if (_touchCurrentCol && _touchCurrentCol !== col) {
+        _touchCurrentCol.style.outline = '';
+    }
+    _touchCurrentCol = col || null;
+    if (_touchCurrentCol) _touchCurrentCol.style.outline = '2px solid var(--acc)';
+    e.preventDefault(); // suppress scroll only while dragging
+}, { passive: false });
+
+document.addEventListener('touchend', async () => {
+    if (!_touchDragId) return;
+
+    if (_touchGhost) { _touchGhost.remove(); _touchGhost = null; }
+    if (_touchCurrentCol) { _touchCurrentCol.style.outline = ''; }
+    if (_touchStartPos?.card) _touchStartPos.card.style.opacity = '';
+
+    if (_touchDragging && _touchCurrentCol) {
+        const action = _touchCurrentCol.getAttribute('data-ondrop');
+        if (action && action.startsWith('handleDrop')) {
+            const newStatus = action.match(/'([^']+)'/)[1];
+            const idx = documents.findIndex(d => d.id === _touchDragId);
+            if (idx !== -1 && documents[idx].kanbanStatus !== newStatus) {
+                documents[idx].kanbanStatus = newStatus;
+                documents[idx].updatedAt = Date.now();
+                await persist();
+                renderContent();
+            }
+        }
+    }
+
+    _touchCurrentCol = null;
+    _touchDragId = null;
+    _touchStartPos = null;
+    _touchDragging = false;
+});
+
 
 
 // ========================
@@ -3883,18 +3974,24 @@ window.copyCodeBlock = function(btn, b64) {
 // GLOBAL SEARCH (Ctrl+K)
 // ========================
 let searchSelectedIndex = -1;
+let _allSearchResults = [];
 let currentSearchResults = [];
+let searchCategoryFilter = null;
+let _searchQuery = '';
 
 window.openSearch = function() {
     const modal = document.getElementById('search-modal');
     const input = document.getElementById('search-input');
     if (!modal || !input) return;
-    
+
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     input.value = '';
     searchSelectedIndex = -1;
+    _allSearchResults = [];
     currentSearchResults = [];
+    searchCategoryFilter = null;
+    _searchQuery = '';
     renderSearchResults('');
     setTimeout(() => input.focus(), 50);
 };
@@ -3910,30 +4007,72 @@ window.closeSearch = function() {
 function renderSearchResults(query) {
     const container = document.getElementById('search-results');
     if (!container) return;
-    
+    _searchQuery = query;
+
     if (!query.trim()) {
+        searchCategoryFilter = null;
         container.innerHTML = `<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">${t('searchTypeHint')}</div>`;
         return;
     }
-    
-    const lowerQuery = query.toLowerCase();
-    currentSearchResults = documents.filter(doc => {
-        return doc.title.toLowerCase().includes(lowerQuery) || 
-               doc.tags.some(t => t.toLowerCase().includes(lowerQuery)) ||
-               (doc.content && doc.content.toLowerCase().includes(lowerQuery));
-    }).slice(0, 15); // Limit to 15 results
-    
-    if (currentSearchResults.length === 0) {
+
+    const words = query.toLowerCase().trim().split(/\s+/);
+
+    _allSearchResults = documents
+        .filter(doc => doc.status !== 'deleted')
+        .map(doc => {
+            const titleLower = doc.title.toLowerCase();
+            let score = 0;
+            for (const w of words) {
+                if (titleLower === w) score += 5;
+                else if (titleLower.startsWith(w)) score += 3;
+                else if (titleLower.includes(w)) score += 2;
+                if (doc.tags.some(tag => tag.toLowerCase().includes(w))) score += 1.5;
+                if (doc.content && doc.content.toLowerCase().includes(w)) score += 0.5;
+            }
+            return { doc, score };
+        })
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(({ doc }) => doc);
+
+    if (_allSearchResults.length === 0) {
+        currentSearchResults = [];
         container.innerHTML = `<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">${t('searchNoResult')}</div>`;
         return;
     }
-    
-    container.innerHTML = currentSearchResults.map((doc, idx) => {
+
+    currentSearchResults = searchCategoryFilter
+        ? _allSearchResults.filter(d => d.category === searchCategoryFilter)
+        : _allSearchResults;
+
+    _renderSearchUI(container);
+}
+
+function _renderSearchUI(container) {
+    const cats = [...new Set(_allSearchResults.map(d => d.category))];
+    const filterBar = cats.length > 1 ? `
+        <div class="search-filter-bar">
+            <button class="search-filter-chip ${!searchCategoryFilter ? 'active' : ''}" data-onclick="setSearchFilter(null)">
+                All <span class="search-filter-count">${_allSearchResults.length}</span>
+            </button>
+            ${cats.map(cat => {
+                const cnt = _allSearchResults.filter(d => d.category === cat).length;
+                const m = CAT_META[cat];
+                return `<button class="search-filter-chip ${searchCategoryFilter === cat ? 'active' : ''}" data-onclick="setSearchFilter('${cat}')">
+                    <i class="fa-solid ${m?.icon || 'fa-file'}" style="font-size:9px;"></i> ${m?.label || cat}
+                    <span class="search-filter-count">${cnt}</span>
+                </button>`;
+            }).join('')}
+        </div>` : '';
+
+    const resultsHtml = currentSearchResults.map((doc, idx) => {
+        const titleLower = doc.title.toLowerCase();
+        const words = _searchQuery.toLowerCase().trim().split(/\s+/);
         let matchHint = '';
-        if (doc.title.toLowerCase().includes(lowerQuery)) matchHint = t('matchTitle');
-        else if (doc.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) matchHint = t('matchTag');
+        if (words.some(w => titleLower.includes(w))) matchHint = t('matchTitle');
+        else if (words.some(w => doc.tags.some(tag => tag.toLowerCase().includes(w)))) matchHint = t('matchTag');
         else matchHint = t('matchContent');
-        
+
         return `
             <div class="search-item ${idx === searchSelectedIndex ? 'active' : ''}" data-idx="${idx}" data-onclick="selectSearchResult(${idx})">
                 <div class="search-item-title">${escHtml(doc.title)}</div>
@@ -3944,7 +4083,19 @@ function renderSearchResults(query) {
             </div>
         `;
     }).join('');
+
+    container.innerHTML = filterBar + `<div>${resultsHtml}</div>`;
 }
+
+window.setSearchFilter = function(cat) {
+    searchCategoryFilter = cat;
+    searchSelectedIndex = -1;
+    currentSearchResults = cat
+        ? _allSearchResults.filter(d => d.category === cat)
+        : _allSearchResults;
+    const container = document.getElementById('search-results');
+    if (container) _renderSearchUI(container);
+};
 
 window.selectSearchResult = function(idx) {
     if (idx < 0 || idx >= currentSearchResults.length) return;
