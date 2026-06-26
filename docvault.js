@@ -976,7 +976,8 @@ function renderContent() {
     if (state.view === 'dashboard') updateDOM(c, renderDashboard());
     else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') updateDOM(c, renderDocList());
     else if (state.view === 'editor') {
-        // Always recreate editor completely to avoid state issues
+        // Destroy viewer before switching to editor
+        if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
         c.innerHTML = renderEditor();
         window.tuiEditor = null;
         const container = document.getElementById('editor-container');
@@ -1001,6 +1002,9 @@ function renderContent() {
         if (isSameDoc) {
             updateDOM(c, renderViewer());
         } else {
+            // Destroy both instances before replacing DOM so ToastUI cleans up global listeners
+            if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
+            if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
             c.innerHTML = renderViewer();
             window.currentViewerDocId = state.editingDoc?.id;
             
@@ -1283,6 +1287,13 @@ function showDocMenu(id, btn) {
     }, 10);
 }
 
+// Safe base64 encode for Uint8Arrays — spread operator stack-overflows on large arrays
+function uint8ToBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+}
+
 // ========================
 // SHARE DOCUMENT
 // ========================
@@ -1306,7 +1317,7 @@ window.shareDoc = async function(id) {
     try {
         // Random 256-bit AES key — NOT derived from master password
         const keyBytes = crypto.getRandomValues(new Uint8Array(32));
-        const keyBase64 = btoa(String.fromCharCode(...keyBytes));
+        const keyBase64 = uint8ToBase64(keyBytes);
 
         // Encrypt doc with raw AES-256-GCM
         const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -1314,11 +1325,11 @@ window.shareDoc = async function(id) {
         const plain = new TextEncoder().encode(JSON.stringify({ title: doc.title, category: doc.category, content: doc.content, tags: doc.tags, createdAt: doc.createdAt }));
         const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, rawKey, plain);
 
-        // Pack iv + ciphertext → base64
+        // Pack iv + ciphertext → base64 (use loop, not spread — spread stack-overflows on large arrays)
         const packed = new Uint8Array(12 + cipher.byteLength);
         packed.set(iv);
         packed.set(new Uint8Array(cipher), 12);
-        const encContent = btoa(String.fromCharCode(...packed));
+        const encContent = uint8ToBase64(packed);
 
         // Upload to GitHub shared/ folder
         const shareId = `sh_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;

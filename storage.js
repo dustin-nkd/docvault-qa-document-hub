@@ -1,3 +1,10 @@
+// Safe base64 for Uint8Arrays — spread operator stack-overflows on large arrays
+function uint8ToBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+}
+
 // ========================
 // VAULT — AES-256-GCM + PBKDF2 encryption
 // Fixed salt enables same password → same key across devices (required for GitHub sync)
@@ -31,7 +38,7 @@ const Vault = {
         const buf = new Uint8Array(12 + cipher.byteLength);
         buf.set(iv);
         buf.set(new Uint8Array(cipher), 12);
-        return this.PREFIX + btoa(String.fromCharCode(...buf));
+        return this.PREFIX + uint8ToBase64(buf);
     },
 
     async decrypt(encStr, password) {
