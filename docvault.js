@@ -358,12 +358,15 @@ let documents = [];
 // ========================
 async function persist() {
     await DocStorage.save(documents);
-    if (window.SyncService && window.SyncService.isUnlocked()) {
-        window.SyncService.pushData(); // async background push
-    }
 }
-window.localDocsCountToMigrate = 0;
+
 async function hydrate() {
+    // Clean up legacy keys from old Firebase/E2EE architecture
+    localStorage.removeItem('firebase_config');
+    localStorage.removeItem('e2ee_api_key');
+    localStorage.removeItem('e2ee_bin_id');
+    sessionStorage.removeItem('e2ee_master_password');
+
     const settings = await DocStorage.getSettings();
     if (settings && settings.lang) state.lang = settings.lang;
     const saved = await DocStorage.getAll();
@@ -372,14 +375,7 @@ async function hydrate() {
     } else {
         documents = [...SAMPLE_DOCS];
     }
-    
-    if (localStorage.getItem('firebase_config')) {
-        const oldData = await DocStorage.getOldLocalData();
-        if (oldData && oldData.length > 0) {
-            window.localDocsCountToMigrate = oldData.length;
-        }
-    }
-    
+
     let migrated = false;
     documents.forEach(d => {
         if (d.category === 'onboarding') {
@@ -632,79 +628,6 @@ function showTemplateModal() {
 // ========================
 // SIDEBAR
 // ========================
-window.showSyncModal = function() {
-    const s = window.SyncService.getSettings();
-    showModal(`
-        <div>
-            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2"><i class="fa-solid fa-cloud text-[var(--acc)]"></i> Cloud Sync Settings</h3>
-            <p class="text-sm mb-6" style="color:var(--tx-m)">Configure your JSONBin.io backend for Real-time E2EE Synchronization.</p>
-            
-            <form onsubmit="event.preventDefault(); saveSyncSettings();" class="flex flex-col gap-4">
-                <div>
-                    <label class="block text-xs font-bold mb-1" style="color:var(--tx-m)">JSONBin X-Master-Key</label>
-                    <input type="password" id="sync-api-key" class="form-input w-full" placeholder="Enter X-Master-Key" value="${s.apiKey}">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold mb-1" style="color:var(--tx-m)">JSONBin Bin ID</label>
-                    <input type="text" id="sync-bin-id" class="form-input w-full" placeholder="Enter Bin ID" value="${s.binId}">
-                </div>
-                <div class="mt-2 pt-4 border-t border-[var(--brd)]">
-                    <label class="block text-xs font-bold mb-1" style="color:var(--tx-m)">Change Master Password (Optional)</label>
-                    <input type="password" id="sync-new-password" class="form-input w-full" placeholder="Enter new password to change it">
-                    <p class="text-[10px] mt-1 text-[var(--tx-d)]">Leave blank if you don't want to change your current password.</p>
-                </div>
-                
-                <div class="pt-4 border-t border-[var(--brd)]">
-                    <button type="submit" class="btn-p w-full py-2.5 flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-save"></i> Save Settings & Sync
-                    </button>
-                </div>
-            </form>
-        </div>
-    `);
-}
-
-window.saveSyncSettings = async function() {
-    const apiKey = document.getElementById('sync-api-key').value.trim();
-    const binId = document.getElementById('sync-bin-id').value.trim();
-    const newPassword = document.getElementById('sync-new-password').value;
-    
-    if (!apiKey || !binId) {
-        toast("API Key and Bin ID are required", "warning");
-        return;
-    }
-    
-    const btn = document.querySelector('#sync-modal button[type="submit"]');
-    if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Syncing...';
-    
-    let masterPassword = window.SyncService.getSettings().masterPassword || 'skipped';
-    if (newPassword) {
-        masterPassword = newPassword;
-    }
-    
-    window.SyncService.saveSettings(apiKey, binId, masterPassword);
-    
-    try {
-        if (masterPassword !== 'skipped') {
-            // Try to pull first
-            const hasData = await window.SyncService.pullAndUnlock(masterPassword);
-            if (hasData) {
-                toast("Data pulled from Cloud!", "success");
-                setTimeout(() => window.location.reload(), 1000);
-                return;
-            } else {
-                // Bin is empty, push local data
-                await window.SyncService.pushData();
-                toast("Local data pushed to Cloud!", "success");
-            }
-        }
-        closeModal();
-    } catch (err) {
-        console.error(err);
-        toast("Error: " + (err.message || "Failed to sync"), "error");
-        if (btn) btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Settings & Sync';
-    }
-}
 
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
@@ -795,13 +718,11 @@ function updateHeader() {
 
     if (state.view === 'dashboard') {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
-        actions = `<button class="btn-s flex items-center justify-center h-[38px] gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
-        <button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
         const catLabel = state.category === 'all' ? 'All Documents' : (state.view === 'favorites' ? 'Favorites' : CAT_META[state.category]?.label + 's');
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
-        actions = `<button class="btn-s flex items-center justify-center h-[38px] gap-2" data-onclick="showSyncModal()"><i class="fa-solid fa-cloud-arrow-up text-xs"></i> Cloud Sync</button>
-        <button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> New Document</button>`;
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
@@ -812,7 +733,6 @@ function updateHeader() {
         const doc = documents.find(d => d.id === state.editingDoc?.id);
         title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
         actions = `
-            <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
             <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
             <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
         `;
@@ -1032,56 +952,6 @@ function updateDOM(el, htmlStr) {
     }
 }
 
-// ========================
-// FIREBASE SETUP
-// ========================
-function renderFirebaseSetup() {
-    return `
-    <div class="flex items-center justify-center h-full">
-        <div class="bg-[var(--card)] border border-[var(--brd)] rounded-xl p-8 max-w-lg w-full shadow-2xl">
-            <div class="text-center mb-6">
-                <i class="fa-brands fa-envira text-4xl text-emerald-500 mb-3"></i>
-                <h2 class="text-2xl font-bold font-heading text-[var(--tx)]">Firebase Setup Required</h2>
-                <p class="text-sm text-[var(--tx-m)] mt-2">Please enter your Firebase Configuration object to connect to the new cloud database.</p>
-            </div>
-            
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-[var(--tx-m)] mb-2">Firebase Config JSON</label>
-                <textarea id="fb-config-input" class="w-full bg-[var(--bg)] border border-[var(--brd)] rounded-lg p-4 text-[var(--tx)] font-mono text-xs h-40 focus:border-[var(--acc)] outline-none" placeholder='{\n  "apiKey": "...",\n  "authDomain": "...",\n  "projectId": "...",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}'></textarea>
-            </div>
-            
-            <button class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-lg transition-colors" data-onclick="saveFirebaseConfig()">Connect to Firebase</button>
-        </div>
-    </div>
-    `;
-}
-
-window.saveFirebaseConfig = function() {
-    const input = document.getElementById('fb-config-input').value.trim();
-    try {
-        let config;
-        const firstBrace = input.indexOf('{');
-        const lastBrace = input.lastIndexOf('}');
-        
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-            const jsonText = input.substring(firstBrace, lastBrace + 1);
-            try {
-                // Try executing as JS object literal first (supports unquoted keys)
-                config = Function(`"use strict"; return (${jsonText});`)();
-            } catch (err) {
-                config = JSON.parse(jsonText);
-            }
-        } else {
-            config = JSON.parse(input);
-        }
-
-        if (!config || !config.apiKey || !config.projectId) throw new Error("Invalid config format");
-        localStorage.setItem('firebase_config', JSON.stringify(config));
-        window.location.reload(); // Reload to init Firebase
-    } catch (e) {
-        toast("Invalid configuration. Please copy the entire config object.", "error");
-    }
-};
 
 
 function renderContent() {
@@ -1166,19 +1036,6 @@ function render() {
 // ========================
 // DASHBOARD
 // ========================
-window.doMigration = async function() {
-    try {
-        toast("Migrating data to cloud... Please wait.", "info");
-        const count = await DocStorage.migrateDataToCloud();
-        window.localDocsCountToMigrate = 0;
-        toast(`Successfully migrated ${count} documents!`, "success");
-        setTimeout(() => window.location.reload(), 1500);
-    } catch (e) {
-        console.error(e);
-        toast("Migration failed. Check console.", "error");
-    }
-};
-
 function renderDashboard() {
     const activeDocs = documents.filter(d => d.status !== 'deleted');
     const total = activeDocs.length;
@@ -1188,20 +1045,6 @@ function renderDashboard() {
     Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
 
     return `<div class="fade-up max-w-6xl mx-auto">
-        ${window.localDocsCountToMigrate > 0 ? `
-        <div class="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                </div>
-                <div>
-                    <h4 class="font-heading font-bold text-[var(--tx)]">Migrate Old Data to Cloud</h4>
-                    <p class="text-sm text-[var(--tx-m)]">Found ${window.localDocsCountToMigrate} old documents stored locally. Migrate them to Firebase now!</p>
-                </div>
-            </div>
-            <button class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" data-onclick="doMigration()">Migrate Now</button>
-        </div>
-        ` : ''}
         <!-- Stats -->
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <div class="stat-card sc-total p-4">
@@ -1386,72 +1229,6 @@ function renderDocList() {
     </div>`;
 }
 
-async function shareDoc(id) {
-    const doc = documents.find(d => d.id === id);
-    if (!doc) return;
-    
-    showModal(`
-        <div class="text-center">
-            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.1);">
-                <i class="fa-solid fa-spinner fa-spin text-emerald-400"></i>
-            </div>
-            <h3 class="font-heading font-semibold text-lg mb-2">${t('generatingLink') || 'Generating Secure Link...'}</h3>
-            <p class="text-sm mb-6" style="color:var(--tx-m);">${t('pleaseWait') || 'Please wait while we encrypt your document.'}</p>
-        </div>
-    `);
-
-    try {
-        const apiKey = localStorage.getItem('e2ee_api_key') || '$2a$10$taCC8A46/1HYhSkqCEPyJejJ8iJrKyCRBy7xfzBECpMLJWshJ5P9u';
-        
-        // 1. Generate random key
-        const randomKey = CryptoJS.lib.WordArray.random(16).toString();
-        
-        // 2. Encrypt document
-        const encryptedData = CryptoJS.AES.encrypt(JSON.stringify(doc), randomKey).toString();
-        
-        // 3. Post to JSONBin
-        const response = await fetch('https://api.jsonbin.io/v3/b', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': apiKey,
-                'X-Bin-Private': 'false'
-            },
-            body: JSON.stringify({ data: encryptedData })
-        });
-        
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.message || 'Failed to create bin');
-        
-        const binId = result.metadata.id;
-        
-        // 4. Generate URL
-        const url = new URL(window.location.href);
-        url.search = '?shareId=' + binId;
-        url.hash = 'key=' + randomKey;
-        
-        showModal(`
-            <div class="text-center">
-                <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.1);">
-                    <i class="fa-solid fa-check text-emerald-400"></i>
-                </div>
-                <h3 class="font-heading font-semibold text-lg mb-2">${t('linkReady') || 'Link Ready!'}</h3>
-                <p class="text-sm mb-4" style="color:var(--tx-m);">${t('linkDesc') || 'Anyone with this link can view the document. It is encrypted with a unique key.'}</p>
-                <div class="bg-black/20 p-3 rounded border mb-6 flex items-center gap-2" style="border-color:var(--brd);">
-                    <input type="text" readonly value="${url.href}" class="w-full bg-transparent text-sm" style="color:var(--tx);outline:none;" id="share-link-input">
-                    <button class="shrink-0 p-2 rounded hover:bg-white/5" onclick="navigator.clipboard.writeText(document.getElementById('share-link-input').value);toast('${t('copied') || 'Copied'}', 'success')">
-                        <i class="fa-regular fa-copy"></i>
-                    </button>
-                </div>
-                <button class="btn-d" style="background:var(--card);color:var(--tx);" data-onclick="closeModal()">${t('close') || 'Close'}</button>
-            </div>
-        `);
-    } catch (e) {
-        console.error(e);
-        toast('Failed to share: ' + e.message, 'error');
-        closeModal();
-    }
-}
 
 // Document context menu (dropdown)
 function showDocMenu(id, btn) {
@@ -1473,8 +1250,6 @@ function showDocMenu(id, btn) {
         `;
     } else {
         menuHtml = `
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--c-run);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();shareDoc('${id}')">
-                <i class="fa-solid fa-share-nodes w-4 text-center"></i> ${t('share') || 'Share Link'} </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
                 <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
@@ -1594,7 +1369,6 @@ async function uploadImageToCloud(blob, callback) {
 }
 
 window.showGitHubSettingsModal = function() {
-    // 1. GitHub settings
     let ghSettings = { owner: '', repo: '', branch: 'main', token: '', path: 'images' };
     const storedGh = localStorage.getItem('github_settings');
     if (storedGh) {
@@ -1602,52 +1376,15 @@ window.showGitHubSettingsModal = function() {
             ghSettings = { ...ghSettings, ...JSON.parse(storedGh) };
         } catch (e) {}
     }
-    
-    // 2. Firebase settings
-    const storedFb = localStorage.getItem('firebase_config');
-    let fbStatusHtml = '';
-    if (storedFb) {
-        try {
-            const fbConfig = JSON.parse(storedFb);
-            fbStatusHtml = `
-                <div class="bg-emerald-950/20 border border-emerald-800/40 rounded-lg p-3 text-xs text-emerald-200 mb-3 text-left">
-                    <i class="fa-solid fa-check-circle mr-1 text-emerald-500"></i> Đang kết nối Firebase Project: <strong>${fbConfig.projectId}</strong>
-                </div>
-                <button type="button" class="w-full bg-red-950/30 hover:bg-red-900/50 border border-red-900/60 text-red-200 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5" data-onclick="resetFirebaseConfig()">
-                    <i class="fa-solid fa-power-off text-[10px]"></i> Ngắt kết nối Firebase (Chuyển sang Offline Local)
-                </button>
-            `;
-        } catch (e) {
-            fbStatusHtml = `<p class="text-xs text-red-400 text-left">Cấu hình Firebase không hợp lệ.</p>`;
-        }
-    } else {
-        fbStatusHtml = `
-            <div class="bg-amber-950/20 border border-amber-800/40 rounded-lg p-3 text-xs text-amber-200 mb-3 text-left">
-                <i class="fa-solid fa-info-circle mr-1 text-amber-500"></i> Đang chạy ở chế độ **Offline Local** (Dữ liệu lưu trình duyệt).
-            </div>
-            <div class="text-left">
-                <label class="block text-[11px] font-bold mb-1 text-[var(--tx-m)]">Kết nối Cloud Firestore (Tùy chọn)</label>
-                <textarea id="settings-fb-config" class="w-full bg-[var(--bg)] border border-[var(--brd)] rounded-lg p-2.5 text-[var(--tx)] font-mono text-[10px] h-20 focus:border-[var(--acc)] outline-none" placeholder='Dán firebaseConfig JSON vào đây...'></textarea>
-                <button type="button" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs mt-2 transition-colors" data-onclick="saveSettingsFirebaseConfig()">Kết nối Cloud Firestore</button>
-            </div>
-        `;
-    }
 
     showModal(`
         <div>
             <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> Cài Đặt Ứng Dụng DocVault</h3>
-            
-            <!-- PHẦN 1: DATABASE -->
-            <div class="mb-5 pb-5 border-b border-[var(--brd)]">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5 text-left" style="color:var(--tx-m);"><i class="fa-solid fa-database text-[var(--acc)] text-[10px]"></i> 1. Cấu hình Database</h4>
-                ${fbStatusHtml}
-            </div>
 
-            <!-- PHẦN 2: GITHUB ASSETS -->
             <div class="text-left">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-image text-[var(--acc)] text-[10px]"></i> 2. GitHub Image Hosting (CDN)</h4>
-                <p class="text-[11px] mb-3" style="color:var(--tx-d)">Upload ảnh chụp màn hình lên GitHub để bỏ qua phần khai báo thanh toán (Billing) của Firebase. Cơ sở dữ liệu sẽ siêu nhẹ và sync mượt mà.</p>
-                
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-image text-[var(--acc)] text-[10px]"></i> GitHub Image Hosting (CDN)</h4>
+                <p class="text-[11px] mb-3" style="color:var(--tx-d)">Upload ảnh chụp màn hình lên GitHub để lưu trữ bền vững. Dữ liệu tài liệu được lưu trực tiếp trên trình duyệt.</p>
+
                 <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
                     <div>
                         <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Owner / Username</label>
@@ -1671,7 +1408,7 @@ window.showGitHubSettingsModal = function() {
                         <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Fine-grained Personal Access Token (PAT)</label>
                         <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token)}">
                     </div>
-                    
+
                     <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
                         <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Đóng</button>
                         <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
@@ -1690,7 +1427,7 @@ window.saveGitHubSettings = function() {
     const branch = document.getElementById('gh-branch').value.trim() || 'main';
     const path = document.getElementById('gh-path').value.trim() || 'images';
     const token = document.getElementById('gh-token').value.trim();
-    
+
     if (owner && repo && token) {
         const settings = { owner, repo, branch, path, token };
         localStorage.setItem('github_settings', JSON.stringify(settings));
@@ -1704,39 +1441,6 @@ window.saveGitHubSettings = function() {
         toast("Please fill in Owner, Repo and Token fields.", "warning");
     }
 }
-
-window.resetFirebaseConfig = function() {
-    if (confirm("Bạn có chắc chắn muốn ngắt kết nối với Firebase? Dữ liệu của bạn ở local vẫn sẽ được giữ nguyên, nhưng bạn sẽ chuyển sang chế độ lưu trữ Offline.")) {
-        localStorage.removeItem('firebase_config');
-        window.location.reload();
-    }
-}
-
-window.saveSettingsFirebaseConfig = function() {
-    const input = document.getElementById('settings-fb-config').value.trim();
-    try {
-        let config;
-        const firstBrace = input.indexOf('{');
-        const lastBrace = input.lastIndexOf('}');
-        
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-            const jsonText = input.substring(firstBrace, lastBrace + 1);
-            try {
-                config = Function(`"use strict"; return (${jsonText});`)();
-            } catch (err) {
-                config = JSON.parse(jsonText);
-            }
-        } else {
-            config = JSON.parse(input);
-        }
-
-        if (!config || !config.apiKey || !config.projectId) throw new Error("Invalid config format");
-        localStorage.setItem('firebase_config', JSON.stringify(config));
-        window.location.reload(); // Reload to init Firebase
-    } catch (e) {
-        toast("Cấu hình Firebase không hợp lệ. Vui lòng kiểm tra lại.", "error");
-    }
-};
 
 
 // ========================
@@ -2318,13 +2022,11 @@ function renderViewer() {
         <textarea id="vw-content-hidden" style="display:none;">${escHtml(doc.content)}</textarea>
         
         <!-- Actions bottom -->
-        ${window.location.search.includes('shareId') ? '' : `
         <div class="flex items-center gap-3 mt-5">
             <button class="btn-p" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
             <button class="btn-s" data-onclick="duplicateDoc('${doc.id}')"><i class="fa-solid fa-copy mr-1.5"></i>${t('duplicate')}</button>
             <button class="btn-d ml-auto" data-onclick="showDeleteModal('${doc.id}')"><i class="fa-solid fa-trash mr-1.5"></i>${t('delete')}</button>
         </div>
-        `}
     </div>`;
 }
 
@@ -2663,76 +2365,7 @@ async function init() {
     render();
 }
 
-window.initAppAfterUnlock = async function(skipSync = false) {
-    if (!skipSync && window.SyncService && window.SyncService.isUnlocked()) {
-        try {
-            const pwd = sessionStorage.getItem('e2ee_master_password');
-            const resObj = await window.SyncService.pullAndUnlock(pwd);
-            if (resObj && resObj.needPush) {
-                await window.SyncService.pushData();
-            }
-        } catch (e) {
-            console.error("Initial sync failed", e);
-        }
-    }
-    await init();
-    handleUrlParams();
-}
-
-const urlParams = new URLSearchParams(window.location.search);
-const shareId = urlParams.get('shareId');
-
-if (shareId) {
-    const ls = document.getElementById('lock-screen');
-    if (ls) ls.classList.add('hidden');
-    loadSharedDoc(shareId, window.location.hash.replace('#key=', ''));
-} else if (window.SyncService && !window.SyncService.isUnlocked()) {
-    const ls = document.getElementById('lock-screen');
-    if (ls) ls.classList.remove('hidden');
-} else {
-    window.initAppAfterUnlock();
-}
-
-async function loadSharedDoc(binId, key) {
-    try {
-        toast("Loading shared document...", "info");
-        const res = await fetch('https://api.jsonbin.io/v3/b/' + binId);
-        const payload = await res.json();
-        
-        if (payload.record && payload.record.data) {
-            const bytes = CryptoJS.AES.decrypt(payload.record.data, key);
-            const decStr = bytes.toString(CryptoJS.enc.Utf8);
-            if (!decStr) throw new Error("Invalid share key");
-            const doc = JSON.parse(decStr);
-            
-            state.view = 'viewer';
-            state.editingDoc = doc;
-            documents = [doc];
-            
-            updateHeader();
-            renderContent();
-            
-            // Hide sidebar and toggle
-            document.getElementById('sidebar').style.display = 'none';
-            const sbToggle = document.querySelector('button[data-onclick="toggleSidebar()"]');
-            if (sbToggle) sbToggle.style.display = 'none';
-            
-            // Modify header actions
-            const header = document.getElementById('app-header');
-            const actionsDiv = header.querySelector('.flex.items-center.gap-2');
-            if (actionsDiv) {
-                actionsDiv.innerHTML = `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open QA Hub</button>`;
-            }
-            
-            toast("Document loaded securely", "success");
-        } else {
-            throw new Error("Invalid document data");
-        }
-    } catch (e) {
-        console.error(e);
-        document.body.innerHTML = `<div class="flex items-center justify-center h-screen bg-grid"><div class="p-10 text-center max-w-md"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-lock text-rose-400 text-2xl"></i></div><h1 class="font-heading text-2xl font-bold mb-4" style="color:var(--tx)">Access Denied</h1><p class="text-sm mb-8" style="color:var(--tx-m)">${e.message || 'Unable to decrypt this document. The link may be invalid or expired.'}</p><button class="btn-p" onclick="window.location.href=window.location.pathname">Go to QA Hub</button></div></div>`;
-    }
-}
+init().then(handleUrlParams);
 
 // ========================
 // URL PARAMETER HANDLING
