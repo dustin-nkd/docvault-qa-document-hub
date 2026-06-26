@@ -482,6 +482,8 @@ function renderMd(text) {
         }).join('');
         return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
     });
+    // Images (before links — ! distinguishes them)
+    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" style="max-width:100%;border-radius:6px;margin:6px 0;display:block;">');
     // Links
     h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     
@@ -956,9 +958,8 @@ function updateDOM(el, htmlStr) {
     if (typeof morphdom !== 'undefined') {
         morphdom(el, `<div id="${el.id}" class="${el.className}">${htmlStr}</div>`, {
             onBeforeElUpdated: function(fromEl, toEl) {
-                if (fromEl.id === 'editor-container' || fromEl.id === 'viewer-container') {
-                    return false;
-                }
+                // Preserve the live ToastUI editor container — morphdom must not touch it
+                if (fromEl.id === 'editor-container') return false;
                 return true;
             }
         });
@@ -1000,48 +1001,14 @@ function renderContent() {
     }
     else if (state.view === 'viewer') {
         const isSameDoc = window.currentViewerDocId === state.editingDoc?.id;
+        // Destroy any lingering editor/viewer instances
+        if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
+        if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
         if (isSameDoc) {
             updateDOM(c, renderViewer());
         } else {
-            // Destroy both instances before replacing DOM so ToastUI cleans up global listeners
-            if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
-            if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
             c.innerHTML = renderViewer();
             window.currentViewerDocId = state.editingDoc?.id;
-            
-            const container = document.getElementById('viewer-container');
-            if (container) {
-                const hiddenTa = document.getElementById('vw-content-hidden');
-                const initialVal = hiddenTa ? hiddenTa.value : '';
-                window.tuiViewer = toastui.Editor.factory({
-                    el: container,
-                    viewer: true,
-                    initialValue: initialVal,
-                    theme: 'dark'
-                });
-                
-                // Inject copy buttons into code blocks
-                setTimeout(() => {
-                    container.querySelectorAll('pre').forEach(pre => {
-                        pre.style.position = 'relative';
-                        const codeEl = pre.querySelector('code');
-                        const textToCopy = codeEl ? codeEl.innerText : pre.innerText;
-                        
-                        const btn = document.createElement('button');
-                        btn.className = 'code-copy-btn';
-                        btn.title = 'Copy';
-                        btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
-                        btn.onclick = function(e) {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(textToCopy).then(() => {
-                                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
-                                setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
-                            });
-                        };
-                        pre.appendChild(btn);
-                    });
-                }, 100);
-            }
         }
     }
 }
@@ -1940,9 +1907,9 @@ function renderViewer() {
             ${doc.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(doc.subfolder)}</span>` : ''}
             <span class="st-badge st-${doc.status}">${doc.status}</span>
             ${doc.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
-            <button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="toggleFav('${doc.id}')">
+            ${state.sharedView ? '' : `<button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="toggleFav('${doc.id}')">
                 <i class="fa-${doc.favorite ? 'solid' : 'regular'} fa-star"></i>
-            </button>
+            </button>`}
         </div>
         <!-- Title -->
         <h1 class="font-heading font-bold text-2xl mb-2" style="color:var(--tx);">${escHtml(doc.title)}</h1>
@@ -2152,11 +2119,11 @@ function renderViewer() {
             return html;
         })()}
         ` : (!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
-        <!-- Content -->
-        <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:300px;">
+        <!-- Content rendered directly — no ToastUI lifecycle issues -->
+        <div class="md-viewer p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);">
+            ${renderMd(doc.content)}
         </div>
         `}
-        <textarea id="vw-content-hidden" style="display:none;">${escHtml(doc.content)}</textarea>
         
         <!-- Actions bottom (hidden in shared view) -->
         ${state.sharedView ? '' : `
@@ -2249,6 +2216,7 @@ function viewDoc(id) {
 }
 
 window.cancelEdit = function() {
+    if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
     window.tuiEditor = null;
     state.editorTags = [];
     state.editorMode = 'edit';
@@ -2413,6 +2381,7 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
 }
 
 async function toggleFav(id) {
+    if (state.sharedView) return;
     const doc = documents.find(d => d.id === id);
     if (doc) {
         doc.favorite = !doc.favorite;
