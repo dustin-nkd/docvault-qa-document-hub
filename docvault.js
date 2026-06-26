@@ -843,7 +843,7 @@ window.navigate = function(view, cat, subfolder = '') {
     pushHistory();
     state.view = view;
     if (cat !== undefined) state.category = cat;
-    if (view === 'favorites') state.category = 'all';
+    if (view === 'favorites' || view === 'trash' || view === 'search') state.category = 'all';
     state.subfolder = subfolder;
     state.search = '';
     state.statusFilter = 'all';
@@ -1164,7 +1164,7 @@ function renderDocList() {
     const docs = getFiltered();
     const isMobileSearch = state.view === 'documents' || state.view === 'favorites';
 
-    if (state.category === 'task') {
+    if (state.category === 'task' && state.view === 'documents') {
         return renderKanbanBoard(docs, isMobileSearch);
     }
 
@@ -2865,7 +2865,7 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         state.view = 'viewer';
     } else {
         // Create
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
@@ -3276,7 +3276,7 @@ window.handleDrop = async function(event, newStatus) {
     if (!id) return;
     
     const idx = documents.findIndex(d => d.id === id);
-    if (idx !== -1) {
+    if (idx !== -1 && documents[idx].status !== 'deleted') {
         if (documents[idx].kanbanStatus !== newStatus) {
             documents[idx].kanbanStatus = newStatus;
             documents[idx].updatedAt = Date.now();
