@@ -1817,7 +1817,7 @@ function renderEditor() {
             <div class="mb-4">
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('linkedCreds')}</label>
                 <div class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
-                    ${documents.filter(d => d.category === 'credential' && d.status !== 'deleted').map(c => `
+                    ${documents.filter(d => d.category === 'credential').map(c => `
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" class="form-checkbox ed-env-cred" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
                             <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(c.title)}</span>
@@ -1903,7 +1903,7 @@ function renderEditor() {
         <div class="mb-4">
             <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Select Test Cases for Execution</label>
             <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
-                ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
+                ${documents.filter(d => d.category === 'testcases').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases').map(tc => {
                     const isChecked = (doc?.runData?.targetIds || state._newRunData?.targetIds || []).includes(tc.id);
                     return `
                     <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" onmouseenter="this.style.background='var(--card)'" onmouseleave="this.style.background='transparent'">
