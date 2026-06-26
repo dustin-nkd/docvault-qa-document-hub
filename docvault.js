@@ -3007,7 +3007,9 @@ const i18n = {
         matchTag: "Trùng tag",
         matchContent: "Trùng nội dung",
         invalidJson: "Định dạng JSON không hợp lệ",
-        copyFail: "Sao chép thất bại"
+        copyFail: "Sao chép thất bại",
+        ghSyncOk: "Đã sync lên GitHub",
+        ghSyncFail: "GitHub sync thất bại"
     },
     en: {
         runbook: "Runbook",
@@ -3207,7 +3209,9 @@ const i18n = {
         matchTag: "Tag match",
         matchContent: "Content match",
         invalidJson: "Invalid JSON format",
-        copyFail: "Failed to copy"
+        copyFail: "Failed to copy",
+        ghSyncOk: "Đã sync lên GitHub",
+        ghSyncFail: "GitHub sync thất bại"
     }
 };
 
