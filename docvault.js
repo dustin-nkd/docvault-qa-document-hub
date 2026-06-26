@@ -407,7 +407,14 @@ function fmtDate(ts) {
 }
 function excerpt(text, len = 120) {
     if (!text) return '';
-    const clean = text.replace(/[#*`\[\]()>|-]/g, '').replace(/\n+/g, ' ').trim();
+    const clean = text
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')                          // strip markdown images
+        .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=\r\n]+/g, '')   // strip inline base64
+        .replace(/https?:\/\/\S+/g, '')                                   // strip bare URLs
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')                          // links → label text
+        .replace(/[#*`>|_~\\]/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
     return clean.length > len ? clean.substring(0, len) + '...' : clean;
 }
 function escHtml(s) {
@@ -1264,94 +1271,68 @@ function showDocMenu(id, btn) {
 }
 
 // ========================
-// IMAGE UPLOAD (GitHub CDN & Base64 Fallback)
+// IMAGE UPLOAD — instant paste + background GitHub CDN
 // ========================
-async function uploadImageToGitHub(blob, callback) {
-    const settings = await GitHubSync.getSettings();
-    if (!settings || !settings.owner || !settings.repo || !settings.token) {
-        return false;
-    }
-    
-    toast(t('imgUploading'), "info");
-    
-    try {
-        // Convert blob to base64 for GitHub API
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        await new Promise((resolve, reject) => {
-            reader.onloadend = () => resolve();
-            reader.onerror = () => reject(new Error("Failed to read blob"));
-        });
-        
-        // Remove the data URL prefix (e.g., "data:image/png;base64,")
-        const base64Content = reader.result.split(',')[1];
-        
-        const ext = blob.type.split('/')[1] || 'png';
-        const filename = `img_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
-        const path = (settings.path || 'images').replace(/\/+$/, '') + '/' + filename;
-        const branch = settings.branch || 'main';
-        
-        const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`;
-        
-        const body = {
-            message: `Upload image from DocVault: ${filename}`,
-            content: base64Content,
-            branch: branch
-        };
-        
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${settings.token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/vnd.github+json'
-            },
-            body: JSON.stringify(body)
-        });
-        
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.message || `GitHub API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const downloadUrl = data.content.download_url;
-        
-        callback(downloadUrl, blob.name || 'image');
-        toast(t('imgUploadSuccess'), "success");
-        return true;
-    } catch (err) {
-        console.error("GitHub Upload Error:", err);
-        toast(t('imgUploadFail'), "error");
-        return false;
-    }
-}
-
 async function uploadImageToCloud(blob, callback) {
-    // Attempt GitHub upload first (works independently of Firebase)
-    const uploaded = await uploadImageToGitHub(blob, callback);
-    if (uploaded) return;
-
-    // Fallback to inline Base64
-    if (blob.size > 800000) {
-        toast(t('imgFallbackSize'), "warning");
+    // Step 1: insert base64 immediately so image appears in editor without any wait
+    let base64DataUrl;
+    try {
+        base64DataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error(t('imgReadFail')));
+            reader.readAsDataURL(blob);
+        });
+    } catch(err) {
+        toast(t('imgProcessFail'), 'error');
+        return;
     }
-    toast(t('imgFallbackProcessing'), "info");
+
+    // Insert immediately — no waiting, image shows at cursor right away
+    callback(base64DataUrl, blob.name || 'image');
+
+    // Step 2: upload to GitHub in background (non-blocking)
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) return; // no CDN configured, keep base64
+
+    const ext = blob.type.split('/')[1] || 'png';
+    const filename = `img_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
+    const path = (settings.path || 'images').replace(/\/+$/, '') + '/' + filename;
 
     try {
-        const reader = new FileReader();
-        reader.onloadend = function() {
-            const base64data = reader.result;
-            callback(base64data, blob.name || 'image');
-            toast(t('imgFallbackDone'), "success");
-        };
-        reader.onerror = function() {
-            toast(t('imgReadFail'), "error");
-        };
-        reader.readAsDataURL(blob);
-    } catch (err) {
-        console.error("Image Conversion Error:", err);
-        toast(t('imgProcessFail'), "error");
+        const res = await fetch(
+            `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${settings.token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/vnd.github+json'
+                },
+                body: JSON.stringify({
+                    message: `Upload image: ${filename}`,
+                    content: base64DataUrl.split(',')[1],
+                    branch: settings.branch || 'main'
+                })
+            }
+        );
+
+        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+        const data = await res.json();
+        const cdnUrl = data.content.download_url;
+
+        // Step 3: replace base64 with CDN URL in editor markdown (background swap)
+        if (window.tuiEditor) {
+            const md = window.tuiEditor.getMarkdown();
+            const updated = md.replace(base64DataUrl, cdnUrl);
+            if (updated !== md) {
+                window.tuiEditor.setMarkdown(updated);
+            }
+        }
+        toast(t('imgUploadSuccess'), 'success');
+    } catch(err) {
+        // Silent fail — base64 is already in editor, document still works fine
+        console.warn('[IMG] GitHub upload failed, keeping base64:', err.message);
     }
 }
 
