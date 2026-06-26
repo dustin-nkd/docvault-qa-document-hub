@@ -1287,6 +1287,15 @@ function showDocMenu(id, btn) {
     }, 10);
 }
 
+// Copy share URL with visual checkmark feedback
+window._shareCopyFeedback = function(btn, url) {
+    navigator.clipboard.writeText(url).then(() => {
+        btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Copied!';
+        btn.style.color = '#10b981';
+        setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy mr-1"></i>Copy'; btn.style.color = ''; }, 2000);
+    }).catch(() => toast('Copy failed', 'error'));
+};
+
 // Safe base64 encode for Uint8Arrays — spread operator stack-overflows on large arrays
 function uint8ToBase64(bytes) {
     let binary = '';
@@ -1355,7 +1364,7 @@ window.shareDoc = async function(id) {
                 <p class="text-sm mb-4" style="color:var(--tx-m);">Anyone with this link can view the document. The content is end-to-end encrypted.</p>
                 <div class="flex items-center gap-2 p-3 rounded-lg border mb-5 text-left" style="background:var(--bg);border-color:var(--brd);">
                     <input type="text" readonly id="share-url-input" value="${escHtml(shareUrl)}" class="flex-1 bg-transparent text-xs outline-none font-mono" style="color:var(--tx);">
-                    <button class="shrink-0 btn-s px-3 py-1.5 text-xs" onclick="navigator.clipboard.writeText(document.getElementById('share-url-input').value);toast('Copied!','success')">
+                    <button class="shrink-0 btn-s px-3 py-1.5 text-xs" onclick="window._shareCopyFeedback(this,document.getElementById('share-url-input').value)">
                         <i class="fa-regular fa-copy mr-1"></i>Copy
                     </button>
                 </div>
@@ -1376,9 +1385,9 @@ async function loadSharedDoc(shareId, keyBase64) {
         const res = await fetch(rawUrl);
         if (!res.ok) throw new Error('Document not found or link has expired.');
 
-        // Decode: base64(url-encoded) → encContent → iv + cipher
+        // File raw content IS encContent (pure base64 string from uint8ToBase64)
         const fileText = await res.text();
-        const encContent = decodeURIComponent(escape(atob(fileText.trim())));
+        const encContent = fileText.trim();
         const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
 
         const packed = Uint8Array.from(atob(encContent), c => c.charCodeAt(0));
@@ -2390,7 +2399,8 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         state.view = 'viewer';
         state.category = cat;
     }
-    // Force viewer to fully re-init (don't reuse stale tuiViewer instance)
+    // Destroy editor before losing reference — orphaned instance keeps global ToastUI listeners
+    if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
     window.currentViewerDocId = null;
     window.tuiEditor = null;
     history.replaceState({}, '', '?view=' + state.editingDoc.id);
