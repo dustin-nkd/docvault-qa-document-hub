@@ -1329,7 +1329,20 @@ window.shareDoc = async function(id) {
         // Encrypt doc with raw AES-256-GCM
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
-        const plain = new TextEncoder().encode(JSON.stringify({ title: doc.title, category: doc.category, content: doc.content, tags: doc.tags, createdAt: doc.createdAt }));
+        // Embed all type-specific fields so the shared viewer renders correctly
+        const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
+            ? documents.filter(d => doc.runData.targetIds.includes(d.id))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
+            : [];
+        const plain = new TextEncoder().encode(JSON.stringify({
+            title: doc.title, category: doc.category, content: doc.content,
+            tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
+            username: doc.username, password: doc.password,
+            envData: doc.envData,
+            runData: doc.runData,
+            tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
+            _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
+        }));
         const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, rawKey, plain);
 
         // Pack iv + ciphertext → base64 (use loop, not spread — spread stack-overflows on large arrays)
@@ -1395,9 +1408,12 @@ async function loadSharedDoc(shareId, keyBase64) {
         const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
         const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, rawKey, cipher);
         const doc = JSON.parse(new TextDecoder().decode(plain));
+        const embeddedLinkedDocs = doc._linkedDocs || [];
+        delete doc._linkedDocs;
 
         // Render in read-only viewer (no edit/delete/duplicate)
-        documents = [{ ...doc, id: shareId, status: 'published', favorite: false, updatedAt: doc.createdAt || Date.now(), tags: doc.tags || [] }];
+        const mainDoc = { ...doc, id: shareId, status: doc.status || 'published', favorite: false, updatedAt: doc.createdAt || Date.now(), tags: doc.tags || [] };
+        documents = [mainDoc, ...embeddedLinkedDocs];
         state.view = 'viewer';
         state.sharedView = true;
         state.editingDoc = documents[0];
@@ -2102,17 +2118,20 @@ function renderViewer() {
             } else {
                 targets.forEach(tc => {
                     const steps = tc.tcData?.steps || [];
+                    const tcNote = doc.runData?.results?.[tc.id]?.note || '';
                     html += `
                     <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
                         <div class="px-4 py-3 flex items-center gap-3" style="background:var(--bg2); border-bottom:1px solid var(--brd);">
                             <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
                             <span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
-                            <button class="btn-s text-xs ml-auto" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+                            ${state.sharedView ? '' : `<button class="btn-s text-xs ml-auto" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
                         </div>
                         <div class="bg-transparent p-4">
-                            ${steps.length === 0 ? `<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>` : 
+                            ${steps.length === 0 ? `<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>` :
                             steps.map((step, idx) => {
                                 const status = results[tc.id]?.[idx] || 'untested';
+                                const statusColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
+                                const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
                                 return `
                                 <div class="py-4 ${idx !== steps.length - 1 ? 'border-b' : ''}" style="border-color:var(--brd);">
                                     <div class="flex items-center gap-2 mb-2">
@@ -2124,22 +2143,32 @@ function renderViewer() {
                                             ${step.expected ? `<div class="text-[13px] leading-relaxed" style="color:var(--tx-m);"><span class="font-semibold opacity-60 uppercase text-[10px] tracking-wider mr-1">Expected:</span> ${escHtml(step.expected).replace(/\n/g, '<br>')}</div>` : ''}
                                         </div>
                                         <div class="shrink-0 flex items-start">
+                                            ${state.sharedView ? `
+                                            <span class="px-3 py-1.5 text-[11px] font-medium rounded-lg" style="background:${status !== 'untested' ? statusColors[status] + '22' : 'var(--bg2)'}; color:${statusColors[status]}; border:1px solid ${status !== 'untested' ? statusColors[status] + '55' : 'var(--brd)'};">
+                                                ${statusLabels[status]}
+                                            </span>
+                                            ` : `
                                             <div class="flex rounded-lg overflow-hidden border" style="border-color:var(--brd); background:var(--bg2); box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                                                 <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'pass' ? 'bg-emerald-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'pass' ? 'color:var(--tx-m);' : ''} border-right:1px solid var(--brd);" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'pass')" title="${t('pass')}"><i class="fa-solid fa-check mr-1.5"></i>Pass</button>
                                                 <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'fail' ? 'bg-rose-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'fail' ? 'color:var(--tx-m);' : ''} border-right:1px solid var(--brd);" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'fail')" title="${t('fail')}"><i class="fa-solid fa-xmark mr-1.5"></i>Fail</button>
                                                 <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'blocked' ? 'bg-amber-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'blocked' ? 'color:var(--tx-m);' : ''}" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'blocked')" title="${t('blocked')}"><i class="fa-solid fa-ban mr-1.5"></i>Block</button>
                                             </div>
+                                            `}
                                         </div>
                                     </div>
                                 </div>
                                 `;
                             }).join('')}
-                            
-                            <!-- Test Case Execution Note -->
+
+                            ${state.sharedView ? (tcNote ? `
                             <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
                                 <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
-                                <textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution..." data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(doc.runData?.results?.[tc.id]?.note || '')}</textarea>
-                            </div>
+                                <p class="text-sm" style="color:var(--tx);">${escHtml(tcNote)}</p>
+                            </div>` : '') : `
+                            <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+                                <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
+                                <textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution..." data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>
+                            </div>`}
                         </div>
                     </div>
                     `;
@@ -2170,6 +2199,7 @@ function renderViewer() {
 // ACTIONS
 // ========================
 window.updateTestRunStep = async function(runDocId, tcId, stepIdx, status) {
+    if (state.sharedView) return;
     const doc = documents.find(d => d.id === runDocId);
     if (!doc || !doc.runData) return;
     
@@ -2188,6 +2218,7 @@ window.updateTestRunStep = async function(runDocId, tcId, stepIdx, status) {
 };
 
 window.updateTestRunNote = async function(runDocId, tcId, note) {
+    if (state.sharedView) return;
     const doc = documents.find(d => d.id === runDocId);
     if (!doc || !doc.runData) return;
     
