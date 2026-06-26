@@ -574,6 +574,7 @@ async function restoreDoc(id) {
 }
 
 async function hardDeleteDoc(id) {
+    await DocStorage.addDeletedIds([id]);
     documents = documents.filter(d => d.id !== id);
     await persist();
     closeModal();
@@ -598,6 +599,8 @@ function showEmptyTrashModal() {
 }
 
 async function emptyTrash() {
+    const trashedIds = documents.filter(d => d.status === 'deleted').map(d => d.id);
+    await DocStorage.addDeletedIds(trashedIds);
     documents = documents.filter(d => d.status !== 'deleted');
     await persist();
     closeModal();

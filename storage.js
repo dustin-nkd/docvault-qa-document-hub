@@ -120,7 +120,7 @@ const GitHubSync = {
         };
     },
 
-    // Parse raw content string → {docs, cfg}  (handles both old array format and new wrapper)
+    // Parse raw content string → {docs, cfg, deletedIds}  (handles both old array format and new wrapper)
     async _parseContent(content) {
         const pwd = this._pwd();
         let payload;
@@ -130,16 +130,18 @@ const GitHubSync = {
         } else {
             payload = JSON.parse(content);
         }
-        if (Array.isArray(payload)) return { docs: payload, cfg: null }; // old format
-        return { docs: payload.docs || [], cfg: payload.cfg || null };
+        if (Array.isArray(payload)) return { docs: payload, cfg: null, deletedIds: [] }; // old format
+        return { docs: payload.docs || [], cfg: payload.cfg || null, deletedIds: payload.deletedIds || [] };
     },
 
     // Encode docs + cfg for GitHub API (base64 of UTF-8 file content)
+    // Only active (non-deleted) docs are pushed to keep GitHub clean
     async _encode(docs) {
         const pwd = this._pwd();
         const cfg = await this.getSettings();
-        // Always embed cfg so other devices can bootstrap automatically
-        const wrapper = { docs, cfg: cfg || null };
+        const activeDocs = docs.filter(d => d.status !== 'deleted');
+        const deletedIds = DocStorage ? [...DocStorage._getLocalDeletedIds()] : [];
+        const wrapper = { docs: activeDocs, cfg: cfg || null, deletedIds };
         const content = pwd
             ? await Vault.encrypt(wrapper, pwd)
             : JSON.stringify(wrapper, null, 2);
@@ -216,8 +218,8 @@ const GitHubSync = {
 
             const data = await res.json();
             localStorage.setItem(this.SHA_KEY, data.sha);
-            const { docs } = await this._decode(data.content);
-            return docs;
+            const { docs, deletedIds } = await this._decode(data.content);
+            return { docs, deletedIds: deletedIds || [] };
         } catch(e) {
             console.error('[GitHubSync] pull failed:', e);
             return null;
@@ -248,7 +250,14 @@ const GitHubSync = {
                 console.warn(`[GitHubSync] status ${res.status}, pulling latest SHA before retry...`);
                 const remote = await this.pull();
                 if (remote) {
-                    const merged = DocStorage._merge(docs, remote);
+                    const remoteDocs = remote.docs || remote;
+                    const remoteDeletedIds = new Set(remote.deletedIds || []);
+                    const localDeletedIds = DocStorage._getLocalDeletedIds();
+                    const allDeletedIds = new Set([...localDeletedIds, ...remoteDeletedIds]);
+                    if (allDeletedIds.size > localDeletedIds.size) {
+                        DocStorage._saveLocalDeletedIds(allDeletedIds);
+                    }
+                    const merged = DocStorage._merge(docs, remoteDocs, allDeletedIds);
                     await DocStorage._saveLocal(merged);
                     return this.push(merged, false);
                 }
@@ -277,15 +286,33 @@ window.GitHubSync = GitHubSync;
 // ========================
 const DocStorage = {
     STORAGE_KEY: 'docvault_docs',
+    DELETED_IDS_KEY: 'docvault_deleted_ids',
 
     _pwd() {
         return sessionStorage.getItem('docvault_pwd') || null;
     },
 
-    _merge(local, remote) {
+    _getLocalDeletedIds() {
+        try {
+            return new Set(JSON.parse(localStorage.getItem(this.DELETED_IDS_KEY) || '[]'));
+        } catch(e) { return new Set(); }
+    },
+
+    _saveLocalDeletedIds(set) {
+        localStorage.setItem(this.DELETED_IDS_KEY, JSON.stringify([...set]));
+    },
+
+    async addDeletedIds(ids) {
+        const set = this._getLocalDeletedIds();
+        ids.forEach(id => set.add(id));
+        this._saveLocalDeletedIds(set);
+    },
+
+    _merge(local, remote, deletedIds = new Set()) {
         const map = new Map();
-        (local || []).forEach(d => map.set(d.id, d));
+        (local || []).forEach(d => { if (!deletedIds.has(d.id)) map.set(d.id, d); });
         (remote || []).forEach(r => {
+            if (deletedIds.has(r.id)) return;
             const l = map.get(r.id);
             if (!l || r.updatedAt > l.updatedAt) map.set(r.id, r);
         });
@@ -336,12 +363,20 @@ const DocStorage = {
 
     async getAll() {
         const local = await this._getLocal();
+        const localDeletedIds = this._getLocalDeletedIds();
+
         if (!(await GitHubSync.isConfigured())) return local;
 
         const remote = await GitHubSync.pull();
         if (!remote) return local;
 
-        const merged = this._merge(local || [], remote);
+        const { docs: remoteDocs, deletedIds: remoteDeletedIds } = remote;
+        const allDeletedIds = new Set([...localDeletedIds, ...(remoteDeletedIds || [])]);
+        if (allDeletedIds.size > localDeletedIds.size) {
+            this._saveLocalDeletedIds(allDeletedIds);
+        }
+
+        const merged = this._merge(local || [], remoteDocs, allDeletedIds);
         if (JSON.stringify(merged) !== JSON.stringify(local)) {
             await this._saveLocal(merged);
         }
