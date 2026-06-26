@@ -72,16 +72,17 @@ const GitHubSync = {
                 body: JSON.stringify(body)
             });
 
-            if (res.status === 409 && retryOnConflict) {
-                // SHA is stale — pull latest, merge, push again
-                console.warn('[GitHubSync] conflict, pulling latest before retry...');
+            // 409 = stale SHA, 422 = SHA missing but file exists (new browser, no SHA in localStorage)
+            if ((res.status === 409 || res.status === 422) && retryOnConflict) {
+                console.warn(`[GitHubSync] status ${res.status}, pulling latest SHA before retry...`);
                 const remote = await this.pull();
                 if (remote) {
                     const merged = DocStorage._merge(docs, remote);
                     await DocStorage._saveLocal(merged);
                     return this.push(merged, false);
                 }
-                return;
+                // File doesn't exist yet — push without SHA (creates new file)
+                return this.push(docs, false);
             }
 
             if (!res.ok) {
