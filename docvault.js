@@ -808,6 +808,12 @@ window.navigateBack = function() {
         } else {
             state.editingDoc = null;
         }
+        // Sync URL to restored view
+        if (state.view === 'viewer' && state.editingDoc?.id) {
+            history.replaceState({}, '', '?view=' + state.editingDoc.id);
+        } else {
+            history.replaceState({}, '', location.pathname);
+        }
         render();
     } else {
         // Fallback
@@ -832,6 +838,7 @@ window.navigate = function(view, cat, subfolder = '') {
     state.editorTags = [];
     state.editorMode = 'edit';
     if (state.sidebarOpen) toggleSidebar();
+    history.replaceState({}, '', location.pathname);
     render();
 }
 
@@ -2095,6 +2102,7 @@ function viewDoc(id) {
     pushHistory();
     state.view = 'viewer';
     state.editingDoc = { ...doc };
+    history.replaceState({}, '', '?view=' + id);
     render();
 }
 
@@ -2253,6 +2261,10 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         state.view = 'viewer';
         state.category = cat;
     }
+    // Force viewer to fully re-init (don't reuse stale tuiViewer instance)
+    window.currentViewerDocId = null;
+    window.tuiEditor = null;
+    history.replaceState({}, '', '?view=' + state.editingDoc.id);
     await persist();
     render();
 }
