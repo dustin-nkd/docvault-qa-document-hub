@@ -1388,39 +1388,23 @@ window.showGitHubSettingsModal = async function() {
                 </form>
             </div>
 
-            <!-- SECTION 2: GITHUB ASSETS -->
+            <!-- SECTION 2: GITHUB SYNC -->
             <div class="text-left">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-image text-[var(--acc)] text-[10px]"></i> 2. GitHub Image Hosting (CDN)</h4>
-                <p class="text-[11px] mb-3" style="color:var(--tx-d)">Upload screenshots to GitHub for permanent storage. Document data is also synced via GitHub.</p>
-
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-rotate text-[var(--acc)] text-[10px]"></i> 2. GitHub Sync</h4>
+                <div class="bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
+                    <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
+                    Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
+                </div>
                 <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
                     <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Owner / Username</label>
-                        <input type="text" id="gh-owner" class="form-input w-full py-1.5 px-3 text-xs" placeholder="e.g. github-username" value="${escHtml(ghSettings.owner)}">
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
+                        <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
+                        <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo.</p>
                     </div>
-                    <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">GitHub Repository Name</label>
-                        <input type="text" id="gh-repo" class="form-input w-full py-1.5 px-3 text-xs" placeholder="e.g. docvault-assets" value="${escHtml(ghSettings.repo)}">
-                    </div>
-                    <div class="flex gap-2">
-                        <div class="flex-1">
-                            <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Branch</label>
-                            <input type="text" id="gh-branch" class="form-input w-full py-1.5 px-3 text-xs" placeholder="main" value="${escHtml(ghSettings.branch)}">
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Path</label>
-                            <input type="text" id="gh-path" class="form-input w-full py-1.5 px-3 text-xs" placeholder="images" value="${escHtml(ghSettings.path)}">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Fine-grained Personal Access Token (PAT)</label>
-                        <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token)}">
-                    </div>
-
                     <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
                         <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Close</button>
                         <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-save text-[10px]"></i> Save CDN Settings
+                            <i class="fa-solid fa-save text-[10px]"></i> Save Token
                         </button>
                     </div>
                 </form>
@@ -1430,22 +1414,16 @@ window.showGitHubSettingsModal = async function() {
 }
 
 window.saveGitHubSettings = async function() {
-    const owner = document.getElementById('gh-owner').value.trim();
-    const repo = document.getElementById('gh-repo').value.trim();
-    const branch = document.getElementById('gh-branch').value.trim() || 'main';
-    const path = document.getElementById('gh-path').value.trim() || 'images';
     const token = document.getElementById('gh-token').value.trim();
-
-    if (owner && repo && token) {
-        await GitHubSync.saveSettings({ owner, repo, branch, path, token });
+    const d = GitHubSync.DEFAULTS;
+    if (token) {
+        await GitHubSync.saveSettings({ ...d, token });
         toast(t('ghSaveSuccess'), "success");
         closeModal();
-    } else if (!owner && !repo && !token) {
+    } else {
         GitHubSync.clearSettings();
         toast(t('ghCleared'), "info");
         closeModal();
-    } else {
-        toast(t('ghFillRequired'), "warning");
     }
 }
 
@@ -2400,13 +2378,26 @@ async function init() {
     render();
 }
 
-window._afterUnlock = () => init().then(handleUrlParams);
+async function startApp() {
+    const configured = await GitHubSync.isConfigured();
+    if (!configured) {
+        // Auto-bootstrap: pull token + data from public repo — no config needed
+        const d = GitHubSync.DEFAULTS;
+        const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
+        if (ok) {
+            toast('Vault synced from GitHub', 'success');
+        }
+    }
+    await init();
+    handleUrlParams();
+}
+
+window._afterUnlock = startApp;
 
 if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
     const ls = document.getElementById('lock-screen');
     if (ls) {
         ls.classList.remove('hidden');
-        // Show appropriate hint based on whether password is configured
         if (!window.LocalAuth.isConfigured()) {
             const hint = document.getElementById('lock-screen-hint');
             const sub = document.getElementById('lock-screen-sub');
@@ -2415,7 +2406,7 @@ if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
         }
     }
 } else {
-    init().then(handleUrlParams);
+    startApp();
 }
 
 // ========================
