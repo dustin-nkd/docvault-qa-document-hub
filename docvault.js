@@ -351,7 +351,8 @@ let state = {
     editorTags: [],
     editorMode: 'edit', // edit | preview
     sidebarOpen: false,
-    history: []
+    history: [],
+    sharedView: false  // true when viewing a public share link (read-only)
 };
 
 let documents = [];
@@ -742,7 +743,7 @@ function updateHeader() {
     } else if (state.view === 'viewer') {
         const doc = documents.find(d => d.id === state.editingDoc?.id);
         title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
-        actions = `
+        actions = state.sharedView ? '' : `
             <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
             <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
             <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
@@ -1398,9 +1399,10 @@ async function loadSharedDoc(shareId, keyBase64) {
         const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, rawKey, cipher);
         const doc = JSON.parse(new TextDecoder().decode(plain));
 
-        // Render in read-only viewer
+        // Render in read-only viewer (no edit/delete/duplicate)
         documents = [{ ...doc, id: shareId, status: 'published', favorite: false, updatedAt: doc.createdAt || Date.now(), tags: doc.tags || [] }];
         state.view = 'viewer';
+        state.sharedView = true;
         state.editingDoc = documents[0];
         document.getElementById('sidebar').style.display = 'none';
         const sbBtn = document.querySelector('button[data-onclick="toggleSidebar()"]');
@@ -2156,12 +2158,14 @@ function renderViewer() {
         `}
         <textarea id="vw-content-hidden" style="display:none;">${escHtml(doc.content)}</textarea>
         
-        <!-- Actions bottom -->
+        <!-- Actions bottom (hidden in shared view) -->
+        ${state.sharedView ? '' : `
         <div class="flex items-center gap-3 mt-5">
             <button class="btn-p" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
             <button class="btn-s" data-onclick="duplicateDoc('${doc.id}')"><i class="fa-solid fa-copy mr-1.5"></i>${t('duplicate')}</button>
             <button class="btn-d ml-auto" data-onclick="showDeleteModal('${doc.id}')"><i class="fa-solid fa-trash mr-1.5"></i>${t('delete')}</button>
         </div>
+        `}
     </div>`;
 }
 
@@ -2522,10 +2526,24 @@ async function startApp() {
         const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
         if (ok) {
             toast('Vault synced from GitHub', 'success');
+        } else {
+            // Bootstrap failed — either no data on GitHub yet, or wrong master password
+            const hasRemoteData = await _checkRemoteExists(d.owner, d.repo, d.branch);
+            if (hasRemoteData) {
+                toast('Sync failed: wrong master password — enter the same password you used on your other device.', 'error');
+            }
         }
     }
     await init();
     handleUrlParams();
+}
+
+async function _checkRemoteExists(owner, repo, branch) {
+    try {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${GitHubSync.DATA_PATH}?ref=${branch || 'main'}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
+        return res.ok;
+    } catch(e) { return false; }
 }
 
 window._afterUnlock = startApp;
@@ -2543,8 +2561,8 @@ if (_shareIdOnLoad) {
         if (!window.LocalAuth.isConfigured()) {
             const hint = document.getElementById('lock-screen-hint');
             const sub = document.getElementById('lock-screen-sub');
-            if (hint) hint.textContent = 'Create a Master Password to protect your vault.';
-            if (sub) sub.textContent = 'Your password is stored locally — only you know it.';
+            if (hint) hint.textContent = 'Enter your Master Password to sync your data from GitHub.';
+            if (sub) sub.textContent = 'Use the same password from your other device. First time? Enter any password to create your vault.';
         }
     }
 } else {

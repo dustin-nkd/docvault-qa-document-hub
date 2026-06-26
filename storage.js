@@ -44,7 +44,7 @@ const Vault = {
     async decrypt(encStr, password) {
         if (!this.isEncrypted(encStr)) throw new Error('Not encrypted');
         const key = await this._key(password);
-        const buf = Uint8Array.from(atob(encStr.slice(this.PREFIX.length)), c => c.charCodeAt(0));
+        const buf = Uint8Array.from(atob(encStr.slice(this.PREFIX.length).trim()), c => c.charCodeAt(0));
         const plain = await crypto.subtle.decrypt(
             { name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12)
         );
@@ -145,14 +145,16 @@ const GitHubSync = {
         return this._parseContent(content);
     },
 
-    // Fetch from raw.githubusercontent.com — no token needed for public repos
+    // Fetch via GitHub API (no auth needed for public repos) — avoids raw CDN 5-min cache
     async fetchPublic(owner, repo, branch) {
-        const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch || 'main'}/${this.DATA_PATH}`;
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${this.DATA_PATH}?ref=${branch || 'main'}`;
         try {
-            const res = await fetch(url);
+            const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
             if (!res.ok) return null;
-            const content = await res.text();
-            return await this._parseContent(content);
+            const data = await res.json();
+            localStorage.setItem(this.SHA_KEY, data.sha);
+            const result = await this._decode(data.content);
+            return result;
         } catch(e) {
             console.error('[GitHubSync] public fetch failed:', e);
             return null;
