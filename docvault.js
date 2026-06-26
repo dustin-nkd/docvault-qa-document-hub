@@ -2120,7 +2120,7 @@ function renderViewer() {
         })()}
         ` : (!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content rendered directly — no ToastUI lifecycle issues -->
-        <div class="md-viewer p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);">
+        <div class="md-preview p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);">
             ${renderMd(doc.content)}
         </div>
         `}
