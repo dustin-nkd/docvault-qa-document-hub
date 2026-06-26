@@ -2365,7 +2365,23 @@ async function init() {
     render();
 }
 
-init().then(handleUrlParams);
+window._afterUnlock = () => init().then(handleUrlParams);
+
+if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
+    const ls = document.getElementById('lock-screen');
+    if (ls) {
+        ls.classList.remove('hidden');
+        // Show appropriate hint based on whether password is configured
+        if (!window.LocalAuth.isConfigured()) {
+            const hint = document.getElementById('lock-screen-hint');
+            const sub = document.getElementById('lock-screen-sub');
+            if (hint) hint.textContent = 'Tạo Master Password để bảo vệ vault của bạn.';
+            if (sub) sub.textContent = 'Password sẽ được lưu local — chỉ bạn mới biết.';
+        }
+    }
+} else {
+    init().then(handleUrlParams);
+}
 
 // ========================
 // URL PARAMETER HANDLING

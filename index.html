@@ -253,6 +253,26 @@
     <div id="mob-overlay" class="fixed inset-0 z-[45] bg-black/50 hidden md:hidden" data-onclick="toggleSidebar()"></div>
 
 
+    <!-- Lock Screen -->
+    <div id="lock-screen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--bg)] hidden">
+        <div class="text-center fade-up max-w-sm w-full px-6">
+            <div class="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6" style="background:var(--acc);">
+                <i class="fa-solid fa-lock text-white text-2xl"></i>
+            </div>
+            <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
+            <p class="text-sm text-[var(--tx-m)] mb-8" id="lock-screen-hint">Enter your Master Password to access the vault.</p>
+
+            <form onsubmit="event.preventDefault(); window.LocalAuth.unlock(document.getElementById('master-password').value);">
+                <input type="password" id="master-password" class="form-input text-center text-lg tracking-widest mb-4" placeholder="••••••••" autocomplete="current-password" required>
+                <button type="submit" id="lock-submit-btn" class="btn-p w-full py-3">Unlock Vault</button>
+            </form>
+
+            <div class="mt-6 pt-6 border-t border-[var(--brd)] text-xs text-[var(--tx-d)]">
+                <p id="lock-screen-sub">First time? The password you enter will become your Master Password.</p>
+            </div>
+        </div>
+    </div>
+
     <div class="flex h-screen w-full">
         <!-- Sidebar -->
         <aside id="sidebar" class="w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);">

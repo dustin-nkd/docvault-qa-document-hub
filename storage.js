@@ -98,3 +98,70 @@ const DocStorage = {
 };
 
 window.DocStorage = DocStorage;
+
+// ========================
+// LOCAL AUTH (Master Password)
+// ========================
+const LocalAuth = {
+    HASH_KEY: 'docvault_master_hash',
+    SESSION_KEY: 'docvault_unlocked',
+
+    async _hash(password) {
+        const enc = new TextEncoder().encode(password);
+        const buf = await crypto.subtle.digest('SHA-256', enc);
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    },
+
+    isConfigured() {
+        return !!localStorage.getItem(this.HASH_KEY);
+    },
+
+    isUnlocked() {
+        return sessionStorage.getItem(this.SESSION_KEY) === '1';
+    },
+
+    async unlock(password) {
+        const btn = document.getElementById('lock-submit-btn');
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+
+        try {
+            const hash = await this._hash(password);
+            const stored = localStorage.getItem(this.HASH_KEY);
+
+            if (!stored) {
+                // First time — set the password
+                localStorage.setItem(this.HASH_KEY, hash);
+            } else if (hash !== stored) {
+                if (btn) btn.innerHTML = 'Unlock Vault';
+                if (typeof toast === 'function') toast('Incorrect password.', 'error');
+                return;
+            }
+
+            sessionStorage.setItem(this.SESSION_KEY, '1');
+            document.getElementById('lock-screen').classList.add('hidden');
+            if (typeof toast === 'function') toast('Vault Unlocked', 'success');
+            if (window._afterUnlock) window._afterUnlock();
+        } catch (e) {
+            console.error(e);
+            if (btn) btn.innerHTML = 'Unlock Vault';
+        }
+    },
+
+    async changePassword(oldPassword, newPassword) {
+        const oldHash = await this._hash(oldPassword);
+        const stored = localStorage.getItem(this.HASH_KEY);
+        if (stored && oldHash !== stored) throw new Error('Current password is incorrect.');
+        const newHash = await this._hash(newPassword);
+        localStorage.setItem(this.HASH_KEY, newHash);
+    },
+
+    reset() {
+        if (confirm('Xoá Master Password sẽ mất bảo vệ vault. Bạn chắc chắn?')) {
+            localStorage.removeItem(this.HASH_KEY);
+            sessionStorage.removeItem(this.SESSION_KEY);
+            window.location.reload();
+        }
+    }
+};
+
+window.LocalAuth = LocalAuth;
