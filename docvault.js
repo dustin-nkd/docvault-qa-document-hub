@@ -368,7 +368,7 @@ async function hydrate() {
     sessionStorage.removeItem('e2ee_master_password');
 
     const settings = await DocStorage.getSettings();
-    if (settings && settings.lang) state.lang = settings.lang;
+    state.lang = 'en';
     const saved = await DocStorage.getAll();
     if (saved && Array.isArray(saved) && saved.length > 0) {
         documents = saved;
@@ -403,7 +403,7 @@ function fmtDate(ts) {
     if (diff < 3600000) return t('minsAgo', {m: Math.floor(diff/60000)});
     if (diff < 86400000) return t('hoursAgo', {h: Math.floor(diff/3600000)});
     if (diff < 604800000) return t('daysAgo', {d: Math.floor(diff/86400000)});
-    return d.toLocaleDateString(state.lang === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 function excerpt(text, len = 120) {
     if (!text) return '';
@@ -753,10 +753,6 @@ function updateHeader() {
         <button class="btn-s flex items-center justify-center h-[38px] gap-1.5" data-onclick="openSearch()" title="Global Search (Ctrl+K)">
             <i class="fa-solid fa-magnifying-glass"></i> <span class="hidden sm:inline">Ctrl+K</span>
         </button>
-        <button class="btn-s flex items-center justify-center h-[38px] gap-1.5" data-onclick="toggleLang()">
-    <img src="${state.lang === 'vi' ? 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5MDAgNjAwIj48cmVjdCB3aWR0aD0iOTAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iI2RhMjUxZCIvPjxwb2x5Z29uIHBvaW50cz0iNDUwLDEyMCA1NDAsNDAwIDMwMCwyMjUgNjAwLDIyNSAzNjAsNDAwIiBmaWxsPSIjZmZjZDAwIi8+PC9zdmc+' : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgNDAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iI2ZmZiIvPjxnIGZpbGw9IiNiZjBhMzAiPjxyZWN0IHk9IjAiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjYxLjUiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjEyMyIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMTg0LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjI0NiIgd2lkdGg9IjYwMCIgaGVpZ2h0PSIzMC43Ii8+PHJlY3QgeT0iMzA3LjYiIHdpZHRoPSI2MDAiIGhlaWdodD0iMzAuNyIvPjxyZWN0IHk9IjM2OS4yIiB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMwLjciLz48L2c+PHJlY3Qgd2lkdGg9IjI0MCIgaGVpZ2h0PSIyMTUiIGZpbGw9IiMwMDI4NjgiLz48L3N2Zz4='}" style="width:18px;height:14px;object-fit:cover;border-radius:2px;">
-    <span>${state.lang === 'vi' ? 'VN' : 'EN'}</span>
-</button>
         ${actions}
 </div>
     `;
@@ -1379,34 +1375,34 @@ window.showGitHubSettingsModal = function() {
 
     showModal(`
         <div>
-            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> Cài Đặt Ứng Dụng DocVault</h3>
+            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> DocVault Settings</h3>
 
-            <!-- PHẦN 1: MASTER PASSWORD -->
+            <!-- SECTION 1: MASTER PASSWORD -->
             <div class="mb-5 pb-5 border-b border-[var(--brd)] text-left">
                 <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-lock text-[var(--acc)] text-[10px]"></i> 1. Master Password</h4>
                 <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3">
                     <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Password hiện tại</label>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
                         <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Password mới</label>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">New Password</label>
                         <input type="password" id="mp-new" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Xác nhận password mới</label>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Confirm New Password</label>
                         <input type="password" id="mp-confirm" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
                     </div>
                     <button type="submit" class="btn-p py-1.5 px-4 text-xs w-full flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-key text-[10px]"></i> Đổi Master Password
+                        <i class="fa-solid fa-key text-[10px]"></i> Change Master Password
                     </button>
                 </form>
             </div>
 
-            <!-- PHẦN 2: GITHUB ASSETS -->
+            <!-- SECTION 2: GITHUB ASSETS -->
             <div class="text-left">
                 <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-image text-[var(--acc)] text-[10px]"></i> 2. GitHub Image Hosting (CDN)</h4>
-                <p class="text-[11px] mb-3" style="color:var(--tx-d)">Upload ảnh chụp màn hình lên GitHub để lưu trữ bền vững. Dữ liệu tài liệu được lưu trực tiếp trên trình duyệt.</p>
+                <p class="text-[11px] mb-3" style="color:var(--tx-d)">Upload screenshots to GitHub for permanent storage. Document data is also synced via GitHub.</p>
 
                 <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
                     <div>
@@ -1433,9 +1429,9 @@ window.showGitHubSettingsModal = function() {
                     </div>
 
                     <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
-                        <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Đóng</button>
+                        <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Close</button>
                         <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-save text-[10px]"></i> Lưu Cấu Hình CDN
+                            <i class="fa-solid fa-save text-[10px]"></i> Save CDN Settings
                         </button>
                     </div>
                 </form>
@@ -2426,8 +2422,8 @@ if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
         if (!window.LocalAuth.isConfigured()) {
             const hint = document.getElementById('lock-screen-hint');
             const sub = document.getElementById('lock-screen-sub');
-            if (hint) hint.textContent = 'Tạo Master Password để bảo vệ vault của bạn.';
-            if (sub) sub.textContent = 'Password sẽ được lưu local — chỉ bạn mới biết.';
+            if (hint) hint.textContent = 'Create a Master Password to protect your vault.';
+            if (sub) sub.textContent = 'Your password is stored locally — only you know it.';
         }
     }
 } else {
@@ -3210,18 +3206,18 @@ const i18n = {
         matchContent: "Content match",
         invalidJson: "Invalid JSON format",
         copyFail: "Failed to copy",
-        ghSyncOk: "Đã sync lên GitHub",
-        ghSyncFail: "GitHub sync thất bại"
+        ghSyncOk: "Synced to GitHub",
+        ghSyncFail: "GitHub sync failed"
     }
 };
 
 function t(key, params = {}) {
-    let text = i18n[state.lang] && i18n[state.lang][key] ? i18n[state.lang][key] : key;
+    let text = (i18n.en && i18n.en[key]) ? i18n.en[key] : key;
     for (let k in params) {
         text = text.replace('{' + k + '}', params[k]);
     }
     return text;
-};
+}
 
 
 window.changeEditorCat = function(cat) {
@@ -3485,11 +3481,6 @@ window.copyCodeBlock = function(btn, b64) {
     }
 };
 
-window.toggleLang = async function() {
-    state.lang = state.lang === 'vi' ? 'en' : 'vi';
-    await DocStorage.saveSettings({ lang: state.lang });
-    render();
-};
 
 // ========================
 // GLOBAL SEARCH (Ctrl+K)
