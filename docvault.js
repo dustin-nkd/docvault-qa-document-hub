@@ -974,6 +974,12 @@ function renderContent() {
 
     if (state.view === 'editor') syncEditorState();
     
+    // Reset viewer cache and clean up instances when leaving the viewer
+    if (state.view !== 'viewer') {
+        if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
+        window.currentViewerDocId = null;
+    }
+    
     const c = document.getElementById('content');
     if (state.view === 'dashboard') updateDOM(c, renderDashboard());
     else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') updateDOM(c, renderDocList());
