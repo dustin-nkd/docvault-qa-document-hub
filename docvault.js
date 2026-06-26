@@ -21,7 +21,8 @@ const CAT_META = {
     api: { label: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
     credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
     environment: { label: 'Environments', icon: 'fa-network-wired', color: 'var(--c-env)', cls: 'cat-environment' },
-    testrun: { get label() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' }
+    testrun: { get label() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' },
+    release: { get label() { return t('release'); }, icon: 'fa-rocket', color: 'var(--c-rel)', cls: 'cat-release' }
 };
 
 const TEMPLATES = {
@@ -1367,12 +1368,18 @@ window.shareDoc = async function(id) {
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
         // Embed all type-specific fields so the shared viewer renders correctly
+        const allLinkedIds = doc.category === 'release'
+            ? [...(doc.releaseData?.linkedRuns || []), ...(doc.releaseData?.linkedBugs || []), ...(doc.releaseData?.linkedEnvs || [])]
+            : [];
         const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
             ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
             : doc.category === 'environment' && doc.envData?.linkedCreds?.length
             ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, password: d.password, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
+            : doc.category === 'release' && allLinkedIds.length
+            ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: d.envData, tcData: d.tcData }))
             : [];
         const plain = new TextEncoder().encode(JSON.stringify({
             title: doc.title, category: doc.category, content: doc.content,
@@ -1380,6 +1387,7 @@ window.shareDoc = async function(id) {
             username: doc.username, password: doc.password,
             envData: doc.envData,
             runData: doc.runData,
+            releaseData: doc.releaseData,
             tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
             _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
         }));
@@ -1644,6 +1652,7 @@ function renderEditor() {
     const apiData = isEdit ? doc.apiData : state._newApiData;
     const runData = isEdit ? doc.runData : state._newRunData;
     const envData = isEdit ? doc.envData : state._newEnvData;
+    const releaseData = isEdit ? doc.releaseData : state._newReleaseData;
 
     const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
     const existingFolders = [...new Set(documents.filter(d => d.subfolder).map(d => d.subfolder))];
@@ -1935,6 +1944,66 @@ function renderEditor() {
                 }).join('')}
             </div>
         </div>
+        ` : category === 'release' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Version</label>
+                    <input id="ed-rel-version" class="form-input text-sm w-full font-mono" placeholder="e.g. v1.2.0" value="${escHtml(releaseData?.version || '')}">
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Status</label>
+                    ${renderSelect('ed-rel-status', [
+                        {value: 'planning', label: '📋 Planning'},
+                        {value: 'in-progress', label: '🔨 In Progress'},
+                        {value: 'released', label: '🚀 Released'},
+                        {value: 'cancelled', label: '❌ Cancelled'}
+                    ], releaseData?.status || 'planning', 'w-full text-sm')}
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Release Date</label>
+                    <input id="ed-rel-date" type="date" class="form-input text-sm w-full" value="${escHtml(releaseData?.releaseDate || '')}">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Test Runs</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="form-checkbox ed-rel-run" value="${run.id}" ${(releaseData?.linkedRuns || []).includes(run.id) ? 'checked' : ''}>
+                            <i class="fa-solid fa-play-circle text-xs" style="color:var(--c-testrun);"></i>
+                            <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(run.title)}</span>
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No test runs found. Create some Test Runs first.</div>`}
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Bug Reports</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'bug' && d.status !== 'deleted').map(bug => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="form-checkbox ed-rel-bug" value="${bug.id}" ${(releaseData?.linkedBugs || []).includes(bug.id) ? 'checked' : ''}>
+                            <i class="fa-solid fa-bug text-xs" style="color:var(--c-bug);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(bug.title)}</span>
+                            ${bug.bugData?.severity ? `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:${bug.bugData.severity === 'Critical' ? '#ef444422' : bug.bugData.severity === 'Major' ? '#f9731622' : '#f59e0b22'}; color:${bug.bugData.severity === 'Critical' ? '#ef4444' : bug.bugData.severity === 'Major' ? '#f97316' : '#f59e0b'};">${escHtml(bug.bugData.severity)}</span>` : ''}
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No bug reports found.</div>`}
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Environments</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'environment' && d.status !== 'deleted').map(env => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="form-checkbox ed-rel-env" value="${env.id}" ${(releaseData?.linkedEnvs || []).includes(env.id) ? 'checked' : ''}>
+                            <i class="fa-solid fa-network-wired text-xs" style="color:var(--c-env);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(env.title)}</span>
+                            ${env.envData?.status ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full" style="background:${env.envData.status === 'healthy' ? '#10b98122' : env.envData.status === 'down' ? '#ef444422' : '#f59e0b22'}; color:${env.envData.status === 'healthy' ? '#10b981' : env.envData.status === 'down' ? '#ef4444' : '#f59e0b'};">${escHtml(env.envData.status)}</span>` : ''}
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No environments found.</div>`}
+                </div>
+            </div>
+        </div>
         ` : `
         <!-- Content area -->
         <div id="editor-container" class="mt-4 text-left"></div>
@@ -2216,6 +2285,118 @@ function renderViewer() {
             html += `</div>`;
             return html;
         })()}
+        ` : doc.category === 'release' ? `
+        ${(() => {
+            const linkedRuns = (doc.releaseData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+            const linkedBugs = (doc.releaseData?.linkedBugs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+            const linkedEnvs = (doc.releaseData?.linkedEnvs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+
+            let totalSteps = 0, passSteps = 0;
+            linkedRuns.forEach(run => {
+                const results = run.runData?.results || {};
+                (run.runData?.targetIds || []).forEach(tcId => {
+                    const tc = documents.find(d => d.id === tcId);
+                    if (!tc) return;
+                    const steps = tc.tcData?.steps || [];
+                    totalSteps += steps.length;
+                    steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') passSteps++; });
+                });
+            });
+            const passPct = totalSteps ? Math.round(passSteps / totalSteps * 100) : null;
+            const criticalBugs = linkedBugs.filter(b => b.bugData?.severity === 'Critical').length;
+            const sevColor = s => s === 'Critical' ? '#ef4444' : s === 'Major' ? '#f97316' : s === 'Minor' ? '#f59e0b' : '#7a8ba8';
+
+            const statusStyle = s => ({
+                released: { bg: '#10b98122', color: '#10b981', border: '#10b98155', label: '🚀 Released' },
+                'in-progress': { bg: '#6366f122', color: '#6366f1', border: '#6366f155', label: '🔨 In Progress' },
+                cancelled: { bg: '#ef444422', color: '#ef4444', border: '#ef444455', label: '❌ Cancelled' },
+                planning: { bg: 'rgba(122,139,168,0.12)', color: 'var(--tx-m)', border: 'var(--brd)', label: '📋 Planning' }
+            }[s] || { bg: 'rgba(122,139,168,0.12)', color: 'var(--tx-m)', border: 'var(--brd)', label: '📋 Planning' });
+
+            const st = statusStyle(doc.releaseData?.status);
+
+            return `
+            <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(168,85,247,0.12);">
+                            <i class="fa-solid fa-rocket" style="color:var(--c-rel);"></i>
+                        </div>
+                        <div>
+                            <div class="font-mono font-bold text-xl" style="color:var(--c-rel);">${escHtml(doc.releaseData?.version || 'v?.?.?')}</div>
+                            ${doc.releaseData?.releaseDate ? `<div class="text-xs mt-0.5" style="color:var(--tx-d);">Release Date: ${escHtml(doc.releaseData.releaseDate)}</div>` : ''}
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${st.bg}; color:${st.color}; border:1px solid ${st.border};">${st.label}</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Test Runs</div>
+                        <div class="text-2xl font-bold" style="color:var(--c-rel);">${linkedRuns.length}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Pass Rate</div>
+                        <div class="text-2xl font-bold" style="color:${passPct === null ? 'var(--tx-d)' : passPct >= 80 ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'};">${passPct !== null ? passPct + '%' : '—'}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Total Bugs</div>
+                        <div class="text-2xl font-bold" style="color:${linkedBugs.length === 0 ? '#10b981' : '#ef4444'};">${linkedBugs.length}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Critical</div>
+                        <div class="text-2xl font-bold" style="color:${criticalBugs === 0 ? '#10b981' : '#ef4444'};">${criticalBugs}</div>
+                    </div>
+                </div>
+            </div>
+            ${linkedRuns.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Runs (${linkedRuns.length})</p>
+                <div class="space-y-2">
+                    ${linkedRuns.map(run => {
+                        const results = run.runData?.results || {};
+                        let rTotal = 0, rPass = 0;
+                        (run.runData?.targetIds || []).forEach(tcId => {
+                            const tc = documents.find(d => d.id === tcId);
+                            if (!tc) return;
+                            const steps = tc.tcData?.steps || [];
+                            rTotal += steps.length;
+                            steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') rPass++; });
+                        });
+                        const pct = rTotal ? Math.round(rPass / rTotal * 100) : null;
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                            <i class="fa-solid fa-play-circle text-sm shrink-0" style="color:var(--c-testrun);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
+                            <span class="text-xs font-mono font-semibold" style="color:${pct === null ? 'var(--tx-d)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444'};">${pct !== null ? pct + '%' : '—'}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+            ${linkedBugs.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Bug Reports (${linkedBugs.length})</p>
+                <div class="space-y-2">
+                    ${linkedBugs.map(bug => `
+                    <div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${bug.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        <i class="fa-solid fa-bug text-sm shrink-0" style="color:var(--c-bug);"></i>
+                        <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(bug.title)}</span>
+                        ${bug.bugData?.severity ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:${sevColor(bug.bugData.severity)}22; color:${sevColor(bug.bugData.severity)};">${escHtml(bug.bugData.severity)}</span>` : ''}
+                    </div>`).join('')}
+                </div>
+            </div>` : ''}
+            ${linkedEnvs.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Environments (${linkedEnvs.length})</p>
+                <div class="flex flex-wrap gap-2">
+                    ${linkedEnvs.map(env => `
+                    <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${env.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        <i class="fa-solid fa-network-wired text-xs" style="color:var(--c-env);"></i>
+                        <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(env.title)}</span>
+                        ${env.envData?.status ? `<span class="w-1.5 h-1.5 rounded-full shrink-0 ml-1" style="background:${env.envData.status === 'healthy' ? '#10b981' : env.envData.status === 'down' ? '#ef4444' : '#f59e0b'};"></span>` : ''}
+                    </div>`).join('')}
+                </div>
+            </div>` : ''}
+            `;
+        })()}
         ` : (!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
@@ -2344,6 +2525,7 @@ async function saveDoc() {
     let apiData = null;
     let runData = null;
     let envData = null;
+    let releaseData = null;
     
     if (cat === 'bug') {
         const env = document.getElementById('ed-bug-env')?.value || '';
@@ -2432,6 +2614,14 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
         const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
         runData = { targetIds, results: existingResults };
+    } else if (cat === 'release') {
+        const version = document.getElementById('ed-rel-version')?.value || '';
+        const releaseDate = document.getElementById('ed-rel-date')?.value || '';
+        const relStatus = document.getElementById('ed-rel-status')?.value || 'planning';
+        const linkedRuns = Array.from(document.querySelectorAll('.ed-rel-run:checked')).map(cb => cb.value);
+        const linkedBugs = Array.from(document.querySelectorAll('.ed-rel-bug:checked')).map(cb => cb.value);
+        const linkedEnvs = Array.from(document.querySelectorAll('.ed-rel-env:checked')).map(cb => cb.value);
+        releaseData = { version, releaseDate, status: relStatus, linkedRuns, linkedBugs, linkedEnvs };
     } else if (cat === 'environment') {
         const envStatus = document.getElementById('ed-env-status')?.value || 'healthy';
         const propRows = document.querySelectorAll('.env-prop-row');
@@ -2457,14 +2647,14 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         // Update
         const idx = documents.findIndex(d => d.id === state.editingDoc.id);
         if (idx !== -1) {
-            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, updatedAt: Date.now() };
+            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, updatedAt: Date.now() };
         }
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
     } else {
         // Create
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
@@ -3144,6 +3334,7 @@ const i18n = {
         trashEmptied: "Đã dọn sạch thùng rác",
         copied: "Đã copy vào clipboard",
         testrun: "Chạy Kiểm Thử",
+        release: "Release",
         untested: "Chưa test",
         pass: "Pass",
         fail: "Fail",
@@ -3347,6 +3538,7 @@ const i18n = {
         trashEmptied: "Trash emptied",
         copied: "Copied to clipboard",
         testrun: "Test Runs",
+        release: "Release",
         untested: "Untested",
         pass: "Pass",
         fail: "Fail",
