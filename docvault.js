@@ -338,6 +338,9 @@ const SAMPLE_DOCS = [
 // ========================
 // STATE
 // ========================
+// Tracks base64 → CDN URL swaps pending until the next Save
+const pendingImageReplacements = new Map();
+
 let state = {
     view: 'dashboard', // dashboard | documents | favorites | editor | viewer
     category: 'all',
@@ -1321,14 +1324,8 @@ async function uploadImageToCloud(blob, callback) {
         const data = await res.json();
         const cdnUrl = data.content.download_url;
 
-        // Step 3: replace base64 with CDN URL in editor markdown (background swap)
-        if (window.tuiEditor) {
-            const md = window.tuiEditor.getMarkdown();
-            const updated = md.replace(base64DataUrl, cdnUrl);
-            if (updated !== md) {
-                window.tuiEditor.setMarkdown(updated);
-            }
-        }
+        // Step 3: register replacement — base64 → CDN URL applied on next Save (no re-render, no flicker)
+        pendingImageReplacements.set(base64DataUrl, cdnUrl);
         toast(t('imgUploadSuccess'), 'success');
     } catch(err) {
         // Silent fail — base64 is already in editor, document still works fine
@@ -2105,6 +2102,7 @@ window.cancelEdit = function() {
     window.tuiEditor = null;
     state.editorTags = [];
     state.editorMode = 'edit';
+    pendingImageReplacements.clear();
     navigateBack();
 }
 
@@ -2114,7 +2112,14 @@ async function saveDoc() {
     const cat = document.getElementById('ed-cat')?.value;
     const status = document.getElementById('ed-status')?.value;
     
-    const content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    let content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    // Apply any pending base64 → CDN URL swaps accumulated since last save
+    if (pendingImageReplacements.size > 0) {
+        pendingImageReplacements.forEach((cdnUrl, base64Url) => {
+            content = content.split(base64Url).join(cdnUrl);
+        });
+        pendingImageReplacements.clear();
+    }
     let finalContent = content;
     let bugData = null;
     let tcData = null;
