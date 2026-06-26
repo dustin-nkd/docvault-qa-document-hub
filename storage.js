@@ -1,30 +1,177 @@
+// ========================
+// GITHUB DATA SYNC
+// ========================
+const GitHubSync = {
+    DATA_PATH: 'database/docvault-data.json',
+    SHA_KEY: 'github_data_sha',
+
+    getSettings() {
+        const s = localStorage.getItem('github_settings');
+        if (!s) return null;
+        try { return JSON.parse(s); } catch(e) { return null; }
+    },
+
+    isConfigured() {
+        const s = this.getSettings();
+        return !!(s && s.owner && s.repo && s.token);
+    },
+
+    _headers(token) {
+        return {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+        };
+    },
+
+    _encode(docs) {
+        // UTF-8 safe base64 for Vietnamese characters
+        return btoa(unescape(encodeURIComponent(JSON.stringify(docs, null, 2))));
+    },
+
+    _decode(b64) {
+        return JSON.parse(decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))));
+    },
+
+    async pull() {
+        const s = this.getSettings();
+        if (!s) return null;
+
+        const url = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/${this.DATA_PATH}?ref=${s.branch || 'main'}`;
+        try {
+            const res = await fetch(url, { headers: this._headers(s.token) });
+            if (res.status === 404) return null; // File not created yet
+            if (!res.ok) throw new Error(`GitHub pull error: ${res.status}`);
+
+            const data = await res.json();
+            localStorage.setItem(this.SHA_KEY, data.sha);
+            return this._decode(data.content);
+        } catch(e) {
+            console.error('[GitHubSync] pull failed:', e);
+            return null;
+        }
+    },
+
+    async push(docs, retryOnConflict = true) {
+        const s = this.getSettings();
+        if (!s) return;
+
+        const sha = localStorage.getItem(this.SHA_KEY);
+        const body = {
+            message: `DocVault sync ${new Date().toISOString()}`,
+            content: this._encode(docs),
+            branch: s.branch || 'main'
+        };
+        if (sha) body.sha = sha;
+
+        const url = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/${this.DATA_PATH}`;
+        try {
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: this._headers(s.token),
+                body: JSON.stringify(body)
+            });
+
+            if (res.status === 409 && retryOnConflict) {
+                // SHA is stale — pull latest, merge, push again
+                console.warn('[GitHubSync] conflict, pulling latest before retry...');
+                const remote = await this.pull();
+                if (remote) {
+                    const merged = DocStorage._merge(docs, remote);
+                    await DocStorage._saveLocal(merged);
+                    return this.push(merged, false);
+                }
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || `GitHub push error: ${res.status}`);
+            }
+
+            const data = await res.json();
+            localStorage.setItem(this.SHA_KEY, data.content.sha);
+            console.log('[GitHubSync] push OK');
+        } catch(e) {
+            console.error('[GitHubSync] push failed:', e);
+            throw e;
+        }
+    }
+};
+
+window.GitHubSync = GitHubSync;
+
+// ========================
+// DOC STORAGE
+// ========================
 const DocStorage = {
-    async getAll() {
-        const STORAGE_KEY = 'docvault_docs';
+    STORAGE_KEY: 'docvault_docs',
+
+    // Merge two doc arrays — latest updatedAt per id wins
+    _merge(local, remote) {
+        const map = new Map();
+        (local || []).forEach(d => map.set(d.id, d));
+        (remote || []).forEach(r => {
+            const l = map.get(r.id);
+            if (!l || r.updatedAt > l.updatedAt) map.set(r.id, r);
+        });
+        return Array.from(map.values());
+    },
+
+    async _getLocal() {
+        const key = this.STORAGE_KEY;
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            return new Promise((resolve) => {
-                chrome.storage.local.get(STORAGE_KEY, (result) => {
-                    resolve(result[STORAGE_KEY] || null);
-                });
+            return new Promise(resolve => {
+                chrome.storage.local.get(key, result => resolve(result[key] || null));
             });
         }
-        const data = localStorage.getItem(STORAGE_KEY);
-        try { return data ? JSON.parse(data) : null; }
-        catch (e) { return null; }
+        const data = localStorage.getItem(key);
+        try { return data ? JSON.parse(data) : null; } catch(e) { return null; }
+    },
+
+    async _saveLocal(docs) {
+        const key = this.STORAGE_KEY;
+        try {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                await new Promise(resolve => chrome.storage.local.set({ [key]: docs }, resolve));
+            } else {
+                localStorage.setItem(key, JSON.stringify(docs));
+            }
+        } catch(e) {
+            console.error('Error saving docs locally:', e);
+        }
+    },
+
+    async getAll() {
+        const local = await this._getLocal();
+
+        if (!GitHubSync.isConfigured()) return local;
+
+        // Pull from GitHub and merge with local
+        const remote = await GitHubSync.pull();
+        if (!remote) return local; // GitHub file not yet created
+
+        const merged = this._merge(local || [], remote);
+
+        // If merge produced changes vs local, save them back
+        if (JSON.stringify(merged) !== JSON.stringify(local)) {
+            await this._saveLocal(merged);
+        }
+
+        return merged;
     },
 
     async save(docs) {
-        const STORAGE_KEY = 'docvault_docs';
-        try {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                await new Promise((resolve) => {
-                    chrome.storage.local.set({ [STORAGE_KEY]: docs }, () => resolve());
-                });
-            } else {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
-            }
-        } catch (err) {
-            console.error('Error saving docs locally:', err);
+        await this._saveLocal(docs);
+
+        // Push to GitHub async (non-blocking) so UI stays snappy
+        if (GitHubSync.isConfigured()) {
+            GitHubSync.push(docs).catch(e => {
+                if (typeof toast === 'function') {
+                    const msg = typeof t === 'function' ? t('ghSyncFail') : 'GitHub sync failed';
+                    toast(msg + ': ' + e.message, 'error');
+                }
+            });
         }
     },
 
@@ -76,7 +223,7 @@ const DocStorage = {
                         await this.save(existing);
                         resolve({ imported, total: existing.length });
                     }
-                } catch (err) { reject(new Error('Lỗi đọc file: ' + err.message)); }
+                } catch(err) { reject(new Error('Lỗi đọc file: ' + err.message)); }
             };
             reader.onerror = () => reject(new Error('Không thể đọc file.'));
             reader.readAsText(file);
@@ -129,7 +276,6 @@ const LocalAuth = {
             const stored = localStorage.getItem(this.HASH_KEY);
 
             if (!stored) {
-                // First time — set the password
                 localStorage.setItem(this.HASH_KEY, hash);
             } else if (hash !== stored) {
                 if (btn) btn.innerHTML = 'Unlock Vault';
@@ -141,7 +287,7 @@ const LocalAuth = {
             document.getElementById('lock-screen').classList.add('hidden');
             if (typeof toast === 'function') toast(typeof t === 'function' ? t('vaultUnlocked') : 'Vault Unlocked', 'success');
             if (window._afterUnlock) window._afterUnlock();
-        } catch (e) {
+        } catch(e) {
             console.error(e);
             if (btn) btn.innerHTML = 'Unlock Vault';
         }
