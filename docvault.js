@@ -1008,18 +1008,24 @@ function renderContent() {
             if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
             c.innerHTML = renderViewer();
             window.currentViewerDocId = state.editingDoc?.id;
-            // Defer ToastUI factory by one tick — lets any pending editor cleanup finish first
-            setTimeout(() => {
-                const container = document.getElementById('viewer-container');
-                if (!container) return;
-                const hiddenTa = document.getElementById('vw-content-hidden');
-                window.tuiViewer = toastui.Editor.factory({
-                    el: container,
-                    viewer: true,
-                    initialValue: hiddenTa ? hiddenTa.value : '',
-                    theme: 'dark'
-                });
-            }, 0);
+            // Defer ToastUI viewer factory until after the browser has
+            // fully processed any pending editor destroy() cleanup
+            // (mutation observers, event listeners).  A bare setTimeout(0)
+            // was not enough when transitioning editor → viewer on save,
+            // causing a blank content area that only resolved on F5.
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    const container = document.getElementById('viewer-container');
+                    if (!container) return;
+                    const hiddenTa = document.getElementById('vw-content-hidden');
+                    window.tuiViewer = toastui.Editor.factory({
+                        el: container,
+                        viewer: true,
+                        initialValue: hiddenTa ? hiddenTa.value : '',
+                        theme: 'dark'
+                    });
+                }, 50);
+            });
         }
     }
 }
@@ -2384,10 +2390,14 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
     }
     // Destroy editor before losing reference — orphaned instance keeps global ToastUI listeners
     if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
+    if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
     window.currentViewerDocId = null;
     window.tuiEditor = null;
     history.replaceState({}, '', '?view=' + state.editingDoc.id);
     await persist();
+    // Give ToastUI Editor's async destroy() (mutation observers, DOM cleanup)
+    // time to fully complete before rendering the viewer
+    await new Promise(r => setTimeout(r, 60));
     render();
 }
 
