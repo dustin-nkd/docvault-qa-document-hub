@@ -456,10 +456,9 @@ const LocalAuth = {
             if (!stored) {
                 localStorage.setItem(this.HASH_KEY, hash);
             } else if (hash !== stored) {
-                console.warn('Bypassed master password hash check for recovery');
-                // if (btn) btn.innerHTML = 'Unlock Vault';
-                // if (typeof toast === 'function') toast(typeof t === 'function' ? t('mpIncorrect') : 'Incorrect password.', 'error');
-                // return;
+                if (btn) btn.innerHTML = 'Unlock Vault';
+                if (typeof toast === 'function') toast(typeof t === 'function' ? t('mpIncorrect') : 'Incorrect password.', 'error');
+                return;
             }
 
             sessionStorage.setItem(this.SESSION_PWD, password);
@@ -476,7 +475,7 @@ const LocalAuth = {
     async changePassword(oldPassword, newPassword) {
         const oldHash = await this._hash(oldPassword);
         const stored = localStorage.getItem(this.HASH_KEY);
-        if (stored && oldHash !== stored) console.warn('Bypassed changePassword hash check');
+        if (stored && oldHash !== stored) throw new Error('Current password is incorrect.');
 
         const rawDocs = localStorage.getItem(DocStorage.STORAGE_KEY);
         if (rawDocs && Vault.isEncrypted(rawDocs)) {
