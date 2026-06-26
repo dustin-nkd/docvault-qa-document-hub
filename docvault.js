@@ -743,6 +743,7 @@ function updateHeader() {
         const doc = documents.find(d => d.id === state.editingDoc?.id);
         title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
         actions = `
+            <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
             <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
             <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
         `;
@@ -1263,6 +1264,8 @@ function showDocMenu(id, btn) {
         `;
     } else {
         menuHtml = `
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--c-run);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();shareDoc('${id}')">
+                <i class="fa-solid fa-share-nodes w-4 text-center"></i> ${t('share') || 'Share Link'} </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
                 <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
@@ -1278,6 +1281,121 @@ function showDocMenu(id, btn) {
         const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
         document.addEventListener('click', close);
     }, 10);
+}
+
+// ========================
+// SHARE DOCUMENT
+// ========================
+window.shareDoc = async function(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) {
+        toast('Configure GitHub in Settings to share documents.', 'warning');
+        return;
+    }
+
+    showModal(`
+        <div class="text-center py-6">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-4" style="color:var(--acc)"></i>
+            <p class="text-sm" style="color:var(--tx-m)">Generating secure link...</p>
+        </div>
+    `);
+
+    try {
+        // Random 256-bit AES key — NOT derived from master password
+        const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+        const keyBase64 = btoa(String.fromCharCode(...keyBytes));
+
+        // Encrypt doc with raw AES-256-GCM
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+        const plain = new TextEncoder().encode(JSON.stringify({ title: doc.title, category: doc.category, content: doc.content, tags: doc.tags, createdAt: doc.createdAt }));
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, rawKey, plain);
+
+        // Pack iv + ciphertext → base64
+        const packed = new Uint8Array(12 + cipher.byteLength);
+        packed.set(iv);
+        packed.set(new Uint8Array(cipher), 12);
+        const encContent = btoa(String.fromCharCode(...packed));
+
+        // Upload to GitHub shared/ folder
+        const shareId = `sh_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+        const res = await fetch(
+            `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${shareId}.enc`,
+            {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: `Share: ${doc.title}`, content: btoa(unescape(encodeURIComponent(encContent))), branch: settings.branch || 'main' })
+            }
+        );
+        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+        // Build share URL — key lives in fragment (never sent to server)
+        const shareUrl = `${location.origin}${location.pathname}?shareId=${shareId}#key=${encodeURIComponent(keyBase64)}`;
+
+        showModal(`
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.1);">
+                    <i class="fa-solid fa-check text-emerald-400 text-xl"></i>
+                </div>
+                <h3 class="font-heading font-semibold text-lg mb-2">Link Ready!</h3>
+                <p class="text-sm mb-4" style="color:var(--tx-m);">Anyone with this link can view the document. The content is end-to-end encrypted.</p>
+                <div class="flex items-center gap-2 p-3 rounded-lg border mb-5 text-left" style="background:var(--bg);border-color:var(--brd);">
+                    <input type="text" readonly id="share-url-input" value="${escHtml(shareUrl)}" class="flex-1 bg-transparent text-xs outline-none font-mono" style="color:var(--tx);">
+                    <button class="shrink-0 btn-s px-3 py-1.5 text-xs" onclick="navigator.clipboard.writeText(document.getElementById('share-url-input').value);toast('Copied!','success')">
+                        <i class="fa-regular fa-copy mr-1"></i>Copy
+                    </button>
+                </div>
+                <button class="btn-s px-4" data-onclick="closeModal()">Close</button>
+            </div>
+        `);
+    } catch(e) {
+        console.error('[shareDoc]', e);
+        toast('Failed to create share link: ' + e.message, 'error');
+        closeModal();
+    }
+};
+
+async function loadSharedDoc(shareId, keyBase64) {
+    try {
+        const d = GitHubSync.DEFAULTS;
+        const rawUrl = `https://raw.githubusercontent.com/${d.owner}/${d.repo}/${d.branch}/shared/${shareId}.enc`;
+        const res = await fetch(rawUrl);
+        if (!res.ok) throw new Error('Document not found or link has expired.');
+
+        // Decode: base64(url-encoded) → encContent → iv + cipher
+        const fileText = await res.text();
+        const encContent = decodeURIComponent(escape(atob(fileText.trim())));
+        const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+
+        const packed = Uint8Array.from(atob(encContent), c => c.charCodeAt(0));
+        const iv = packed.slice(0, 12);
+        const cipher = packed.slice(12);
+
+        const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+        const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, rawKey, cipher);
+        const doc = JSON.parse(new TextDecoder().decode(plain));
+
+        // Render in read-only viewer
+        documents = [{ ...doc, id: shareId, status: 'published', favorite: false, updatedAt: doc.createdAt || Date.now(), tags: doc.tags || [] }];
+        state.view = 'viewer';
+        state.editingDoc = documents[0];
+        document.getElementById('sidebar').style.display = 'none';
+        const sbBtn = document.querySelector('button[data-onclick="toggleSidebar()"]');
+        if (sbBtn) sbBtn.style.display = 'none';
+        render();
+
+        // Replace header actions with "Open App" button
+        setTimeout(() => {
+            const actionsEl = document.getElementById('app-header')?.querySelector('.flex.items-center.gap-2');
+            if (actionsEl) actionsEl.innerHTML = `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open DocVault</button>`;
+        }, 100);
+    } catch(e) {
+        console.error('[loadSharedDoc]', e);
+        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" onclick="window.location.href=window.location.pathname">Go to DocVault</button></div></div>`;
+    }
 }
 
 // ========================
@@ -2391,7 +2509,13 @@ async function startApp() {
 
 window._afterUnlock = startApp;
 
-if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
+// Share links load without authentication — check first
+const _shareIdOnLoad = new URLSearchParams(location.search).get('shareId');
+if (_shareIdOnLoad) {
+    // Load shared doc directly, no auth needed
+    const _shareKey = decodeURIComponent(location.hash.replace('#key=', ''));
+    loadSharedDoc(_shareIdOnLoad, _shareKey);
+} else if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
     const ls = document.getElementById('lock-screen');
     if (ls) {
         ls.classList.remove('hidden');
@@ -2411,16 +2535,18 @@ if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
 // ========================
 function handleUrlParams() {
     const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('shareId');
     const action = params.get('action');
     const viewId = params.get('view');
 
-    if (action === 'new') {
+    if (shareId) {
+        const key = decodeURIComponent(location.hash.replace('#key=', ''));
+        loadSharedDoc(shareId, key);
+    } else if (action === 'new') {
         showTemplateModal();
     } else if (viewId) {
         const doc = documents.find(d => d.id === viewId);
-        if (doc) {
-            viewDoc(viewId);
-        }
+        if (doc) viewDoc(viewId);
     }
 }
 
