@@ -1267,17 +1267,8 @@ function showDocMenu(id, btn) {
 // IMAGE UPLOAD (GitHub CDN & Base64 Fallback)
 // ========================
 async function uploadImageToGitHub(blob, callback) {
-    const settingsStr = localStorage.getItem('github_settings');
-    if (!settingsStr) return false;
-    
-    let settings;
-    try {
-        settings = JSON.parse(settingsStr);
-    } catch (e) {
-        return false;
-    }
-    
-    if (!settings.owner || !settings.repo || !settings.token) {
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.owner || !settings.repo || !settings.token) {
         return false;
     }
     
@@ -1364,13 +1355,11 @@ async function uploadImageToCloud(blob, callback) {
     }
 }
 
-window.showGitHubSettingsModal = function() {
+window.showGitHubSettingsModal = async function() {
     let ghSettings = { owner: '', repo: '', branch: 'main', token: '', path: 'images' };
-    const storedGh = localStorage.getItem('github_settings');
+    const storedGh = await GitHubSync.getSettings();
     if (storedGh) {
-        try {
-            ghSettings = { ...ghSettings, ...JSON.parse(storedGh) };
-        } catch (e) {}
+        ghSettings = { ...ghSettings, ...storedGh };
     }
 
     showModal(`
@@ -1440,7 +1429,7 @@ window.showGitHubSettingsModal = function() {
     `);
 }
 
-window.saveGitHubSettings = function() {
+window.saveGitHubSettings = async function() {
     const owner = document.getElementById('gh-owner').value.trim();
     const repo = document.getElementById('gh-repo').value.trim();
     const branch = document.getElementById('gh-branch').value.trim() || 'main';
@@ -1448,12 +1437,11 @@ window.saveGitHubSettings = function() {
     const token = document.getElementById('gh-token').value.trim();
 
     if (owner && repo && token) {
-        const settings = { owner, repo, branch, path, token };
-        localStorage.setItem('github_settings', JSON.stringify(settings));
+        await GitHubSync.saveSettings({ owner, repo, branch, path, token });
         toast(t('ghSaveSuccess'), "success");
         closeModal();
     } else if (!owner && !repo && !token) {
-        localStorage.removeItem('github_settings');
+        GitHubSync.clearSettings();
         toast(t('ghCleared'), "info");
         closeModal();
     } else {

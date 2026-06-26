@@ -260,7 +260,7 @@
                 <i class="fa-solid fa-lock text-white text-2xl"></i>
             </div>
             <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
-            <p class="text-sm text-[var(--tx-m)] mb-8" id="lock-screen-hint">Enter your Master Password to access the vault.</p>
+            <p class="text-sm text-[var(--tx-m)] mb-8" id="lock-screen-hint">Your vault is end-to-end encrypted. Enter your Master Password to decrypt.</p>
 
             <form onsubmit="event.preventDefault(); window.LocalAuth.unlock(document.getElementById('master-password').value);">
                 <input type="password" id="master-password" class="form-input text-center text-lg tracking-widest mb-4" placeholder="••••••••" autocomplete="current-password" required>
