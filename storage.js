@@ -292,6 +292,27 @@ const DocStorage = {
         return sessionStorage.getItem('docvault_pwd') || null;
     },
 
+    async _encryptCredPasswords(docs, pwd) {
+        if (!pwd || !Array.isArray(docs)) return docs;
+        return Promise.all(docs.map(async doc => {
+            if (doc.category !== 'credential' || !doc.password || Vault.isEncrypted(doc.password)) return doc;
+            const encPwd = await Vault.encrypt(doc.password, pwd);
+            return { ...doc, password: encPwd };
+        }));
+    },
+
+    async _decryptCredPasswords(docs, pwd) {
+        if (!Array.isArray(docs)) return docs;
+        return Promise.all(docs.map(async doc => {
+            if (doc.category !== 'credential' || !doc.password || !Vault.isEncrypted(doc.password)) return doc;
+            if (!pwd) return { ...doc, password: '' };
+            try {
+                const plain = await Vault.decrypt(doc.password, pwd);
+                return { ...doc, password: typeof plain === 'string' ? plain : '' };
+            } catch(e) { return { ...doc, password: '' }; }
+        }));
+    },
+
     _getLocalDeletedIds() {
         try {
             return new Set(JSON.parse(localStorage.getItem(this.DELETED_IDS_KEY) || '[]'));
@@ -332,12 +353,15 @@ const DocStorage = {
         }
         if (!raw) return null;
         try {
+            let parsed;
             if (Vault.isEncrypted(raw)) {
                 const pwd = this._pwd();
                 if (!pwd) return null;
-                return await Vault.decrypt(raw, pwd);
+                parsed = await Vault.decrypt(raw, pwd);
+            } else {
+                parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
             }
-            return typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return await this._decryptCredPasswords(parsed, this._pwd());
         } catch(e) { return null; }
     },
 
@@ -346,7 +370,8 @@ const DocStorage = {
         const pwd = this._pwd();
         let toStore;
         try {
-            toStore = pwd ? await Vault.encrypt(docs, pwd) : JSON.stringify(docs);
+            const docsToStore = await this._encryptCredPasswords(docs, pwd);
+            toStore = pwd ? await Vault.encrypt(docsToStore, pwd) : JSON.stringify(docsToStore);
         } catch(e) {
             toStore = JSON.stringify(docs);
         }
