@@ -1278,14 +1278,21 @@ function showDocMenu(id, btn) {
     }, 10);
 }
 
-// Copy share URL with visual checkmark feedback
-window._shareCopyFeedback = function(btn, url) {
-    navigator.clipboard.writeText(url).then(() => {
-        btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Copied!';
-        btn.style.color = '#10b981';
-        setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy mr-1"></i>Copy'; btn.style.color = ''; }, 2000);
-    }).catch(() => toast('Copy failed', 'error'));
-};
+// Unified copy-to-clipboard: changes icon to check + green, no size change
+function _copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+        if (!btn) return;
+        const icon = btn.querySelector('i');
+        if (icon) {
+            const origClass = icon.className;
+            icon.className = icon.className.replace('fa-copy', 'fa-check');
+            btn.style.color = '#10b981';
+            setTimeout(() => { icon.className = origClass; btn.style.color = ''; }, 2000);
+        }
+    }).catch(() => toast(t('copyFail'), 'error'));
+}
+window._shareCopyFeedback = function(btn, url) { _copyText(url, btn); };
+window._copyProp = function(btn) { _copyText(btn.dataset.copyValue || '', btn); };
 
 // Safe base64 encode for Uint8Arrays — spread operator stack-overflows on large arrays
 function uint8ToBase64(bytes) {
@@ -2001,7 +2008,7 @@ function renderViewer() {
                                     `<span class="text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`
                                 }
                             `}
-                            <button class="btn-s px-2 py-1 text-xs" data-onclick="navigator.clipboard.writeText('${escHtml(prop.value.replace(/'/g, "\\'"))}');toast('Copied!','success')"><i class="fa-solid fa-copy"></i></button>
+                            <button class="btn-s px-2 py-1 text-xs" data-copy-value="${escHtml(prop.value)}" data-onclick="_copyProp(this)"><i class="fa-solid fa-copy"></i></button>
                         </div>
                     </div>
                     `).join('')}
@@ -2752,14 +2759,7 @@ window.guessDomain = function(site) {
 window.copyPassword = function(id, btn) {
     const doc = documents.find(d => d.id === id);
     if (!doc || !doc.password) return;
-    
-    navigator.clipboard.writeText(doc.password).then(() => {
-        if (btn) {
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-check mr-1.5"></i>Copied';
-            setTimeout(() => { btn.innerHTML = orig; }, 1500);
-        }
-    });
+    _copyText(doc.password, btn);
 };
 
 window.togglePasswordVisibility = function(inputId) {
@@ -3619,12 +3619,7 @@ window.formatJson = function(id) {
 window.copyCodeBlock = function(btn, b64) {
     try {
         const text = decodeURIComponent(escape(atob(b64)));
-        navigator.clipboard.writeText(text);
-        const icon = btn.querySelector('i');
-        if (icon) {
-            icon.className = 'fa-solid fa-check text-green-500';
-            setTimeout(() => { icon.className = 'fa-regular fa-copy'; }, 2000);
-        }
+        _copyText(text, btn);
     } catch (e) {
         toast(t('copyFail'), 'error');
     }
