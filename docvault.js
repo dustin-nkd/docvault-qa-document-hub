@@ -958,8 +958,8 @@ function updateDOM(el, htmlStr) {
     if (typeof morphdom !== 'undefined') {
         morphdom(el, `<div id="${el.id}" class="${el.className}">${htmlStr}</div>`, {
             onBeforeElUpdated: function(fromEl, toEl) {
-                // Preserve the live ToastUI editor container — morphdom must not touch it
-                if (fromEl.id === 'editor-container') return false;
+                // Preserve live ToastUI containers — morphdom must not touch them
+                if (fromEl.id === 'editor-container' || fromEl.id === 'viewer-container') return false;
                 return true;
             }
         });
@@ -1001,14 +1001,25 @@ function renderContent() {
     }
     else if (state.view === 'viewer') {
         const isSameDoc = window.currentViewerDocId === state.editingDoc?.id;
-        // Destroy any lingering editor/viewer instances
-        if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
-        if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
         if (isSameDoc) {
             updateDOM(c, renderViewer());
         } else {
+            if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
+            if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
             c.innerHTML = renderViewer();
             window.currentViewerDocId = state.editingDoc?.id;
+            // Defer ToastUI factory by one tick — lets any pending editor cleanup finish first
+            setTimeout(() => {
+                const container = document.getElementById('viewer-container');
+                if (!container) return;
+                const hiddenTa = document.getElementById('vw-content-hidden');
+                window.tuiViewer = toastui.Editor.factory({
+                    el: container,
+                    viewer: true,
+                    initialValue: hiddenTa ? hiddenTa.value : '',
+                    theme: 'dark'
+                });
+            }, 0);
         }
     }
 }
@@ -2119,11 +2130,11 @@ function renderViewer() {
             return html;
         })()}
         ` : (!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
-        <!-- Content rendered directly — no ToastUI lifecycle issues -->
-        <div class="md-preview p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);">
-            ${renderMd(doc.content)}
+        <!-- Content -->
+        <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
         </div>
         `}
+        <textarea id="vw-content-hidden" style="display:none;">${escHtml(doc.content)}</textarea>
         
         <!-- Actions bottom (hidden in shared view) -->
         ${state.sharedView ? '' : `
