@@ -1381,8 +1381,31 @@ window.showGitHubSettingsModal = function() {
         <div>
             <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> Cài Đặt Ứng Dụng DocVault</h3>
 
+            <!-- PHẦN 1: MASTER PASSWORD -->
+            <div class="mb-5 pb-5 border-b border-[var(--brd)] text-left">
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-lock text-[var(--acc)] text-[10px]"></i> 1. Master Password</h4>
+                <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Password hiện tại</label>
+                        <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Password mới</label>
+                        <input type="password" id="mp-new" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Xác nhận password mới</label>
+                        <input type="password" id="mp-confirm" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-p py-1.5 px-4 text-xs w-full flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-key text-[10px]"></i> Đổi Master Password
+                    </button>
+                </form>
+            </div>
+
+            <!-- PHẦN 2: GITHUB ASSETS -->
             <div class="text-left">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-image text-[var(--acc)] text-[10px]"></i> GitHub Image Hosting (CDN)</h4>
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-image text-[var(--acc)] text-[10px]"></i> 2. GitHub Image Hosting (CDN)</h4>
                 <p class="text-[11px] mb-3" style="color:var(--tx-d)">Upload ảnh chụp màn hình lên GitHub để lưu trữ bền vững. Dữ liệu tài liệu được lưu trực tiếp trên trình duyệt.</p>
 
                 <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
@@ -1442,6 +1465,34 @@ window.saveGitHubSettings = function() {
     }
 }
 
+window.changeMasterPassword = async function() {
+    const current = document.getElementById('mp-current').value;
+    const newPwd = document.getElementById('mp-new').value;
+    const confirm = document.getElementById('mp-confirm').value;
+
+    if (!current || !newPwd || !confirm) {
+        toast("Vui lòng điền đầy đủ 3 trường.", "warning");
+        return;
+    }
+    if (newPwd !== confirm) {
+        toast("Password mới không khớp.", "error");
+        return;
+    }
+    if (newPwd.length < 4) {
+        toast("Password phải có ít nhất 4 ký tự.", "warning");
+        return;
+    }
+
+    try {
+        await window.LocalAuth.changePassword(current, newPwd);
+        toast("Đổi Master Password thành công!", "success");
+        document.getElementById('mp-current').value = '';
+        document.getElementById('mp-new').value = '';
+        document.getElementById('mp-confirm').value = '';
+    } catch (e) {
+        toast(e.message || "Đổi password thất bại.", "error");
+    }
+}
 
 // ========================
 // EDITOR
