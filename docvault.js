@@ -1222,7 +1222,7 @@ function renderDocList() {
                             <div class="mt-auto flex items-center justify-between border-t" style="border-color:var(--brd); padding-top: 16px;">
                                 <span class="cat-badge cat-credential">${t('credential')}</span>
                                 <div class="flex items-center gap-1">
-                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-user"></i> ${t('copyUsername')}</button>` : ''}
+                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
                                     <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
                                 </div>
                             </div>
@@ -1306,10 +1306,17 @@ function _copyText(text, btn) {
         const icon = btn.querySelector('i');
         if (icon) {
             const origClass = icon.className;
-            const origColor = btn.style.color;
+            const origBtnColor = btn.style.color;
             icon.className = icon.className.replace(/fa-regular|fa-light/, 'fa-solid').replace('fa-copy', 'fa-check');
-            btn.style.color = '#10b981';
-            setTimeout(() => { icon.className = origClass; btn.style.color = origColor; }, 2000);
+            // Animate only the icon color; only propagate to btn if btn already has an inline color
+            // (btn-p has its own bg color — setting btn color = green makes text invisible)
+            icon.style.color = '#10b981';
+            if (origBtnColor) btn.style.color = '#10b981';
+            setTimeout(() => {
+                icon.className = origClass;
+                icon.style.color = '';
+                btn.style.color = origBtnColor;
+            }, 2000);
         }
     }).catch(() => toast(t('copyFail'), 'error'));
 }
