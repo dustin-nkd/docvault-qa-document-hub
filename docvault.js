@@ -1308,10 +1308,12 @@ function _copyText(text, btn) {
             const origClass = icon.className;
             const origBtnColor = btn.style.color;
             icon.className = icon.className.replace(/fa-regular|fa-light/, 'fa-solid').replace('fa-copy', 'fa-check');
-            // Animate only the icon color; only propagate to btn if btn already has an inline color
-            // (btn-p has its own bg color — setting btn color = green makes text invisible)
-            icon.style.color = '#10b981';
-            if (origBtnColor) btn.style.color = '#10b981';
+            if (origBtnColor) {
+                // Small no-bg button with inline color: turn icon + text green
+                icon.style.color = '#10b981';
+                btn.style.color = '#10b981';
+            }
+            // btn-p (no inline color): only class changes; icon inherits white from CSS — visible on colored bg
             setTimeout(() => {
                 icon.className = origClass;
                 icon.style.color = '';
@@ -1362,6 +1364,9 @@ window.shareDoc = async function(id) {
         const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
             ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
+            : doc.category === 'environment' && doc.envData?.linkedCreds?.length
+            ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status }))
             : [];
         const plain = new TextEncoder().encode(JSON.stringify({
             title: doc.title, category: doc.category, content: doc.content,
