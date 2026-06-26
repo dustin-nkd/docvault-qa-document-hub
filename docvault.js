@@ -1030,6 +1030,21 @@ function renderContent() {
                         initialValue: hiddenTa ? hiddenTa.value : '',
                         theme: 'dark'
                     });
+                    // Inject copy buttons into ToastUI-rendered code blocks
+                    setTimeout(() => {
+                        container.querySelectorAll('pre code').forEach(codeEl => {
+                            const pre = codeEl.parentElement;
+                            if (pre.querySelector('.code-copy-btn')) return;
+                            const b64 = btoa(unescape(encodeURIComponent(codeEl.textContent)));
+                            const btn = document.createElement('button');
+                            btn.className = 'code-copy-btn';
+                            btn.title = 'Copy';
+                            btn.setAttribute('data-onclick', `copyCodeBlock(this, '${b64}')`);
+                            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                            pre.style.position = 'relative';
+                            pre.insertBefore(btn, pre.firstChild);
+                        });
+                    }, 100);
                 }, 50);
             });
         }
@@ -1285,7 +1300,8 @@ function _copyText(text, btn) {
         const icon = btn.querySelector('i');
         if (icon) {
             const origClass = icon.className;
-            icon.className = icon.className.replace('fa-copy', 'fa-check');
+            // fa-check only exists in fa-solid in FA Free — replace variant prefix too
+            icon.className = icon.className.replace(/fa-regular|fa-light/, 'fa-solid').replace('fa-copy', 'fa-check');
             btn.style.color = '#10b981';
             setTimeout(() => { icon.className = origClass; btn.style.color = ''; }, 2000);
         }
