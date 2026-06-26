@@ -1369,6 +1369,8 @@ window.shareDoc = async function(id) {
         // Embed all type-specific fields so the shared viewer renders correctly
         const allLinkedIds = doc.category === 'release'
             ? [...(doc.releaseData?.linkedRuns || []), ...(doc.releaseData?.linkedBugs || []), ...(doc.releaseData?.linkedEnvs || [])]
+            : doc.category === 'testplan'
+            ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])]
             : [];
         const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
             ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
@@ -1376,7 +1378,7 @@ window.shareDoc = async function(id) {
             : doc.category === 'environment' && doc.envData?.linkedCreds?.length
             ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
-            : doc.category === 'release' && allLinkedIds.length
+            : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
             ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: d.envData, tcData: d.tcData }))
             : [];
@@ -1388,6 +1390,7 @@ window.shareDoc = async function(id) {
             runData: doc.runData,
             releaseData: doc.releaseData,
             tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
+            tcPlanData: doc.tcPlanData,
             _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
         }));
         const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, rawKey, plain);
@@ -1652,6 +1655,7 @@ function renderEditor() {
     const runData = isEdit ? doc.runData : state._newRunData;
     const envData = isEdit ? doc.envData : state._newEnvData;
     const releaseData = isEdit ? doc.releaseData : state._newReleaseData;
+    const tcPlanData = isEdit ? doc.tcPlanData : state._newTcPlanData;
 
     const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
     const existingFolders = [...new Set(documents.filter(d => d.subfolder).map(d => d.subfolder))];
@@ -1943,6 +1947,43 @@ function renderEditor() {
                 }).join('')}
             </div>
         </div>
+        ` : category === 'testplan' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Cases <span class="opacity-60">(for coverage tracking)</span></label>
+                <div class="p-3 rounded-lg flex flex-col gap-1 max-h-52 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0
+                        ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test cases available.</div>`
+                        : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
+                            const isChecked = (tcPlanData?.linkedTCs || []).includes(tc.id);
+                            return `<label class="flex items-center gap-3 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background='transparent'">
+                                <input type="checkbox" class="form-checkbox tp-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
+                                    <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.steps?.length || 0} steps · ${tc.tcData?.module ? escHtml(tc.tcData.module) : 'no module'}</div>
+                                </div>
+                            </label>`;
+                        }).join('')}
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Runs <span class="opacity-60">(to view execution coverage)</span></label>
+                <div class="p-3 rounded-lg flex flex-col gap-1 max-h-40 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').length === 0
+                        ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test runs found.</div>`
+                        : documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => {
+                            const isChecked = (tcPlanData?.linkedRuns || []).includes(run.id);
+                            return `<label class="flex items-center gap-2 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background='transparent'">
+                                <input type="checkbox" class="form-checkbox tp-run-cb" value="${run.id}" ${isChecked ? 'checked' : ''}>
+                                <i class="fa-solid fa-play-circle text-xs" style="color:var(--c-testrun);"></i>
+                                <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
+                            </label>`;
+                        }).join('')}
+                </div>
+            </div>
+        </div>
+        <div id="editor-container" class="mt-4 text-left"></div>
+        <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
         ` : category === 'release' ? `
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
             <div class="grid sm:grid-cols-3 gap-4 mb-4">
@@ -2002,6 +2043,11 @@ function renderEditor() {
                     `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No environments found.</div>`}
                 </div>
             </div>
+        </div>
+        <div class="mt-4">
+            <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Release Notes <span class="opacity-60">(markdown)</span></label>
+            <div id="editor-container" class="text-left"></div>
+            <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
         </div>
         ` : `
         <!-- Content area -->
@@ -2289,6 +2335,102 @@ function renderViewer() {
             html += `</div>`;
             return html;
         })()}
+        ` : doc.category === 'testplan' ? `
+        ${(() => {
+            const linkedTCs = (doc.tcPlanData?.linkedTCs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+            const linkedRuns = (doc.tcPlanData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+
+            // Which TCs have been executed in at least one linked run
+            const coveredTCIds = new Set();
+            linkedRuns.forEach(run => (run.runData?.targetIds || []).forEach(id => coveredTCIds.add(id)));
+
+            // Overall step pass rate from linked runs over linked TCs
+            let totalSteps = 0, passSteps = 0;
+            linkedRuns.forEach(run => {
+                const results = run.runData?.results || {};
+                linkedTCs.forEach(tc => {
+                    const steps = tc.tcData?.steps || [];
+                    totalSteps += steps.length;
+                    steps.forEach((_, i) => { if (results[tc.id]?.[i] === 'pass') passSteps++; });
+                });
+            });
+            const passPct = totalSteps > 0 ? Math.round(passSteps / totalSteps * 100) : null;
+            const coveredCount = linkedTCs.filter(tc => coveredTCIds.has(tc.id)).length;
+            const coveragePct = linkedTCs.length > 0 ? Math.round(coveredCount / linkedTCs.length * 100) : null;
+
+            return `
+            <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(245,158,11,0.12);">
+                        <i class="fa-solid fa-clipboard-list" style="color:var(--c-tp);"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold" style="color:var(--tx);">Test Coverage</div>
+                        <div class="text-xs mt-0.5" style="color:var(--tx-d);">${linkedTCs.length} test cases · ${linkedRuns.length} runs linked</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Test Cases</div>
+                        <div class="text-2xl font-bold" style="color:var(--c-tp);">${linkedTCs.length}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Coverage</div>
+                        <div class="text-2xl font-bold" style="color:${coveragePct === null ? 'var(--tx-d)' : coveragePct === 100 ? '#10b981' : coveragePct >= 70 ? '#f59e0b' : '#ef4444'};">${coveragePct !== null ? coveragePct + '%' : '—'}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Pass Rate</div>
+                        <div class="text-2xl font-bold" style="color:${passPct === null ? 'var(--tx-d)' : passPct >= 80 ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'};">${passPct !== null ? passPct + '%' : '—'}</div>
+                    </div>
+                </div>
+                ${linkedTCs.length > 0 ? `
+                <div class="mb-1">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[11px] uppercase tracking-wider font-medium" style="color:var(--tx-d);">Coverage Progress</span>
+                        <span class="text-[11px]" style="color:var(--tx-m);">${coveredCount} / ${linkedTCs.length} covered</span>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full overflow-hidden" style="background:var(--card);border:1px solid var(--brd);">
+                        <div style="width:${coveragePct || 0}%;height:100%;background:linear-gradient(90deg,#10b981,#34d399);transition:width .4s ease;border-radius:9999px;"></div>
+                    </div>
+                </div>` : ''}
+            </div>
+            ${linkedTCs.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Cases (${linkedTCs.length})</p>
+                <div class="space-y-2">
+                    ${linkedTCs.map(tc => {
+                        const isCovered = coveredTCIds.has(tc.id);
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${tc.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                            <i class="fa-solid fa-flask-vial text-xs shrink-0" style="color:var(--c-tc);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(tc.title)}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="background:${isCovered ? '#10b98120' : 'rgba(122,139,168,0.1)'}; color:${isCovered ? '#10b981' : 'var(--tx-d)'};">${isCovered ? 'Covered' : 'Not run'}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+            ${linkedRuns.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Runs (${linkedRuns.length})</p>
+                <div class="space-y-2">
+                    ${linkedRuns.map(run => {
+                        const results = run.runData?.results || {};
+                        let rTotal = 0, rPass = 0;
+                        linkedTCs.forEach(tc => {
+                            const steps = tc.tcData?.steps || [];
+                            rTotal += steps.length;
+                            steps.forEach((_, i) => { if (results[tc.id]?.[i] === 'pass') rPass++; });
+                        });
+                        const pct = rTotal ? Math.round(rPass / rTotal * 100) : null;
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                            <i class="fa-solid fa-play-circle text-sm shrink-0" style="color:var(--c-testrun);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
+                            <span class="text-xs font-mono font-semibold" style="color:${pct === null ? 'var(--tx-d)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444'};">${pct !== null ? pct + '%' : '—'}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+            `;
+        })()}
         ` : doc.category === 'release' ? `
         ${(() => {
             const linkedRuns = (doc.releaseData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
@@ -2399,8 +2541,67 @@ function renderViewer() {
                     </div>`).join('')}
                 </div>
             </div>` : ''}
+            ${(() => {
+                // Compare with the most recent previous release (by createdAt)
+                const otherReleases = documents
+                    .filter(d => d.category === 'release' && d.status !== 'deleted' && d.id !== doc.id)
+                    .sort((a, b) => b.createdAt - a.createdAt);
+                const prev = otherReleases[0];
+                if (!prev) return '';
+                // Compute prev stats
+                const prevRuns = (prev.releaseData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+                const prevBugs = (prev.releaseData?.linkedBugs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+                let prevTotal = 0, prevPass = 0;
+                prevRuns.forEach(run => {
+                    const results = run.runData?.results || {};
+                    (run.runData?.targetIds || []).forEach(tcId => {
+                        const tc = documents.find(d => d.id === tcId);
+                        if (!tc) return;
+                        const steps = tc.tcData?.steps || [];
+                        prevTotal += steps.length;
+                        steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') prevPass++; });
+                    });
+                });
+                const prevPct = prevTotal ? Math.round(prevPass / prevTotal * 100) : null;
+                const prevCritical = prevBugs.filter(b => b.bugData?.severity === 'Critical').length;
+                const deltaPct = (passPct !== null && prevPct !== null) ? passPct - prevPct : null;
+                const deltaBugs = linkedBugs.length - prevBugs.length;
+                const deltaCrit = criticalBugs - prevCritical;
+                const delta = (v, invert = false) => {
+                    if (v === 0) return `<span style="color:var(--tx-d);">±0</span>`;
+                    const up = v > 0;
+                    const good = invert ? !up : up;
+                    return `<span style="color:${good ? '#10b981' : '#ef4444'};">${up ? '+' : ''}${v}</span>`;
+                };
+                return `
+                <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">vs. Previous Release — <span style="color:var(--tx-m);">${escHtml(prev.releaseData?.version || prev.title)}</span></p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="p-3 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                            <div class="text-[10px] uppercase tracking-wider mb-1" style="color:var(--tx-d);">Pass Rate</div>
+                            <div class="text-lg font-bold font-mono">${passPct !== null ? passPct + '%' : '—'}</div>
+                            <div class="text-xs mt-0.5">${deltaPct !== null ? delta(deltaPct) : '<span style="color:var(--tx-d);">—</span>'} vs ${prevPct !== null ? prevPct + '%' : '—'}</div>
+                        </div>
+                        <div class="p-3 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                            <div class="text-[10px] uppercase tracking-wider mb-1" style="color:var(--tx-d);">Total Bugs</div>
+                            <div class="text-lg font-bold font-mono">${linkedBugs.length}</div>
+                            <div class="text-xs mt-0.5">${delta(deltaBugs, true)} vs ${prevBugs.length}</div>
+                        </div>
+                        <div class="p-3 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                            <div class="text-[10px] uppercase tracking-wider mb-1" style="color:var(--tx-d);">Critical Bugs</div>
+                            <div class="text-lg font-bold font-mono">${criticalBugs}</div>
+                            <div class="text-xs mt-0.5">${delta(deltaCrit, true)} vs ${prevCritical}</div>
+                        </div>
+                    </div>
+                </div>`;
+            })()}
             `;
         })()}
+        ${doc.content && doc.content.trim() ? `
+        <div class="mt-6">
+            <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
+            <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
+        </div>` : ''}
         ` : (!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
@@ -2474,6 +2675,7 @@ function createDoc(cat) {
     state._newTcData = null;
     state._newApiData = null;
     state._newRunData = null;
+    state._newTcPlanData = null;
     state._newContent = cat && TEMPLATES[cat] ? TEMPLATES[cat] : '# New Document\n\nStart writing here...';
     render();
     setTimeout(() => document.getElementById('ed-title')?.focus(), 100);
@@ -2530,6 +2732,7 @@ async function saveDoc() {
     let runData = null;
     let envData = null;
     let releaseData = null;
+    let tcPlanData = null;
     
     if (cat === 'bug') {
         const env = document.getElementById('ed-bug-env')?.value || '';
@@ -2618,6 +2821,10 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
         const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
         runData = { targetIds, results: existingResults };
+    } else if (cat === 'testplan') {
+        const linkedTCs = Array.from(document.querySelectorAll('.tp-tc-cb:checked')).map(cb => cb.value);
+        const linkedRuns = Array.from(document.querySelectorAll('.tp-run-cb:checked')).map(cb => cb.value);
+        tcPlanData = { linkedTCs, linkedRuns };
     } else if (cat === 'release') {
         const version = document.getElementById('ed-rel-version')?.value || '';
         const releaseDate = document.getElementById('ed-rel-date')?.value || '';
@@ -2651,14 +2858,14 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         // Update
         const idx = documents.findIndex(d => d.id === state.editingDoc.id);
         if (idx !== -1) {
-            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, updatedAt: Date.now() };
+            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
         }
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
     } else {
         // Create
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
