@@ -1347,7 +1347,7 @@ window.shareDoc = async function(id) {
         const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
         // Embed all type-specific fields so the shared viewer renders correctly
         const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
-            ? documents.filter(d => doc.runData.targetIds.includes(d.id))
+            ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
             : [];
         const plain = new TextEncoder().encode(JSON.stringify({
@@ -1817,7 +1817,7 @@ function renderEditor() {
             <div class="mb-4">
                 <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('linkedCreds')}</label>
                 <div class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
-                    ${documents.filter(d => d.category === 'credential').map(c => `
+                    ${documents.filter(d => d.category === 'credential' && d.status !== 'deleted').map(c => `
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" class="form-checkbox ed-env-cred" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
                             <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(c.title)}</span>
@@ -1903,7 +1903,7 @@ function renderEditor() {
         <div class="mb-4">
             <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Select Test Cases for Execution</label>
             <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
-                ${documents.filter(d => d.category === 'testcases').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases').map(tc => {
+                ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
                     const isChecked = (doc?.runData?.targetIds || state._newRunData?.targetIds || []).includes(tc.id);
                     return `
                     <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" onmouseenter="this.style.background='var(--card)'" onmouseleave="this.style.background='transparent'">
@@ -2052,7 +2052,7 @@ function renderViewer() {
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Credentials</p>
                 <div class="flex flex-wrap gap-2">
                     ${doc.envData.linkedCreds.map(id => {
-                        const cred = documents.find(d => d.id === id);
+                        const cred = documents.find(d => d.id === id && d.status !== 'deleted');
                         if (!cred) return '';
                         return `
                         <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'" data-onclick="viewDoc('${cred.id}')">
@@ -2070,7 +2070,7 @@ function renderViewer() {
         ${(() => {
             const results = doc.runData?.results || {};
             const targetIds = doc.runData?.targetIds || [];
-            const targets = documents.filter(d => targetIds.includes(d.id));
+            const targets = documents.filter(d => targetIds.includes(d.id) && d.status !== 'deleted');
             
             let totalSteps = 0;
             let passCount = 0;
