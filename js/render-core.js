@@ -263,6 +263,18 @@ function render() {
     updateSidebar();
     updateHeader();
     renderContent();
+    _restoreFaviconState();
+}
+
+function _restoreFaviconState() {
+    document.querySelectorAll('.cred-favicon').forEach(img => {
+        if (img.complete && img.naturalWidth > 0) {
+            img.classList.add('loaded');
+            const span = img.nextElementSibling;
+            if (span && span.tagName === 'SPAN') span.style.display = 'none';
+            img.parentElement.classList.add('has-favicon');
+        }
+    });
 }
 
 // ========================
@@ -442,21 +454,21 @@ function renderDocList() {
                                         ${d.username ? `<p class="text-[11px] truncate mt-0.5" style="color:var(--tx-m);">${escHtml(d.username)}</p>` : ''}
                                     </div>
                                 </div>
-                                ${!bm ? `<div class="flex items-center gap-1 shrink-0 ml-2">
+                                <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
                                     <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                         <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                     </button>
                                     <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
-                                </div>` : ''}
+                                </div>
                             </div>
                             <div class="mt-auto flex items-center justify-between border-t" style="border-color:var(--brd); padding-top: 16px;">
                                 <span class="cat-badge cat-credential">${t('credential')}</span>
-                                ${!bm ? `<div class="flex items-center gap-1">
+                                <div class="flex items-center gap-1" style="${bm ? 'visibility:hidden;' : ''}">
                                     ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
                                     <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
-                                </div>` : ''}
+                                </div>
                             </div>
                         </div>`;
                     }
