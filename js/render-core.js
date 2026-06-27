@@ -173,6 +173,9 @@ function updateDOM(el, htmlStr) {
                 if (fromEl.classList.contains('cred-favicon') && fromEl.classList.contains('loaded')) {
                     toEl.classList.add('loaded');
                 }
+                if (fromEl.classList.contains('cred-avatar') && fromEl.classList.contains('has-favicon')) {
+                    toEl.classList.add('has-favicon');
+                }
                 return true;
             }
         });
