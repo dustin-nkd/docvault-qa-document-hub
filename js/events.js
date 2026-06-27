@@ -238,6 +238,12 @@ function executeAction(code, event, element) {
 }
 
 document.addEventListener('click', (e) => {
+    // close date picker when clicking outside
+    const dpPanel = document.getElementById('dp-panel');
+    if (dpPanel && !dpPanel.classList.contains('hidden')) {
+        if (!e.target.closest('#dp-wrap')) dpPanel.classList.add('hidden');
+    }
+
     let target = e.target.closest('[data-onclick]');
     if (target) {
         executeAction(target.getAttribute('data-onclick'), e, target);

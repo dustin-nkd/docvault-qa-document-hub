@@ -361,7 +361,16 @@ function renderEditor() {
                 </div>
                 <div>
                     <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Release Date</label>
-                    <input id="ed-rel-date" type="date" class="form-input text-sm w-full" value="${escHtml(releaseData?.releaseDate || '')}">
+                    <div class="dp-wrap" id="dp-wrap">
+                        <div class="dp-trigger" data-onclick="dpToggle()">
+                            ${releaseData?.releaseDate
+                                ? `<span class="dp-value">${(() => { const p = releaseData.releaseDate.split('-'); return p[1]+'/'+p[2]+'/'+p[0]; })()}</span>`
+                                : `<span class="dp-placeholder">mm/dd/yyyy</span>`}
+                            <i class="fa-regular fa-calendar dp-icon"></i>
+                        </div>
+                        <input type="hidden" id="ed-rel-date" value="${escHtml(releaseData?.releaseDate || '')}">
+                        <div class="dp-panel hidden" id="dp-panel"></div>
+                    </div>
                 </div>
             </div>
             <div class="mb-4">
@@ -722,4 +731,118 @@ window.formatJson = function(id) {
     } catch (e) {
         toast(t('invalidJson'), 'error');
     }
+};
+
+// ========================
+// CUSTOM DATE PICKER
+// ========================
+let _dpYear = 0, _dpMonth = 0, _dpSel = null;
+
+const _DP_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function _dpBuildGrid() {
+    const panel = document.getElementById('dp-panel');
+    if (!panel) return;
+
+    const firstDay = new Date(_dpYear, _dpMonth, 1).getDay();
+    const daysInMonth = new Date(_dpYear, _dpMonth + 1, 0).getDate();
+    const daysInPrev = new Date(_dpYear, _dpMonth, 0).getDate();
+    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+    const now = new Date();
+    const todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
+
+    const prevY = _dpMonth === 0 ? _dpYear - 1 : _dpYear;
+    const prevM = _dpMonth === 0 ? 11 : _dpMonth - 1;
+    const nextY = _dpMonth === 11 ? _dpYear + 1 : _dpYear;
+    const nextM = _dpMonth === 11 ? 0 : _dpMonth + 1;
+
+    let cells = '';
+    for (let i = firstDay - 1; i >= 0; i--) {
+        const d = daysInPrev - i;
+        cells += `<div class="dp-cell dp-other" data-onclick="dpSelect(${prevY},${prevM},${d})">${d}</div>`;
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const isToday = _dpYear === todayY && _dpMonth === todayM && d === todayD;
+        const isSel = _dpSel && _dpSel.y === _dpYear && _dpSel.m === _dpMonth && _dpSel.d === d;
+        const cls = (isToday && !isSel ? ' dp-today' : '') + (isSel ? ' dp-selected' : '');
+        cells += `<div class="dp-cell${cls}" data-onclick="dpSelect(${_dpYear},${_dpMonth},${d})">${d}</div>`;
+    }
+    let nd = 1;
+    for (let i = firstDay + daysInMonth; i < totalCells; i++) {
+        cells += `<div class="dp-cell dp-other" data-onclick="dpSelect(${nextY},${nextM},${nd})">${nd}</div>`;
+        nd++;
+    }
+
+    panel.innerHTML = `
+        <div class="dp-hd">
+            <button class="dp-nav-btn" data-onclick="dpPrev()"><i class="fa-solid fa-chevron-left" style="font-size:9px;"></i></button>
+            <div class="dp-month-lbl">${_DP_MONTHS[_dpMonth]} ${_dpYear}</div>
+            <button class="dp-nav-btn" data-onclick="dpNext()"><i class="fa-solid fa-chevron-right" style="font-size:9px;"></i></button>
+        </div>
+        <div class="dp-dow-row"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+        <div class="dp-grid">${cells}</div>
+        <div class="dp-foot">
+            <button class="dp-foot-btn dp-clear" data-onclick="dpClear()">Clear</button>
+            <button class="dp-foot-btn dp-today-btn" data-onclick="dpToday()">Today</button>
+        </div>
+    `;
+}
+
+window.dpToggle = function() {
+    const panel = document.getElementById('dp-panel');
+    if (!panel) return;
+    if (!panel.classList.contains('hidden')) { panel.classList.add('hidden'); return; }
+
+    const val = document.getElementById('ed-rel-date')?.value;
+    if (val) {
+        const d = new Date(val + 'T12:00:00');
+        _dpYear = d.getFullYear(); _dpMonth = d.getMonth();
+        _dpSel = { y: d.getFullYear(), m: d.getMonth(), d: d.getDate() };
+    } else {
+        const n = new Date();
+        _dpYear = n.getFullYear(); _dpMonth = n.getMonth();
+        _dpSel = null;
+    }
+    _dpBuildGrid();
+    panel.classList.remove('hidden');
+};
+
+window.dpPrev = function() {
+    _dpMonth--; if (_dpMonth < 0) { _dpMonth = 11; _dpYear--; }
+    _dpBuildGrid();
+};
+
+window.dpNext = function() {
+    _dpMonth++; if (_dpMonth > 11) { _dpMonth = 0; _dpYear++; }
+    _dpBuildGrid();
+};
+
+window.dpSelect = function(y, m, d) {
+    const mm = String(m + 1).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    const hidden = document.getElementById('ed-rel-date');
+    if (hidden) hidden.value = `${y}-${mm}-${dd}`;
+
+    const trigger = document.querySelector('#dp-wrap .dp-trigger');
+    if (trigger) {
+        trigger.innerHTML = `<span class="dp-value">${mm}/${dd}/${y}</span><i class="fa-regular fa-calendar dp-icon"></i>`;
+    }
+
+    document.getElementById('dp-panel')?.classList.add('hidden');
+};
+
+window.dpToday = function() {
+    const n = new Date();
+    dpSelect(n.getFullYear(), n.getMonth(), n.getDate());
+};
+
+window.dpClear = function() {
+    const hidden = document.getElementById('ed-rel-date');
+    if (hidden) hidden.value = '';
+    const trigger = document.querySelector('#dp-wrap .dp-trigger');
+    if (trigger) {
+        trigger.innerHTML = `<span class="dp-placeholder">mm/dd/yyyy</span><i class="fa-regular fa-calendar dp-icon"></i>`;
+    }
+    document.getElementById('dp-panel')?.classList.add('hidden');
 };
