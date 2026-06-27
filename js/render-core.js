@@ -481,14 +481,14 @@ function renderDocList() {
                                 ${d.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(d.subfolder)}</span>` : ''}
                                 <span class="st-badge st-${d.status}">${d.status}</span>
                             </div>
-                            ${!bm ? `<div class="flex items-center gap-1 shrink-0 ml-2">
+                            <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
                                 <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
-                            </div>` : ''}
+                            </div>
                         </div>
                         <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
                         <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${excerpt(d.content, 100)}</p>
