@@ -140,8 +140,10 @@ const GitHubSync = {
         const pwd = this._pwd();
         const cfg = await this.getSettings();
         const activeDocs = docs.filter(d => d.status !== 'deleted');
+        // Re-encrypt credential passwords that were decrypted in memory before pushing
+        const safeDocs = DocStorage ? await DocStorage._encryptCredPasswords(activeDocs, pwd) : activeDocs;
         const deletedIds = DocStorage ? [...DocStorage._getLocalDeletedIds()] : [];
-        const wrapper = { docs: activeDocs, cfg: cfg || null, deletedIds };
+        const wrapper = { docs: safeDocs, cfg: cfg || null, deletedIds };
         const content = pwd
             ? await Vault.encrypt(wrapper, pwd)
             : JSON.stringify(wrapper, null, 2);

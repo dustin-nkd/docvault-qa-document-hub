@@ -362,6 +362,25 @@ let state = {
 let documents = [];
 
 // ========================
+// DOCUMENT HISTORY
+// ========================
+const DocHistory = {
+    MAX: 10,
+    _key: id => `docvault_history_${id}`,
+    save(doc) {
+        if (!doc?.id || doc.category === 'credential') return;
+        let snaps;
+        try { snaps = JSON.parse(localStorage.getItem(this._key(doc.id)) || '[]'); } catch { snaps = []; }
+        if (snaps.length && snaps[0].content === (doc.content || '') && snaps[0].title === doc.title) return;
+        snaps.unshift({ ts: Date.now(), title: doc.title, content: doc.content || '', tags: doc.tags || [], status: doc.status, subfolder: doc.subfolder || '' });
+        localStorage.setItem(this._key(doc.id), JSON.stringify(snaps.slice(0, this.MAX)));
+    },
+    get(id) {
+        try { return JSON.parse(localStorage.getItem(this._key(id)) || '[]'); } catch { return []; }
+    }
+};
+
+// ========================
 // PERSISTENCE
 // ========================
 async function persist() {
@@ -759,6 +778,7 @@ function updateHeader() {
             actions = `
                 <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
                 <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="showHistoryPanel('${doc.id}')"><i class="fa-regular fa-clock mr-1.5"></i>History</button>` : ''}
                 <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
             `;
         }
@@ -1464,6 +1484,58 @@ window.confirmBatchMoveFolder = async function() {
     state.selectedIds = new Set();
     state.lastSelectedId = null;
     renderContent();
+};
+
+window.showHistoryPanel = function(id) {
+    const snaps = DocHistory.get(id);
+    if (!snaps.length) {
+        toast('No history yet — snapshots are saved each time you update a document.', 'info');
+        return;
+    }
+    const rows = snaps.map((s, i) => `
+        <div class="flex items-start gap-3 p-3 rounded-lg" style="border:1px solid var(--brd);background:var(--bg2);margin-bottom:8px;">
+            <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(s.title)}</div>
+                <div class="text-xs mt-1" style="color:var(--tx-d);">${new Date(s.ts).toLocaleString()} &middot; ${(s.content||'').length.toLocaleString()} chars</div>
+                <span class="st-badge st-${s.status}" style="display:inline-block;margin-top:4px;">${s.status}</span>
+            </div>
+            <button class="btn-s text-xs py-1.5 px-3 shrink-0" data-onclick="restoreSnapshot('${id}', ${i})">
+                <i class="fa-solid fa-rotate-left mr-1"></i>Restore
+            </button>
+        </div>
+    `).join('');
+    showModal(`
+        <div class="p-5">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);">
+                    <i class="fa-regular fa-clock" style="color:#818cf8;font-size:15px;"></i>
+                </div>
+                <div>
+                    <h3 class="font-heading font-semibold" style="color:var(--tx);">Document History</h3>
+                    <p class="text-xs" style="color:var(--tx-m);">${snaps.length} snapshot${snaps.length > 1 ? 's' : ''} &middot; newest first &middot; max 10</p>
+                </div>
+            </div>
+            <div style="max-height:380px;overflow-y:auto;padding-right:2px;">${rows}</div>
+            <div class="flex justify-end mt-4">
+                <button class="btn-s" data-onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    `);
+};
+
+window.restoreSnapshot = async function(id, index) {
+    const snaps = DocHistory.get(id);
+    const snap = snaps[index];
+    if (!snap) return;
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx === -1) return;
+    DocHistory.save(documents[idx]);
+    documents[idx] = { ...documents[idx], title: snap.title, content: snap.content, tags: snap.tags || [], status: snap.status, subfolder: snap.subfolder || '', updatedAt: Date.now() };
+    state.editingDoc = { ...documents[idx] };
+    closeModal();
+    toast('Version restored — current state saved to history.', 'success');
+    await persist();
+    render();
 };
 
 // Document context menu (dropdown)
@@ -3061,6 +3133,7 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
         // Update
         const idx = documents.findIndex(d => d.id === state.editingDoc.id);
         if (idx !== -1) {
+            DocHistory.save(documents[idx]);
             documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
         }
         toast(t('docUpdated'), 'success');
@@ -3083,8 +3156,9 @@ ${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
     history.replaceState({}, '', '?view=' + state.editingDoc.id);
     await persist();
     // Give ToastUI Editor's async destroy() (mutation observers, DOM cleanup)
-    // time to fully complete before rendering the viewer
-    await new Promise(r => setTimeout(r, 60));
+    // time to fully complete before rendering the viewer. rAF ensures at least
+    // one full paint cycle after the 60ms grace period.
+    await new Promise(r => setTimeout(() => requestAnimationFrame(r), 60));
     render();
 }
 
