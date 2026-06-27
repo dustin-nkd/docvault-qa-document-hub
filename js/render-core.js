@@ -257,13 +257,13 @@ function renderContent() {
             });
         }
     }
+    _restoreFaviconState();
 }
 
 function render() {
     updateSidebar();
     updateHeader();
     renderContent();
-    _restoreFaviconState();
 }
 
 function _restoreFaviconState() {
