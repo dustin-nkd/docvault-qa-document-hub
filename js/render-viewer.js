@@ -25,15 +25,25 @@ function renderViewer() {
 
         ${doc.category === 'credential' ? `
         <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
-            <div class="flex items-center gap-4 mb-5">
-                <div class="cred-avatar ${credAvatarColor(doc.title)}">
-                    <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${guessDomain(doc.title)}.ico" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.remove()">
-                    <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-medium tracking-wide uppercase mb-1.5" style="color:var(--tx-d);">Username / Email</p>
-                    <div class="flex items-center gap-2">
-                        <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Username / Email</p>
+                <div class="flex items-center gap-3">
+                    ${(() => {
+                        const brand = getCredBrandIcon(doc.title);
+                        if (brand) {
+                            return `<div class="cred-avatar ${credAvatarColor(doc.title)} shrink-0" title="${escHtml(doc.title)}">
+                                <i class="fa-brands ${brand}" style="font-size:17px;"></i>
+                            </div>`;
+                        }
+                        return `<div class="cred-avatar ${credAvatarColor(doc.title)} shrink-0" title="${escHtml(doc.title)}">
+                            <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${guessDomain(doc.title)}.ico"
+                                onload="this.classList.add('loaded');this.nextElementSibling.style.display='none';this.parentElement.classList.add('has-favicon');"
+                                onerror="this.style.display='none'">
+                            <i class="fa-solid fa-key" style="font-size:14px;"></i>
+                        </div>`;
+                    })()}
+                    <div class="flex-1 flex items-center gap-2 min-w-0">
+                        <div class="flex-1 flex items-center px-3 py-2 rounded-lg min-w-0" style="background:var(--bg);border:1px solid var(--brd);">
                             <span class="text-sm font-mono truncate" style="color:var(--tx);">${escHtml(doc.username || 'N/A')}</span>
                         </div>
                         ${doc.username ? `<button class="btn-s py-2 px-4 shrink-0" data-onclick="copyUsername('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>${t('copy')}</button>` : ''}
