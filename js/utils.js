@@ -98,61 +98,6 @@ window.credAvatarColor = function(site) {
     return `avatar-${s.charCodeAt(0) % 8}`;
 };
 
-window.getCredBrandIcon = function(title) {
-    const s = (title || '').toLowerCase();
-    const MAP = [
-        ['github',        'fa-github'],
-        ['gitlab',        'fa-gitlab'],
-        ['bitbucket',     'fa-bitbucket'],
-        ['google',        'fa-google'],
-        ['gmail',         'fa-google'],
-        ['youtube',       'fa-youtube'],
-        ['facebook',      'fa-facebook'],
-        ['instagram',     'fa-instagram'],
-        ['twitter',       'fa-twitter'],
-        ['x.com',         'fa-x-twitter'],
-        ['linkedin',      'fa-linkedin'],
-        ['slack',         'fa-slack'],
-        ['discord',       'fa-discord'],
-        ['figma',         'fa-figma'],
-        ['dropbox',       'fa-dropbox'],
-        ['aws',           'fa-aws'],
-        ['amazon',        'fa-amazon'],
-        ['azure',         'fa-microsoft'],
-        ['microsoft',     'fa-microsoft'],
-        ['windows',       'fa-windows'],
-        ['apple',         'fa-apple'],
-        ['docker',        'fa-docker'],
-        ['npm',           'fa-npm'],
-        ['yarn',          'fa-yarn'],
-        ['trello',        'fa-trello'],
-        ['jira',          'fa-jira'],
-        ['confluence',    'fa-confluence'],
-        ['atlassian',     'fa-atlassian'],
-        ['spotify',       'fa-spotify'],
-        ['steam',         'fa-steam'],
-        ['reddit',        'fa-reddit'],
-        ['shopify',       'fa-shopify'],
-        ['stripe',        'fa-stripe'],
-        ['paypal',        'fa-paypal'],
-        ['cloudflare',    'fa-cloudflare'],
-        ['digitalocean',  'fa-digital-ocean'],
-        ['digital ocean', 'fa-digital-ocean'],
-        ['wordpress',     'fa-wordpress'],
-        ['twitch',        'fa-twitch'],
-        ['tiktok',        'fa-tiktok'],
-        ['pinterest',     'fa-pinterest'],
-        ['snapchat',      'fa-snapchat'],
-        ['whatsapp',      'fa-whatsapp'],
-        ['telegram',      'fa-telegram'],
-        ['skype',         'fa-skype'],
-    ];
-    for (const [keyword, icon] of MAP) {
-        if (s.includes(keyword)) return icon;
-    }
-    return null;
-};
-
 window.guessDomain = function(site) {
     const s = (site || '').trim().toLowerCase();
     if (s.includes('.')) {
