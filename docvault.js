@@ -1180,7 +1180,7 @@ function renderDocList() {
     const allSelected = docs.length > 0 && docs.every(d => sel.has(d.id));
 
     const batchCheckbox = (id) => bm ? `
-        <div style="position:absolute;top:10px;left:10px;z-index:5;pointer-events:none;">
+        <div style="position:absolute;top:10px;right:10px;z-index:5;pointer-events:none;">
             <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd2)'};background:${sel.has(id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
                 ${sel.has(id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
             </div>
