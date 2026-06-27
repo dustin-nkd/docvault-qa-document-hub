@@ -1,4 +1,10 @@
 // ========================
+// FILTER / SORT HELPERS
+// ========================
+window.applyStatusFilter = function(val) { state.statusFilter = val; renderContent(); };
+window.applySortBy = function(val) { state.sortBy = val; renderContent(); };
+
+// ========================
 // HEADER
 // ========================
 function updateHeader() {
@@ -405,12 +411,12 @@ function renderDocList() {
                 {value: 'published', label: 'Published'},
                 {value: 'draft', label: 'Draft'},
                 {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'state.statusFilter=this.value;renderContent();')}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)')}
             ${renderSelect('hdr-sort-by', [
                 {value: 'updated', label: t('recentlyUpdated')},
                 {value: 'created', label: t('newest')},
                 {value: 'title', label: t('sortAZ')}
-            ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'state.sortBy=this.value;renderContent();')}
+            ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)')}
             <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents</span>
             <div class="flex items-center gap-2 ml-auto">
                 ${!inTrash && docs.length > 0 ? `
@@ -598,7 +604,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
                 {value: 'published', label: 'Published'},
                 {value: 'draft', label: 'Draft'},
                 {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'state.statusFilter=this.value;renderContent();')}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)')}
             <div class="flex-1"></div>
             <button class="btn-p text-sm" data-onclick="createDoc('task')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newTask')}</button>
         </div>
