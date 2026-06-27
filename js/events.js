@@ -188,6 +188,10 @@ function executeAction(code, event, element) {
             setTimeout(() => document.getElementById('ed-content')?.focus(), 0);
             continue;
         }
+        if (call === "this.style.background='var(--card-h)'") {
+            element.style.background = 'var(--card-h)';
+            continue;
+        }
         if (call === "this.style.background='var(--card)'") {
             element.style.background = 'var(--card)';
             continue;
