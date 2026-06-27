@@ -170,6 +170,9 @@ function updateDOM(el, htmlStr) {
         morphdom(el, `<div id="${el.id}" class="${el.className}">${htmlStr}</div>`, {
             onBeforeElUpdated: function(fromEl, toEl) {
                 if (fromEl.id === 'editor-container' || fromEl.id === 'viewer-container') return false;
+                if (fromEl.classList.contains('cred-favicon') && fromEl.classList.contains('loaded')) {
+                    toEl.classList.add('loaded');
+                }
                 return true;
             }
         });
