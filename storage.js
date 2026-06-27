@@ -135,11 +135,22 @@ const GitHubSync = {
     },
 
     // Encode docs + cfg for GitHub API (base64 of UTF-8 file content)
-    // Only active (non-deleted) docs are pushed to keep GitHub clean
+    // Soft-deleted docs (status='deleted') are kept on GitHub for 30 days so trash syncs across devices.
+    // After 30 days they are auto-purged and their IDs added to deletedIds (tombstone).
     async _encode(docs) {
         const pwd = this._pwd();
         const cfg = await this.getSettings();
-        const activeDocs = docs.filter(d => d.status !== 'deleted');
+        const TRASH_TTL = 30 * 24 * 60 * 60 * 1000;
+        const autoPurgedIds = [];
+        const activeDocs = docs.filter(d => {
+            if (d.status !== 'deleted') return true;
+            const age = Date.now() - (d.deletedAt || 0);
+            if (age >= TRASH_TTL) { autoPurgedIds.push(d.id); return false; }
+            return true;
+        });
+        if (autoPurgedIds.length > 0 && DocStorage) {
+            await DocStorage.addDeletedIds(autoPurgedIds);
+        }
         // Re-encrypt credential passwords that were decrypted in memory before pushing
         const safeDocs = DocStorage ? await DocStorage._encryptCredPasswords(activeDocs, pwd) : activeDocs;
         const deletedIds = DocStorage ? [...DocStorage._getLocalDeletedIds()] : [];
