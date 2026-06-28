@@ -290,10 +290,12 @@ function _getDashboardMetrics(docs) {
     const STALE_MS = 30 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
-    // Bug severity
+    // Bug severity + lifecycle
     const bugs = docs.filter(d => d.category === 'bug');
     const bugSev = { Critical: 0, Major: 0, Minor: 0, Trivial: 0 };
     bugs.forEach(b => { const s = b.bugData?.severity; if (s && bugSev[s] !== undefined) bugSev[s]++; });
+    const bugLifecycle = { new: 0, confirmed: 0, 'in-progress': 0, testing: 0, closed: 0 };
+    bugs.forEach(b => { const s = b.bugStatus || 'new'; if (bugLifecycle[s] !== undefined) bugLifecycle[s]++; });
 
     // Test run pass/fail/blocked aggregated across all runs
     const runs = docs.filter(d => d.category === 'testrun');
@@ -338,7 +340,7 @@ function _getDashboardMetrics(docs) {
         .sort((a, b) => b.pct - a.pct)
         .slice(0, 4);
 
-    return { bugs, bugSev, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage };
+    return { bugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage };
 }
 
 function _renderHealthWidgets(m, inPanel) {
@@ -364,7 +366,20 @@ function _renderHealthWidgets(m, inPanel) {
                         </div>
                         <span class="text-[11px] font-medium w-4 text-right" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${s.count}</span>
                     </div>`).join('')}
-                <p class="text-[10px] mt-2" style="color:var(--tx-d);">${sevTotal} total open</p>
+                <p class="text-[10px] mt-2 mb-3" style="color:var(--tx-d);">${sevTotal} total open</p>
+                <div class="flex items-center gap-1 pt-2 border-t" style="border-color:var(--brd);">
+                    ${[
+                        { key: 'new',         label: 'New',       color: '#94a3b8' },
+                        { key: 'confirmed',   label: 'Confirmed', color: '#60a5fa' },
+                        { key: 'in-progress', label: 'In Prog',   color: '#a78bfa' },
+                        { key: 'testing',     label: 'Testing',   color: '#fb923c' },
+                        { key: 'closed',      label: 'Closed',    color: '#34d399' },
+                    ].map(lc => `
+                        <div class="flex-1 text-center">
+                            <p class="font-heading font-bold text-base" style="color:${m.bugLifecycle[lc.key] > 0 ? lc.color : 'var(--tx-d)'};font-variant-numeric:tabular-nums;">${m.bugLifecycle[lc.key]}</p>
+                            <p class="text-[9px]" style="color:var(--tx-d);">${lc.label}</p>
+                        </div>`).join('')}
+                </div>
             </div>`);
     }
 
@@ -612,6 +627,9 @@ function renderDocList() {
     if (state.category === 'task' && state.view === 'documents') {
         return renderKanbanBoard(docs, isMobileSearch);
     }
+    if (state.category === 'bug' && state.view === 'documents') {
+        return renderBugKanban(docs, isMobileSearch);
+    }
 
     const bm = state.batchMode;
     const sel = state.selectedIds;
@@ -750,6 +768,107 @@ function renderDocList() {
             <button class="batch-action-btn" style="color:#f87171;" data-onclick="batchDelete()">
                 <i class="fa-solid fa-trash" style="font-size:10px;"></i> Delete
             </button>
+        </div>
+    </div>`;
+}
+
+// ========================
+// BUG KANBAN
+// ========================
+function renderBugKanban(docs, isMobileSearch) {
+    const SEV_COLOR = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
+    const cols = [
+        { id: 'new',         get label() { return t('bugNew'); },        color: '#94a3b8', icon: 'fa-circle-plus' },
+        { id: 'confirmed',   get label() { return t('bugConfirmed'); },  color: '#60a5fa', icon: 'fa-circle-check' },
+        { id: 'in-progress', get label() { return t('bugInProgress'); }, color: '#a78bfa', icon: 'fa-spinner' },
+        { id: 'testing',     get label() { return t('bugTesting'); },    color: '#fb923c', icon: 'fa-flask' },
+        { id: 'closed',      get label() { return t('bugClosed'); },     color: '#34d399', icon: 'fa-circle-xmark' },
+    ];
+
+    const kanbanHtml = cols.map(col => {
+        const colDocs = docs.filter(d => (d.bugStatus || 'new') === col.id);
+
+        return `
+        <div class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 280px; min-width: 280px;"
+             data-ondragover="handleDragOver"
+             data-ondrop="handleDrop('${col.id}')">
+
+            <div class="p-3.5 flex items-center justify-between border-b sticky top-0" style="border-color:var(--brd); background:var(--bg2); border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; z-index: 10;">
+                <h3 class="font-heading font-semibold text-sm flex items-center gap-2" style="color:${col.color};">
+                    <i class="fa-solid ${col.icon}" style="font-size: 10px;"></i> ${col.label}
+                </h3>
+                <span class="text-xs font-medium py-0.5 px-2 rounded-full" style="background:var(--card); color:var(--tx-m);">${colDocs.length}</span>
+            </div>
+
+            <div class="flex-1 overflow-y-auto flex flex-col custom-scrollbar" style="padding: 10px; gap: 10px;">
+                ${colDocs.map(d => {
+                    const sev = d.bugData?.severity || 'Minor';
+                    const sevColor = SEV_COLOR[sev] || '#f59e0b';
+                    const env = d.bugData?.env && d.bugData.env !== '-' ? d.bugData.env : '';
+                    const browser = d.bugData?.browser && d.bugData.browser !== '-' ? d.bugData.browser : '';
+                    return `
+                    <div class="doc-card flex flex-col cursor-grab active:cursor-grabbing"
+                         draggable="true"
+                         data-ondragstart="handleDragStart('${d.id}')"
+                         data-ondragend="handleDragEnd"
+                         data-onclick="viewDoc('${d.id}')"
+                         style="background:var(--card); padding: 12px; margin-bottom: 0px; border-radius: 8px; border-left: 3px solid ${sevColor};">
+
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${sev.toUpperCase()}</span>
+                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                </button>
+                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
+
+                        ${env || browser ? `<p class="text-[10px] mb-2 truncate" style="color:var(--tx-d);"><i class="fa-solid fa-bug mr-1"></i>${[env, browser].filter(Boolean).join(' · ')}</p>` : ''}
+
+                        <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
+                            ${d.tags.slice(0, 2).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
+                            ${d.tags.length > 2 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 2}</span>` : ''}
+                            <span class="text-[10px] ml-auto" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
+                        </div>
+                    </div>`;
+                }).join('')}
+
+                ${colDocs.length === 0 ? `
+                    <div class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);">
+                        <p class="text-[11px] font-medium">${t('dragBugHere')}</p>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    return `<div class="fade-up max-w-full">
+        <!-- Mobile search -->
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+            ${renderSelect('bug-status-filter', [
+                {value: 'all', label: t('allStatus')},
+                {value: 'published', label: 'Published'},
+                {value: 'draft', label: 'Draft'},
+                {value: 'archived', label: 'Archived'}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)')}
+            <div class="flex-1"></div>
+            <button class="btn-p text-sm" data-onclick="createDoc('bug')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newBug')}</button>
+        </div>
+
+        <!-- Bug Kanban Container -->
+        <div class="overflow-x-auto pb-4 custom-scrollbar">
+            <div class="flex items-start mx-auto w-max" style="min-height: 400px; gap: 1.25rem;">
+                ${kanbanHtml}
+            </div>
         </div>
     </div>`;
 }
