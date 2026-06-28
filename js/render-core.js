@@ -284,6 +284,176 @@ function _restoreFaviconState() {
 }
 
 // ========================
+// DASHBOARD HEALTH METRICS
+// ========================
+function _getDashboardMetrics(docs) {
+    const STALE_MS = 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    // Bug severity
+    const bugs = docs.filter(d => d.category === 'bug');
+    const bugSev = { Critical: 0, Major: 0, Minor: 0, Trivial: 0 };
+    bugs.forEach(b => { const s = b.bugData?.severity; if (s && bugSev[s] !== undefined) bugSev[s]++; });
+
+    // Test run pass/fail/blocked aggregated across all runs
+    const runs = docs.filter(d => d.category === 'testrun');
+    let rPass = 0, rFail = 0, rBlocked = 0, rTotal = 0;
+    runs.forEach(run => {
+        if (!run.runData?.results) return;
+        Object.values(run.runData.results).forEach(tcRes => {
+            if (typeof tcRes !== 'object' || Array.isArray(tcRes)) return;
+            Object.entries(tcRes).forEach(([k, v]) => {
+                if (k === 'note') return;
+                rTotal++;
+                if (v === 'pass') rPass++;
+                else if (v === 'fail') rFail++;
+                else if (v === 'blocked') rBlocked++;
+            });
+        });
+    });
+
+    // Task board kanban distribution
+    const tasks = docs.filter(d => d.category === 'task');
+    const board = { todo: 0, inProgress: 0, review: 0, done: 0 };
+    tasks.forEach(t => { const s = t.kanbanStatus || 'todo'; if (board[s] !== undefined) board[s]++; });
+
+    // Stale docs (>30d, exclude credentials, tasks, trashed)
+    const stale = docs
+        .filter(d => d.category !== 'credential' && d.category !== 'task' && (now - (d.updatedAt || 0)) > STALE_MS)
+        .sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))
+        .slice(0, 4);
+
+    // Coverage by module — test cases whose subfolder = module, covered = included in any run
+    const tcs = docs.filter(d => d.category === 'testcases');
+    const coveredIds = new Set(runs.flatMap(r => r.runData?.targetIds || []));
+    const modMap = {};
+    tcs.forEach(tc => {
+        const m = tc.subfolder || 'General';
+        if (!modMap[m]) modMap[m] = { total: 0, covered: 0 };
+        modMap[m].total++;
+        if (coveredIds.has(tc.id)) modMap[m].covered++;
+    });
+    const coverage = Object.entries(modMap)
+        .map(([name, { total, covered }]) => ({ name, total, covered, pct: Math.round(covered / total * 100) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 4);
+
+    return { bugs, bugSev, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage };
+}
+
+function _renderHealthWidgets(m) {
+    const widgets = [];
+
+    // Widget 1: Bug Severity
+    if (m.bugs.length > 0) {
+        const sevTotal = m.bugs.length;
+        const sevItems = [
+            { label: 'Critical', count: m.bugSev.Critical, color: '#f87171' },
+            { label: 'Major',    count: m.bugSev.Major,    color: '#fb923c' },
+            { label: 'Minor',    count: m.bugSev.Minor,    color: '#60a5fa' },
+            { label: 'Trivial',  count: m.bugSev.Trivial,  color: 'var(--tx-d)' },
+        ].filter(s => s.count > 0);
+        widgets.push(`
+            <div class="doc-card p-4">
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Bug Severity</p>
+                ${sevItems.map(s => `
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-[11px] w-12 shrink-0" style="color:${s.color};">${s.label}</span>
+                        <div class="flex-1 rounded-full overflow-hidden" style="height:5px;background:var(--brd);">
+                            <div style="width:${Math.round(s.count/sevTotal*100)}%;height:100%;background:${s.color};border-radius:9999px;"></div>
+                        </div>
+                        <span class="text-[11px] font-medium w-4 text-right" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${s.count}</span>
+                    </div>`).join('')}
+                <p class="text-[10px] mt-2" style="color:var(--tx-d);">${sevTotal} total open</p>
+            </div>`);
+    }
+
+    // Widget 2: Test Pass Rate
+    if (m.runs.length > 0 && m.rTotal > 0) {
+        const passRate = Math.round(m.rPass / m.rTotal * 100);
+        const rateColor = passRate >= 80 ? '#34d399' : passRate >= 60 ? '#fb923c' : '#f87171';
+        widgets.push(`
+            <div class="doc-card p-4">
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Test Pass Rate</p>
+                <p class="font-heading font-bold text-2xl mb-0.5" style="color:${rateColor};font-variant-numeric:tabular-nums;">${passRate}%</p>
+                <p class="text-[11px] mb-3" style="color:var(--tx-d);">across ${m.runs.length} run${m.runs.length > 1 ? 's' : ''}</p>
+                <div class="flex flex-col gap-1.5">
+                    ${m.rPass > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#34d399;"></span><span class="text-[11px]" style="color:var(--tx-m);">Pass</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rPass}</span></div>` : ''}
+                    ${m.rFail > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#f87171;"></span><span class="text-[11px]" style="color:var(--tx-m);">Fail</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rFail}</span></div>` : ''}
+                    ${m.rBlocked > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#fb923c;"></span><span class="text-[11px]" style="color:var(--tx-m);">Blocked</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rBlocked}</span></div>` : ''}
+                </div>
+            </div>`);
+    }
+
+    // Widget 3: Task Board
+    if (m.tasks.length > 0) {
+        const cols = [
+            { key: 'todo',       label: 'To Do',   color: 'var(--tx-d)' },
+            { key: 'inProgress', label: 'In Prog', color: '#60a5fa' },
+            { key: 'review',     label: 'Review',  color: '#fb923c' },
+            { key: 'done',       label: 'Done',    color: '#34d399' },
+        ];
+        widgets.push(`
+            <div class="doc-card p-4">
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Task Board</p>
+                <div class="grid grid-cols-4 gap-1.5 mb-2">
+                    ${cols.map(c => `
+                        <div class="text-center">
+                            <p class="text-[10px] mb-1 truncate" style="color:var(--tx-d);">${c.label}</p>
+                            <p class="font-heading font-bold text-lg" style="color:${m.board[c.key] > 0 ? c.color : 'var(--tx-d)'};font-variant-numeric:tabular-nums;">${m.board[c.key]}</p>
+                        </div>`).join('')}
+                </div>
+                <div class="flex rounded-full overflow-hidden" style="height:4px;background:var(--brd);">
+                    ${cols.map(c => m.board[c.key] > 0 ? `<div style="flex:${m.board[c.key]};background:${c.color};"></div>` : '').join('')}
+                </div>
+                <p class="text-[10px] mt-2" style="color:var(--tx-d);">${m.tasks.length} task${m.tasks.length > 1 ? 's' : ''} total</p>
+            </div>`);
+    }
+
+    // Widget 4: Stale Docs
+    if (m.stale.length > 0) {
+        const fmtAge = ms => { const d = Math.floor(ms / 86400000); return d >= 30 ? `${Math.floor(d/30)}mo` : `${d}d`; };
+        widgets.push(`
+            <div class="doc-card p-4">
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Stale Docs <span style="color:#fb923c;">&gt;30d</span></p>
+                <div class="flex flex-col gap-2">
+                    ${m.stale.map(d => `
+                        <div class="flex items-center gap-2 cursor-pointer" data-onclick="viewDoc('${d.id}')">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#fb923c;"></span>
+                            <span class="text-[11px] flex-1 truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
+                            <span class="text-[10px] shrink-0 font-medium" style="color:var(--tx-d);font-variant-numeric:tabular-nums;">${fmtAge(Date.now() - (d.updatedAt || 0))}</span>
+                        </div>`).join('')}
+                </div>
+            </div>`);
+    }
+
+    // Widget 5: Coverage by Module
+    if (m.tcs.length > 0 && m.coverage.length > 0) {
+        widgets.push(`
+            <div class="doc-card p-4">
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Coverage by Module</p>
+                ${m.coverage.map(c => {
+                    const barColor = c.pct === 0 ? '#f87171' : c.pct < 50 ? '#fb923c' : '#34d399';
+                    return `
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-[11px] truncate" style="color:var(--tx-m);width:60px;flex-shrink:0;" title="${escHtml(c.name)}">${escHtml(c.name)}</span>
+                            <div class="flex-1 rounded-full overflow-hidden" style="height:5px;background:var(--brd);">
+                                <div style="width:${c.pct}%;height:100%;background:${barColor};border-radius:9999px;transition:width .4s;"></div>
+                            </div>
+                            <span class="text-[11px] font-medium shrink-0" style="color:${barColor};font-variant-numeric:tabular-nums;width:28px;text-align:right;">${c.pct}%</span>
+                        </div>`; }).join('')}
+            </div>`);
+    }
+
+    if (widgets.length === 0) return '';
+
+    return `
+        <div class="grid gap-4 mb-8" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+            ${widgets.join('')}
+        </div>`;
+}
+
+// ========================
 // DASHBOARD
 // ========================
 function renderDashboard() {
@@ -293,6 +463,8 @@ function renderDashboard() {
     const recent = [...activeDocs].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
     const catCounts = {};
     Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
+
+    const healthMetrics = _getDashboardMetrics(activeDocs);
 
     return `<div class="fade-up max-w-6xl mx-auto">
         <!-- Stats -->
@@ -310,6 +482,9 @@ function renderDashboard() {
                 </div>
             `).join('')}
         </div>
+
+        <!-- Health Widgets -->
+        ${_renderHealthWidgets(healthMetrics)}
 
         <div class="grid lg:grid-cols-3 gap-6">
             <!-- Recent -->
