@@ -222,8 +222,100 @@ window.confirmBatchMoveFolder = async function() {
 };
 
 // ========================
-// HISTORY PANEL
+// HISTORY PANEL + DIFF VIEW
 // ========================
+function _diffLines(oldText, newText) {
+    const a = (oldText || '').split('\n');
+    const b = (newText || '').split('\n');
+    const m = a.length, n = b.length;
+    if (m * n > 300000) {
+        return a.map(l => ({ type: 'del', line: l })).concat(b.map(l => ({ type: 'add', line: l })));
+    }
+    const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+    for (let i = 1; i <= m; i++)
+        for (let j = 1; j <= n; j++)
+            dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+    const result = [];
+    let i = m, j = n;
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && a[i-1] === b[j-1]) { result.unshift({ type: 'eq', line: a[i-1] }); i--; j--; }
+        else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) { result.unshift({ type: 'add', line: b[j-1] }); j--; }
+        else { result.unshift({ type: 'del', line: a[i-1] }); i--; }
+    }
+    return result;
+}
+
+function _buildDiffHtml(diff) {
+    const CTX = 3;
+    const near = new Array(diff.length).fill(false);
+    diff.forEach((d, i) => {
+        if (d.type !== 'eq') for (let k = Math.max(0, i - CTX); k <= Math.min(diff.length - 1, i + CTX); k++) near[k] = true;
+    });
+    let html = '', skip = 0;
+    for (let i = 0; i <= diff.length; i++) {
+        const d = diff[i];
+        const collapse = !d || (d.type === 'eq' && !near[i]);
+        if (collapse) { if (i < diff.length) { skip++; } }
+        if (!collapse || i === diff.length) {
+            if (skip) { html += `<div class="diff-skip">··· ${skip} line${skip > 1 ? 's' : ''} unchanged ···</div>`; skip = 0; }
+            if (i === diff.length) break;
+            const s = escHtml(d.line || '') || '&nbsp;';
+            if (d.type === 'add') html += `<div class="diff-add"><span class="diff-sign">+</span><span>${s}</span></div>`;
+            else if (d.type === 'del') html += `<div class="diff-del"><span class="diff-sign">−</span><span>${s}</span></div>`;
+            else html += `<div class="diff-ctx"><span class="diff-sign"> </span><span>${s}</span></div>`;
+        }
+    }
+    return html || `<div class="diff-ctx"><span class="diff-sign"> </span><span style="color:var(--tx-d);font-style:italic;">(empty)</span></div>`;
+}
+
+window.showSnapshotDiff = function(id, snapIndex) {
+    const snaps = DocHistory.get(id);
+    const snap = snaps[snapIndex];
+    if (!snap) return;
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+
+    const titleChanged = snap.title !== doc.title;
+    const contentChanged = (snap.content || '') !== (doc.content || '');
+    if (!titleChanged && !contentChanged) { toast('No changes since this snapshot.', 'info'); return; }
+
+    const diff = _diffLines(snap.content || '', doc.content || '');
+    const added = diff.filter(d => d.type === 'add').length;
+    const removed = diff.filter(d => d.type === 'del').length;
+    const snapDate = new Date(snap.ts).toLocaleString();
+
+    const titleBlock = titleChanged ? `
+        <div style="padding:8px 0 0;border-bottom:1px solid var(--brd);flex-shrink:0;">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-d);padding:0 14px 6px;">Title</div>
+            <div class="diff-del" style="padding-left:14px;"><span class="diff-sign">−</span><span style="font-weight:600;">${escHtml(snap.title)}</span></div>
+            <div class="diff-add" style="padding-left:14px;"><span class="diff-sign">+</span><span style="font-weight:600;">${escHtml(doc.title)}</span></div>
+        </div>` : '';
+
+    const m = document.getElementById('modal');
+    m.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
+    m.innerHTML = `<div class="fade-up rounded-xl w-full mx-4" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;max-width:780px;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:12px;flex-shrink:0;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa-solid fa-code-compare" style="color:#818cf8;font-size:13px;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;font-size:14px;color:var(--tx);">Snapshot Diff</div>
+                <div style="font-size:11px;color:var(--tx-m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${snapDate} → Current</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span style="font-size:11px;background:rgba(16,185,129,.1);color:var(--acc);border:1px solid rgba(16,185,129,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;">+${added}</span>
+                <span style="font-size:11px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;">−${removed}</span>
+                <button class="btn-s text-xs py-1.5 px-3" data-onclick="restoreSnapshot('${id}', ${snapIndex})"><i class="fa-solid fa-rotate-left mr-1"></i>Restore</button>
+                <button class="btn-s text-xs py-1.5 px-3" data-onclick="closeModal()">Close</button>
+            </div>
+        </div>
+        ${titleBlock}
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-d);padding:10px 14px 6px;flex-shrink:0;">Content</div>
+        <div style="flex:1;overflow-y:auto;"><div class="diff-view">${_buildDiffHtml(diff)}</div></div>
+    </div>`;
+    m.onclick = (e) => { if (e.target === m) closeModal(); };
+};
+
 window.showHistoryPanel = function(id) {
     const snaps = DocHistory.get(id);
     if (!snaps.length) {
@@ -237,9 +329,14 @@ window.showHistoryPanel = function(id) {
                 <div class="text-xs mt-1" style="color:var(--tx-d);">${new Date(s.ts).toLocaleString()} &middot; ${(s.content||'').length.toLocaleString()} chars</div>
                 <span class="st-badge st-${s.status}" style="display:inline-block;margin-top:4px;">${s.status}</span>
             </div>
-            <button class="btn-s text-xs py-1.5 px-3 shrink-0" data-onclick="restoreSnapshot('${id}', ${i})">
-                <i class="fa-solid fa-rotate-left mr-1"></i>Restore
-            </button>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button class="btn-s text-xs py-1.5 px-3" data-onclick="showSnapshotDiff('${id}', ${i})">
+                    <i class="fa-solid fa-code-compare mr-1"></i>Diff
+                </button>
+                <button class="btn-s text-xs py-1.5 px-3" data-onclick="restoreSnapshot('${id}', ${i})">
+                    <i class="fa-solid fa-rotate-left mr-1"></i>Restore
+                </button>
+            </div>
         </div>
     `).join('');
     showModal(`
