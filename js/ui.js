@@ -235,6 +235,28 @@ function updateSidebar() {
 }
 
 // ========================
+// MARKDOWN EXPORT
+// ========================
+window.exportDoc = function(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+
+    const iso = (ts) => ts ? new Date(ts).toISOString().slice(0, 10) : '';
+    const tagsLine = doc.tags?.length ? `\ntags: [${doc.tags.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]` : '';
+    const folderLine = doc.subfolder ? `\nfolder: "${doc.subfolder}"` : '';
+
+    const frontmatter = `---\ntitle: "${(doc.title || '').replace(/"/g, '\\"')}"\ncategory: ${doc.category}${tagsLine}${folderLine}\nstatus: ${doc.status || 'published'}\ncreated: ${iso(doc.createdAt)}\nupdated: ${iso(doc.updatedAt)}\n---\n\n`;
+    const blob = new Blob([frontmatter + (doc.content || '')], { type: 'text/markdown;charset=utf-8' });
+    const filename = (doc.title || 'document').replace(/[<>:"/\\|?*]/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '.md';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(`Exported: ${filename}`, 'success');
+};
+
+// ========================
 // DOCUMENT CONTEXT MENU
 // ========================
 function showDocMenu(id, btn) {
@@ -261,6 +283,8 @@ function showDocMenu(id, btn) {
                 <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
                 <i class="fa-solid fa-copy w-4 text-center"></i> ${t('duplicate')} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();exportDoc('${id}')">
+                <i class="fa-solid fa-file-arrow-down w-4 text-center"></i> Export Markdown </button>
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
                 <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
         `;
