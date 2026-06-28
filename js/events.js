@@ -314,8 +314,9 @@ window.handleDrop = async function(event, newStatus) {
 
     const idx = documents.findIndex(d => d.id === id);
     if (idx !== -1 && documents[idx].status !== 'deleted') {
-        if (documents[idx].kanbanStatus !== newStatus) {
-            documents[idx].kanbanStatus = newStatus;
+        const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
+        if (documents[idx][field] !== newStatus) {
+            documents[idx][field] = newStatus;
             documents[idx].updatedAt = Date.now();
             await persist();
             renderContent();
@@ -433,11 +434,14 @@ document.addEventListener('touchend', async () => {
         if (action && action.startsWith('handleDrop')) {
             const newStatus = action.match(/'([^']+)'/)[1];
             const idx = documents.findIndex(d => d.id === _touchDragId);
-            if (idx !== -1 && documents[idx].kanbanStatus !== newStatus) {
-                documents[idx].kanbanStatus = newStatus;
-                documents[idx].updatedAt = Date.now();
-                await persist();
-                renderContent();
+            if (idx !== -1) {
+                const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
+                if (documents[idx][field] !== newStatus) {
+                    documents[idx][field] = newStatus;
+                    documents[idx].updatedAt = Date.now();
+                    await persist();
+                    renderContent();
+                }
             }
         }
     }
