@@ -471,6 +471,18 @@ if (_shareIdOnLoad) {
             const sub = document.getElementById('lock-screen-sub');
             if (hint) hint.textContent = 'Enter your Master Password to sync your data from GitHub.';
             if (sub) sub.textContent = 'Use the same password from your other device. First time? Enter any password to create your vault.';
+        } else {
+            const pwdHint = window.LocalAuth.getHint();
+            if (pwdHint) {
+                const hintBox = document.getElementById('lock-pwd-hint');
+                const hintText = document.getElementById('lock-pwd-hint-text');
+                if (hintBox) hintBox.classList.remove('hidden');
+                if (hintText) hintText.textContent = pwdHint;
+            }
+            if (localStorage.getItem(window.LocalAuth.RECOVERY_KEY)) {
+                const toggle = document.getElementById('lock-recovery-toggle');
+                if (toggle) toggle.classList.remove('hidden');
+            }
         }
     }
 } else {

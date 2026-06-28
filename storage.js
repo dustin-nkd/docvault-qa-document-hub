@@ -504,6 +504,8 @@ const LocalAuth = {
     HASH_KEY: 'docvault_master_hash',
     SESSION_KEY: 'docvault_unlocked',
     SESSION_PWD: 'docvault_pwd',
+    RECOVERY_KEY: 'docvault_recovery_blob',
+    HINT_KEY: 'docvault_pwd_hint',
 
     async _hash(password) {
         const enc = new TextEncoder().encode(password);
@@ -566,9 +568,44 @@ const LocalAuth = {
         sessionStorage.setItem(this.SESSION_PWD, newPassword);
     },
 
+    async generateRecovery(password) {
+        const bytes = crypto.getRandomValues(new Uint8Array(20));
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        let raw = '';
+        for (let i = 0; i < 20; i++) raw += chars[bytes[i] % 32];
+        const code = [raw.slice(0,5), raw.slice(5,10), raw.slice(10,15), raw.slice(15,20)].join('-');
+        const blob = await Vault.encrypt({ pwd: password }, raw);
+        localStorage.setItem(this.RECOVERY_KEY, blob);
+        return code;
+    },
+
+    async recoverWithCode(code) {
+        const blob = localStorage.getItem(this.RECOVERY_KEY);
+        if (!blob) throw new Error('No recovery key found. Generate one in Settings first.');
+        const clean = code.replace(/-/g, '').toUpperCase().trim();
+        if (clean.length !== 20) throw new Error('Invalid code format — should be 20 characters (dashes optional).');
+        try {
+            const result = await Vault.decrypt(blob, clean);
+            return (result && typeof result === 'object' && result.pwd) ? result.pwd : result;
+        } catch {
+            throw new Error('Incorrect recovery code.');
+        }
+    },
+
+    getHint() {
+        return localStorage.getItem(this.HINT_KEY) || '';
+    },
+
+    setHint(text) {
+        if (text && text.trim()) localStorage.setItem(this.HINT_KEY, text.trim());
+        else localStorage.removeItem(this.HINT_KEY);
+    },
+
     reset() {
         if (confirm('Remove Master Password? All encrypted local data will be cleared. Are you sure?')) {
             localStorage.removeItem(this.HASH_KEY);
+            localStorage.removeItem(this.RECOVERY_KEY);
+            localStorage.removeItem(this.HINT_KEY);
             localStorage.removeItem(DocStorage.STORAGE_KEY);
             localStorage.removeItem(GitHubSync.SETTINGS_KEY);
             sessionStorage.removeItem(this.SESSION_KEY);

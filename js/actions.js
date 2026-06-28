@@ -592,6 +592,8 @@ window.showGitHubSettingsModal = async function() {
     if (storedGh) {
         ghSettings = { ...ghSettings, ...storedGh };
     }
+    const currentHint = window.LocalAuth ? window.LocalAuth.getHint() : '';
+    const hasRecovery = !!localStorage.getItem(window.LocalAuth ? window.LocalAuth.RECOVERY_KEY : 'docvault_recovery_blob');
 
     showModal(`
         <div>
@@ -619,9 +621,32 @@ window.showGitHubSettingsModal = async function() {
                 </form>
             </div>
 
-            <!-- SECTION 2: GITHUB SYNC -->
+            <!-- SECTION 2: SECURITY -->
+            <div class="mb-5 pb-5 border-b border-[var(--brd)] text-left">
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-shield-halved text-[var(--acc)] text-[10px]"></i> 2. Security</h4>
+                <div class="mb-4">
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Password Hint <span class="font-normal" style="color:var(--tx-d);">(stored unencrypted)</span></label>
+                    <div class="flex gap-2">
+                        <input type="text" id="sec-hint" class="form-input flex-1 py-1.5 px-3 text-xs" placeholder="e.g. Pet name + year" maxlength="80" value="${escHtml(currentHint)}">
+                        <button type="button" class="btn-s py-1.5 px-3 text-xs whitespace-nowrap" data-onclick="savePasswordHint()">Save</button>
+                    </div>
+                    <p class="text-[10px] mt-1" style="color:var(--tx-d);">Shown on lock screen as a reminder. Never include your actual password.</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Recovery Key</label>
+                    <p class="text-[11px] mb-2" style="color:${hasRecovery ? 'var(--acc)' : '#f59e0b'};">
+                        <i class="fa-solid fa-${hasRecovery ? 'circle-check' : 'triangle-exclamation'} mr-1"></i>${hasRecovery ? 'Recovery key is active.' : 'No key set — forgotten password means lost data.'}
+                    </p>
+                    <button type="button" id="sec-gen-recovery-btn" class="btn-s py-1.5 px-4 text-xs flex items-center gap-1.5" data-onclick="generateRecoveryKey()">
+                        <i class="fa-solid fa-key text-[10px]"></i> ${hasRecovery ? 'Regenerate Key' : 'Generate Recovery Key'}
+                    </button>
+                    <p class="text-[10px] mt-1.5" style="color:var(--tx-d);">20-character code that can unlock your vault if you forget your password. Store it offline.</p>
+                </div>
+            </div>
+
+            <!-- SECTION 3: GITHUB SYNC -->
             <div class="text-left">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-rotate text-[var(--acc)] text-[10px]"></i> 2. GitHub Sync</h4>
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-rotate text-[var(--acc)] text-[10px]"></i> 3. GitHub Sync</h4>
                 <div class="bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
                     <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
                     Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
@@ -684,6 +709,62 @@ window.changeMasterPassword = async function() {
         document.getElementById('mp-confirm').value = '';
     } catch (e) {
         toast(e.message || t('mpChangeFail'), "error");
+    }
+};
+
+window.savePasswordHint = function() {
+    const input = document.getElementById('sec-hint');
+    if (!input) return;
+    const text = input.value.trim();
+    window.LocalAuth.setHint(text);
+    toast(text ? 'Password hint saved.' : 'Password hint cleared.', 'success');
+};
+
+window.generateRecoveryKey = async function() {
+    const pwd = sessionStorage.getItem(window.LocalAuth.SESSION_PWD);
+    if (!pwd) { toast('Vault must be unlocked to generate a recovery key.', 'warning'); return; }
+    const btn = document.getElementById('sec-gen-recovery-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> Generating…'; }
+    try {
+        const code = await window.LocalAuth.generateRecovery(pwd);
+        showModal(`
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-xl mx-auto flex items-center justify-center mb-4" style="background:rgba(16,185,129,0.15);">
+                    <i class="fa-solid fa-key text-xl" style="color:var(--acc);"></i>
+                </div>
+                <h3 class="font-bold text-base mb-1" style="color:var(--tx);">Recovery Key Generated</h3>
+                <p class="text-xs mb-5" style="color:var(--tx-m);">Save this key somewhere safe. You will <strong>not</strong> see it again.</p>
+                <div class="rounded-xl px-4 py-4 mb-4 cursor-pointer select-all" style="background:var(--bg);border:2px solid var(--acc);font-family:monospace;font-size:17px;font-weight:700;letter-spacing:0.14em;color:var(--acc);" title="Click to select all">${escHtml(code)}</div>
+                <div class="rounded-lg px-3 py-2 mb-5 text-left text-[11px]" style="background:var(--card);border:1px solid var(--brd);">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i>
+                    <strong style="color:var(--tx-m);">Store this offline</strong><span style="color:var(--tx-d);"> — in a password manager, printed paper, or secure notes app. This is the only copy.</span>
+                </div>
+                <button class="btn-p py-2 px-6 text-sm w-full" data-onclick="closeModal()">I've saved it — Close</button>
+            </div>
+        `);
+    } catch(e) {
+        toast(e.message || 'Failed to generate recovery key.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-key text-[10px]"></i> Generate Recovery Key'; }
+    }
+};
+
+window.recoverVault = async function() {
+    const input = document.getElementById('recovery-code-input');
+    if (!input) return;
+    const code = input.value.trim();
+    if (!code) { toast('Enter your recovery code.', 'warning'); return; }
+    const btn = document.getElementById('recover-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Recovering…'; }
+    try {
+        const password = await window.LocalAuth.recoverWithCode(code);
+        sessionStorage.setItem(window.LocalAuth.SESSION_KEY, '1');
+        sessionStorage.setItem(window.LocalAuth.SESSION_PWD, password);
+        document.getElementById('lock-screen').classList.add('hidden');
+        toast('Vault recovered! Consider changing your password in Settings.', 'success');
+        if (window._afterUnlock) window._afterUnlock();
+    } catch(e) {
+        toast(e.message || 'Recovery failed.', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Recover Access'; }
     }
 };
 
