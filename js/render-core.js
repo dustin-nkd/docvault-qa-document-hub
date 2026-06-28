@@ -292,8 +292,9 @@ function _getDashboardMetrics(docs) {
 
     // Bug severity + lifecycle
     const bugs = docs.filter(d => d.category === 'bug');
+    const openBugs = bugs.filter(b => _normBugStatus(b.bugStatus) !== 'closed');
     const bugSev = { Critical: 0, Major: 0, Minor: 0, Trivial: 0 };
-    bugs.forEach(b => { const s = b.bugData?.severity; if (s && bugSev[s] !== undefined) bugSev[s]++; });
+    openBugs.forEach(b => { const s = b.bugData?.severity; if (s && bugSev[s] !== undefined) bugSev[s]++; });
     const bugLifecycle = { new: 0, open: 0, 'in-progress': 0, resolved: 0, retest: 0, verified: 0, closed: 0 };
     bugs.forEach(b => { const s = _normBugStatus(b.bugStatus); if (bugLifecycle[s] !== undefined) bugLifecycle[s]++; });
 
@@ -340,15 +341,15 @@ function _getDashboardMetrics(docs) {
         .sort((a, b) => b.pct - a.pct)
         .slice(0, 4);
 
-    return { bugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage };
+    return { bugs, openBugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage };
 }
 
 function _renderHealthWidgets(m, inPanel) {
     const widgets = [];
 
-    // Widget 1: Bug Severity
-    if (m.bugs.length > 0) {
-        const sevTotal = m.bugs.length;
+    // Widget 1: Bug Severity (open bugs only)
+    if (m.openBugs.length > 0) {
+        const sevTotal = m.openBugs.length;
         const sevItems = [
             { label: 'Critical', count: m.bugSev.Critical, color: '#f87171' },
             { label: 'Major',    count: m.bugSev.Major,    color: '#fb923c' },
@@ -366,7 +367,7 @@ function _renderHealthWidgets(m, inPanel) {
                         </div>
                         <span class="text-[11px] font-medium w-4 text-right" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${s.count}</span>
                     </div>`).join('')}
-                <p class="text-[10px] mt-2 mb-3" style="color:var(--tx-d);">${sevTotal} total open</p>
+                <p class="text-[10px] mt-2 mb-3" style="color:var(--tx-d);">${sevTotal} open · ${m.bugs.length - sevTotal} closed</p>
                 <div class="flex items-center gap-0.5 pt-2 border-t" style="border-color:var(--brd);">
                     ${[
                         { key: 'new',         label: 'New',      color: '#94a3b8' },
@@ -508,7 +509,7 @@ function renderDashboard() {
             </div>
             <div class="stat-card p-4" style="${m.bugSev.Critical > 0 ? 'border-color:#f87171;' : ''}">
                 <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Open Bugs</p>
-                <p class="font-heading font-bold text-2xl" style="color:${m.bugs.length > 0 ? '#f87171' : 'var(--tx-d)'};">${m.bugs.length}</p>
+                <p class="font-heading font-bold text-2xl" style="color:${m.openBugs.length > 0 ? '#f87171' : 'var(--tx-d)'};">${m.openBugs.length}</p>
                 ${m.bugSev.Critical > 0 ? `<p class="text-[10px] mt-0.5 font-medium" style="color:#f87171;">${m.bugSev.Critical} critical</p>` : `<p class="text-[10px] mt-0.5" style="color:var(--tx-d);">open</p>`}
             </div>
             <div class="stat-card p-4">
