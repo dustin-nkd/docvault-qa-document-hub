@@ -1,6 +1,13 @@
 // ========================
 // THEME
 // ========================
+window.lockVault = function() {
+    if (!LocalAuth.isConfigured()) { toast('No master password set — nothing to lock.', 'info'); return; }
+    sessionStorage.removeItem(LocalAuth.SESSION_KEY);
+    sessionStorage.removeItem(LocalAuth.SESSION_PWD);
+    document.getElementById('lock-screen').classList.remove('hidden');
+};
+
 window.initTheme = function() {
     const saved = localStorage.getItem('qahub_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
