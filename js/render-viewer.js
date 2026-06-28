@@ -178,11 +178,8 @@ function renderViewer() {
                         <div class="flex-1" style="height:1px;background:var(--brd);"></div>
                     </div>` : ''}
                     <div class="mb-5">
-                        <div class="flex items-center justify-between mb-2">
-                            <p class="text-[11px] font-medium" style="color:var(--tx-m);">Body</p>
-                            <button class="btn-xs" style="color:var(--tx-d);" data-onclick="_copyPre('viewer-api-body', this)"><i class="fa-regular fa-copy mr-1"></i>Copy</button>
-                        </div>
-                        <pre id="viewer-api-body" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;">${escHtml(api.body)}</pre>
+                        <p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">Body</p>
+                        <pre id="viewer-api-body" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-body', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(api.body)}</pre>
                     </div>` : ''}
 
                     <!-- RESPONSE section label -->
@@ -192,11 +189,7 @@ function renderViewer() {
                         <span class="text-[10px] font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
                     </div>
                     ${api.response
-                        ? `<div class="flex items-center justify-between mb-2">
-                            <span></span>
-                            <button class="btn-xs" style="color:var(--tx-d);" data-onclick="_copyPre('viewer-api-response', this)"><i class="fa-regular fa-copy mr-1"></i>Copy</button>
-                           </div>
-                           <pre id="viewer-api-response" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;">${escHtml(api.response)}</pre>`
+                        ? `<pre id="viewer-api-response" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-response', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(api.response)}</pre>`
                         : `<p class="text-xs py-2" style="color:var(--tx-d);">No response body defined.</p>`}
                 </div>
             </div>`;
