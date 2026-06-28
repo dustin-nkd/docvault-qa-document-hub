@@ -966,9 +966,10 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>
         })).filter(s => s.key || s.value);
 
         const body = document.getElementById('ed-api-body')?.value || '';
+        const statusCode = document.getElementById('ed-api-status')?.value || '200';
         const response = document.getElementById('ed-api-response')?.value || '';
 
-        apiData = { method, endpoint, headers, params, body, response };
+        apiData = { method, endpoint, headers, params, body, statusCode, response };
 
         finalContent = `# ${title}
 
@@ -977,7 +978,7 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>
 ${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${headers.map(h => `| ${h.key || '-'} | ${h.value || '-'} | ${h.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
 ${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${p.key || '-'} | ${p.value || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
 ${body ? `## ${t('apiBody')}\n\`\`\`json\n${body}\n\`\`\`\n` : ''}
-${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
+${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
     } else if (cat === 'testrun') {
         const checkboxes = document.querySelectorAll('.testrun-tc-cb:checked');
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
