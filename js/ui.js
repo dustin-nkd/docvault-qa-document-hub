@@ -364,3 +364,4 @@ function _copyText(text, btn) {
 }
 window._shareCopyFeedback = function(btn, url) { _copyText(url, btn); };
 window._copyProp = function(btn) { _copyText(btn.dataset.copyValue || '', btn); };
+window._copyPre = function(preId, btn) { _copyText(document.getElementById(preId)?.textContent || '', btn); };
