@@ -117,6 +117,62 @@ function renderViewer() {
         </div>
         ` : ''}
 
+        ${doc.category === 'api' ? `
+        ${(() => {
+            const api = doc.apiData || {};
+            const method = api.method || 'GET';
+            const methodColor = { GET: '#10b981', POST: '#6366f1', PUT: '#f97316', PATCH: '#f59e0b', DELETE: '#ef4444' }[method] || '#60a5fa';
+            const statusCode = api.statusCode || '200';
+            const statusNum = parseInt(statusCode);
+            const statusColor = statusNum < 300 ? '#10b981' : statusNum < 400 ? '#60a5fa' : statusNum < 500 ? '#f97316' : '#ef4444';
+            const headers = (api.headers || []).filter(h => h.key);
+            const params = (api.params || []).filter(p => p.key);
+            return `
+            <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+                <div class="flex items-center gap-3 mb-5 p-3 rounded-lg font-mono" style="background:var(--card);border:1px solid var(--brd);">
+                    <span class="text-xs font-bold px-2.5 py-1 rounded shrink-0" style="background:${methodColor}22;color:${methodColor};">${escHtml(method)}</span>
+                    <span class="text-sm flex-1 truncate" style="color:var(--tx);">${escHtml(api.endpoint || '/')}</span>
+                </div>
+                ${headers.length ? `
+                <div class="mb-4">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Headers</p>
+                    <div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
+                        ${headers.map((h, i) => `
+                        <div class="flex items-center gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'var(--bg2)'};">
+                            <span class="shrink-0" style="color:var(--tx-d);min-width:120px;">${escHtml(h.key)}${h.req ? ' <span style="color:#f97316;">*</span>' : ''}</span>
+                            <span style="color:var(--tx);">${escHtml(h.value)}</span>
+                        </div>`).join('')}
+                    </div>
+                </div>` : ''}
+                ${params.length ? `
+                <div class="mb-4">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Query Parameters</p>
+                    <div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
+                        ${params.map((p, i) => `
+                        <div class="flex items-center gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'var(--bg2)'};">
+                            <span class="shrink-0" style="color:var(--tx-d);min-width:120px;">${escHtml(p.key)}${p.req ? ' <span style="color:#f97316;">*</span>' : ''}</span>
+                            <span style="color:var(--tx);">${escHtml(p.value)}</span>
+                        </div>`).join('')}
+                    </div>
+                </div>` : ''}
+                <div class="grid sm:grid-cols-2 gap-4">
+                    ${api.body ? `
+                    <div>
+                        <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Request Body</p>
+                        <pre class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;">${escHtml(api.body)}</pre>
+                    </div>` : '<div></div>'}
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <p class="text-[11px] font-medium tracking-wide uppercase" style="color:var(--tx-d);">Response</p>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded font-mono" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
+                        </div>
+                        ${api.response ? `<pre class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;">${escHtml(api.response)}</pre>` : '<p class="text-xs" style="color:var(--tx-d);">No response body.</p>'}
+                    </div>
+                </div>
+            </div>`;
+        })()}
+        ` : ''}
+
         ${doc.category === 'testrun' ? `
         <!-- Test Run Execution UI -->
         ${(() => {

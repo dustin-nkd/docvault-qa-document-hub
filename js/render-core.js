@@ -146,6 +146,7 @@ window.syncEditorState = function() {
                 req: row.querySelector('.api-req')?.checked || false
             })),
             body: document.getElementById('ed-api-body')?.value || '',
+            statusCode: document.getElementById('ed-api-status')?.value || '200',
             response: document.getElementById('ed-api-response')?.value || ''
         };
     }
