@@ -334,15 +334,32 @@
                 <i class="fa-solid fa-lock text-white text-2xl"></i>
             </div>
             <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
-            <p class="text-sm text-[var(--tx-m)] mb-8" id="lock-screen-hint">Your vault is end-to-end encrypted. Enter your Master Password to decrypt.</p>
+            <p class="text-sm mb-8" style="color:var(--tx-m);" id="lock-screen-hint">Your vault is end-to-end encrypted. Enter your Master Password to decrypt.</p>
 
             <form onsubmit="event.preventDefault(); window.LocalAuth.unlock(document.getElementById('master-password').value);">
                 <input type="password" id="master-password" class="form-input text-center text-lg tracking-widest mb-4" placeholder="••••••••" autocomplete="current-password" required>
                 <button type="submit" id="lock-submit-btn" class="btn-p w-full py-3">Unlock Vault</button>
             </form>
 
-            <div class="mt-6 pt-6 border-t border-[var(--brd)] text-xs text-[var(--tx-d)]">
-                <p id="lock-screen-sub">First time? The password you enter will become your Master Password.</p>
+            <div class="mt-6 pt-6 border-t" style="border-color:var(--brd);">
+                <!-- Password hint (injected by events.js if set) -->
+                <div id="lock-pwd-hint" class="hidden mb-3 px-3 py-2 rounded-lg text-left text-xs" style="background:var(--card);border:1px solid var(--brd);">
+                    <i class="fa-solid fa-lightbulb mr-1.5" style="color:var(--acc);"></i>
+                    <strong style="color:var(--tx-m);">Hint:</strong> <span id="lock-pwd-hint-text" style="color:var(--tx-m);"></span>
+                </div>
+                <p id="lock-screen-sub" class="text-xs" style="color:var(--tx-d);">First time? The password you enter will become your Master Password.</p>
+                <!-- Recovery toggle (shown by events.js if recovery blob exists) -->
+                <div id="lock-recovery-toggle" class="hidden mt-3">
+                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" onclick="var p=document.getElementById('lock-recovery-panel');p.classList.toggle('hidden');this.textContent=p.classList.contains('hidden')?'Forgot password?':'Cancel recovery';">Forgot password?</button>
+                </div>
+                <!-- Recovery panel -->
+                <div id="lock-recovery-panel" class="hidden mt-4">
+                    <p class="text-xs mb-2" style="color:var(--tx-m);">Enter your 20-character recovery key:</p>
+                    <form onsubmit="event.preventDefault(); recoverVault();">
+                        <input type="text" id="recovery-code-input" class="form-input text-center w-full mb-3" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off" maxlength="23" style="font-family:monospace;font-size:13px;letter-spacing:0.05em;">
+                        <button type="submit" id="recover-submit-btn" class="btn-p w-full py-2 text-sm">Recover Access</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
