@@ -294,8 +294,8 @@ function _getDashboardMetrics(docs) {
     const bugs = docs.filter(d => d.category === 'bug');
     const bugSev = { Critical: 0, Major: 0, Minor: 0, Trivial: 0 };
     bugs.forEach(b => { const s = b.bugData?.severity; if (s && bugSev[s] !== undefined) bugSev[s]++; });
-    const bugLifecycle = { new: 0, confirmed: 0, 'in-progress': 0, testing: 0, closed: 0 };
-    bugs.forEach(b => { const s = b.bugStatus || 'new'; if (bugLifecycle[s] !== undefined) bugLifecycle[s]++; });
+    const bugLifecycle = { new: 0, open: 0, 'in-progress': 0, resolved: 0, retest: 0, verified: 0, closed: 0 };
+    bugs.forEach(b => { const s = _normBugStatus(b.bugStatus); if (bugLifecycle[s] !== undefined) bugLifecycle[s]++; });
 
     // Test run pass/fail/blocked aggregated across all runs
     const runs = docs.filter(d => d.category === 'testrun');
@@ -367,17 +367,19 @@ function _renderHealthWidgets(m, inPanel) {
                         <span class="text-[11px] font-medium w-4 text-right" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${s.count}</span>
                     </div>`).join('')}
                 <p class="text-[10px] mt-2 mb-3" style="color:var(--tx-d);">${sevTotal} total open</p>
-                <div class="flex items-center gap-1 pt-2 border-t" style="border-color:var(--brd);">
+                <div class="flex items-center gap-0.5 pt-2 border-t" style="border-color:var(--brd);">
                     ${[
-                        { key: 'new',         label: 'New',       color: '#94a3b8' },
-                        { key: 'confirmed',   label: 'Confirmed', color: '#60a5fa' },
-                        { key: 'in-progress', label: 'In Prog',   color: '#a78bfa' },
-                        { key: 'testing',     label: 'Testing',   color: '#fb923c' },
-                        { key: 'closed',      label: 'Closed',    color: '#34d399' },
+                        { key: 'new',         label: 'New',      color: '#94a3b8' },
+                        { key: 'open',        label: 'Open',     color: '#60a5fa' },
+                        { key: 'in-progress', label: 'In Prog',  color: '#a78bfa' },
+                        { key: 'resolved',    label: 'Resolved', color: '#38bdf8' },
+                        { key: 'retest',      label: 'Retest',   color: '#c084fc' },
+                        { key: 'verified',    label: 'Verified', color: '#4ade80' },
+                        { key: 'closed',      label: 'Closed',   color: '#34d399' },
                     ].map(lc => `
                         <div class="flex-1 text-center">
-                            <p class="font-heading font-bold text-base" style="color:${m.bugLifecycle[lc.key] > 0 ? lc.color : 'var(--tx-d)'};font-variant-numeric:tabular-nums;">${m.bugLifecycle[lc.key]}</p>
-                            <p class="text-[9px]" style="color:var(--tx-d);">${lc.label}</p>
+                            <p class="font-heading font-bold text-sm" style="color:${m.bugLifecycle[lc.key] > 0 ? lc.color : 'var(--tx-d)'};font-variant-numeric:tabular-nums;">${m.bugLifecycle[lc.key]}</p>
+                            <p class="text-[8px]" style="color:var(--tx-d);">${lc.label}</p>
                         </div>`).join('')}
                 </div>
             </div>`);
@@ -775,21 +777,35 @@ function renderDocList() {
 // ========================
 // BUG KANBAN
 // ========================
+// Legacy bugStatus value normalization (old: confirmed→open, testing→retest)
+const BUG_STATUS_NORMALIZE = { confirmed: 'open', testing: 'retest' };
+function _normBugStatus(s) { return BUG_STATUS_NORMALIZE[s] || s || 'new'; }
+
+const RES_LABEL = { 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: 'Rejected', deferred: 'Deferred', fixed: 'Fixed' };
+const RES_COLOR = { 'wont-fix': '#6b7280', duplicate: '#94a3b8', rejected: '#f87171', deferred: '#fb923c', fixed: '#34d399' };
+
 function renderBugKanban(docs, isMobileSearch) {
     const SEV_COLOR = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
+    const showClosed = window._bugShowClosed !== false; // default show all
+
     const cols = [
         { id: 'new',         get label() { return t('bugNew'); },        color: '#94a3b8', icon: 'fa-circle-plus' },
-        { id: 'confirmed',   get label() { return t('bugConfirmed'); },  color: '#60a5fa', icon: 'fa-circle-check' },
+        { id: 'open',        get label() { return t('bugOpen'); },       color: '#60a5fa', icon: 'fa-circle-dot' },
         { id: 'in-progress', get label() { return t('bugInProgress'); }, color: '#a78bfa', icon: 'fa-spinner' },
-        { id: 'testing',     get label() { return t('bugTesting'); },    color: '#fb923c', icon: 'fa-flask' },
-        { id: 'closed',      get label() { return t('bugClosed'); },     color: '#34d399', icon: 'fa-circle-xmark' },
+        { id: 'resolved',    get label() { return t('bugResolved'); },   color: '#38bdf8', icon: 'fa-circle-half-stroke' },
+        { id: 'retest',      get label() { return t('bugRetest'); },     color: '#c084fc', icon: 'fa-rotate' },
+        { id: 'verified',    get label() { return t('bugVerified'); },   color: '#4ade80', icon: 'fa-circle-check' },
+        { id: 'closed',      get label() { return t('bugClosed'); },     color: '#34d399', icon: 'fa-circle-xmark', isEnd: true },
     ];
 
-    const kanbanHtml = cols.map(col => {
-        const colDocs = docs.filter(d => (d.bugStatus || 'new') === col.id);
+    const closedCount = docs.filter(d => _normBugStatus(d.bugStatus) === 'closed').length;
+    const visibleCols = showClosed ? cols : cols.filter(c => !c.isEnd);
+
+    const kanbanHtml = visibleCols.map(col => {
+        const colDocs = docs.filter(d => _normBugStatus(d.bugStatus) === col.id);
 
         return `
-        <div class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 280px; min-width: 280px;"
+        <div class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 260px; min-width: 260px;"
              data-ondragover="handleDragOver"
              data-ondrop="handleDrop('${col.id}')">
 
@@ -806,16 +822,23 @@ function renderBugKanban(docs, isMobileSearch) {
                     const sevColor = SEV_COLOR[sev] || '#f59e0b';
                     const env = d.bugData?.env && d.bugData.env !== '-' ? d.bugData.env : '';
                     const browser = d.bugData?.browser && d.bugData.browser !== '-' ? d.bugData.browser : '';
+                    const assignee = d.bugData?.assignee || '';
+                    const resolution = d.bugData?.resolution || '';
+                    const reopenCount = d.bugData?.reopenCount || 0;
                     return `
                     <div class="doc-card flex flex-col cursor-grab active:cursor-grabbing"
                          draggable="true"
                          data-ondragstart="handleDragStart('${d.id}')"
                          data-ondragend="handleDragEnd"
                          data-onclick="viewDoc('${d.id}')"
-                         style="background:var(--card); padding: 12px; margin-bottom: 0px; border-radius: 8px; border-left: 3px solid ${sevColor};">
+                         style="background:var(--card); padding: 12px; margin-bottom: 0; border-radius: 8px; border-left: 3px solid ${sevColor};">
 
                         <div class="flex items-start justify-between mb-2">
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${sev.toUpperCase()}</span>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${sev.toUpperCase()}</span>
+                                ${resolution ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:${(RES_COLOR[resolution] || '#6b7280')}18; color:${RES_COLOR[resolution] || '#6b7280'};">${RES_LABEL[resolution] || resolution}</span>` : ''}
+                                ${reopenCount > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:#f8717118;color:#f87171;" title="Reopened ${reopenCount}x"><i class="fa-solid fa-rotate-left" style="font-size:8px;"></i> ${reopenCount}</span>` : ''}
+                            </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2">
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
@@ -828,6 +851,7 @@ function renderBugKanban(docs, isMobileSearch) {
 
                         <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
 
+                        ${assignee ? `<p class="text-[10px] mb-1.5 flex items-center gap-1" style="color:var(--tx-d);"><i class="fa-solid fa-user" style="font-size:8px;"></i> ${escHtml(assignee)}</p>` : ''}
                         ${env || browser ? `<p class="text-[10px] mb-2 truncate" style="color:var(--tx-d);"><i class="fa-solid fa-bug mr-1"></i>${[env, browser].filter(Boolean).join(' · ')}</p>` : ''}
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
@@ -860,6 +884,10 @@ function renderBugKanban(docs, isMobileSearch) {
                 {value: 'draft', label: 'Draft'},
                 {value: 'archived', label: 'Archived'}
             ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)')}
+            <button class="btn-s text-xs flex items-center gap-1.5" style="${showClosed ? 'color:var(--acc);' : 'color:var(--tx-d);'}" data-onclick="window._bugShowClosed=!window._bugShowClosed;renderContent();">
+                <i class="fa-solid fa-${showClosed ? 'eye-slash' : 'eye'}" style="font-size:10px;"></i>
+                ${showClosed ? 'Hide' : 'Show'} Closed${!showClosed && closedCount > 0 ? ` (${closedCount})` : ''}
+            </button>
             <div class="flex-1"></div>
             <button class="btn-p text-sm" data-onclick="createDoc('bug')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newBug')}</button>
         </div>

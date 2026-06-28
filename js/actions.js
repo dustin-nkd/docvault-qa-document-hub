@@ -639,6 +639,55 @@ function viewDoc(id) {
     _migrateDocImages(doc);
 }
 
+// ========================
+// BUG LIFECYCLE ACTIONS
+// ========================
+window.resolveBug = async function(id, resolution) {
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx === -1) return;
+    document.getElementById('doc-menu')?.remove();
+    const doc = documents[idx];
+    doc.bugStatus = 'closed';
+    if (!doc.bugData) doc.bugData = {};
+    doc.bugData.resolution = resolution;
+    doc.updatedAt = Date.now();
+    await persist();
+    renderContent();
+    const label = { 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: 'Rejected', deferred: 'Deferred' }[resolution] || resolution;
+    toast(`Bug closed: ${label}`, 'info');
+};
+
+window.promptDuplicateBug = function(id) {
+    document.getElementById('doc-menu')?.remove();
+    const ref = prompt('Enter the title or ID of the original bug:');
+    if (!ref) return;
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx === -1) return;
+    const doc = documents[idx];
+    doc.bugStatus = 'closed';
+    if (!doc.bugData) doc.bugData = {};
+    doc.bugData.resolution = 'duplicate';
+    doc.bugData.duplicateOf = ref.trim();
+    doc.updatedAt = Date.now();
+    persist().then(() => { renderContent(); toast('Marked as Duplicate', 'info'); });
+};
+
+window.reopenBug = async function(id) {
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx === -1) return;
+    document.getElementById('doc-menu')?.remove();
+    const doc = documents[idx];
+    doc.bugStatus = 'open';
+    if (!doc.bugData) doc.bugData = {};
+    doc.bugData.reopenCount = (doc.bugData.reopenCount || 0) + 1;
+    doc.bugData.resolution = '';
+    doc.bugData.duplicateOf = '';
+    doc.updatedAt = Date.now();
+    await persist();
+    renderContent();
+    toast('Bug reopened', 'info');
+};
+
 window.cancelEdit = function() {
     if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
     window.tuiEditor = null;
@@ -671,10 +720,15 @@ async function saveDoc() {
         const precond = document.getElementById('ed-bug-precond')?.value || '';
         const stepInputs = document.querySelectorAll('.bug-step-input');
         const steps = Array.from(stepInputs).map(inp => inp.value.trim()).filter(v => v);
+        const assignee = document.getElementById('ed-bug-assignee')?.value || '';
         const expected = document.getElementById('ed-bug-expected')?.value || '';
         const actual = document.getElementById('ed-bug-actual')?.value || '';
+        const existing = state.editingDoc?.bugData || {};
 
-        bugData = { env, browser, severity, precond, steps, expected, actual };
+        bugData = { env, browser, severity, assignee, precond, steps, expected, actual,
+            resolution: existing.resolution || '',
+            duplicateOf: existing.duplicateOf || '',
+            reopenCount: existing.reopenCount || 0 };
 
         finalContent = `# ${title}
 
