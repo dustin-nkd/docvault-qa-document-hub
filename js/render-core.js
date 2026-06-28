@@ -341,7 +341,7 @@ function _getDashboardMetrics(docs) {
     return { bugs, bugSev, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage };
 }
 
-function _renderHealthWidgets(m) {
+function _renderHealthWidgets(m, inPanel) {
     const widgets = [];
 
     // Widget 1: Bug Severity
@@ -447,6 +447,15 @@ function _renderHealthWidgets(m) {
 
     if (widgets.length === 0) return '';
 
+    if (inPanel) {
+        return `
+            <div>
+                <h3 class="font-heading font-semibold text-base mb-3" style="color:var(--tx);">QA Health</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    ${widgets.join('')}
+                </div>
+            </div>`;
+    }
     return `
         <div class="grid gap-4 mb-8" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
             ${widgets.join('')}
@@ -459,91 +468,135 @@ function _renderHealthWidgets(m) {
 function renderDashboard() {
     const activeDocs = documents.filter(d => d.status !== 'deleted');
     const total = activeDocs.length;
-    const favs = activeDocs.filter(d => d.favorite).length;
     const recent = [...activeDocs].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
+    const m = _getDashboardMetrics(activeDocs);
+
+    // Key metric derived values
+    const passRate = m.rTotal > 0 ? Math.round(m.rPass / m.rTotal * 100) : null;
+    const passColor = passRate === null ? 'var(--tx-d)' : passRate >= 80 ? '#34d399' : passRate >= 60 ? '#fb923c' : '#f87171';
+    const activeTasks = (m.board.inProgress || 0) + (m.board.review || 0);
+
+    // Category inventory — non-zero cats as clickable pills
     const catCounts = {};
     Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
-
-    const healthMetrics = _getDashboardMetrics(activeDocs);
+    const nonZeroCats = Object.entries(catCounts).filter(([, v]) => v > 0);
 
     return `<div class="fade-up max-w-6xl mx-auto">
-        <!-- Stats -->
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+
+        <!-- KEY METRICS ROW -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
             <div class="stat-card sc-total p-4">
-                <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">Total</p>
+                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Total Docs</p>
                 <p class="font-heading font-bold text-2xl" style="color:var(--acc);">${total}</p>
-                <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
             </div>
-            ${Object.entries(CAT_META).map(([k, m]) => `
-                <div class="stat-card sc-${{runbook:'run',testcases:'tc',knowledge:'kn',task:'task',bug:'bug',testplan:'tp',api:'api',credential:'cred',environment:'env',testrun:'testrun'}[k]} p-4">
-                    <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">${m.label}</p>
-                    <p class="font-heading font-bold text-2xl" style="color:${m.color};">${catCounts[k]}</p>
-                    <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
-                </div>
-            `).join('')}
+            <div class="stat-card p-4" style="${m.bugSev.Critical > 0 ? 'border-color:#f87171;' : ''}">
+                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Open Bugs</p>
+                <p class="font-heading font-bold text-2xl" style="color:${m.bugs.length > 0 ? '#f87171' : 'var(--tx-d)'};">${m.bugs.length}</p>
+                ${m.bugSev.Critical > 0 ? `<p class="text-[10px] mt-0.5 font-medium" style="color:#f87171;">${m.bugSev.Critical} critical</p>` : `<p class="text-[10px] mt-0.5" style="color:var(--tx-d);">open</p>`}
+            </div>
+            <div class="stat-card p-4">
+                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Pass Rate</p>
+                <p class="font-heading font-bold text-2xl" style="color:${passColor};">${passRate !== null ? passRate + '%' : '—'}</p>
+                <p class="text-[10px] mt-0.5" style="color:var(--tx-d);">${m.runs.length > 0 ? m.runs.length + ' run' + (m.runs.length > 1 ? 's' : '') : 'no runs yet'}</p>
+            </div>
+            <div class="stat-card p-4">
+                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Active Tasks</p>
+                <p class="font-heading font-bold text-2xl" style="color:${activeTasks > 0 ? '#60a5fa' : 'var(--tx-d)'};">${activeTasks}</p>
+                <p class="text-[10px] mt-0.5" style="color:var(--tx-d);">in progress + review</p>
+            </div>
+            <div class="stat-card p-4" style="${m.stale.length > 0 ? 'border-color:#fb923c;' : ''}">
+                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Need Review</p>
+                <p class="font-heading font-bold text-2xl" style="color:${m.stale.length > 0 ? '#fb923c' : 'var(--tx-d)'};">${m.stale.length}</p>
+                <p class="text-[10px] mt-0.5" style="color:var(--tx-d);">stale &gt;30 days</p>
+            </div>
         </div>
 
-        <!-- Health Widgets -->
-        ${_renderHealthWidgets(healthMetrics)}
-
+        <!-- MAIN 2-COLUMN LAYOUT -->
         <div class="grid lg:grid-cols-3 gap-6">
-            <!-- Recent -->
-            <div class="lg:col-span-2">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-heading font-semibold text-base">${t('recentlyUpdated')}</h3>
-                    <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('documents','all')">${t('viewAll')} <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i></button>
-                </div>
-                <div class="flex flex-col gap-2.5">
-                    ${recent.length === 0 ? `<div class="text-center py-10" style="color:var(--tx-d);"><i class="fa-solid fa-inbox text-3xl mb-3 pulse-s block"></i><p class="text-sm">${t('noDocYet')}</p></div>` :
-                    recent.map(d => `
-                        <div class="doc-card p-4 flex items-start gap-3" data-onclick="viewDoc('${d.id}')">
-                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style="background:${CAT_META[d.category].color}12;">
-                                <i class="fa-solid ${CAT_META[d.category].icon} text-xs" style="color:${CAT_META[d.category].color};"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(d.title)}</p>
-                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-                                    <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
-                                    <span class="st-badge st-${d.status}">${d.status}</span>
-                                    <span class="text-[11px]" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
+
+            <!-- LEFT: QA Health + Recently Updated -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+
+                ${_renderHealthWidgets(m, true)}
+
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-heading font-semibold text-base">${t('recentlyUpdated')}</h3>
+                        <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('documents','all')">${t('viewAll')} <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i></button>
+                    </div>
+                    <div class="flex flex-col gap-2.5">
+                        ${recent.length === 0 ? `<div class="text-center py-10" style="color:var(--tx-d);"><i class="fa-solid fa-inbox text-3xl mb-3 pulse-s block"></i><p class="text-sm">${t('noDocYet')}</p></div>` :
+                        recent.map(d => `
+                            <div class="doc-card p-3.5 flex items-center gap-3" data-onclick="viewDoc('${d.id}')">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:${CAT_META[d.category].color}12;">
+                                    <i class="fa-solid ${CAT_META[d.category].icon} text-xs" style="color:${CAT_META[d.category].color};"></i>
                                 </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(d.title)}</p>
+                                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                        <span class="st-badge st-${d.status}">${d.status}</span>
+                                        <span class="text-[11px]" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
+                                    </div>
+                                </div>
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-sm p-1 shrink-0" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                </button>
                             </div>
-                            <button class="fav-btn ${d.favorite ? 'on' : ''} text-sm p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
-                                <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
-                            </button>
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
                 </div>
             </div>
 
-            <!-- Quick Actions + Favorites -->
+            <!-- RIGHT: Inventory + Quick Create + Favorites -->
             <div class="flex flex-col gap-6">
+
+                ${nonZeroCats.length > 0 ? `
                 <div>
-                    <h3 class="font-heading font-semibold text-base mb-4">Quick Actions</h3>
-                    <div class="grid grid-cols-2 gap-2.5">
-                        ${Object.entries(CAT_META).map(([k, m]) => `
-                            <button class="tpl-card text-center py-4" data-onclick="createDoc('${k}')">
-                                <i class="fa-solid ${m.icon} text-lg mb-2 block" style="color:${m.color};"></i>
-                                <p class="text-xs font-semibold" style="color:var(--tx);">${m.label}</p>
+                    <h3 class="font-heading font-semibold text-base mb-3">Inventory</h3>
+                    <div class="flex flex-wrap gap-2">
+                        ${nonZeroCats.map(([k, v]) => `
+                            <button class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                                style="background:${CAT_META[k].color}15;color:${CAT_META[k].color};border:1px solid ${CAT_META[k].color}25;transition:opacity .15s;"
+                                data-onclick="navigate('documents','${k}')">
+                                <i class="fa-solid ${CAT_META[k].icon} text-[10px]"></i>
+                                ${CAT_META[k].label}
+                                <span style="opacity:.7;">${v}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>` : ''}
+
+                <div>
+                    <h3 class="font-heading font-semibold text-base mb-3">Quick Create</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${Object.entries(CAT_META).map(([k, cm]) => `
+                            <button class="tpl-card text-center py-3" data-onclick="createDoc('${k}')">
+                                <i class="fa-solid ${cm.icon} text-base mb-1.5 block" style="color:${cm.color};"></i>
+                                <p class="text-[11px] font-semibold" style="color:var(--tx);">${cm.label}</p>
                             </button>
                         `).join('')}
                     </div>
                 </div>
+
                 <div>
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-3">
                         <h3 class="font-heading font-semibold text-base">${t('favorites')}</h3>
                         <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('favorites')">${t('viewAll')}</button>
                     </div>
-                    <div class="flex flex-col gap-2">
-                        ${favs === 0 ? `<p class="text-xs text-center py-4" style="color:var(--tx-d);">${t('noFavorites')}</p>` :
-                        activeDocs.filter(d => d.favorite).slice(0, 4).map(d => `
-                            <div class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer" style="transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="viewDoc('${d.id}')">
+                    <div class="flex flex-col gap-1.5">
+                        ${activeDocs.filter(d => d.favorite).length === 0 ? `<p class="text-xs text-center py-4" style="color:var(--tx-d);">${t('noFavorites')}</p>` :
+                        activeDocs.filter(d => d.favorite).slice(0, 5).map(d => `
+                            <div class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer" style="transition:background .15s;"
+                                data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'"
+                                data-onclick="viewDoc('${d.id}')">
                                 <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${CAT_META[d.category].color};"></span>
                                 <span class="text-xs truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
                             </div>
                         `).join('')}
                     </div>
                 </div>
+
             </div>
         </div>
     </div>`;
