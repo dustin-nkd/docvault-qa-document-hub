@@ -229,7 +229,8 @@ function updateSidebar() {
     const cntTrash = document.getElementById('cnt-trash');
     if (cntTrash) cntTrash.textContent = trashCount;
 
-    document.getElementById('storage-info').textContent = activeDocs.length + ' documents saved locally';
+    const storageEl = document.getElementById('storage-info');
+    if (storageEl) storageEl.textContent = activeDocs.length + ' documents saved locally';
 
     document.querySelectorAll('.nav-item').forEach(n => {
         n.classList.remove('active');
