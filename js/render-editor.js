@@ -99,6 +99,11 @@ function renderEditor() {
         </div>
 
         <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugAssignee')}</label>
+            <input id="ed-bug-assignee" class="form-input" placeholder="${t('bugAssigneePl')}" value="${escHtml(bugData?.assignee || '')}">
+        </div>
+
+        <div class="mb-4">
             <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugPrecond')}</label>
             <textarea id="ed-bug-precond" class="form-input" style="height:60px;" placeholder="${t('bugPrecondPl')}">${escHtml(bugData?.precond || '')}</textarea>
         </div>

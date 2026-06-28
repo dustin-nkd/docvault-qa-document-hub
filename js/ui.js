@@ -250,6 +250,21 @@ function showDocMenu(id, btn) {
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
                 <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
         `;
+        const bugDoc = documents.find(d => d.id === id);
+        if (bugDoc?.category === 'bug') {
+            const bs = bugDoc.bugStatus || 'new';
+            const isClosed = bs === 'closed';
+            menuHtml += `<div style="height:1px;background:var(--brd);margin:4px 0;"></div>`;
+            if (isClosed) {
+                menuHtml += `<button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#fb923c;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="reopenBug('${id}')"><i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('bugReopen')}</button>`;
+            } else {
+                menuHtml += `
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#94a3b8;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="resolveBug('${id}','wont-fix')"><i class="fa-solid fa-ban w-4 text-center"></i> ${t('bugWontFix')}</button>
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#94a3b8;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="promptDuplicateBug('${id}')"><i class="fa-solid fa-copy w-4 text-center"></i> ${t('bugDuplicate')}</button>
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#94a3b8;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="resolveBug('${id}','rejected')"><i class="fa-solid fa-circle-xmark w-4 text-center"></i> ${t('bugRejected')}</button>
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#fb923c;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="resolveBug('${id}','deferred')"><i class="fa-solid fa-clock w-4 text-center"></i> ${t('bugDeferred')}</button>`;
+            }
+        }
     }
     menu.innerHTML = menuHtml;
     document.body.appendChild(menu);
