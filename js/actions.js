@@ -408,57 +408,81 @@ async function loadSharedDoc(shareId, keyBase64) {
 }
 
 // ========================
-// IMAGE UPLOAD (GitHub CDN)
+// IMAGE COMPRESSION + INLINE BASE64
 // ========================
+async function compressImage(blob, maxPx, quality) {
+    // PNG with transparency stays PNG; everything else becomes JPEG
+    const keepPng = blob.type === 'image/png';
+    const bitmap = await createImageBitmap(blob);
+    let { width, height } = bitmap;
+    if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else { width = Math.round(width * maxPx / height); height = maxPx; }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    return canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', keepPng ? undefined : quality);
+}
+
 async function uploadImageToCloud(blob, callback) {
-    let base64DataUrl;
     try {
-        base64DataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error(t('imgReadFail')));
-            reader.readAsDataURL(blob);
-        });
+        const dataUrl = await compressImage(blob, 1200, 0.80);
+        callback(dataUrl, blob.name || 'image');
     } catch(err) {
         toast(t('imgProcessFail'), 'error');
-        return;
     }
+}
 
-    callback(base64DataUrl, blob.name || 'image');
+async function _migrateDocImages(doc) {
+    if (!doc?.content) return;
+    const CDN_RE = /https:\/\/raw\.githubusercontent\.com\/dustin-nkd\/docvault-assets\/[^\s)"]+/g;
+    const urls = [...new Set(doc.content.match(CDN_RE) || [])];
+    if (urls.length === 0) return;
 
     const settings = await GitHubSync.getSettings();
-    if (!settings || !settings.token) return;
+    if (!settings?.token) return;
 
-    const ext = blob.type.split('/')[1] || 'png';
-    const filename = `img_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
-    const path = (settings.path || 'images').replace(/\/+$/, '') + '/' + filename;
+    let content = doc.content;
+    let changed = false;
 
-    try {
-        const res = await fetch(
-            `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${settings.token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/vnd.github+json'
-                },
-                body: JSON.stringify({
-                    message: `Upload image: ${filename}`,
-                    content: base64DataUrl.split(',')[1],
-                    branch: settings.branch || 'main'
-                })
-            }
-        );
+    for (const url of urls) {
+        try {
+            const pathMatch = url.match(/\/docvault-assets\/[^/]+\/(.+)$/);
+            if (!pathMatch) continue;
+            const filePath = pathMatch[1];
+            const apiUrl = `https://api.github.com/repos/dustin-nkd/docvault-assets/contents/${filePath}`;
+            const res = await fetch(apiUrl, {
+                headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json' }
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const rawBase64 = data.content.replace(/\n/g, '');
+            const ext = filePath.split('.').pop().toLowerCase();
+            const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+            const mime = mimeMap[ext] || 'image/jpeg';
+            const binaryStr = atob(rawBase64);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mime });
+            const compressed = await compressImage(blob, 1200, 0.80);
+            content = content.split(url).join(compressed);
+            changed = true;
+        } catch(e) {
+            console.warn('[migrate-img] failed for', url, e.message);
+        }
+    }
 
-        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
-        const data = await res.json();
-        const cdnUrl = data.content.download_url;
-
-        pendingImageReplacements.set(base64DataUrl, cdnUrl);
-        toast(t('imgUploadSuccess'), 'success');
-    } catch(err) {
-        console.warn('[IMG] GitHub upload failed, keeping base64:', err.message);
+    if (changed) {
+        const idx = documents.findIndex(d => d.id === doc.id);
+        if (idx !== -1) {
+            documents[idx].content = content;
+            state.editingDoc = { ...documents[idx] };
+            await persist();
+            render();
+            toast('Images migrated to inline storage', 'info');
+        }
     }
 }
 
@@ -466,7 +490,7 @@ async function uploadImageToCloud(blob, callback) {
 // GITHUB SETTINGS MODAL
 // ========================
 window.showGitHubSettingsModal = async function() {
-    let ghSettings = { owner: '', repo: '', branch: 'main', token: '', path: 'images' };
+    let ghSettings = { owner: '', repo: '', branch: 'main', token: '' };
     const storedGh = await GitHubSync.getSettings();
     if (storedGh) {
         ghSettings = { ...ghSettings, ...storedGh };
@@ -612,6 +636,7 @@ function viewDoc(id) {
     state.lastSelectedId = null;
     history.replaceState({}, '', '?view=' + id);
     render();
+    _migrateDocImages(doc);
 }
 
 window.cancelEdit = function() {
@@ -630,12 +655,6 @@ async function saveDoc() {
     const status = document.getElementById('ed-status')?.value;
 
     let content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
-    if (pendingImageReplacements.size > 0) {
-        pendingImageReplacements.forEach((cdnUrl, base64Url) => {
-            content = content.split(base64Url).join(cdnUrl);
-        });
-        pendingImageReplacements.clear();
-    }
     let finalContent = content;
     let bugData = null;
     let tcData = null;
