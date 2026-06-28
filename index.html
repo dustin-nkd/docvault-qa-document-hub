@@ -350,7 +350,7 @@
                 <p id="lock-screen-sub" class="text-xs" style="color:var(--tx-d);">First time? The password you enter will become your Master Password.</p>
                 <!-- Recovery toggle (shown by events.js if recovery blob exists) -->
                 <div id="lock-recovery-toggle" class="hidden mt-3">
-                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" onclick="var p=document.getElementById('lock-recovery-panel');p.classList.toggle('hidden');this.textContent=p.classList.contains('hidden')?'Forgot password?':'Cancel recovery';">Forgot password?</button>
+                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" onclick="var p=document.getElementById('lock-recovery-panel');var h=document.getElementById('lock-pwd-hint');var show=p.classList.contains('hidden');p.classList.toggle('hidden');h&&(show?h.classList.remove('hidden'):h.classList.add('hidden'));this.textContent=show?'Cancel recovery':'Forgot password?';">Forgot password?</button>
                 </div>
                 <!-- Recovery panel -->
                 <div id="lock-recovery-panel" class="hidden mt-4">

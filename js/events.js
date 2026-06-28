@@ -474,10 +474,9 @@ if (_shareIdOnLoad) {
         } else {
             const pwdHint = window.LocalAuth.getHint();
             if (pwdHint) {
-                const hintBox = document.getElementById('lock-pwd-hint');
                 const hintText = document.getElementById('lock-pwd-hint-text');
-                if (hintBox) hintBox.classList.remove('hidden');
                 if (hintText) hintText.textContent = pwdHint;
+                // hint stays hidden — only revealed when "Forgot password?" is clicked
             }
             if (localStorage.getItem(window.LocalAuth.RECOVERY_KEY)) {
                 const toggle = document.getElementById('lock-recovery-toggle');
