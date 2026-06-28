@@ -96,6 +96,7 @@ async function init() {
 }
 
 async function startApp() {
+    initTheme();
     const configured = await GitHubSync.isConfigured();
     if (!configured) {
         const d = GitHubSync.DEFAULTS;

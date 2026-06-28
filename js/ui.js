@@ -1,4 +1,18 @@
 // ========================
+// THEME
+// ========================
+window.initTheme = function() {
+    const saved = localStorage.getItem('qahub_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+};
+window.toggleTheme = function() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('qahub_theme', next);
+};
+
+// ========================
 // TOAST
 // ========================
 function toast(msg, type = 'success') {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi" class="scroll-smooth">
+<html lang="vi" class="scroll-smooth" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,6 +27,7 @@
       }
     </script>
 
+    <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('qahub_theme')||'dark')}catch(e){}</script>
     <style>
         :root {
             --bg: #070b14;
@@ -41,6 +42,7 @@
             --acc: #10b981;
             --acc-l: #34d399;
             --acc-d: #059669;
+            --bg-glass: rgba(7,11,20,0.85);
             --c-run: #14b8a6;
             --c-onb: #06b6d4;
             --c-tc: #f59e0b;
@@ -53,6 +55,21 @@
             --c-cred: #eab308;
             --c-testrun: #6366f1;
             --c-rel: #a855f7;
+        }
+        [data-theme="light"] {
+            --bg: #f0f4f8;
+            --bg2: #f8fafc;
+            --card: #ffffff;
+            --card-h: #f0f4f8;
+            --brd: #dde3ec;
+            --brd-l: #c1cfe0;
+            --tx: #0e1a2d;
+            --tx-m: #3d5068;
+            --tx-d: #6b7fa0;
+            --acc: #059669;
+            --acc-l: #10b981;
+            --acc-d: #047857;
+            --bg-glass: rgba(240,244,248,0.85);
         }
         * { box-sizing: border-box; }
         body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--tx); margin: 0; overflow: hidden; height: 100vh; }
@@ -75,9 +92,11 @@
         .nav-item:hover { background: rgba(16,185,129,0.06); border-left-color: rgba(16,185,129,0.3); }
         .nav-item.active { background: rgba(16,185,129,0.1); border-left-color: var(--acc); color: var(--acc-l); }
         .nav-item .count { font-size: 11px; background: rgba(255,255,255,0.06); min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; padding: 0 6px; border-radius: 10px; color: var(--tx-d); }
+        [data-theme="light"] .nav-item .count { background: rgba(0,0,0,0.06); }
 
         .doc-card { background: var(--card); border: 1px solid var(--brd); border-radius: 12px; transition: all .25s; cursor: pointer; position: relative; }
         .doc-card:hover { background: var(--card-h); border-color: var(--brd-l); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        [data-theme="light"] .doc-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
 
         .cat-runbook { background: rgba(20,184,166,0.12); color: var(--c-run); }
         .cat-onboarding { background: rgba(6,182,212,0.12); color: var(--c-onb); }
@@ -409,6 +428,10 @@
                     <i class="fa-solid fa-database text-[10px]"></i>
                     <span id="storage-info">0 documents saved locally</span>
                 </div>
+                <button class="text-[var(--tx-m)] hover:text-[var(--acc)] cursor-pointer transition-colors" data-onclick="toggleTheme()" title="Toggle light/dark theme">
+                    <i class="fa-solid fa-moon theme-icon-dark"></i>
+                    <i class="fa-solid fa-sun theme-icon-light"></i>
+                </button>
                 <button class="text-[var(--tx-m)] hover:text-[var(--acc)] cursor-pointer transition-colors" data-onclick="showGitHubSettingsModal()" title="GitHub Image Settings">
                     <i class="fa-solid fa-gear"></i>
                 </button>
@@ -418,7 +441,7 @@
         <!-- Main -->
         <main class="flex-1 flex flex-col h-full overflow-hidden bg-grid">
             <!-- Header -->
-            <header id="app-header" class="shrink-0 flex items-center gap-4 px-6 py-4 border-b" style="background:rgba(7,11,20,0.8);backdrop-filter:blur(12px);border-color:var(--brd);"></header>
+            <header id="app-header" class="shrink-0 flex items-center gap-4 px-6 py-4 border-b" style="background:var(--bg-glass);backdrop-filter:blur(12px);border-color:var(--brd);"></header>
             <!-- Content -->
             <div id="content" class="flex-1 overflow-y-auto px-6 py-5"></div>
         </main>
