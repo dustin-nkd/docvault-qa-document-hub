@@ -15,7 +15,7 @@ function updateHeader() {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
         actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
-        const catLabel = state.category === 'all' ? t('allDocuments') : (state.view === 'favorites' ? t('favorites') : CAT_META[state.category]?.label + 's');
+        const catLabel = state.view === 'favorites' ? t('favorites') : (state.category === 'all' ? t('allDocuments') : CAT_META[state.category]?.label + 's');
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
         actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'editor') {
@@ -36,9 +36,12 @@ function updateHeader() {
                 <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
                 <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
                 ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="showHistoryPanel('${doc.id}')"><i class="fa-regular fa-clock mr-1.5"></i>History</button>` : ''}
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="exportDoc('${doc.id}')"><i class="fa-solid fa-file-export mr-1.5"></i>Export</button>` : ''}
                 <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
             `;
         }
+    } else if (state.view === 'trash') {
+        title = `<h2 class="font-heading font-bold text-lg">${t('trash') || 'Trash'}</h2>`;
     }
 
     const isSearchView = state.view === 'documents' || state.view === 'favorites';
