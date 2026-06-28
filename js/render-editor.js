@@ -225,92 +225,97 @@ function renderEditor() {
             </div>
         </div>
         ` : category === 'api' ? `
-        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
-            <div class="grid sm:grid-cols-4 gap-4 mb-4">
-                <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiMethod')}</label>
-                    ${renderSelect('ed-api-method', ['GET','POST','PUT','PATCH','DELETE'].map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono text-sm')}
+        <div class="rounded-xl mb-4 overflow-hidden" style="border:1px solid var(--brd);">
+
+            <!-- Method + Endpoint unified bar -->
+            <div class="flex items-stretch" style="background:var(--card);border-bottom:1px solid var(--brd);">
+                <div style="width:120px;flex-shrink:0;border-right:1px solid var(--brd);">
+                    ${renderSelect('ed-api-method', ['GET','POST','PUT','PATCH','DELETE'].map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono font-bold text-sm')}
                 </div>
-                <div class="sm:col-span-3">
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiEndpoint')}</label>
-                    <input id="ed-api-endpoint" class="form-input font-mono text-sm w-full" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
-                </div>
+                <input id="ed-api-endpoint" class="flex-1 bg-transparent border-0 outline-none font-mono text-sm px-4" style="color:var(--tx);min-width:0;" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
             </div>
 
-            <div class="grid sm:grid-cols-2 gap-6 mb-4">
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('apiHeaders')}</label>
-                    </div>
-                    <div id="api-headers-container">
-                        ${(apiData?.headers?.length ? apiData.headers : []).map(h => `
-                            <div class="flex items-center gap-2 mb-2 api-header-row">
-                                <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(h.key)}">
-                                <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(h.value)}">
-                                <div class="flex items-center gap-1">
-                                    <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${h.req ? 'checked' : ''}>
-                                    <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button class="btn-s text-xs mt-1" data-onclick="addApiHeader()"><i class="fa-solid fa-plus mr-1"></i> ${t('addHeader')}</button>
+            <div class="p-5">
+                <!-- REQUEST section -->
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Request</span>
+                    <div class="flex-1" style="height:1px;background:var(--brd);"></div>
                 </div>
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('apiParams')}</label>
-                    </div>
-                    <div id="api-params-container">
-                        ${(apiData?.params?.length ? apiData.params : []).map(p => `
-                            <div class="flex items-center gap-2 mb-2 api-param-row">
-                                <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(p.key)}">
-                                <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(p.value)}">
-                                <div class="flex items-center gap-1">
-                                    <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${p.req ? 'checked' : ''}>
-                                    <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button class="btn-s text-xs mt-1" data-onclick="addApiParam()"><i class="fa-solid fa-plus mr-1"></i> ${t('addParam')}</button>
-                </div>
-            </div>
 
-            <div class="grid sm:grid-cols-2 gap-6 mb-2">
-                <div>
-                    <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
-                        <span>${t('apiBody')}</span>
-                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-body')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
-                    </label>
-                    <textarea id="ed-api-body" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(apiData?.body || '')}</textarea>
-                </div>
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <span class="text-xs font-medium" style="color:var(--tx-m);">${t('apiResponse')}</span>
-                        <div class="flex items-center gap-2">
-                            <div style="width:130px;">
-                                ${renderSelect('ed-api-status', [
-                                    {value: '200', label: '200 OK'},
-                                    {value: '201', label: '201 Created'},
-                                    {value: '204', label: '204 No Content'},
-                                    {value: '301', label: '301 Moved Permanently'},
-                                    {value: '400', label: '400 Bad Request'},
-                                    {value: '401', label: '401 Unauthorized'},
-                                    {value: '403', label: '403 Forbidden'},
-                                    {value: '404', label: '404 Not Found'},
-                                    {value: '409', label: '409 Conflict'},
-                                    {value: '422', label: '422 Unprocessable Entity'},
-                                    {value: '429', label: '429 Too Many Requests'},
-                                    {value: '500', label: '500 Internal Server Error'},
-                                    {value: '502', label: '502 Bad Gateway'},
-                                    {value: '503', label: '503 Service Unavailable'},
-                                ], apiData?.statusCode || '200', 'w-full font-mono text-xs')}
-                            </div>
-                            <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                <!-- Headers + Params side by side -->
+                <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <p class="text-xs font-medium mb-2" style="color:var(--tx-m);">${t('apiHeaders')}</p>
+                        <div id="api-headers-container">
+                            ${(apiData?.headers?.length ? apiData.headers : []).map(h => `
+                                <div class="flex items-center gap-1.5 mb-1.5 api-header-row">
+                                    <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(h.key)}">
+                                    <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(h.value)}">
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${h.req ? 'checked' : ''}>
+                                        <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
+                        <button class="btn-s text-xs mt-1" data-onclick="addApiHeader()"><i class="fa-solid fa-plus mr-1"></i> ${t('addHeader')}</button>
                     </div>
-                    <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
+                    <div>
+                        <p class="text-xs font-medium mb-2" style="color:var(--tx-m);">${t('apiParams')}</p>
+                        <div id="api-params-container">
+                            ${(apiData?.params?.length ? apiData.params : []).map(p => `
+                                <div class="flex items-center gap-1.5 mb-1.5 api-param-row">
+                                    <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(p.key)}">
+                                    <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(p.value)}">
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${p.req ? 'checked' : ''}>
+                                        <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button class="btn-s text-xs mt-1" data-onclick="addApiParam()"><i class="fa-solid fa-plus mr-1"></i> ${t('addParam')}</button>
+                    </div>
                 </div>
+
+                <!-- Request Body full-width -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-medium" style="color:var(--tx-m);">${t('apiBody')} <span class="opacity-40 font-normal text-[10px]">JSON</span></p>
+                        <button class="text-[10px] opacity-60 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-body')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                    </div>
+                    <textarea id="ed-api-body" class="form-input font-mono text-xs w-full" style="height:110px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(apiData?.body || '')}</textarea>
+                </div>
+
+                <!-- RESPONSE section -->
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Response</span>
+                    <div class="flex-1" style="height:1px;background:var(--brd);"></div>
+                </div>
+
+                <!-- Status code + Format -->
+                <div class="flex items-center justify-between mb-2">
+                    <div style="width:165px;">
+                        ${renderSelect('ed-api-status', [
+                            {value: '200', label: '200 OK'},
+                            {value: '201', label: '201 Created'},
+                            {value: '204', label: '204 No Content'},
+                            {value: '301', label: '301 Moved Permanently'},
+                            {value: '400', label: '400 Bad Request'},
+                            {value: '401', label: '401 Unauthorized'},
+                            {value: '403', label: '403 Forbidden'},
+                            {value: '404', label: '404 Not Found'},
+                            {value: '409', label: '409 Conflict'},
+                            {value: '422', label: '422 Unprocessable Entity'},
+                            {value: '429', label: '429 Too Many Requests'},
+                            {value: '500', label: '500 Internal Server Error'},
+                            {value: '502', label: '502 Bad Gateway'},
+                            {value: '503', label: '503 Service Unavailable'},
+                        ], apiData?.statusCode || '200', 'w-full font-mono text-xs')}
+                    </div>
+                    <button class="text-[10px] opacity-60 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                </div>
+                <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:110px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
             </div>
         </div>
         ` : category === 'testrun' ? `
