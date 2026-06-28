@@ -218,7 +218,7 @@ function renderContent() {
                 initialEditType: 'markdown',
                 previewStyle: 'vertical',
                 initialValue: initialVal,
-                theme: 'dark',
+                theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined,
                 hooks: {
                     addImageBlobHook: uploadImageToCloud
                 }
@@ -243,7 +243,7 @@ function renderContent() {
                         el: container,
                         viewer: true,
                         initialValue: hiddenTa ? hiddenTa.value : '',
-                        theme: 'dark'
+                        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined
                     });
                     setTimeout(() => {
                         container.querySelectorAll('pre code').forEach(codeEl => {
