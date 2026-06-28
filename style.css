@@ -818,6 +818,51 @@ body {
 .batch-action-btn:hover { background: var(--card); }
 
 /* ============================================
+   Snapshot Diff View
+   ============================================ */
+.diff-view {
+    font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+.diff-add, .diff-del, .diff-ctx, .diff-skip {
+    display: flex;
+    align-items: flex-start;
+    padding: 1.5px 14px;
+    min-height: 22px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+.diff-add  { background: rgba(16, 185, 129, 0.08); }
+.diff-del  { background: rgba(239, 68, 68, 0.08); }
+.diff-ctx  { background: transparent; }
+.diff-skip {
+    background: var(--bg);
+    color: var(--tx-d);
+    font-size: 11px;
+    font-family: inherit;
+    font-style: italic;
+    justify-content: center;
+    padding: 3px 14px;
+    border-top: 1px solid var(--brd);
+    border-bottom: 1px solid var(--brd);
+}
+.diff-sign {
+    flex-shrink: 0;
+    width: 20px;
+    font-weight: 700;
+    user-select: none;
+    opacity: 0.7;
+}
+.diff-add .diff-sign { color: var(--acc); }
+.diff-del .diff-sign { color: #f87171; }
+.diff-ctx .diff-sign { color: var(--tx-d); }
+
+[data-theme="light"] .diff-add { background: rgba(16, 185, 129, 0.1); }
+[data-theme="light"] .diff-del { background: rgba(239, 68, 68, 0.07); }
+[data-theme="light"] .diff-skip { background: var(--bg2); }
+
+/* ============================================
    Light Theme Overrides
    ============================================ */
 .theme-icon-light { display: none; }
