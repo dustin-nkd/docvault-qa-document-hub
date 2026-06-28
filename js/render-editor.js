@@ -285,29 +285,31 @@ function renderEditor() {
                     <textarea id="ed-api-body" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(apiData?.body || '')}</textarea>
                 </div>
                 <div>
-                    <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
-                        <span>${t('apiResponse')}</span>
-                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
-                    </label>
-                    <div class="mb-1.5">
-                        ${renderSelect('ed-api-status', [
-                            {value: '200', label: '200 OK'},
-                            {value: '201', label: '201 Created'},
-                            {value: '204', label: '204 No Content'},
-                            {value: '301', label: '301 Moved Permanently'},
-                            {value: '400', label: '400 Bad Request'},
-                            {value: '401', label: '401 Unauthorized'},
-                            {value: '403', label: '403 Forbidden'},
-                            {value: '404', label: '404 Not Found'},
-                            {value: '409', label: '409 Conflict'},
-                            {value: '422', label: '422 Unprocessable Entity'},
-                            {value: '429', label: '429 Too Many Requests'},
-                            {value: '500', label: '500 Internal Server Error'},
-                            {value: '502', label: '502 Bad Gateway'},
-                            {value: '503', label: '503 Service Unavailable'},
-                        ], apiData?.statusCode || '200', 'w-full font-mono text-xs')}
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-medium" style="color:var(--tx-m);">${t('apiResponse')}</span>
+                        <div class="flex items-center gap-2">
+                            <div style="width:130px;">
+                                ${renderSelect('ed-api-status', [
+                                    {value: '200', label: '200 OK'},
+                                    {value: '201', label: '201 Created'},
+                                    {value: '204', label: '204 No Content'},
+                                    {value: '301', label: '301 Moved Permanently'},
+                                    {value: '400', label: '400 Bad Request'},
+                                    {value: '401', label: '401 Unauthorized'},
+                                    {value: '403', label: '403 Forbidden'},
+                                    {value: '404', label: '404 Not Found'},
+                                    {value: '409', label: '409 Conflict'},
+                                    {value: '422', label: '422 Unprocessable Entity'},
+                                    {value: '429', label: '429 Too Many Requests'},
+                                    {value: '500', label: '500 Internal Server Error'},
+                                    {value: '502', label: '502 Bad Gateway'},
+                                    {value: '503', label: '503 Service Unavailable'},
+                                ], apiData?.statusCode || '200', 'w-full font-mono text-xs')}
+                            </div>
+                            <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                        </div>
                     </div>
-                    <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:100px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
+                    <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
                 </div>
             </div>
         </div>
