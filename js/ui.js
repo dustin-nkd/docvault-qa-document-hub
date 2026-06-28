@@ -5,6 +5,25 @@ window.lockVault = function() {
     if (!LocalAuth.isConfigured()) { toast('No master password set — nothing to lock.', 'info'); return; }
     sessionStorage.removeItem(LocalAuth.SESSION_KEY);
     sessionStorage.removeItem(LocalAuth.SESSION_PWD);
+
+    // Reset lock screen to clean state before showing
+    const pwdInput = document.getElementById('master-password');
+    if (pwdInput) pwdInput.value = '';
+    const submitBtn = document.getElementById('lock-submit-btn');
+    if (submitBtn) submitBtn.innerHTML = 'Unlock Vault';
+    const recoveryPanel = document.getElementById('lock-recovery-panel');
+    if (recoveryPanel) recoveryPanel.classList.add('hidden');
+    const hintBox = document.getElementById('lock-pwd-hint');
+    if (hintBox) hintBox.classList.add('hidden');
+    const hintTextEl = document.getElementById('lock-pwd-hint-text');
+    if (hintTextEl) hintTextEl.textContent = LocalAuth.getHint ? LocalAuth.getHint() : '';
+    const recoveryToggle = document.getElementById('lock-recovery-toggle');
+    if (recoveryToggle) {
+        const btn = recoveryToggle.querySelector('button');
+        if (btn) btn.textContent = 'Forgot password?';
+        recoveryToggle.classList.toggle('hidden', !localStorage.getItem(LocalAuth.RECOVERY_KEY));
+    }
+
     document.getElementById('lock-screen').classList.remove('hidden');
 };
 
