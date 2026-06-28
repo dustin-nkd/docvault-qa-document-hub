@@ -315,7 +315,7 @@ function _getDashboardMetrics(docs) {
     // Task board kanban distribution
     const tasks = docs.filter(d => d.category === 'task');
     const board = { todo: 0, inProgress: 0, review: 0, done: 0 };
-    tasks.forEach(t => { const s = t.kanbanStatus || 'todo'; if (board[s] !== undefined) board[s]++; });
+    tasks.forEach(t => { let s = t.kanbanStatus || 'todo'; if (s === 'in-progress') s = 'inProgress'; if (board[s] !== undefined) board[s]++; });
 
     // Stale docs (>30d, exclude credentials, tasks, trashed)
     const stale = docs
