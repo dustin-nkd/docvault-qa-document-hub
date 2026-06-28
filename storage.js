@@ -66,7 +66,7 @@ window.Vault = Vault;
 // ========================
 const GitHubSync = {
     // Hardcoded vault repo — same on every device, no config needed
-    DEFAULTS: { owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main', path: 'images' },
+    DEFAULTS: { owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main' },
 
     DATA_PATH: 'database/docvault-data.json',
     SHA_KEY: 'github_data_sha',
@@ -194,7 +194,7 @@ const GitHubSync = {
 
         // Fallback: try with token (private repo or auth required)
         if (!result && token) {
-            const tempSettings = { owner, repo, branch, path: 'images', token };
+            const tempSettings = { owner, repo, branch, token };
             await this.saveSettings(tempSettings);
             result = await this.pull();
             if (!result) {
@@ -208,7 +208,7 @@ const GitHubSync = {
         const { docs, cfg } = result;
 
         // Use embedded cfg if available, else build minimal one from inputs
-        const finalCfg = cfg || { owner, repo, branch, path: 'images', token: token || '' };
+        const finalCfg = cfg || { owner, repo, branch, token: token || '' };
         await this.saveSettings(finalCfg);
 
         // Save docs locally

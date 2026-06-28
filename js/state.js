@@ -1,7 +1,7 @@
 // ========================
 // STATE
 // ========================
-// Tracks base64 → CDN URL swaps pending until the next Save
+// Kept for legacy cancel/save cleanup; no longer populated (images are inline base64)
 const pendingImageReplacements = new Map();
 
 let state = {
