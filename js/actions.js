@@ -727,6 +727,10 @@ window.generateRecoveryKey = async function() {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> Generating…'; }
     try {
         const code = await window.LocalAuth.generateRecovery(pwd);
+        // Push immediately so the blob is available cross-device without waiting for the next doc save
+        if (await window.GitHubSync.isConfigured()) {
+            window.GitHubSync.push(window.documents || []).catch(() => {});
+        }
         showModal(`
             <div class="text-center">
                 <div class="w-12 h-12 rounded-xl mx-auto flex items-center justify-center mb-4" style="background:rgba(16,185,129,0.15);">

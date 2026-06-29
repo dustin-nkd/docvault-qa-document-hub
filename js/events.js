@@ -111,6 +111,11 @@ async function startApp() {
         }
     }
     await init();
+    // If a recovery blob exists locally, push now so it's available cross-device.
+    // Handles users who generated a key before this sync was implemented.
+    if (localStorage.getItem(LocalAuth.RECOVERY_KEY) && await GitHubSync.isConfigured()) {
+        GitHubSync.push(documents).catch(() => {});
+    }
     handleUrlParams();
 }
 
