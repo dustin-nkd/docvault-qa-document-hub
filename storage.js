@@ -120,21 +120,43 @@ const GitHubSync = {
         };
     },
 
-    // Parse raw content string → {docs, cfg, deletedIds}  (handles both old array format and new wrapper)
+    // Parse raw content string → {docs, cfg, deletedIds}
+    // Handles: new envelope {v, rb}, old encrypted string, old plain JSON.
+    // Side effect: restores recovery blob to localStorage if found in remote data.
     async _parseContent(content) {
         const pwd = this._pwd();
+        let vaultContent = content;
+        let recoveryBlob = null;
+
+        // Detect new envelope format: { v: "<vault>", rb: "<recovery_blob_or_null>" }
+        if (!Vault.isEncrypted(content)) {
+            try {
+                const outer = JSON.parse(content);
+                if (outer && typeof outer === 'object' && 'v' in outer) {
+                    vaultContent = outer.v;
+                    recoveryBlob = outer.rb || null;
+                }
+            } catch(e) { /* old plain-array format — fall through */ }
+        }
+
+        // Restore recovery blob to localStorage if remote has one (always use latest from remote)
+        if (recoveryBlob) {
+            localStorage.setItem(LocalAuth.RECOVERY_KEY, recoveryBlob);
+        }
+
         let payload;
-        if (Vault.isEncrypted(content)) {
+        if (Vault.isEncrypted(vaultContent)) {
             if (!pwd) throw new Error('Vault is locked');
-            payload = await Vault.decrypt(content, pwd);
+            payload = await Vault.decrypt(vaultContent, pwd);
         } else {
-            payload = JSON.parse(content);
+            payload = JSON.parse(vaultContent);
         }
         if (Array.isArray(payload)) return { docs: payload, cfg: null, deletedIds: [] }; // old format
         return { docs: payload.docs || [], cfg: payload.cfg || null, deletedIds: payload.deletedIds || [] };
     },
 
-    // Encode docs + cfg for GitHub API (base64 of UTF-8 file content)
+    // Encode docs + cfg for GitHub API (base64 of UTF-8 file content).
+    // Wraps the vault in an envelope so the recovery blob can be fetched without decryption.
     // Soft-deleted docs (status='deleted') are kept on GitHub for 30 days so trash syncs across devices.
     // After 30 days they are auto-purged and their IDs added to deletedIds (tombstone).
     async _encode(docs) {
@@ -155,16 +177,33 @@ const GitHubSync = {
         const safeDocs = DocStorage ? await DocStorage._encryptCredPasswords(activeDocs, pwd) : activeDocs;
         const deletedIds = DocStorage ? [...DocStorage._getLocalDeletedIds()] : [];
         const wrapper = { docs: safeDocs, cfg: cfg || null, deletedIds };
-        const content = pwd
+        const vaultContent = pwd
             ? await Vault.encrypt(wrapper, pwd)
             : JSON.stringify(wrapper, null, 2);
-        return btoa(unescape(encodeURIComponent(content)));
+        // Envelope: vault + recovery blob (blob is already encrypted with recovery code, safe to store)
+        const envelope = JSON.stringify({ v: vaultContent, rb: localStorage.getItem(LocalAuth.RECOVERY_KEY) || null });
+        return btoa(unescape(encodeURIComponent(envelope)));
     },
 
     // Decode GitHub API base64 content → {docs, cfg}
     async _decode(b64) {
         const content = decodeURIComponent(escape(atob(b64.replace(/\n/g, ''))));
         return this._parseContent(content);
+    },
+
+    // Fetch just the recovery blob from the public GitHub repo — no auth, no decryption needed.
+    // Used on new devices to show the "Forgot password?" option before the vault is configured.
+    async fetchRecoveryBlobPublic() {
+        const { owner, repo, branch } = this.DEFAULTS;
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${this.DATA_PATH}?ref=${branch || 'main'}`;
+        try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
+            if (!res.ok) return null;
+            const data = await res.json();
+            const content = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ''))));
+            const outer = JSON.parse(content);
+            return (outer && typeof outer === 'object' && outer.rb) ? outer.rb : null;
+        } catch(e) { return null; }
     },
 
     // Fetch via GitHub API (no auth needed for public repos) — avoids raw CDN 5-min cache
