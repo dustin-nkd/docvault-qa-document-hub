@@ -471,6 +471,13 @@ if (_shareIdOnLoad) {
             const sub = document.getElementById('lock-screen-sub');
             if (hint) hint.textContent = 'Enter your Master Password to sync your data from GitHub.';
             if (sub) sub.textContent = 'Use the same password from your other device. First time? Enter any password to create your vault.';
+            // Try to fetch recovery blob from GitHub so "Forgot password?" works cross-device
+            window.GitHubSync.fetchRecoveryBlobPublic().then(blob => {
+                if (!blob) return;
+                localStorage.setItem(window.LocalAuth.RECOVERY_KEY, blob);
+                const toggle = document.getElementById('lock-recovery-toggle');
+                if (toggle) toggle.classList.remove('hidden');
+            });
         } else {
             const pwdHint = window.LocalAuth.getHint();
             if (pwdHint) {
