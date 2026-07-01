@@ -712,11 +712,17 @@ window.changeMasterPassword = async function() {
     }
 };
 
-window.savePasswordHint = function() {
+window.savePasswordHint = async function() {
     const input = document.getElementById('sec-hint');
     if (!input) return;
     const text = input.value.trim();
     window.LocalAuth.setHint(text);
+    if (window.updateLockSecurityState) window.updateLockSecurityState();
+    if (await window.GitHubSync.isConfigured()) {
+        window.GitHubSync.push(documents, true, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }).catch(e => {
+            toast('Password hint saved locally, but sync failed: ' + e.message, 'error');
+        });
+    }
     toast(text ? 'Password hint saved.' : 'Password hint cleared.', 'success');
 };
 
@@ -729,7 +735,7 @@ window.generateRecoveryKey = async function() {
         const code = await window.LocalAuth.generateRecovery(pwd);
         // Push immediately so the blob is available cross-device without waiting for the next doc save
         if (await window.GitHubSync.isConfigured()) {
-            window.GitHubSync.push(window.documents || []).catch(() => {});
+            window.GitHubSync.push(documents, true, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }).catch(() => {});
         }
         showModal(`
             <div class="text-center">

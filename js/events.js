@@ -111,10 +111,10 @@ async function startApp() {
         }
     }
     await init();
-    // If a recovery blob exists locally, push now so it's available cross-device.
-    // Handles users who generated a key before this sync was implemented.
-    if (localStorage.getItem(LocalAuth.RECOVERY_KEY) && await GitHubSync.isConfigured()) {
-        GitHubSync.push(documents).catch(() => {});
+    // If security metadata exists locally, push now so it is available cross-device.
+    // Handles users who saved it before metadata sync was implemented.
+    if ((localStorage.getItem(LocalAuth.RECOVERY_KEY) || LocalAuth.getHint()) && await GitHubSync.isConfigured()) {
+        GitHubSync.push(documents, true, { securityMeta: GitHubSync._getLocalSecurityMeta() }).catch(() => {});
     }
     handleUrlParams();
 }
@@ -471,29 +471,23 @@ if (_shareIdOnLoad) {
     const ls = document.getElementById('lock-screen');
     if (ls) {
         ls.classList.remove('hidden');
+        const refreshLockSecurityMeta = () => {
+            window.GitHubSync.fetchSecurityMetaPublic().then(meta => {
+                if (!meta) return;
+                window.GitHubSync._applySecurityMeta(meta);
+                if (window.updateLockSecurityState) window.updateLockSecurityState();
+            });
+        };
+
         if (!window.LocalAuth.isConfigured()) {
             const hint = document.getElementById('lock-screen-hint');
             const sub = document.getElementById('lock-screen-sub');
             if (hint) hint.textContent = 'Enter your Master Password to sync your data from GitHub.';
             if (sub) sub.textContent = 'Use the same password from your other device. First time? Enter any password to create your vault.';
-            // Try to fetch recovery blob from GitHub so "Forgot password?" works cross-device
-            window.GitHubSync.fetchRecoveryBlobPublic().then(blob => {
-                if (!blob) return;
-                localStorage.setItem(window.LocalAuth.RECOVERY_KEY, blob);
-                const toggle = document.getElementById('lock-recovery-toggle');
-                if (toggle) toggle.classList.remove('hidden');
-            });
+            refreshLockSecurityMeta();
         } else {
-            const pwdHint = window.LocalAuth.getHint();
-            if (pwdHint) {
-                const hintText = document.getElementById('lock-pwd-hint-text');
-                if (hintText) hintText.textContent = pwdHint;
-                // hint stays hidden — only revealed when "Forgot password?" is clicked
-            }
-            if (localStorage.getItem(window.LocalAuth.RECOVERY_KEY)) {
-                const toggle = document.getElementById('lock-recovery-toggle');
-                if (toggle) toggle.classList.remove('hidden');
-            }
+            if (window.updateLockSecurityState) window.updateLockSecurityState();
+            refreshLockSecurityMeta();
         }
     }
 } else {

@@ -13,18 +13,42 @@ window.lockVault = function() {
     if (submitBtn) submitBtn.innerHTML = 'Unlock Vault';
     const recoveryPanel = document.getElementById('lock-recovery-panel');
     if (recoveryPanel) recoveryPanel.classList.add('hidden');
+    updateLockSecurityState();
+
+    document.getElementById('lock-screen').classList.remove('hidden');
+};
+
+window.updateLockSecurityState = function() {
+    const hint = LocalAuth.getHint ? LocalAuth.getHint() : '';
+    const hasRecovery = !!localStorage.getItem(LocalAuth.RECOVERY_KEY);
     const hintBox = document.getElementById('lock-pwd-hint');
-    if (hintBox) hintBox.classList.add('hidden');
     const hintTextEl = document.getElementById('lock-pwd-hint-text');
-    if (hintTextEl) hintTextEl.textContent = LocalAuth.getHint ? LocalAuth.getHint() : '';
+    const recoveryPanel = document.getElementById('lock-recovery-panel');
     const recoveryToggle = document.getElementById('lock-recovery-toggle');
+
+    if (hintTextEl) hintTextEl.textContent = hint;
+    if (hintBox) hintBox.classList.add('hidden');
+    if (recoveryPanel) recoveryPanel.classList.add('hidden');
     if (recoveryToggle) {
         const btn = recoveryToggle.querySelector('button');
         if (btn) btn.textContent = 'Forgot password?';
-        recoveryToggle.classList.toggle('hidden', !localStorage.getItem(LocalAuth.RECOVERY_KEY));
+        recoveryToggle.classList.toggle('hidden', !hint && !hasRecovery);
     }
+};
 
-    document.getElementById('lock-screen').classList.remove('hidden');
+window.toggleLockRecovery = function(button) {
+    const hint = LocalAuth.getHint ? LocalAuth.getHint() : '';
+    const hasRecovery = !!localStorage.getItem(LocalAuth.RECOVERY_KEY);
+    const hintBox = document.getElementById('lock-pwd-hint');
+    const recoveryPanel = document.getElementById('lock-recovery-panel');
+    const isOpening = Boolean(
+        (hint && hintBox?.classList.contains('hidden')) ||
+        (hasRecovery && recoveryPanel?.classList.contains('hidden'))
+    );
+
+    if (hintBox) hintBox.classList.toggle('hidden', !(isOpening && hint));
+    if (recoveryPanel) recoveryPanel.classList.toggle('hidden', !(isOpening && hasRecovery));
+    if (button) button.textContent = isOpening ? 'Cancel recovery' : 'Forgot password?';
 };
 
 window.initTheme = function() {

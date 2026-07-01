@@ -121,27 +121,36 @@ const GitHubSync = {
     },
 
     // Parse raw content string → {docs, cfg, deletedIds}
-    // Handles: new envelope {v, rb}, old encrypted string, old plain JSON.
-    // Side effect: restores recovery blob to localStorage if found in remote data.
+    // Handles: new envelope {v, rb, hint}, old encrypted string, old plain JSON.
+    // Side effect: restores lock-screen security metadata from remote data.
     async _parseContent(content) {
         const pwd = this._pwd();
         let vaultContent = content;
         let recoveryBlob = null;
+        let passwordHint = '';
+        let hasPasswordHint = false;
 
-        // Detect new envelope format: { v: "<vault>", rb: "<recovery_blob_or_null>" }
+        // Detect new envelope format: { v: "<vault>", rb: "<recovery_blob_or_null>", hint: "<password_hint_or_null>" }
         if (!Vault.isEncrypted(content)) {
             try {
                 const outer = JSON.parse(content);
                 if (outer && typeof outer === 'object' && 'v' in outer) {
                     vaultContent = outer.v;
                     recoveryBlob = outer.rb || null;
+                    if (Object.prototype.hasOwnProperty.call(outer, 'hint')) {
+                        hasPasswordHint = true;
+                        passwordHint = typeof outer.hint === 'string' ? outer.hint : '';
+                    }
                 }
             } catch(e) { /* old plain-array format — fall through */ }
         }
 
-        // Restore recovery blob to localStorage if remote has one (always use latest from remote)
+        // Restore security metadata to localStorage so lock-screen recovery works cross-device.
         if (recoveryBlob) {
             localStorage.setItem(LocalAuth.RECOVERY_KEY, recoveryBlob);
+        }
+        if (hasPasswordHint && window.LocalAuth) {
+            LocalAuth.setHint(passwordHint);
         }
 
         let payload;
@@ -159,9 +168,27 @@ const GitHubSync = {
     // Wraps the vault in an envelope so the recovery blob can be fetched without decryption.
     // Soft-deleted docs (status='deleted') are kept on GitHub for 30 days so trash syncs across devices.
     // After 30 days they are auto-purged and their IDs added to deletedIds (tombstone).
-    async _encode(docs) {
+    _getLocalSecurityMeta() {
+        return {
+            recoveryBlob: window.LocalAuth ? (localStorage.getItem(LocalAuth.RECOVERY_KEY) || null) : null,
+            passwordHint: window.LocalAuth && LocalAuth.getHint ? LocalAuth.getHint() : ''
+        };
+    },
+
+    _applySecurityMeta(meta) {
+        if (!meta || !window.LocalAuth) return;
+        if (meta.recoveryBlob) {
+            localStorage.setItem(LocalAuth.RECOVERY_KEY, meta.recoveryBlob);
+        }
+        if (Object.prototype.hasOwnProperty.call(meta, 'passwordHint')) {
+            LocalAuth.setHint(meta.passwordHint || '');
+        }
+    },
+
+    async _encode(docs, securityMeta = null) {
         const pwd = this._pwd();
         const cfg = await this.getSettings();
+        const meta = securityMeta || this._getLocalSecurityMeta();
         const TRASH_TTL = 30 * 24 * 60 * 60 * 1000;
         const autoPurgedIds = [];
         const activeDocs = docs.filter(d => {
@@ -180,8 +207,12 @@ const GitHubSync = {
         const vaultContent = pwd
             ? await Vault.encrypt(wrapper, pwd)
             : JSON.stringify(wrapper, null, 2);
-        // Envelope: vault + recovery blob (blob is already encrypted with recovery code, safe to store)
-        const envelope = JSON.stringify({ v: vaultContent, rb: localStorage.getItem(LocalAuth.RECOVERY_KEY) || null });
+        // Envelope: vault + lock-screen security metadata.
+        const envelope = JSON.stringify({
+            v: vaultContent,
+            rb: meta.recoveryBlob || null,
+            hint: meta.passwordHint || null
+        });
         return btoa(unescape(encodeURIComponent(envelope)));
     },
 
@@ -191,9 +222,9 @@ const GitHubSync = {
         return this._parseContent(content);
     },
 
-    // Fetch just the recovery blob from the public GitHub repo — no auth, no decryption needed.
-    // Used on new devices to show the "Forgot password?" option before the vault is configured.
-    async fetchRecoveryBlobPublic() {
+    // Fetch lock-screen metadata from the public GitHub repo -- no auth or decryption needed.
+    // Used on new devices to show hint/recovery before the vault is configured.
+    async fetchSecurityMetaPublic() {
         const { owner, repo, branch } = this.DEFAULTS;
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${this.DATA_PATH}?ref=${branch || 'main'}`;
         try {
@@ -202,8 +233,20 @@ const GitHubSync = {
             const data = await res.json();
             const content = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ''))));
             const outer = JSON.parse(content);
-            return (outer && typeof outer === 'object' && outer.rb) ? outer.rb : null;
+            if (!outer || typeof outer !== 'object' || !('v' in outer)) return null;
+            const meta = {
+                recoveryBlob: outer.rb || null
+            };
+            if (Object.prototype.hasOwnProperty.call(outer, 'hint')) {
+                meta.passwordHint = typeof outer.hint === 'string' ? outer.hint : '';
+            }
+            return meta;
         } catch(e) { return null; }
+    },
+
+    async fetchRecoveryBlobPublic() {
+        const meta = await this.fetchSecurityMetaPublic();
+        return meta ? meta.recoveryBlob : null;
     },
 
     // Fetch via GitHub API (no auth needed for public repos) — avoids raw CDN 5-min cache
@@ -278,14 +321,15 @@ const GitHubSync = {
         }
     },
 
-    async push(docs, retryOnConflict = true) {
+    async push(docs, retryOnConflict = true, options = {}) {
         const s = await this.getSettings();
         if (!s) return;
+        const securityMeta = options.securityMeta || null;
 
         const sha = localStorage.getItem(this.SHA_KEY);
         const body = {
             message: `DocVault sync ${new Date().toISOString()}`,
-            content: await this._encode(docs),
+            content: await this._encode(docs, securityMeta),
             branch: s.branch || 'main'
         };
         if (sha) body.sha = sha;
@@ -311,9 +355,9 @@ const GitHubSync = {
                     }
                     const merged = DocStorage._merge(docs, remoteDocs, allDeletedIds);
                     await DocStorage._saveLocal(merged);
-                    return this.push(merged, false);
+                    return this.push(merged, false, options);
                 }
-                return this.push(docs, false);
+                return this.push(docs, false, options);
             }
 
             if (!res.ok) {
@@ -323,6 +367,7 @@ const GitHubSync = {
 
             const data = await res.json();
             localStorage.setItem(this.SHA_KEY, data.content.sha);
+            if (securityMeta) this._applySecurityMeta(securityMeta);
             console.log('[GitHubSync] push OK');
         } catch(e) {
             console.error('[GitHubSync] push failed:', e);
@@ -636,7 +681,8 @@ const LocalAuth = {
     },
 
     setHint(text) {
-        if (text && text.trim()) localStorage.setItem(this.HINT_KEY, text.trim());
+        const value = String(text || '').trim().slice(0, 80);
+        if (value) localStorage.setItem(this.HINT_KEY, value);
         else localStorage.removeItem(this.HINT_KEY);
     },
 
