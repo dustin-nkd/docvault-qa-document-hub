@@ -770,6 +770,7 @@ window.recoverVault = async function() {
         sessionStorage.setItem(window.LocalAuth.SESSION_KEY, '1');
         sessionStorage.setItem(window.LocalAuth.SESSION_PWD, password);
         document.getElementById('lock-screen').classList.add('hidden');
+        if (window.resetLockFormState) window.resetLockFormState();
         toast('Vault recovered! Consider changing your password in Settings.', 'success');
         if (window._afterUnlock) window._afterUnlock();
     } catch(e) {

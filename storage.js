@@ -623,6 +623,7 @@ const LocalAuth = {
             sessionStorage.setItem(this.SESSION_PWD, password);
             sessionStorage.setItem(this.SESSION_KEY, '1');
             document.getElementById('lock-screen').classList.add('hidden');
+            if (window.resetLockFormState) window.resetLockFormState();
             if (typeof toast === 'function') toast(typeof t === 'function' ? t('vaultUnlocked') : 'Vault Unlocked', 'success');
             if (window._afterUnlock) window._afterUnlock();
         } catch(e) {

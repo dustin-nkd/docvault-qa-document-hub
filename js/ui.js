@@ -1,18 +1,40 @@
 // ========================
 // THEME
 // ========================
+window.resetLockFormState = function() {
+    const pwdInput = document.getElementById('master-password');
+    if (pwdInput) pwdInput.value = '';
+
+    const recoveryInput = document.getElementById('recovery-code-input');
+    if (recoveryInput) recoveryInput.value = '';
+
+    const submitBtn = document.getElementById('lock-submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Unlock Vault';
+    }
+
+    const recoverBtn = document.getElementById('recover-submit-btn');
+    if (recoverBtn) {
+        recoverBtn.disabled = false;
+        recoverBtn.textContent = 'Recover Access';
+    }
+
+    const recoveryPanel = document.getElementById('lock-recovery-panel');
+    if (recoveryPanel) recoveryPanel.classList.add('hidden');
+
+    const recoveryToggle = document.getElementById('lock-recovery-toggle');
+    const recoveryToggleBtn = recoveryToggle?.querySelector('button');
+    if (recoveryToggleBtn) recoveryToggleBtn.textContent = 'Forgot password?';
+};
+
 window.lockVault = function() {
     if (!LocalAuth.isConfigured()) { toast('No master password set — nothing to lock.', 'info'); return; }
     sessionStorage.removeItem(LocalAuth.SESSION_KEY);
     sessionStorage.removeItem(LocalAuth.SESSION_PWD);
 
     // Reset lock screen to clean state before showing
-    const pwdInput = document.getElementById('master-password');
-    if (pwdInput) pwdInput.value = '';
-    const submitBtn = document.getElementById('lock-submit-btn');
-    if (submitBtn) submitBtn.innerHTML = 'Unlock Vault';
-    const recoveryPanel = document.getElementById('lock-recovery-panel');
-    if (recoveryPanel) recoveryPanel.classList.add('hidden');
+    resetLockFormState();
     updateLockSecurityState();
 
     document.getElementById('lock-screen').classList.remove('hidden');
@@ -48,6 +70,10 @@ window.toggleLockRecovery = function(button) {
 
     if (hintBox) hintBox.classList.toggle('hidden', !(isOpening && hint));
     if (recoveryPanel) recoveryPanel.classList.toggle('hidden', !(isOpening && hasRecovery));
+    if (!isOpening) {
+        const recoveryInput = document.getElementById('recovery-code-input');
+        if (recoveryInput) recoveryInput.value = '';
+    }
     if (button) button.textContent = isOpening ? 'Cancel recovery' : 'Forgot password?';
 };
 
