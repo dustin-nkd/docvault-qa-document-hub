@@ -146,19 +146,25 @@ Visit the deployed GitHub Pages version:
 ```
 docvault-qa-document-hub/
 ├── index.html              # Main app shell (HTML + inline CSS variables)
-├── docvault.js             # Core application logic (~3,700 lines)
-│                           #   - Constants, templates, sample docs
-│                           #   - State management & navigation
-│                           #   - Markdown renderer
-│                           #   - All views: Dashboard, DocList, Editor, Viewer
-│                           #   - Kanban board, Test Run execution
-│                           #   - Image upload, sharing, global search
-│                           #   - i18n translations (EN + VI)
-├── storage.js              # Storage & sync layer (~500 lines)
+│                           #   Loads storage.js, then js/*.js in order below
+├── storage.js              # Storage & sync layer
 │                           #   - Vault (AES-256-GCM + PBKDF2 encryption)
-│                           #   - GitHubSync (pull/push/bootstrap)
-│                           #   - DocStorage (local + remote merge)
-│                           #   - LocalAuth (master password)
+│                           #   - GitHubSync (pull/push/bootstrap/merge, recovery blob sync)
+│                           #   - DocStorage (local + remote merge, import/export)
+│                           #   - LocalAuth (master password, recovery key, password hint)
+├── js/                     # Core application logic (ES6, loaded as classic <script defer>)
+│   ├── constants.js        #   - i18n strings (EN + VI), templates, sample docs, category config
+│   ├── utils.js            #   - uid, date formatting, custom Markdown renderer, credential helpers
+│   ├── state.js            #   - Global state, documents array, hydrate/persist, doc history
+│   ├── ui.js               #   - Toasts, modals, theme toggle, lock screen, sidebar
+│   ├── render-core.js      #   - Main render loop (morphdom diffing), Dashboard, DocList, Kanban board
+│   ├── render-editor.js    #   - Editor view: dynamic per-category forms, date picker
+│   ├── render-viewer.js    #   - Viewer view, Test Run execution
+│   ├── actions.js          #   - CRUD, E2E sharing, image upload to GitHub CDN, batch ops, history/diff
+│   ├── search.js           #   - Global search (Ctrl+K)
+│   └── events.js           #   - App entry point/bootstrap, keyboard shortcuts, drag & drop,
+│                           #     CSP-safe event delegation (data-onclick → executeAction)
+├── docvault.js             # Legacy monolith (pre-refactor); NOT loaded by index.html, kept for reference
 ├── style.css               # Additional styles & component classes
 ├── main.js                 # Vite entry point (CSS import)
 ├── tailwind.config.js      # Tailwind CSS configuration
@@ -167,14 +173,14 @@ docvault-qa-document-hub/
 ├── vendor/                 # Offline-bundled assets
 │   ├── fontawesome/        #   FontAwesome 7.x (CSS + webfonts)
 │   └── fonts/              #   Space Grotesk & DM Sans font files
-├── dist/                   # Tailwind CSS compiled output
-│   └── output.css
 ├── src/
 │   └── input.css           # Tailwind directives
 └── .github/
     └── workflows/
         └── deploy.yml      # GitHub Actions → GitHub Pages deployment
 ```
+
+> **Note:** The app uses CSP-safe event delegation instead of inline `onclick` handlers — HTML elements carry `data-onclick="fn('arg')"` attributes that are parsed and dispatched by `executeAction()` in `js/events.js`.
 
 ---
 
