@@ -703,7 +703,19 @@ window.changeMasterPassword = async function() {
 
     try {
         await window.LocalAuth.changePassword(current, newPwd);
+        // Sync the re-encrypted vault (and the now-revoked recovery blob, rb:null) to
+        // GitHub immediately. Otherwise other devices still need the OLD password until
+        // the next document save, and the stale recovery blob lingers remotely.
+        if (await window.GitHubSync.isConfigured()) {
+            try {
+                await window.GitHubSync.push(documents, true, { securityMeta: window.GitHubSync._getLocalSecurityMeta() });
+            } catch (e) {
+                toast('Password changed locally, but GitHub sync failed: ' + e.message, "error");
+            }
+        }
         toast(t('mpChanged'), "success");
+        toast('Recovery key was revoked — generate a new one in the Security section.', "info");
+        if (window.updateLockSecurityState) window.updateLockSecurityState();
         document.getElementById('mp-current').value = '';
         document.getElementById('mp-new').value = '';
         document.getElementById('mp-confirm').value = '';
@@ -767,6 +779,16 @@ window.recoverVault = async function() {
     if (btn) { btn.disabled = true; btn.textContent = 'Recovering…'; }
     try {
         const password = await window.LocalAuth.recoverWithCode(code);
+        // Guard against a stale recovery blob (e.g. one generated before the master
+        // password was changed): the recovered password must match the CURRENT vault
+        // hash, otherwise unlocking would decrypt nothing and look like data loss.
+        const storedHash = localStorage.getItem(window.LocalAuth.HASH_KEY);
+        if (storedHash) {
+            const recoveredHash = await window.LocalAuth._hash(password);
+            if (recoveredHash !== storedHash) {
+                throw new Error('This recovery key is outdated — the master password was changed after it was created. Use the current password, or reset the vault.');
+            }
+        }
         sessionStorage.setItem(window.LocalAuth.SESSION_KEY, '1');
         sessionStorage.setItem(window.LocalAuth.SESSION_PWD, password);
         document.getElementById('lock-screen').classList.add('hidden');
@@ -1028,15 +1050,27 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
 
     if (!title) { toast(t('titleRequired'), 'error'); document.getElementById('ed-title')?.focus(); return; }
 
-    if (state.editingDoc && state.editingDoc.id) {
-        const idx = documents.findIndex(d => d.id === state.editingDoc.id);
-        if (idx !== -1) {
-            DocHistory.save(documents[idx]);
-            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
-        }
+    const editingIdx = (state.editingDoc && state.editingDoc.id)
+        ? documents.findIndex(d => d.id === state.editingDoc.id)
+        : -1;
+
+    if (editingIdx !== -1) {
+        const idx = editingIdx;
+        DocHistory.save(documents[idx]);
+        documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
+    } else if (state.editingDoc && state.editingDoc.id) {
+        // The document being edited vanished (deleted on another device / concurrent
+        // sync). Save the edits as a fresh document instead of dereferencing
+        // documents[-1] (which previously produced a broken "?view=undefined" viewer).
+        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: cat === 'bug' ? (state.editingDoc.bugStatus || 'new') : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        documents.unshift(revived);
+        toast('Original document was removed elsewhere — saved as a new copy.', 'info');
+        state.editingDoc = { ...revived };
+        state.view = 'viewer';
+        state.category = cat;
     } else {
         const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
