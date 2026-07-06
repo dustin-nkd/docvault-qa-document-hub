@@ -180,7 +180,7 @@ docvault-qa-document-hub/
         └── deploy.yml      # GitHub Actions → GitHub Pages deployment
 ```
 
-> **Note:** The app uses CSP-safe event delegation instead of inline `onclick` handlers — HTML elements carry `data-onclick="fn('arg')"` attributes that are parsed and dispatched by `executeAction()` in `js/events.js`.
+> **Note:** Most interactivity uses event delegation rather than inline `onclick` — HTML elements carry `data-onclick="fn('arg')"` attributes that are parsed and dispatched by `executeAction()` in `js/events.js`. A few inline handlers remain (e.g. favicon `onload`/`onerror`, some copy buttons), so the app is not yet fully CSP-strict.
 
 ---
 
