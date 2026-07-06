@@ -202,6 +202,11 @@ function renderViewer() {
             const results = doc.runData?.results || {};
             const targetIds = doc.runData?.targetIds || [];
             const targets = documents.filter(d => targetIds.includes(d.id) && d.status !== 'deleted');
+            // Render against the step snapshot captured when the run was saved (US-103),
+            // so results stay aligned even if the test case is edited afterwards.
+            const stepsOf = tc => (doc.runData?.snapshot?.[tc.id] || tc.tcData?.steps || []);
+            const isDrifted = tc => !!doc.runData?.snapshot?.[tc.id]
+                && JSON.stringify(doc.runData.snapshot[tc.id]) !== JSON.stringify(tc.tcData?.steps || []);
 
             let totalSteps = 0;
             let passCount = 0;
@@ -209,7 +214,7 @@ function renderViewer() {
             let blockedCount = 0;
 
             targets.forEach(tc => {
-                const steps = tc.tcData?.steps || [];
+                const steps = stepsOf(tc);
                 totalSteps += steps.length;
                 steps.forEach((_, i) => {
                     const st = results[tc.id]?.[i];
@@ -264,13 +269,15 @@ function renderViewer() {
                 html += `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases selected.</div>`;
             } else {
                 targets.forEach(tc => {
-                    const steps = tc.tcData?.steps || [];
+                    const steps = stepsOf(tc);
+                    const drifted = isDrifted(tc);
                     const tcNote = doc.runData?.results?.[tc.id]?.note || '';
                     html += `
                     <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
                         <div class="px-4 py-3 flex items-center gap-3" style="background:var(--bg2); border-bottom:1px solid var(--brd);">
                             <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
                             <span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
+                            ${drifted ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style="background:rgba(245,158,11,0.12);color:#f59e0b;" title="This test case was edited after this run was recorded. Results reflect the steps at run time."><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> TC changed</span>` : ''}
                             ${state.sharedView ? '' : `<button class="btn-s text-xs ml-auto" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
                         </div>
                         <div class="bg-transparent p-4">

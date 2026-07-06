@@ -1026,7 +1026,17 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         const checkboxes = document.querySelectorAll('.testrun-tc-cb:checked');
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
         const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
-        runData = { targetIds, results: existingResults };
+        // Freeze the current step definitions of each selected test case (US-103) so
+        // recorded results stay aligned even if a test case is edited later. Re-saving
+        // the run refreshes the snapshot to the test cases' current steps.
+        const snapshot = {};
+        targetIds.forEach(id => {
+            const tc = documents.find(d => d.id === id);
+            if (tc && tc.tcData && Array.isArray(tc.tcData.steps)) {
+                snapshot[id] = tc.tcData.steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+            }
+        });
+        runData = { targetIds, results: existingResults, snapshot };
     } else if (cat === 'testplan') {
         const linkedTCs = Array.from(document.querySelectorAll('.tp-tc-cb:checked')).map(cb => cb.value);
         const linkedRuns = Array.from(document.querySelectorAll('.tp-run-cb:checked')).map(cb => cb.value);
