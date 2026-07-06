@@ -29,7 +29,7 @@ function renderViewer() {
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Username / Email</p>
                 <div class="flex items-center gap-3">
                     <div class="cred-avatar ${credAvatarColor(doc.title)} shrink-0">
-                        <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${guessDomain(doc.title)}.ico" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.style.display='none'">
+                        <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${encodeURIComponent(guessDomain(doc.title))}.ico" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.style.display='none'">
                         <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
                     </div>
                     <div class="flex-1 flex items-center gap-2 min-w-0">

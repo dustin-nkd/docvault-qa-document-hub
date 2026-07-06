@@ -27,8 +27,20 @@ function excerpt(text, len = 120) {
     return clean.length > len ? clean.substring(0, len) + '...' : clean;
 }
 
+// Escapes HTML special chars INCLUDING quotes. escHtml() is used both for text
+// content and for values interpolated into double-quoted HTML attributes
+// (value="...", title="...", data-copy-value="..."), so quotes MUST be escaped —
+// otherwise a value containing `"` can break out of the attribute and inject a
+// handler (e.g. a credential password of `p"onfocus="alert(1)`). The old
+// textContent→innerHTML trick did not escape quotes.
 function escHtml(s) {
-    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+    if (s === null || s === undefined) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // ========================
@@ -100,15 +112,21 @@ window.credAvatarColor = function(site) {
 
 window.guessDomain = function(site) {
     const s = (site || '').trim().toLowerCase();
+    let domain;
     if (s.includes('.')) {
         try {
             const url = s.startsWith('http') ? s : `https://${s}`;
-            return new URL(url).hostname;
+            domain = new URL(url).hostname;
         } catch(e) {
-            return s;
+            domain = s;
         }
+    } else {
+        domain = s.replace(/\s+/g, '') + '.com';
     }
-    return s.replace(/\s+/g, '') + '.com';
+    // Strip any character not valid in a hostname. Prevents HTML-attribute
+    // injection when the result is interpolated into an <img src="..."> URL
+    // (a malicious credential title could otherwise break out and add onerror).
+    return domain.replace(/[^a-z0-9.-]/g, '');
 };
 
 window.copyPassword = function(id, btn) {
