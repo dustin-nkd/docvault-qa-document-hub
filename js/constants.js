@@ -186,7 +186,7 @@ const STRINGS = {
     ghFillRequired: "Please fill in Owner, Repo and Token fields.",
     mpFillAll: "Please fill in all 3 fields.",
     mpMismatch: "New passwords do not match.",
-    mpTooShort: "Password must be at least 4 characters.",
+    mpTooShort: "Password must be at least 8 characters.",
     mpChanged: "Master Password changed successfully!",
     mpChangeFail: "Failed to change password.",
     mpIncorrect: "Incorrect password.",

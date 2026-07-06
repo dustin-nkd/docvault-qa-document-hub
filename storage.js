@@ -605,6 +605,8 @@ const LocalAuth = {
         return sessionStorage.getItem(this.SESSION_KEY) === '1';
     },
 
+    MIN_PASSWORD_LENGTH: 8,
+
     async unlock(password) {
         const btn = document.getElementById('lock-submit-btn');
         if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
@@ -613,6 +615,14 @@ const LocalAuth = {
             const stored = localStorage.getItem(this.HASH_KEY);
 
             if (!stored) {
+                // First-time setup: enforce a minimum password length. (Existing
+                // vaults are compared against the stored hash and never re-checked,
+                // so no one gets locked out by tightening the policy.)
+                if ((password || '').length < this.MIN_PASSWORD_LENGTH) {
+                    if (btn) btn.innerHTML = 'Unlock Vault';
+                    if (typeof toast === 'function') toast(`Master password must be at least ${this.MIN_PASSWORD_LENGTH} characters.`, 'error');
+                    return;
+                }
                 localStorage.setItem(this.HASH_KEY, hash);
             } else if (hash !== stored) {
                 if (btn) btn.innerHTML = 'Unlock Vault';

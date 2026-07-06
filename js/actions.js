@@ -696,7 +696,7 @@ window.changeMasterPassword = async function() {
         toast(t('mpMismatch'), "error");
         return;
     }
-    if (newPwd.length < 4) {
+    if (newPwd.length < (window.LocalAuth.MIN_PASSWORD_LENGTH || 8)) {
         toast(t('mpTooShort'), "warning");
         return;
     }
