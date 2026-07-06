@@ -149,7 +149,10 @@ const GitHubSync = {
         if (recoveryBlob) {
             localStorage.setItem(LocalAuth.RECOVERY_KEY, recoveryBlob);
         }
-        if (hasPasswordHint && window.LocalAuth) {
+        // Only adopt a NON-EMPTY remote hint. An empty/null remote hint means the
+        // owner chose not to sync it (US-102) — it must not wipe this device's own
+        // local hint, it only signals the public copy has been cleared.
+        if (hasPasswordHint && passwordHint && window.LocalAuth) {
             LocalAuth.setHint(passwordHint);
         }
 
@@ -169,9 +172,13 @@ const GitHubSync = {
     // Soft-deleted docs (status='deleted') are kept on GitHub for 30 days so trash syncs across devices.
     // After 30 days they are auto-purged and their IDs added to deletedIds (tombstone).
     _getLocalSecurityMeta() {
+        // The password hint is only synced to the (public) repo when the user has
+        // explicitly opted in (US-102). When opted out we send '' so the remote copy
+        // is cleared without touching this device's local hint.
+        const syncHint = window.LocalAuth && LocalAuth.isHintSyncEnabled && LocalAuth.isHintSyncEnabled();
         return {
             recoveryBlob: window.LocalAuth ? (localStorage.getItem(LocalAuth.RECOVERY_KEY) || null) : null,
-            passwordHint: window.LocalAuth && LocalAuth.getHint ? LocalAuth.getHint() : ''
+            passwordHint: (syncHint && LocalAuth.getHint) ? LocalAuth.getHint() : ''
         };
     },
 
@@ -180,8 +187,10 @@ const GitHubSync = {
         if (meta.recoveryBlob) {
             localStorage.setItem(LocalAuth.RECOVERY_KEY, meta.recoveryBlob);
         }
-        if (Object.prototype.hasOwnProperty.call(meta, 'passwordHint')) {
-            LocalAuth.setHint(meta.passwordHint || '');
+        // Only a non-empty hint is applied locally (see _parseContent); an empty
+        // hint clears only the remote copy, never the local one.
+        if (meta.passwordHint) {
+            LocalAuth.setHint(meta.passwordHint);
         }
     },
 
@@ -605,6 +614,8 @@ const LocalAuth = {
         return sessionStorage.getItem(this.SESSION_KEY) === '1';
     },
 
+    MIN_PASSWORD_LENGTH: 8,
+
     async unlock(password) {
         const btn = document.getElementById('lock-submit-btn');
         if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
@@ -613,6 +624,14 @@ const LocalAuth = {
             const stored = localStorage.getItem(this.HASH_KEY);
 
             if (!stored) {
+                // First-time setup: enforce a minimum password length. (Existing
+                // vaults are compared against the stored hash and never re-checked,
+                // so no one gets locked out by tightening the policy.)
+                if ((password || '').length < this.MIN_PASSWORD_LENGTH) {
+                    if (btn) btn.innerHTML = 'Unlock Vault';
+                    if (typeof toast === 'function') toast(`Master password must be at least ${this.MIN_PASSWORD_LENGTH} characters.`, 'error');
+                    return;
+                }
                 localStorage.setItem(this.HASH_KEY, hash);
             } else if (hash !== stored) {
                 if (btn) btn.innerHTML = 'Unlock Vault';
@@ -692,6 +711,18 @@ const LocalAuth = {
         const value = String(text || '').trim().slice(0, 80);
         if (value) localStorage.setItem(this.HINT_KEY, value);
         else localStorage.removeItem(this.HINT_KEY);
+    },
+
+    // Whether the password hint may be synced to the (public) GitHub repo.
+    // Opt-in only: the hint is readable by anyone without the master password, so
+    // it stays on this device unless the user explicitly enables cross-device sync.
+    HINT_SYNC_KEY: 'docvault_hint_sync',
+    isHintSyncEnabled() {
+        return localStorage.getItem(this.HINT_SYNC_KEY) === '1';
+    },
+    setHintSync(enabled) {
+        if (enabled) localStorage.setItem(this.HINT_SYNC_KEY, '1');
+        else localStorage.removeItem(this.HINT_SYNC_KEY);
     },
 
     reset() {
