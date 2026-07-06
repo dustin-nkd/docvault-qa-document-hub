@@ -43,62 +43,10 @@ function escHtml(s) {
         .replace(/'/g, '&#39;');
 }
 
-// ========================
-// MARKDOWN RENDERER
-// ========================
-function renderMd(text) {
-    if (!text) return `<p style="color:var(--tx-d)">${t('noContent')}</p>`;
-    let h = text;
-
-    const codeBlocks = [];
-    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-        const rawCodeB64 = btoa(unescape(encodeURIComponent(code.trim())));
-        codeBlocks.push(`
-<pre><button class="code-copy-btn" data-onclick="copyCodeBlock(this, '${rawCodeB64}')" title="Copy"><i class="fa-regular fa-copy"></i></button><code>${escHtml(code.trim())}</code></pre>`);
-        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
-    });
-
-    const inlineCodes = [];
-    h = h.replace(/`([^`]+)`/g, (_, code) => {
-        inlineCodes.push(`<code>${escHtml(code)}</code>`);
-        return `__INLINE_CODE_${inlineCodes.length - 1}__`;
-    });
-
-    h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    h = h.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
-    h = h.replace(/~~(.+?)~~/g, '<del>$1</del>');
-    h = h.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-    h = h.replace(/^---+$/gm, '<hr>');
-    h = h.replace(/^- \[x\] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" class="form-checkbox" checked disabled> <span class="align-middle">$1</span></li>');
-    h = h.replace(/^- \[ \] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" class="form-checkbox" disabled> <span class="align-middle">$1</span></li>');
-    h = h.replace(/^- (.+)$/gm, '<li class="ul-li">$1</li>');
-    h = h.replace(/^\d+\. (.+)$/gm, '<li class="ol-li">$1</li>');
-
-    h = h.replace(/((?:<li class="chk-li".*?>.*<\/li>\n?)+)/g, '<ul style="list-style:none;padding-left:4px;">$1</ul>');
-    h = h.replace(/((?:<li class="ul-li".*?>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-    h = h.replace(/((?:<li class="ol-li".*?>.*<\/li>\n?)+)/g, '<ol style="list-style-type:decimal;padding-left:24px;">$1</ol>');
-    h = h.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm, (_, headerRow, sep, bodyRows) => {
-        const headers = headerRow.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
-        const rows = bodyRows.trim().split('\n').map(row => {
-            const cells = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
-            return `<tr>${cells}</tr>`;
-        }).join('');
-        return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
-    });
-    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" style="max-width:100%;border-radius:6px;margin:6px 0;display:block;">');
-    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-
-    h = h.replace(/^(?!<[houblptd]|<\/|<li|<input|<tr|<table|__CODE_BLOCK_|__INLINE_CODE_)([^\n]+)$/gm, '<p>$1</p>');
-    h = h.replace(/<p><\/p>/g, '');
-
-    h = h.replace(/__INLINE_CODE_(\d+)__/g, (_, idx) => inlineCodes[idx]);
-    h = h.replace(/__CODE_BLOCK_(\d+)__/g, (_, idx) => codeBlocks[idx]);
-
-    return h;
+// Escapes a value for use inside a GitHub-flavored Markdown table cell: pipes
+// would otherwise start a new column, and raw newlines would break the row.
+function mdCell(v) {
+    return String(v == null ? '' : v).replace(/\|/g, '\\|').replace(/\n/g, '<br>');
 }
 
 // ========================

@@ -624,7 +624,9 @@ window.updateTestRunStep = async function(runDocId, tcId, stepIdx, status) {
     }
 
     await persist();
-    render();
+    // Only the viewer content changes on a step result — a full render() would
+    // needlessly rebuild the sidebar and header on every Pass/Fail click.
+    renderContent();
 };
 
 window.updateTestRunNote = async function(runDocId, tcId, note) {
