@@ -594,6 +594,7 @@ window.showGitHubSettingsModal = async function() {
     }
     const currentHint = window.LocalAuth ? window.LocalAuth.getHint() : '';
     const hasRecovery = !!localStorage.getItem(window.LocalAuth ? window.LocalAuth.RECOVERY_KEY : 'docvault_recovery_blob');
+    const hintSyncOn = !!(window.LocalAuth && window.LocalAuth.isHintSyncEnabled && window.LocalAuth.isHintSyncEnabled());
 
     showModal(`
         <div>
@@ -630,7 +631,11 @@ window.showGitHubSettingsModal = async function() {
                         <input type="text" id="sec-hint" class="form-input flex-1 py-1.5 px-3 text-xs" placeholder="e.g. Pet name + year" maxlength="80" value="${escHtml(currentHint)}">
                         <button type="button" class="btn-s py-1.5 px-3 text-xs whitespace-nowrap" data-onclick="savePasswordHint()">Save</button>
                     </div>
-                    <p class="text-[10px] mt-1" style="color:var(--tx-d);">Shown on lock screen as a reminder. Never include your actual password.</p>
+                    <label class="flex items-center gap-2 mt-2 cursor-pointer">
+                        <input type="checkbox" id="sec-hint-sync" class="form-checkbox" ${hintSyncOn ? 'checked' : ''}>
+                        <span class="text-[10px]" style="color:var(--tx-d);">Sync hint across devices <strong style="color:#f59e0b;">(readable publicly on GitHub)</strong></span>
+                    </label>
+                    <p class="text-[10px] mt-1" style="color:var(--tx-d);">Shown on lock screen as a reminder. Never include your actual password. Kept on this device only unless you enable sync above.</p>
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Recovery Key</label>
@@ -728,14 +733,19 @@ window.savePasswordHint = async function() {
     const input = document.getElementById('sec-hint');
     if (!input) return;
     const text = input.value.trim();
+    const syncCb = document.getElementById('sec-hint-sync');
+    const syncOn = !!(syncCb && syncCb.checked);
     window.LocalAuth.setHint(text);
+    window.LocalAuth.setHintSync(syncOn);
     if (window.updateLockSecurityState) window.updateLockSecurityState();
+    // Push either way: when sync is off this clears the public copy from GitHub
+    // (the meta builder sends an empty hint), when on it publishes the new hint.
     if (await window.GitHubSync.isConfigured()) {
         window.GitHubSync.push(documents, true, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }).catch(e => {
             toast('Password hint saved locally, but sync failed: ' + e.message, 'error');
         });
     }
-    toast(text ? 'Password hint saved.' : 'Password hint cleared.', 'success');
+    toast(!text ? 'Password hint cleared.' : (syncOn ? 'Password hint saved & synced (public).' : 'Password hint saved on this device only.'), 'success');
 };
 
 window.generateRecoveryKey = async function() {
