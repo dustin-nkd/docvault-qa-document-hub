@@ -698,7 +698,7 @@ function renderDocList() {
                 ${docs.map(d => {
                     if (d.category === 'credential') {
                         const domain = guessDomain(d.title);
-                        const favUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+                        const favUrl = `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`;
                         return `
                         <div class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
                             ${batchCheckbox(d.id)}

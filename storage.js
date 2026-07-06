@@ -651,6 +651,13 @@ const LocalAuth = {
 
         localStorage.setItem(this.HASH_KEY, await this._hash(newPassword));
         sessionStorage.setItem(this.SESSION_PWD, newPassword);
+
+        // The recovery blob encrypts the OLD password (keyed by the recovery code,
+        // which we don't have here), so it cannot be re-wrapped for the new password
+        // and would silently unlock into an undecryptable vault. Revoke it — the user
+        // must generate a fresh recovery key. Removing it here also makes the next
+        // push send rb:null, clearing the stale blob from GitHub.
+        localStorage.removeItem(this.RECOVERY_KEY);
     },
 
     async generateRecovery(password) {
