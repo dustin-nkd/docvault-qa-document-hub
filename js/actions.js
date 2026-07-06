@@ -978,7 +978,7 @@ ${testData ? `## ${t('tcData')}\n${testData}\n` : ''}
 ## ${t('tcSteps')}
 | Step | ${t('tcAction')} | ${t('tcExpected')} |
 |---|---|---|
-${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>')} | ${s.expected.replace(/\n/g, '<br>')} |`).join('\n') : '| - | - | - |'}
+${steps.length ? steps.map((s, i) => `| ${i+1} | ${mdCell(s.action)} | ${mdCell(s.expected)} |`).join('\n') : '| - | - | - |'}
 `;
     } else if (cat === 'api') {
         const method = document.getElementById('ed-api-method')?.value || 'GET';
@@ -1008,8 +1008,8 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>
 
 **Method:** \`${method}\` | **Endpoint:** \`${endpoint}\`
 
-${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${headers.map(h => `| ${h.key || '-'} | ${h.value || '-'} | ${h.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
-${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${p.key || '-'} | ${p.value || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
+${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${headers.map(h => `| ${mdCell(h.key) || '-'} | ${mdCell(h.value) || '-'} | ${h.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
+${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${mdCell(p.key) || '-'} | ${mdCell(p.value) || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
 ${body ? `## ${t('apiBody')}\n\`\`\`json\n${body}\n\`\`\`\n` : ''}
 ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
     } else if (cat === 'testrun') {
