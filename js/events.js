@@ -248,6 +248,10 @@ function executeAction(code, event, element) {
             element.style.background = 'var(--card)';
             continue;
         }
+        if (call === "this.style.background='var(--bg2)'") {
+            element.style.background = 'var(--bg2)';
+            continue;
+        }
         if (call === "this.style.background='transparent'") {
             element.style.background = 'transparent';
             continue;

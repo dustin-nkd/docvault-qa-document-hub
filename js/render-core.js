@@ -754,7 +754,7 @@ function renderDocList() {
                         <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
                         <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${excerpt(d.content, 100)}</p>
                         <div class="flex items-center gap-1.5 flex-wrap mb-3">
-                            ${d.tags.slice(0, 3).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+                            ${d.tags.slice(0, 3).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
                             ${d.tags.length > 3 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 3}</span>` : ''}
                         </div>
                         <p class="text-[11px]" style="color:var(--tx-d);"><i class="fa-regular fa-clock mr-1"></i>${fmtDate(d.updatedAt)}</p>
@@ -964,7 +964,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
                         <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
-                            ${d.tags.slice(0, 2).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+                            ${d.tags.slice(0, 2).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
                             ${d.tags.length > 2 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 2}</span>` : ''}
                             <span class="text-[10px] ml-auto" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
                         </div>

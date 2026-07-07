@@ -811,13 +811,13 @@ window.saveGitHubSettings = async function() {
 window.changeMasterPassword = async function() {
     const current = document.getElementById('mp-current').value;
     const newPwd = document.getElementById('mp-new').value;
-    const confirm = document.getElementById('mp-confirm').value;
+    const confirmPwd = document.getElementById('mp-confirm').value;
 
-    if (!current || !newPwd || !confirm) {
+    if (!current || !newPwd || !confirmPwd) {
         toast(t('mpFillAll'), "warning");
         return;
     }
-    if (newPwd !== confirm) {
+    if (newPwd !== confirmPwd) {
         toast(t('mpMismatch'), "error");
         return;
     }

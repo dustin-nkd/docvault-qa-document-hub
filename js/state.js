@@ -7,6 +7,7 @@ const pendingImageReplacements = new Map();
 let state = {
     view: 'dashboard', // dashboard | documents | favorites | editor | viewer
     category: 'all',
+    subfolder: '',
     search: '',
     statusFilter: 'all',
     sortBy: 'updated',
