@@ -35,6 +35,13 @@ function renderViewer() {
             ${sev ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${(SEV[sev] || '#94a3b8')}20;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
             ${prio ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${prioColor}20;color:${prioColor};" title="Priority">${escHtml(prio)}</span>` : ''}
             ${doc.bugData?.assignee ? `<span class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:10px;"></i>${escHtml(doc.bugData.assignee)}</span>` : ''}
+            ${(() => {
+                const runId = doc.bugData?.foundInRun;
+                if (!runId || state.sharedView) return '';
+                const run = documents.find(d => d.id === runId && d.status !== 'deleted');
+                if (!run) return '';
+                return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')" title="Open the test run this bug was found in"><i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}</button>`;
+            })()}
         </div>`;
         })() : ''}
 
@@ -302,6 +309,8 @@ function renderViewer() {
                                 const status = results[tc.id]?.[idx] || 'untested';
                                 const statusColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
                                 const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
+                                // B1: a bug already reported from this exact step, if any
+                                const linkedBug = documents.find(b => b.category === 'bug' && b.status !== 'deleted' && b.bugData && b.bugData.foundInRun === doc.id && b.bugData.foundInTc === tc.id && b.bugData.foundInStep === idx);
                                 return `
                                 <div class="py-4 ${idx !== steps.length - 1 ? 'border-b' : ''}" style="border-color:var(--brd);">
                                     <div class="flex items-center gap-2 mb-2">
@@ -312,7 +321,7 @@ function renderViewer() {
                                             <div class="text-sm leading-relaxed" style="color:var(--tx);">${escHtml(step.action).replace(/\n/g, '<br>')}</div>
                                             ${step.expected ? `<div class="text-[13px] leading-relaxed" style="color:var(--tx-m);"><span class="font-semibold opacity-60 uppercase text-[10px] tracking-wider mr-1">Expected:</span> ${escHtml(step.expected).replace(/\n/g, '<br>')}</div>` : ''}
                                         </div>
-                                        <div class="shrink-0 flex items-start">
+                                        <div class="shrink-0 flex flex-col items-end gap-1.5">
                                             ${state.sharedView ? `
                                             <span class="px-3 py-1.5 text-[11px] font-medium rounded-lg" style="background:${status !== 'untested' ? statusColors[status] + '22' : 'var(--bg2)'}; color:${statusColors[status]}; border:1px solid ${status !== 'untested' ? statusColors[status] + '55' : 'var(--brd)'};">
                                                 ${statusLabels[status]}
@@ -324,6 +333,10 @@ function renderViewer() {
                                                 <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'blocked' ? 'bg-amber-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'blocked' ? 'color:var(--tx-m);' : ''}" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'blocked')" title="${t('blocked')}"><i class="fa-solid fa-ban mr-1.5"></i>Block</button>
                                             </div>
                                             `}
+                                            ${!state.sharedView && status === 'fail' ? (linkedBug
+                                                ? `<button class="text-[10px] font-semibold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.12);color:#f87171;" data-onclick="viewDoc('${linkedBug.id}')" title="View linked bug"><i class="fa-solid fa-bug mr-1" style="font-size:9px;"></i>${bugRef(linkedBug)}</button>`
+                                                : `<button class="text-[10px] font-semibold px-2 py-1 rounded" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);" data-onclick="reportBugFromStep('${doc.id}','${tc.id}',${idx})"><i class="fa-solid fa-bug mr-1" style="font-size:9px;"></i>Report bug</button>`
+                                            ) : ''}
                                         </div>
                                     </div>
                                 </div>

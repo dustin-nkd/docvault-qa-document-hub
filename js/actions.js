@@ -981,6 +981,40 @@ function viewDoc(id) {
 }
 
 // ========================
+// REPORT BUG FROM A FAILED TEST-RUN STEP (B1)
+// ========================
+window.reportBugFromStep = function(runId, tcId, stepIdx) {
+    const run = documents.find(d => d.id === runId);
+    const tc = documents.find(d => d.id === tcId);
+    if (!run || !tc) { toast('Test run or test case not found.', 'error'); return; }
+    const steps = (run.runData?.snapshot?.[tcId]) || tc.tcData?.steps || [];
+    const step = steps[stepIdx];
+    if (!step) { toast('Step not found.', 'error'); return; }
+
+    pushHistory();
+    state.view = 'editor';
+    state.editingDoc = null;
+    state.editorTags = [];
+    state.editorMode = 'edit';
+    state._newCat = 'bug';
+    state._newTitle = `[BUG] ${tc.title} — Step ${stepIdx + 1} failed`;
+    state._newSubfolder = '';
+    state._newStatus = 'draft';
+    state._newTcData = null; state._newApiData = null; state._newRunData = null; state._newTcPlanData = null;
+    state._newBugData = {
+        severity: 'Major', priority: 'P2', env: '', browser: '', precond: '',
+        // Repro steps = the test case's actions up to and including the failed step.
+        steps: steps.slice(0, stepIdx + 1).map(s => s.action).filter(Boolean),
+        expected: step.expected || '',
+        actual: '',
+        foundInRun: runId, foundInTc: tcId, foundInStep: stepIdx
+    };
+    state._newContent = `> Reported from test run **${run.title}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
+    render();
+    setTimeout(() => document.getElementById('ed-bug-actual')?.focus(), 120);
+};
+
+// ========================
 // BUG LIFECYCLE ACTIONS
 // ========================
 window.resolveBug = async function(id, resolution) {
@@ -1074,12 +1108,15 @@ async function saveDoc() {
         const priority = document.getElementById('ed-bug-priority')?.value || 'P3';
         const expected = document.getElementById('ed-bug-expected')?.value || '';
         const actual = document.getElementById('ed-bug-actual')?.value || '';
-        const existing = state.editingDoc?.bugData || {};
+        // For a new bug prefilled from a failed test step (B1), the link fields live
+        // on state._newBugData; for an edit they live on the existing doc.
+        const existing = state.editingDoc?.bugData || state._newBugData || {};
 
         bugData = { env, browser, severity, priority, assignee, precond, steps, expected, actual,
             resolution: existing.resolution || '',
             duplicateOf: existing.duplicateOf || '',
-            reopenCount: existing.reopenCount || 0 };
+            reopenCount: existing.reopenCount || 0,
+            foundInRun: existing.foundInRun, foundInTc: existing.foundInTc, foundInStep: existing.foundInStep };
 
         finalContent = `# ${title}
 
