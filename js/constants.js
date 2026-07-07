@@ -225,6 +225,13 @@ const CAT_META = {
     release: { get label() { return t('release'); }, icon: 'fa-rocket', color: 'var(--c-rel)', cls: 'cat-release' }
 };
 
+// Safe accessor for category metadata (US-405). Documents with an unknown or
+// legacy category (e.g. from an import) would otherwise crash rendering when
+// code reads CAT_META[cat].color/.icon/.cls/.label directly.
+function getCatMeta(category) {
+    return CAT_META[category] || { label: category || 'Unknown', icon: 'fa-file', color: '#7a8ba8', cls: 'cat-unknown' };
+}
+
 // ========================
 // TEMPLATES
 // ========================

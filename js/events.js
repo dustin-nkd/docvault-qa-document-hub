@@ -102,13 +102,35 @@ async function startApp() {
         const d = GitHubSync.DEFAULTS;
         const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
         if (ok) {
+            sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
             toast('Vault synced from GitHub', 'success');
         } else {
             const hasRemoteData = await _checkRemoteExists(d.owner, d.repo, d.branch);
+            const provisional = sessionStorage.getItem(LocalAuth.PROVISIONAL_KEY) === '1';
+            if (hasRemoteData && provisional) {
+                // The master password just created on this device can't decrypt the
+                // existing remote vault, so it was the wrong password. Roll it back
+                // (instead of locking the user into a wrong hash forever) and re-lock
+                // for another attempt (US-401). Only fires for a freshly-minted hash,
+                // never for a returning user whose local hash already matched.
+                localStorage.removeItem(LocalAuth.HASH_KEY);
+                sessionStorage.removeItem(LocalAuth.SESSION_KEY);
+                sessionStorage.removeItem(LocalAuth.SESSION_PWD);
+                sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
+                toast('Wrong master password — enter the same password you used on your other device.', 'error');
+                const ls = document.getElementById('lock-screen');
+                if (ls) ls.classList.remove('hidden');
+                if (window.resetLockFormState) window.resetLockFormState();
+                if (window.updateLockSecurityState) window.updateLockSecurityState();
+                return;
+            }
+            sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
             if (hasRemoteData) {
                 toast('Sync failed: wrong master password — enter the same password you used on your other device.', 'error');
             }
         }
+    } else {
+        sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
     }
     await init();
     // If security metadata exists locally, push now so it is available cross-device.
@@ -150,6 +172,30 @@ function handleUrlParams() {
 // ========================
 // CSP EVENT DELEGATOR (executeAction)
 // ========================
+// Split a "fn(args)" argument list on TOP-LEVEL commas only, leaving commas that
+// sit inside quoted strings untouched (US-404). A naive argsStr.split(',') broke
+// values such as a subfolder named "QA, Release 1". Handles \' and \" escapes.
+function _splitArgs(str) {
+    const args = [];
+    let cur = '', quote = null;
+    for (let i = 0; i < str.length; i++) {
+        const c = str[i];
+        if (quote) {
+            cur += c;
+            if (c === '\\' && i + 1 < str.length) { cur += str[++i]; }
+            else if (c === quote) { quote = null; }
+        } else if (c === "'" || c === '"') {
+            quote = c; cur += c;
+        } else if (c === ',') {
+            args.push(cur); cur = '';
+        } else {
+            cur += c;
+        }
+    }
+    args.push(cur);
+    return args;
+}
+
 function executeAction(code, event, element) {
     if (!code) return;
 
@@ -226,14 +272,14 @@ function executeAction(code, event, element) {
 
             let args = [];
             if (argsStr.trim() !== '') {
-                args = argsStr.split(',').map(s => {
+                args = _splitArgs(argsStr).map(s => {
                     s = s.trim();
                     if (s === 'this') return element;
                     if (s === 'this.value') return element.value;
                     if (s === 'event') return event;
                     if (s === 'null') return null;
                     if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
-                        return s.slice(1, -1);
+                        return s.slice(1, -1).replace(/\\(['"])/g, '$1');
                     }
                     if (!isNaN(s)) return Number(s);
                     return s;

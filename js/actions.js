@@ -1252,7 +1252,19 @@ async function toggleFav(id) {
 async function duplicateDoc(id) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
-    const dup = { ...doc, id: uid(), title: doc.title + ' (Copy)', favorite: false, createdAt: Date.now(), updatedAt: Date.now(), tags: [...doc.tags] };
+    // Deep-clone so nested objects (runData, bugData, tcData, apiData, envData,
+    // releaseData, tcPlanData) are NOT shared by reference with the original.
+    // A shallow spread left them shared, so editing the copy — e.g. recording
+    // test-run results — mutated the source document too (US-402).
+    const dup = (typeof structuredClone === 'function') ? structuredClone(doc) : JSON.parse(JSON.stringify(doc));
+    dup.id = uid();
+    dup.title = doc.title + ' (Copy)';
+    dup.favorite = false;
+    dup.createdAt = Date.now();
+    dup.updatedAt = Date.now();
+    // A duplicated bug is a distinct report — give it its own BUG-### (US-202),
+    // otherwise the copy would collide with the original's number.
+    if (dup.category === 'bug') dup.bugNumber = _nextBugNumber();
     documents.unshift(dup);
     await persist();
     toast(t('docDuplicated'), 'success');

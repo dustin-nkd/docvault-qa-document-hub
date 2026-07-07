@@ -8,7 +8,7 @@ function renderViewer() {
     return `<div class="fade-up max-w-4xl mx-auto">
         <!-- Meta -->
         <div class="flex flex-wrap items-center gap-2.5 mb-4">
-            <span class="cat-badge ${CAT_META[doc.category].cls}">${CAT_META[doc.category].label}</span>
+            <span class="cat-badge ${getCatMeta(doc.category).cls}">${getCatMeta(doc.category).label}</span>
             ${doc.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(doc.subfolder)}</span>` : ''}
             <span class="st-badge st-${doc.status}">${doc.status}</span>
             ${(doc.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
