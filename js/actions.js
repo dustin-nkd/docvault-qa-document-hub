@@ -666,24 +666,77 @@ async function uploadImageToCloud(blob, callback) {
     }
 
     try {
-        const comma = dataUrl.indexOf(',');
-        const meta = dataUrl.slice(0, comma);
-        const b64 = dataUrl.slice(comma + 1); // base64 of the image bytes = GitHub PUT content
-        const ext = /image\/png/.test(meta) ? 'png' : 'jpg';
-        const name = `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
-        const res = await fetch(`https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/images/${name}`, {
-            method: 'PUT',
-            headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: `Image ${name}`, content: b64, branch: settings.branch || 'main' })
-        });
-        if (!res.ok) throw new Error('GitHub ' + res.status);
-        const url = `https://raw.githubusercontent.com/${settings.owner}/${settings.repo}/${settings.branch || 'main'}/images/${name}`;
+        const url = await _putImageToCdn(dataUrl, settings);
         callback(url, blob.name || 'image');
     } catch(e) {
         toast('Image CDN upload failed — stored inline instead.', 'error');
         callback(dataUrl, blob.name || 'image');
     }
 }
+
+// Upload a data:image base64 URL to the repo's images/ folder, return its raw URL.
+async function _putImageToCdn(dataUrl, settings) {
+    const comma = dataUrl.indexOf(',');
+    const meta = dataUrl.slice(0, comma);
+    const b64 = dataUrl.slice(comma + 1); // base64 of the image bytes = GitHub PUT content
+    const ext = /image\/png/.test(meta) ? 'png' : (/image\/gif/.test(meta) ? 'gif' : (/image\/webp/.test(meta) ? 'webp' : 'jpg'));
+    const name = `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+    const res = await fetch(`https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/images/${name}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `Image ${name}`, content: b64, branch: settings.branch || 'main' })
+    });
+    if (!res.ok) throw new Error('GitHub ' + res.status);
+    return `https://raw.githubusercontent.com/${settings.owner}/${settings.repo}/${settings.branch || 'main'}/images/${name}`;
+}
+
+// Migrate all inline base64 images in active documents to the public CDN (S6-2).
+window.compactImages = async function() {
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) { toast('Add a GitHub token in Settings first.', 'warning'); return; }
+    const DATA_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g;
+    let imgs = 0, bytes = 0;
+    documents.forEach(d => {
+        if (d.status === 'deleted' || typeof d.content !== 'string') return;
+        [...new Set(d.content.match(DATA_RE) || [])].forEach(u => { imgs++; bytes += u.length; });
+    });
+    if (imgs === 0) { toast('No inline images to compact.', 'info'); return; }
+    const mb = (bytes / 1048576).toFixed(1);
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(99,102,241,0.12);"><i class="fa-solid fa-compress" style="color:#818cf8;"></i></div>
+            <h3 class="font-heading font-semibold text-lg mb-2">Compact ${imgs} inline image${imgs > 1 ? 's' : ''}?</h3>
+            <p class="text-sm mb-5" style="color:var(--tx-m);">This uploads ~${mb} MB of embedded images to the <strong style="color:#f59e0b;">public</strong> GitHub CDN and replaces them with links, shrinking your vault. Images become publicly readable.</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-p" data-onclick="_doCompactImages()">Compact</button>
+            </div>
+        </div>`);
+};
+
+window._doCompactImages = async function() {
+    closeModal();
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) return;
+    toast('Compacting images…', 'info');
+    const DATA_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g;
+    let uploaded = 0, failed = 0;
+    for (const d of documents) {
+        if (d.status === 'deleted' || typeof d.content !== 'string' || !d.content.includes('data:image/')) continue;
+        const urls = [...new Set(d.content.match(DATA_RE) || [])];
+        if (!urls.length) continue;
+        let content = d.content, changed = false;
+        for (const dataUrl of urls) {
+            try { const cdn = await _putImageToCdn(dataUrl, settings); content = content.split(dataUrl).join(cdn); changed = true; uploaded++; }
+            catch(e) { failed++; }
+        }
+        if (changed) { d.content = content; d.updatedAt = Date.now(); }
+    }
+    await persist();
+    if (state.editingDoc) { const cur = documents.find(x => x.id === state.editingDoc.id); if (cur) state.editingDoc = { ...cur }; }
+    render();
+    toast(`Compacted ${uploaded} image${uploaded !== 1 ? 's' : ''}${failed ? `, ${failed} failed` : ''}.`, failed ? 'error' : 'success');
+};
 
 async function _migrateDocImages(doc) {
     if (!doc?.content) return;
@@ -821,6 +874,7 @@ window.showGitHubSettingsModal = async function() {
                         <input type="checkbox" id="gh-img-cdn" class="form-checkbox mt-0.5" ${imgCdnOn ? 'checked' : ''} data-onchange="toggleImageCdn(this)">
                         <span class="text-[10px]" style="color:var(--tx-d);">Store pasted images on GitHub CDN <strong style="color:#f59e0b;">(public, unencrypted)</strong> instead of inline. Shrinks the vault; images become publicly readable. Off by default.</span>
                     </label>
+                    <button type="button" class="btn-s py-1.5 px-3 text-xs w-full flex items-center justify-center gap-1.5" data-onclick="closeModal();compactImages()"><i class="fa-solid fa-compress text-[10px]"></i> Compact existing inline images → CDN</button>
                     <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
                         <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Close</button>
                         <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
