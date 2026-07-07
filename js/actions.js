@@ -586,12 +586,16 @@ window.shareDoc = async function(id) {
 async function loadSharedDoc(shareId, keyBase64) {
     try {
         const d = GitHubSync.DEFAULTS;
-        const rawUrl = `https://raw.githubusercontent.com/${d.owner}/${d.repo}/${d.branch}/shared/${shareId}.enc`;
-        const res = await fetch(rawUrl);
+        // Fetch via the GitHub Contents API, NOT raw.githubusercontent.com. The raw
+        // CDN caches files for ~5 minutes, so a revoked (deleted) share would keep
+        // resolving from cache and stay viewable. The API reflects deletions
+        // immediately (404), which is what makes revocation actually take effect.
+        const apiUrl = `https://api.github.com/repos/${d.owner}/${d.repo}/contents/shared/${shareId}.enc?ref=${d.branch || 'main'}`;
+        const res = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store' });
         if (!res.ok) throw new Error('Document not found or link has expired.');
 
-        const fileText = await res.text();
-        const encContent = fileText.trim();
+        const data = await res.json();
+        const encContent = decodeURIComponent(escape(atob((data.content || '').replace(/\n/g, '')))).trim();
         const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
 
         const packed = Uint8Array.from(atob(encContent), c => c.charCodeAt(0));
