@@ -709,7 +709,21 @@ window.selectCustomOption = function(id, val, label, onChangeCode) {
     if (dd) dd.classList.add('hidden');
 
     if (onChangeCode) {
-        eval(onChangeCode.replace(/this\.value/g, `'${val}'`));
+        // Safe dispatch instead of eval(): parse "fnName(args)" and invoke it.
+        // `this.value` resolves to the selected value, which is passed as a real
+        // argument (never string-interpolated into code), so a value containing
+        // quotes or commas cannot inject anything (US-403).
+        const m = onChangeCode.match(/^([a-zA-Z0-9_]+)\((.*)\)$/);
+        if (m && typeof window[m[1]] === 'function') {
+            const args = m[2].trim() === '' ? [] : m[2].split(',').map(s => {
+                s = s.trim();
+                if (s === 'this.value') return val;
+                if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) return s.slice(1, -1);
+                if (!isNaN(s)) return Number(s);
+                return s;
+            });
+            window[m[1]](...args);
+        }
     }
 };
 
