@@ -7,7 +7,7 @@
 
   [![Web App](https://img.shields.io/badge/Web_App-GitHub_Pages-4285F4?logo=github&logoColor=white)](#-live-demo)
   [![Vanilla JS](https://img.shields.io/badge/JavaScript-Vanilla_ES6+-F7DF1E?logo=javascript&logoColor=black)](#)
-  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-CDN-38B2AC?logo=tailwind-css&logoColor=white)](#)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-Self--hosted-38B2AC?logo=tailwind-css&logoColor=white)](#)
   [![AES-256-GCM](https://img.shields.io/badge/Encryption-AES--256--GCM-6366f1?logo=letsencrypt&logoColor=white)](#-security--encryption)
   [![GitHub Sync](https://img.shields.io/badge/Sync-GitHub_API-181717?logo=github&logoColor=white)](#-github-sync--cross-device)
 </div>
@@ -170,9 +170,12 @@ docvault-qa-document-hub/
 ├── tailwind.config.js      # Tailwind CSS configuration
 ├── package.json            # Dependencies & scripts
 ├── icons/                  # App icons (SVG + PNG: 16, 48, 128)
-├── vendor/                 # Offline-bundled assets
+├── vendor/                 # Offline-bundled assets (no runtime CDN dependency)
 │   ├── fontawesome/        #   FontAwesome 7.x (CSS + webfonts)
-│   └── fonts/              #   Space Grotesk & DM Sans font files
+│   ├── fonts/              #   Space Grotesk & DM Sans font files
+│   ├── tailwind/           #   Tailwind Play build (self-hosted)
+│   ├── toastui/            #   Toast UI Editor (CSS + JS)
+│   └── morphdom/           #   morphdom UMD bundle
 ├── src/
 │   └── input.css           # Tailwind directives
 └── .github/
@@ -189,7 +192,7 @@ docvault-qa-document-hub/
 | Layer | Technology |
 |-------|-----------|
 | **Language** | Vanilla JavaScript (ES6+ modules) |
-| **Styling** | Tailwind CSS (CDN) + CSS Custom Properties |
+| **Styling** | Tailwind CSS (self-hosted Play build in `vendor/`) + CSS Custom Properties |
 | **Markdown Editor** | [Toast UI Editor](https://ui.toast.com/tui-editor) (WYSIWYG + Markdown) |
 | **DOM Diffing** | [morphdom](https://github.com/patrick-steele-idem/morphdom) (efficient re-renders) |
 | **Encryption** | Web Crypto API (AES-256-GCM, PBKDF2, SHA-256) |

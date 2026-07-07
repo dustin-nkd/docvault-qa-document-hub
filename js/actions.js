@@ -918,6 +918,15 @@ window.cancelEdit = function() {
     navigateBack();
 };
 
+// Next sequential bug number for a human-readable BUG-### reference (US-202).
+function _nextBugNumber() {
+    let max = 0;
+    documents.forEach(d => {
+        if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber;
+    });
+    return max + 1;
+}
+
 async function saveDoc() {
     const title = document.getElementById('ed-title')?.value.trim();
     const subfolder = document.getElementById('ed-subfolder')?.value.trim() || '';
@@ -942,11 +951,12 @@ async function saveDoc() {
         const stepInputs = document.querySelectorAll('.bug-step-input');
         const steps = Array.from(stepInputs).map(inp => inp.value.trim()).filter(v => v);
         const assignee = document.getElementById('ed-bug-assignee')?.value || '';
+        const priority = document.getElementById('ed-bug-priority')?.value || 'P3';
         const expected = document.getElementById('ed-bug-expected')?.value || '';
         const actual = document.getElementById('ed-bug-actual')?.value || '';
         const existing = state.editingDoc?.bugData || {};
 
-        bugData = { env, browser, severity, assignee, precond, steps, expected, actual,
+        bugData = { env, browser, severity, priority, assignee, precond, steps, expected, actual,
             resolution: existing.resolution || '',
             duplicateOf: existing.duplicateOf || '',
             reopenCount: existing.reopenCount || 0 };
@@ -1085,14 +1095,14 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         // The document being edited vanished (deleted on another device / concurrent
         // sync). Save the edits as a fresh document instead of dereferencing
         // documents[-1] (which previously produced a broken "?view=undefined" viewer).
-        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: cat === 'bug' ? (state.editingDoc.bugStatus || 'new') : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: cat === 'bug' ? (state.editingDoc.bugStatus || 'new') : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(revived);
         toast('Original document was removed elsewhere — saved as a new copy.', 'info');
         state.editingDoc = { ...revived };
         state.view = 'viewer';
         state.category = cat;
     } else {
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };

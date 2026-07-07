@@ -98,9 +98,20 @@ function renderEditor() {
             </div>
         </div>
 
-        <div class="mb-4">
-            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugAssignee')}</label>
-            <input id="ed-bug-assignee" class="form-input" placeholder="${t('bugAssigneePl')}" value="${escHtml(bugData?.assignee || '')}">
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugAssignee')}</label>
+                <input id="ed-bug-assignee" class="form-input" placeholder="${t('bugAssigneePl')}" value="${escHtml(bugData?.assignee || '')}">
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Priority</label>
+                ${renderSelect('ed-bug-priority', [
+                    {value: 'P1', label: 'P1 — Urgent'},
+                    {value: 'P2', label: 'P2 — High'},
+                    {value: 'P3', label: 'P3 — Medium'},
+                    {value: 'P4', label: 'P4 — Low'}
+                ], bugData?.priority || 'P3', 'w-full')}
+            </div>
         </div>
 
         <div class="mb-4">

@@ -49,6 +49,14 @@ function mdCell(v) {
     return String(v == null ? '' : v).replace(/\|/g, '\\|').replace(/\n/g, '<br>');
 }
 
+// Human-readable bug reference, e.g. BUG-007 (US-202). Empty for non-bugs or
+// legacy bugs that have not been assigned a number yet.
+function bugRef(doc) {
+    return (doc && doc.category === 'bug' && typeof doc.bugNumber === 'number')
+        ? 'BUG-' + String(doc.bugNumber).padStart(3, '0')
+        : '';
+}
+
 // ========================
 // CREDENTIAL HELPERS
 // ========================

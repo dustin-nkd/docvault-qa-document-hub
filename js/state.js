@@ -76,5 +76,15 @@ async function hydrate() {
             migrated = true;
         }
     });
+
+    // Backfill sequential bug numbers for bugs created before US-202, in creation
+    // order, so every bug has a stable BUG-### reference.
+    let maxBugNumber = documents.reduce((m, d) =>
+        (d.category === 'bug' && typeof d.bugNumber === 'number') ? Math.max(m, d.bugNumber) : m, 0);
+    documents
+        .filter(d => d.category === 'bug' && typeof d.bugNumber !== 'number')
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+        .forEach(d => { d.bugNumber = ++maxBugNumber; migrated = true; });
+
     if (migrated) await persist();
 }

@@ -23,6 +23,21 @@ function renderViewer() {
             Created ${fmtDate(doc.createdAt)} &middot; Updated ${fmtDate(doc.updatedAt)}
         </p>
 
+        ${doc.category === 'bug' ? (() => {
+            const SEV = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
+            const sev = doc.bugData?.severity;
+            const prio = doc.bugData?.priority;
+            const prioColor = (typeof PRIO_COLOR !== 'undefined' && PRIO_COLOR[prio]) || '#94a3b8';
+            const ref = bugRef(doc);
+            return `
+        <div class="mb-6 flex flex-wrap items-center gap-2">
+            ${ref ? `<span class="font-mono text-sm font-bold px-2.5 py-1 rounded" style="background:var(--card);border:1px solid var(--brd);color:var(--c-bug);">${ref}</span>` : ''}
+            ${sev ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${(SEV[sev] || '#94a3b8')}20;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
+            ${prio ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${prioColor}20;color:${prioColor};" title="Priority">${escHtml(prio)}</span>` : ''}
+            ${doc.bugData?.assignee ? `<span class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:10px;"></i>${escHtml(doc.bugData.assignee)}</span>` : ''}
+        </div>`;
+        })() : ''}
+
         ${doc.category === 'credential' ? `
         <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
             <div class="mb-4">
