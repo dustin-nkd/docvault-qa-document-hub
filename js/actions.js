@@ -1048,7 +1048,7 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
     state._newStatus = 'draft';
     state._newTcData = null; state._newApiData = null; state._newRunData = null; state._newTcPlanData = null;
     state._newBugData = {
-        severity: 'Major', priority: 'P2', env: '', browser: '', precond: '',
+        severity: 'Major', priority: 'P2', env: run.runData?.environment || '', browser: '', precond: '',
         // Repro steps = the test case's actions up to and including the failed step.
         steps: steps.slice(0, stepIdx + 1).map(s => s.action).filter(Boolean),
         expected: step.expected || '',
@@ -1238,6 +1238,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     } else if (cat === 'testrun') {
         const checkboxes = document.querySelectorAll('.testrun-tc-cb:checked');
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
+        const environment = document.getElementById('ed-run-env')?.value.trim() || '';
         const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
         // Freeze the current step definitions of each selected test case (US-103) so
         // recorded results stay aligned even if a test case is edited later. Re-saving
@@ -1249,7 +1250,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
                 snapshot[id] = tc.tcData.steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
             }
         });
-        runData = { targetIds, results: existingResults, snapshot };
+        runData = { targetIds, results: existingResults, snapshot, environment };
     } else if (cat === 'testplan') {
         const linkedTCs = Array.from(document.querySelectorAll('.tp-tc-cb:checked')).map(cb => cb.value);
         const linkedRuns = Array.from(document.querySelectorAll('.tp-run-cb:checked')).map(cb => cb.value);

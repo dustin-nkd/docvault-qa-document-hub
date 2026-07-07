@@ -331,6 +331,10 @@ function renderEditor() {
         </div>
         ` : category === 'testrun' ? `
         <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Environment / Build <span style="color:var(--tx-d)">(Optional)</span></label>
+            <input id="ed-run-env" class="form-input" placeholder="e.g. Staging · build #1234" value="${escHtml((isEdit ? doc.runData?.environment : state._newRunData?.environment) || '')}">
+        </div>
+        <div class="mb-4">
             <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Select Test Cases for Execution</label>
             <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
                 ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
