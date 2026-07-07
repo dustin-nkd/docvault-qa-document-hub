@@ -5,6 +5,9 @@ function uid() { return 'doc_' + Date.now() + '_' + Math.random().toString(36).s
 
 function fmtDate(ts) {
     const d = new Date(ts);
+    // Guard against undefined/null/invalid timestamps, which would otherwise fall
+    // through and print an ugly "Invalid Date" in the UI (US-406 / #9).
+    if (!ts || isNaN(d.getTime())) return '—';
     const now = new Date();
     const diff = now - d;
     if (diff < 60000) return t('justNow');

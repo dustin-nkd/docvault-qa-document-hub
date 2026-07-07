@@ -319,7 +319,7 @@ window.exportDoc = function(id) {
     if (!doc) return;
 
     const iso = (ts) => ts ? new Date(ts).toISOString().slice(0, 10) : '';
-    const tagsLine = doc.tags?.length ? `\ntags: [${doc.tags.map(t => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]` : '';
+    const tagsLine = doc.tags?.length ? `\ntags: [${doc.tags.map(tg => `"${tg.replace(/"/g, '\\"')}"`).join(', ')}]` : '';
     const folderLine = doc.subfolder ? `\nfolder: "${doc.subfolder}"` : '';
 
     const frontmatter = `---\ntitle: "${(doc.title || '').replace(/"/g, '\\"')}"\ncategory: ${doc.category}${tagsLine}${folderLine}\nstatus: ${doc.status || 'published'}\ncreated: ${iso(doc.createdAt)}\nupdated: ${iso(doc.updatedAt)}\n---\n\n`;

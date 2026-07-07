@@ -133,6 +133,16 @@ window.selectSearchResult = function(idx) {
     setTimeout(() => viewDoc(doc.id), 50);
 };
 
+// Move the highlighted search result without re-running the whole search+render
+// on every arrow key (US-406 / #5): just toggle .active on the existing items.
+function _moveSearchSelection() {
+    document.querySelectorAll('#search-results .search-item').forEach(el => {
+        const isActive = Number(el.dataset.idx) === searchSelectedIndex;
+        el.classList.toggle('active', isActive);
+        if (isActive) el.scrollIntoView({ block: 'nearest' });
+    });
+}
+
 // Global Ctrl+K listener and arrow-key navigation in search modal
 window.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -148,17 +158,13 @@ window.addEventListener('keydown', function(e) {
             e.preventDefault();
             if (searchSelectedIndex < currentSearchResults.length - 1) {
                 searchSelectedIndex++;
-                renderSearchResults(document.getElementById('search-input').value);
-                const activeEl = document.querySelector('.search-item.active');
-                if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+                _moveSearchSelection();
             }
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             if (searchSelectedIndex > 0) {
                 searchSelectedIndex--;
-                renderSearchResults(document.getElementById('search-input').value);
-                const activeEl = document.querySelector('.search-item.active');
-                if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+                _moveSearchSelection();
             }
         } else if (e.key === 'Enter') {
             e.preventDefault();

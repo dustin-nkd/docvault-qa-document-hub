@@ -336,7 +336,7 @@ function renderEditor() {
                 ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
                     const isChecked = (doc?.runData?.targetIds || state._newRunData?.targetIds || []).includes(tc.id);
                     return `
-                    <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" onmouseenter="this.style.background='var(--card)'" onmouseleave="this.style.background='transparent'">
+                    <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'">
                         <input type="checkbox" class="form-checkbox testrun-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
                         <div class="flex-1">
                             <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
@@ -356,7 +356,7 @@ function renderEditor() {
                         ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test cases available.</div>`
                         : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
                             const isChecked = (tcPlanData?.linkedTCs || []).includes(tc.id);
-                            return `<label class="flex items-center gap-3 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background='transparent'">
+                            return `<label class="flex items-center gap-3 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'">
                                 <input type="checkbox" class="form-checkbox tp-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
                                 <div class="flex-1">
                                     <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
@@ -373,7 +373,7 @@ function renderEditor() {
                         ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test runs found.</div>`
                         : documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => {
                             const isChecked = (tcPlanData?.linkedRuns || []).includes(run.id);
-                            return `<label class="flex items-center gap-2 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background='transparent'">
+                            return `<label class="flex items-center gap-2 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'">
                                 <input type="checkbox" class="form-checkbox tp-run-cb" value="${run.id}" ${isChecked ? 'checked' : ''}>
                                 <i class="fa-solid fa-play-circle text-xs" style="color:var(--c-testrun);"></i>
                                 <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
