@@ -901,6 +901,7 @@ function renderBugKanban(docs, isMobileSearch) {
                 ${showClosed ? 'Hide' : 'Show'} Closed${!showClosed && closedCount > 0 ? ` (${closedCount})` : ''}
             </button>
             <div class="flex-1"></div>
+            <button class="btn-s text-sm flex items-center gap-1.5" data-onclick="exportBugsCsv()" title="Export bugs to CSV"><i class="fa-solid fa-file-csv" style="font-size:11px;"></i> CSV</button>
             <button class="btn-p text-sm" data-onclick="createDoc('bug')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newBug')}</button>
         </div>
 

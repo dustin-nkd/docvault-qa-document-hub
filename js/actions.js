@@ -443,6 +443,48 @@ window.revokeShare = async function(shareId) {
 };
 
 // ========================
+// CSV EXPORT (US-301)
+// ========================
+window.exportBugsCsv = function() {
+    const bugs = documents.filter(d => d.category === 'bug' && d.status !== 'deleted');
+    if (!bugs.length) { toast('No bugs to export.', 'info'); return; }
+    const header = ['ID', 'Title', 'Severity', 'Priority', 'Status', 'Assignee', 'Environment', 'Browser', 'Created', 'Updated'];
+    const norm = (typeof _normBugStatus === 'function') ? _normBugStatus : (s => s || 'new');
+    const iso = ts => ts ? new Date(ts).toISOString().slice(0, 10) : '';
+    const rows = [header];
+    bugs.sort((a, b) => (a.bugNumber || 0) - (b.bugNumber || 0)).forEach(b => {
+        rows.push([
+            bugRef(b), b.title || '', b.bugData?.severity || '', b.bugData?.priority || '',
+            norm(b.bugStatus), b.bugData?.assignee || '', b.bugData?.env || '', b.bugData?.browser || '',
+            iso(b.createdAt), iso(b.updatedAt)
+        ]);
+    });
+    downloadFile(`docvault-bugs-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows), 'text/csv;charset=utf-8');
+    toast(`Exported ${bugs.length} bug${bugs.length > 1 ? 's' : ''} to CSV.`, 'success');
+};
+
+window.exportTestRunCsv = function(runId) {
+    const run = documents.find(d => d.id === runId);
+    if (!run || run.category !== 'testrun') return;
+    const results = run.runData?.results || {};
+    const snapshot = run.runData?.snapshot || {};
+    const targetIds = run.runData?.targetIds || [];
+    const rows = [['Test Case', 'Step #', 'Action', 'Expected', 'Result', 'Note']];
+    targetIds.forEach(tcId => {
+        const tc = documents.find(d => d.id === tcId);
+        const steps = snapshot[tcId] || tc?.tcData?.steps || [];
+        const note = results[tcId]?.note || '';
+        if (!steps.length) { rows.push([tc?.title || tcId, '', '', '', '', note]); return; }
+        steps.forEach((s, i) => {
+            rows.push([tc?.title || tcId, i + 1, s.action || '', s.expected || '', results[tcId]?.[i] || 'untested', i === 0 ? note : '']);
+        });
+    });
+    const slug = (run.title || 'run').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    downloadFile(`docvault-run-${slug}.csv`, toCsv(rows), 'text/csv;charset=utf-8');
+    toast('Test run exported to CSV.', 'success');
+};
+
+// ========================
 // SHARE DOCUMENT
 // ========================
 window.shareDoc = async function(id) {

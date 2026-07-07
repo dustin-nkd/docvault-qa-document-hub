@@ -246,6 +246,7 @@ function renderViewer() {
             const untestedPct = totalSteps ? (untestedCount / totalSteps * 100) : 100;
 
             let html = `
+            ${state.sharedView ? '' : `<div class="flex justify-end mb-3"><button class="btn-s text-xs flex items-center gap-1.5" data-onclick="exportTestRunCsv('${doc.id}')" title="Export results to CSV"><i class="fa-solid fa-file-csv" style="font-size:11px;"></i> Export CSV</button></div>`}
             <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                     <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('pass')}</div>
