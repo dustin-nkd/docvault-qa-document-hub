@@ -102,13 +102,35 @@ async function startApp() {
         const d = GitHubSync.DEFAULTS;
         const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
         if (ok) {
+            sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
             toast('Vault synced from GitHub', 'success');
         } else {
             const hasRemoteData = await _checkRemoteExists(d.owner, d.repo, d.branch);
+            const provisional = sessionStorage.getItem(LocalAuth.PROVISIONAL_KEY) === '1';
+            if (hasRemoteData && provisional) {
+                // The master password just created on this device can't decrypt the
+                // existing remote vault, so it was the wrong password. Roll it back
+                // (instead of locking the user into a wrong hash forever) and re-lock
+                // for another attempt (US-401). Only fires for a freshly-minted hash,
+                // never for a returning user whose local hash already matched.
+                localStorage.removeItem(LocalAuth.HASH_KEY);
+                sessionStorage.removeItem(LocalAuth.SESSION_KEY);
+                sessionStorage.removeItem(LocalAuth.SESSION_PWD);
+                sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
+                toast('Wrong master password — enter the same password you used on your other device.', 'error');
+                const ls = document.getElementById('lock-screen');
+                if (ls) ls.classList.remove('hidden');
+                if (window.resetLockFormState) window.resetLockFormState();
+                if (window.updateLockSecurityState) window.updateLockSecurityState();
+                return;
+            }
+            sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
             if (hasRemoteData) {
                 toast('Sync failed: wrong master password — enter the same password you used on your other device.', 'error');
             }
         }
+    } else {
+        sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
     }
     await init();
     // If security metadata exists locally, push now so it is available cross-device.

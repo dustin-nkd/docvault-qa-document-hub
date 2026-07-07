@@ -615,6 +615,10 @@ const LocalAuth = {
     },
 
     MIN_PASSWORD_LENGTH: 8,
+    // Marks a hash that was just created this session for a first-time/new device.
+    // startApp() clears it once sync confirms the password, or rolls the hash back
+    // if the password turns out to be wrong for existing remote data (US-401).
+    PROVISIONAL_KEY: 'docvault_provisional',
 
     async unlock(password) {
         const btn = document.getElementById('lock-submit-btn');
@@ -633,6 +637,7 @@ const LocalAuth = {
                     return;
                 }
                 localStorage.setItem(this.HASH_KEY, hash);
+                sessionStorage.setItem(this.PROVISIONAL_KEY, '1');
             } else if (hash !== stored) {
                 if (btn) btn.innerHTML = 'Unlock Vault';
                 if (typeof toast === 'function') toast(typeof t === 'function' ? t('mpIncorrect') : 'Incorrect password.', 'error');
