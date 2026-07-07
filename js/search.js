@@ -105,7 +105,7 @@ function _renderSearchUI(container) {
             <div class="search-item ${idx === searchSelectedIndex ? 'active' : ''}" data-idx="${idx}" data-onclick="selectSearchResult(${idx})">
                 <div class="search-item-title">${escHtml(doc.title)}</div>
                 <div class="search-item-meta">
-                    <span class="cat-badge ${CAT_META[doc.category]?.cls}">${CAT_META[doc.category]?.label}</span>
+                    <span class="cat-badge ${getCatMeta(doc.category).cls}">${escHtml(getCatMeta(doc.category).label)}</span>
                     <span class="search-item-match">${matchHint}</span>
                 </div>
             </div>

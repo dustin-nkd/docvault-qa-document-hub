@@ -15,7 +15,7 @@ function updateHeader() {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
         actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
-        const catLabel = state.view === 'favorites' ? t('favorites') : (state.category === 'all' ? t('allDocuments') : CAT_META[state.category]?.label + 's');
+        const catLabel = state.view === 'favorites' ? t('favorites') : (state.category === 'all' ? t('allDocuments') : getCatMeta(state.category).label + 's');
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
         actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'editor') {
@@ -552,13 +552,13 @@ function renderDashboard() {
                         ${recent.length === 0 ? `<div class="text-center py-10" style="color:var(--tx-d);"><i class="fa-solid fa-inbox text-3xl mb-3 pulse-s block"></i><p class="text-sm">${t('noDocYet')}</p></div>` :
                         recent.map(d => `
                             <div class="doc-card p-3.5 flex items-center gap-3" data-onclick="viewDoc('${d.id}')">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:${CAT_META[d.category].color}12;">
-                                    <i class="fa-solid ${CAT_META[d.category].icon} text-xs" style="color:${CAT_META[d.category].color};"></i>
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:${getCatMeta(d.category).color}12;">
+                                    <i class="fa-solid ${getCatMeta(d.category).icon} text-xs" style="color:${getCatMeta(d.category).color};"></i>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(d.title)}</p>
                                     <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                        <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                        <span class="cat-badge ${getCatMeta(d.category).cls}">${getCatMeta(d.category).label}</span>
                                         <span class="st-badge st-${d.status}">${d.status}</span>
                                         <span class="text-[11px]" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
                                     </div>
@@ -614,7 +614,7 @@ function renderDashboard() {
                             <div class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer" style="transition:background .15s;"
                                 data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'"
                                 data-onclick="viewDoc('${d.id}')">
-                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${CAT_META[d.category].color};"></span>
+                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${getCatMeta(d.category).color};"></span>
                                 <span class="text-xs truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
                             </div>
                         `).join('')}
@@ -738,7 +738,7 @@ function renderDocList() {
                         ${batchCheckbox(d.id)}
                         <div class="flex items-start justify-between mb-2.5">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                <span class="cat-badge ${getCatMeta(d.category).cls}">${getCatMeta(d.category).label}</span>
                                 ${d.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(d.subfolder)}</span>` : ''}
                                 <span class="st-badge st-${d.status}">${d.status}</span>
                             </div>
