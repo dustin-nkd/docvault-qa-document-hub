@@ -374,6 +374,75 @@ window.restoreSnapshot = async function(id, index) {
 };
 
 // ========================
+// SHARE REGISTRY (US-304) — track created share links so they can be revoked
+// ========================
+const SHARE_REGISTRY_KEY = 'docvault_shares';
+function _getShares() {
+    try { return JSON.parse(localStorage.getItem(SHARE_REGISTRY_KEY) || '[]'); } catch(e) { return []; }
+}
+function _saveShares(list) { localStorage.setItem(SHARE_REGISTRY_KEY, JSON.stringify(list)); }
+function _recordShare(entry) {
+    const list = _getShares().filter(s => s.shareId !== entry.shareId);
+    list.unshift(entry);
+    _saveShares(list);
+}
+function _removeShare(shareId) { _saveShares(_getShares().filter(s => s.shareId !== shareId)); }
+
+window.showShareManager = function() {
+    const shares = _getShares();
+    const rows = shares.length ? shares.map(s => `
+        <div class="flex items-center gap-3 p-3 rounded-lg mb-2" style="background:var(--bg2);border:1px solid var(--brd);">
+            <i class="fa-solid fa-link text-xs shrink-0" style="color:var(--acc);"></i>
+            <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" style="color:var(--tx);">${escHtml(s.title || 'Untitled')}</div>
+                <div class="text-[11px]" style="color:var(--tx-d);">${escHtml(s.category || 'doc')} &middot; shared ${new Date(s.createdAt).toLocaleDateString()}</div>
+            </div>
+            <button class="btn-d text-xs py-1 px-2.5 shrink-0" data-onclick="revokeShare('${s.shareId}')"><i class="fa-solid fa-trash mr-1"></i>Revoke</button>
+        </div>`).join('') : `<p class="text-sm text-center py-8" style="color:var(--tx-d);">No active share links.</p>`;
+    showModal(`
+        <div>
+            <h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);"><i class="fa-solid fa-share-nodes text-[var(--acc)] mr-2"></i>Shared Links</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">Revoking deletes the encrypted file from GitHub, so the link stops working for everyone.</p>
+            <div style="max-height:400px;overflow-y:auto;">${rows}</div>
+            <div class="flex justify-end mt-4"><button class="btn-s" data-onclick="closeModal()">Close</button></div>
+        </div>
+    `);
+};
+
+window.revokeShare = async function(shareId) {
+    const settings = await GitHubSync.getSettings();
+    const entry = _getShares().find(s => s.shareId === shareId);
+    if (settings && settings.token) {
+        const base = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${shareId}.enc`;
+        try {
+            let sha = entry && entry.sha;
+            if (!sha) {
+                const g = await fetch(`${base}?ref=${settings.branch || 'main'}`, { headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json' } });
+                if (g.ok) { sha = (await g.json()).sha; }
+            }
+            if (sha) {
+                const del = await fetch(base, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `Revoke share ${shareId}`, sha, branch: settings.branch || 'main' })
+                });
+                if (!del.ok && del.status !== 404) throw new Error(`GitHub error ${del.status}`);
+            }
+        } catch(e) {
+            toast('Removed from list, but GitHub delete failed: ' + e.message, 'error');
+            _removeShare(shareId);
+            showShareManager();
+            return;
+        }
+    } else {
+        toast('No GitHub token configured — removed from list only; the file may still exist remotely.', 'warning');
+    }
+    _removeShare(shareId);
+    toast('Share link revoked.', 'success');
+    showShareManager();
+};
+
+// ========================
 // SHARE DOCUMENT
 // ========================
 window.shareDoc = async function(id) {
@@ -442,6 +511,10 @@ window.shareDoc = async function(id) {
             }
         );
         if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+        // Record the share so it can be listed and revoked later (US-304).
+        const putData = await res.json().catch(() => ({}));
+        _recordShare({ shareId, docId: doc.id, title: doc.title, category: doc.category, createdAt: Date.now(), sha: (putData.content && putData.content.sha) || null });
 
         const shareUrl = `${location.origin}${location.pathname}?shareId=${shareId}#key=${encodeURIComponent(keyBase64)}`;
 
@@ -656,6 +729,7 @@ window.showGitHubSettingsModal = async function() {
                     <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
                     Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
                 </div>
+                <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
                 <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
                     <div>
                         <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
