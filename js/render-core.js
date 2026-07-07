@@ -116,6 +116,8 @@ window.syncEditorState = function() {
             env: document.getElementById('ed-bug-env')?.value || '',
             browser: document.getElementById('ed-bug-browser')?.value || '',
             severity: document.getElementById('ed-bug-severity')?.value || 'Minor',
+            priority: document.getElementById('ed-bug-priority')?.value || 'P3',
+            assignee: document.getElementById('ed-bug-assignee')?.value || '',
             precond: document.getElementById('ed-bug-precond')?.value || '',
             steps: Array.from(document.querySelectorAll('.bug-step-input')).map(inp => inp.value),
             expected: document.getElementById('ed-bug-expected')?.value || '',
@@ -788,6 +790,7 @@ function _normBugStatus(s) { return BUG_STATUS_NORMALIZE[s] || s || 'new'; }
 
 const RES_LABEL = { 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: 'Rejected', deferred: 'Deferred', fixed: 'Fixed' };
 const RES_COLOR = { 'wont-fix': '#6b7280', duplicate: '#94a3b8', rejected: '#f87171', deferred: '#fb923c', fixed: '#34d399' };
+const PRIO_COLOR = { P1: '#ef4444', P2: '#f97316', P3: '#3b82f6', P4: '#94a3b8' };
 
 function renderBugKanban(docs, isMobileSearch) {
     const SEV_COLOR = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
@@ -830,6 +833,8 @@ function renderBugKanban(docs, isMobileSearch) {
                     const assignee = d.bugData?.assignee || '';
                     const resolution = d.bugData?.resolution || '';
                     const reopenCount = d.bugData?.reopenCount || 0;
+                    const priority = d.bugData?.priority || '';
+                    const ref = bugRef(d);
                     return `
                     <div class="doc-card flex flex-col cursor-grab active:cursor-grabbing"
                          draggable="true"
@@ -841,6 +846,7 @@ function renderBugKanban(docs, isMobileSearch) {
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${sev.toUpperCase()}</span>
+                                ${priority ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${(PRIO_COLOR[priority] || '#94a3b8')}20; color:${PRIO_COLOR[priority] || '#94a3b8'};">${priority}</span>` : ''}
                                 ${resolution ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:${(RES_COLOR[resolution] || '#6b7280')}18; color:${RES_COLOR[resolution] || '#6b7280'};">${RES_LABEL[resolution] || resolution}</span>` : ''}
                                 ${reopenCount > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:#f8717118;color:#f87171;" title="Reopened ${reopenCount}x"><i class="fa-solid fa-rotate-left" style="font-size:8px;"></i> ${reopenCount}</span>` : ''}
                             </div>
@@ -860,6 +866,7 @@ function renderBugKanban(docs, isMobileSearch) {
                         ${env || browser ? `<p class="text-[10px] mb-2 truncate" style="color:var(--tx-d);"><i class="fa-solid fa-bug mr-1"></i>${[env, browser].filter(Boolean).join(' · ')}</p>` : ''}
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
+                            ${ref ? `<span class="text-[10px] font-mono font-semibold" style="color:var(--tx-d);">${ref}</span>` : ''}
                             ${d.tags.slice(0, 2).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
                             ${d.tags.length > 2 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 2}</span>` : ''}
                             <span class="text-[10px] ml-auto" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
