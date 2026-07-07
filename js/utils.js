@@ -57,6 +57,23 @@ function bugRef(doc) {
         : '';
 }
 
+// ---- CSV export helpers (US-301) ----
+function _csvCell(v) {
+    const s = String(v == null ? '' : v);
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function toCsv(rows) {
+    return rows.map(r => r.map(_csvCell).join(',')).join('\r\n');
+}
+function downloadFile(filename, content, mime) {
+    const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
 // ========================
 // CREDENTIAL HELPERS
 // ========================
