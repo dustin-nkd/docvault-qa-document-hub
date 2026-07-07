@@ -172,6 +172,30 @@ function handleUrlParams() {
 // ========================
 // CSP EVENT DELEGATOR (executeAction)
 // ========================
+// Split a "fn(args)" argument list on TOP-LEVEL commas only, leaving commas that
+// sit inside quoted strings untouched (US-404). A naive argsStr.split(',') broke
+// values such as a subfolder named "QA, Release 1". Handles \' and \" escapes.
+function _splitArgs(str) {
+    const args = [];
+    let cur = '', quote = null;
+    for (let i = 0; i < str.length; i++) {
+        const c = str[i];
+        if (quote) {
+            cur += c;
+            if (c === '\\' && i + 1 < str.length) { cur += str[++i]; }
+            else if (c === quote) { quote = null; }
+        } else if (c === "'" || c === '"') {
+            quote = c; cur += c;
+        } else if (c === ',') {
+            args.push(cur); cur = '';
+        } else {
+            cur += c;
+        }
+    }
+    args.push(cur);
+    return args;
+}
+
 function executeAction(code, event, element) {
     if (!code) return;
 
@@ -248,14 +272,14 @@ function executeAction(code, event, element) {
 
             let args = [];
             if (argsStr.trim() !== '') {
-                args = argsStr.split(',').map(s => {
+                args = _splitArgs(argsStr).map(s => {
                     s = s.trim();
                     if (s === 'this') return element;
                     if (s === 'this.value') return element.value;
                     if (s === 'event') return event;
                     if (s === 'null') return null;
                     if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
-                        return s.slice(1, -1);
+                        return s.slice(1, -1).replace(/\\(['"])/g, '$1');
                     }
                     if (!isNaN(s)) return Number(s);
                     return s;
