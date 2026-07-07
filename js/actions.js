@@ -642,12 +642,46 @@ async function compressImage(blob, maxPx, quality) {
     return canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', keepPng ? undefined : quality);
 }
 
+// Image storage strategy (A1, opt-in / PA B):
+// - Default: inline base64, which stays INSIDE the encrypted document.
+// - Opt-in (docvault_img_cdn flag) + a GitHub token: upload the compressed image
+//   to the public repo's images/ folder and reference it by URL, so large images
+//   don't bloat the encrypted vault. Note this makes those images public.
+// - Any failure (no token, upload error) falls back to inline so nothing is lost.
 async function uploadImageToCloud(blob, callback) {
+    let dataUrl;
     try {
-        const dataUrl = await compressImage(blob, 1200, 0.80);
-        callback(dataUrl, blob.name || 'image');
+        dataUrl = await compressImage(blob, 1200, 0.80);
     } catch(err) {
         toast(t('imgProcessFail'), 'error');
+        return;
+    }
+
+    const cdnOn = localStorage.getItem('docvault_img_cdn') === '1';
+    let settings = null;
+    if (cdnOn) { try { settings = await GitHubSync.getSettings(); } catch(e) {} }
+    if (!cdnOn || !settings || !settings.token) {
+        callback(dataUrl, blob.name || 'image');
+        return;
+    }
+
+    try {
+        const comma = dataUrl.indexOf(',');
+        const meta = dataUrl.slice(0, comma);
+        const b64 = dataUrl.slice(comma + 1); // base64 of the image bytes = GitHub PUT content
+        const ext = /image\/png/.test(meta) ? 'png' : 'jpg';
+        const name = `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+        const res = await fetch(`https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/images/${name}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: `Image ${name}`, content: b64, branch: settings.branch || 'main' })
+        });
+        if (!res.ok) throw new Error('GitHub ' + res.status);
+        const url = `https://raw.githubusercontent.com/${settings.owner}/${settings.repo}/${settings.branch || 'main'}/images/${name}`;
+        callback(url, blob.name || 'image');
+    } catch(e) {
+        toast('Image CDN upload failed — stored inline instead.', 'error');
+        callback(dataUrl, blob.name || 'image');
     }
 }
 
@@ -714,6 +748,7 @@ window.showGitHubSettingsModal = async function() {
     const currentHint = window.LocalAuth ? window.LocalAuth.getHint() : '';
     const hasRecovery = !!localStorage.getItem(window.LocalAuth ? window.LocalAuth.RECOVERY_KEY : 'docvault_recovery_blob');
     const hintSyncOn = !!(window.LocalAuth && window.LocalAuth.isHintSyncEnabled && window.LocalAuth.isHintSyncEnabled());
+    const imgCdnOn = localStorage.getItem('docvault_img_cdn') === '1';
 
     showModal(`
         <div>
@@ -782,6 +817,10 @@ window.showGitHubSettingsModal = async function() {
                         <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
                         <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo.</p>
                     </div>
+                    <label class="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" id="gh-img-cdn" class="form-checkbox mt-0.5" ${imgCdnOn ? 'checked' : ''} data-onchange="toggleImageCdn(this)">
+                        <span class="text-[10px]" style="color:var(--tx-d);">Store pasted images on GitHub CDN <strong style="color:#f59e0b;">(public, unencrypted)</strong> instead of inline. Shrinks the vault; images become publicly readable. Off by default.</span>
+                    </label>
                     <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
                         <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Close</button>
                         <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
@@ -792,6 +831,13 @@ window.showGitHubSettingsModal = async function() {
             </div>
         </div>
     `);
+};
+
+window.toggleImageCdn = function(el) {
+    const on = !!(el && el.checked);
+    if (on) localStorage.setItem('docvault_img_cdn', '1');
+    else localStorage.removeItem('docvault_img_cdn');
+    toast(on ? 'New images will be stored on the public GitHub CDN.' : 'New images will be stored inline (encrypted).', 'info');
 };
 
 window.saveGitHubSettings = async function() {
