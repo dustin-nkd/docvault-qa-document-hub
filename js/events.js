@@ -97,6 +97,15 @@ async function init() {
 
 async function startApp() {
     initTheme();
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
+        // Guest demo: skip LocalAuth and GitHubSync entirely — no lock screen, no
+        // password hash checks, no real-token bootstrap/pull/push. Just load the
+        // isolated in-memory sample set and render.
+        await init();
+        renderGuestBanner();
+        handleUrlParams();
+        return;
+    }
     const configured = await GitHubSync.isConfigured();
     if (!configured) {
         const d = GitHubSync.DEFAULTS;
@@ -147,6 +156,27 @@ async function _checkRemoteExists(owner, repo, branch) {
         const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
         return res.ok;
     } catch(e) { return false; }
+}
+
+// ========================
+// GUEST DEMO BANNER
+// ========================
+// Visible, unmissable indicator that this is sample data (not the real vault),
+// plus an exit link. Injected as a floating pill instead of a layout-affecting
+// bar, so it can't break the app's fixed h-screen layout.
+function renderGuestBanner() {
+    if (document.getElementById('guest-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'guest-banner';
+    banner.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:300;display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;font-size:12px;font-weight:600;padding:7px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,0.35);pointer-events:auto;';
+    banner.innerHTML = `<span>🎭 Guest Demo — sample data, nothing is saved</span><a href="${location.pathname}" style="color:#fff;background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:999px;text-decoration:none;">Exit demo</a>`;
+    document.body.appendChild(banner);
+
+    // Hide entry points to real-vault operations that make no sense (and must
+    // never run) in demo mode. The handlers themselves are also guarded
+    // (defense in depth), this just avoids dead clicks.
+    document.querySelector('[data-onclick="lockVault()"]')?.style.setProperty('display', 'none');
+    document.querySelector('[data-onclick="showGitHubSettingsModal()"]')?.style.setProperty('display', 'none');
 }
 
 // ========================
@@ -514,7 +544,11 @@ document.addEventListener('touchend', async () => {
 window._afterUnlock = startApp;
 
 const _shareIdOnLoad = new URLSearchParams(location.search).get('shareId');
-if (_shareIdOnLoad) {
+if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
+    // Highest priority: never show the lock screen, never touch LocalAuth.
+    document.getElementById('lock-screen')?.classList.add('hidden');
+    startApp();
+} else if (_shareIdOnLoad) {
     const _shareKey = decodeURIComponent(location.hash.replace('#key=', ''));
     loadSharedDoc(_shareIdOnLoad, _shareKey);
 } else if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {

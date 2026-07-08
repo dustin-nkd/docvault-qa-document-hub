@@ -1,4 +1,13 @@
 // ========================
+// GUEST DEMO MODE (?guest=1)
+// ========================
+// A completely isolated, no-auth demo path for showing the product to customers
+// / in public groups without ever touching the real master password, the real
+// encrypted vault, or the real GitHub token. See hydrate()/persist() in state.js
+// and startApp() in events.js for the isolation boundary.
+const GUEST_MODE = new URLSearchParams(location.search).get('guest') === '1';
+
+// ========================
 // STRINGS & t()
 // ========================
 const STRINGS = {
@@ -548,3 +557,227 @@ const SAMPLE_DOCS = [
         createdAt: Date.now() - 86400000 * 5, updatedAt: Date.now() - 86400000 * 1
     }
 ];
+
+// ========================
+// GUEST DEMO DATA — fully isolated sample set covering all 11 categories,
+// cross-linked (bug found in a failed test-run step, environment linked to
+// credentials, test plan linked to test cases + runs, release linked to
+// runs/bugs/envs) so a visitor has something real to click through.
+// Never mixed with SAMPLE_DOCS / the real vault — see hydrate() in state.js.
+// ========================
+const GUEST_DEMO_DOCS = (() => {
+    const now = Date.now();
+    const days = n => now - 86400000 * n;
+
+    // Mirrors the Markdown table saveDoc() generates for testcases, so the
+    // document reads correctly when opened directly (the viewer has no
+    // dedicated testcases block — it renders doc.content as Markdown).
+    const tcContent = (title, tcData) => `# ${title}\n\n${tcData.module ? `**Module:** ${tcData.module}` : ''}\n\n${tcData.precond ? `## Pre-conditions\n${tcData.precond}\n` : ''}${tcData.data ? `## Test Data\n${tcData.data}\n` : ''}\n## Test Steps\n| Step | Action | Expected Result |\n|---|---|---|\n${tcData.steps.map((s, i) => `| ${i + 1} | ${s.action} | ${s.expected} |`).join('\n')}\n`;
+
+    const tcLoginData = { module: 'Authentication', precond: 'User account đã tồn tại và active', data: 'user: demo@shop.test / pass: Demo@1234',
+        steps: [
+            { action: 'Điều hướng đến /login, nhập email + password hợp lệ, click "Sign In"', expected: 'Đăng nhập thành công, redirect tới /dashboard' },
+            { action: 'Đăng xuất, nhập sai password 3 lần liên tiếp', expected: 'Hiển thị lỗi "Invalid credentials", sau lần thứ 3 hiện CAPTCHA' }
+        ] };
+    const tcLogin = {
+        id: 'gd_tc_login', title: 'Login — Valid & Invalid Credentials', category: 'testcases',
+        subfolder: 'Auth', tags: ['login', 'smoke'], status: 'published', favorite: true,
+        tcData: tcLoginData, content: tcContent('Login — Valid & Invalid Credentials', tcLoginData),
+        createdAt: days(20), updatedAt: days(2)
+    };
+    const tcCheckoutData = { module: 'Checkout', precond: 'Giỏ hàng có ít nhất 1 sản phẩm', data: 'card: 4242 4242 4242 4242',
+        steps: [
+            { action: 'Thêm sản phẩm vào giỏ, vào trang Checkout', expected: 'Hiển thị đúng tổng tiền, phí ship, thuế' },
+            { action: 'Nhập thông tin thẻ hợp lệ, click "Pay Now"', expected: 'Thanh toán thành công, order status = Confirmed' },
+            { action: 'Thử thanh toán với thẻ bị từ chối (4000 0000 0000 0002)', expected: 'Hiển thị "Payment declined", order status = Pending, cho phép retry' }
+        ] };
+    const tcCheckout = {
+        id: 'gd_tc_checkout', title: 'Checkout — Credit Card Payment', category: 'testcases',
+        subfolder: 'Checkout', tags: ['payment', 'critical'], status: 'published', favorite: true,
+        tcData: tcCheckoutData, content: tcContent('Checkout — Credit Card Payment', tcCheckoutData),
+        createdAt: days(18), updatedAt: days(1)
+    };
+    const tcSearchData = { module: 'Catalog', precond: 'Catalog có tối thiểu 50 sản phẩm', data: '',
+        steps: [
+            { action: 'Nhập từ khóa "áo thun" vào ô search', expected: 'Trả về kết quả liên quan trong < 1s' },
+            { action: 'Áp dụng filter Giá: 100k-300k + Size: M', expected: 'Danh sách được lọc đúng theo điều kiện' }
+        ] };
+    const tcSearch = {
+        id: 'gd_tc_search', title: 'Product Search & Filter', category: 'testcases',
+        subfolder: '', tags: ['search'], status: 'draft', favorite: false,
+        tcData: tcSearchData, content: tcContent('Product Search & Filter', tcSearchData),
+        createdAt: days(9), updatedAt: days(3)
+    };
+
+    const runSprint = {
+        id: 'gd_run_sprint24', title: 'Sprint 24 — Regression Run', category: 'testrun',
+        tags: ['regression', 'sprint-24'], status: 'published', favorite: true,
+        runData: {
+            targetIds: [tcLogin.id, tcCheckout.id, tcSearch.id],
+            environment: 'Staging · build #482',
+            snapshot: {
+                [tcLogin.id]: tcLogin.tcData.steps,
+                [tcCheckout.id]: tcCheckout.tcData.steps,
+                [tcSearch.id]: tcSearch.tcData.steps
+            },
+            results: {
+                [tcLogin.id]: { 0: 'pass', 1: 'pass', note: 'CAPTCHA hoạt động đúng sau 3 lần sai.' },
+                [tcCheckout.id]: { 0: 'pass', 1: 'fail', 2: 'blocked', note: 'Payment declined case trả về lỗi 500 thay vì thông báo thân thiện.' },
+                [tcSearch.id]: { 0: 'pass', 1: 'untested' }
+            }
+        },
+        content: '', createdAt: days(4), updatedAt: days(1)
+    };
+
+    // Mirrors the Markdown saveDoc() generates for bugs, for the same reason as
+    // tcContent above — the viewer falls back to doc.content for the bug body
+    // (the dedicated bug block only renders the severity/priority/ref meta strip).
+    const bugContent = (title, b) => `# ${title}\n\n## Environment\n- **Environment:** ${b.env || '-'}\n- **Device/Browser:** ${b.browser || '-'}\n- **Severity:** ${b.severity}\n\n${b.precond ? `## Pre-conditions\n${b.precond}\n\n` : ''}## Steps to Reproduce\n${b.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n## Expected Behavior\n${b.expected || '-'}\n\n## Actual Behavior\n${b.actual || '-'}`;
+
+    const bug1Data = { env: 'Staging', browser: 'Chrome 120', severity: 'Critical', priority: 'P1', assignee: 'Minh T.',
+        precond: 'Giỏ hàng có 2+ sản phẩm', steps: ['Thêm 2 sản phẩm vào giỏ', 'Vào trang Checkout', 'Nhấn F5 để refresh'],
+        expected: 'Giỏ hàng giữ nguyên sản phẩm', actual: 'Giỏ hàng trống, phải thêm lại từ đầu',
+        resolution: '', duplicateOf: '', reopenCount: 0 };
+    const bug1 = {
+        id: 'gd_bug_1', bugNumber: 1, title: 'Giỏ hàng mất sản phẩm khi refresh trang Checkout', category: 'bug',
+        tags: ['checkout', 'cart'], status: 'published', favorite: true, bugStatus: 'open',
+        bugData: bug1Data, content: bugContent('Giỏ hàng mất sản phẩm khi refresh trang Checkout', bug1Data),
+        createdAt: days(6), updatedAt: days(1)
+    };
+    const bug2Data = { env: 'Staging · build #482', browser: 'Chrome 120', severity: 'Major', priority: 'P2', assignee: 'Lan N.',
+        precond: 'Đang ở bước thanh toán', steps: ['Thêm sản phẩm vào giỏ, vào trang Checkout', 'Nhập thông tin thẻ hợp lệ, click "Pay Now"', 'Thử thanh toán với thẻ bị từ chối (4000 0000 0000 0002)'],
+        expected: 'Hiển thị "Payment declined", order status = Pending, cho phép retry',
+        actual: 'Server trả về HTTP 500, không có thông báo cho user, order kẹt ở trạng thái Processing',
+        resolution: '', duplicateOf: '', reopenCount: 0,
+        foundInRun: runSprint.id, foundInTc: tcCheckout.id, foundInStep: 1 };
+    const bug2 = {
+        id: 'gd_bug_2', bugNumber: 2, title: 'Checkout — Payment Declined trả về lỗi 500', category: 'bug',
+        tags: ['payment', 'checkout'], status: 'published', favorite: false, bugStatus: 'in-progress',
+        bugData: bug2Data,
+        content: bugContent('Checkout — Payment Declined trả về lỗi 500', bug2Data) + '\n\n> Reported from test run **Sprint 24 — Regression Run** — Checkout — Credit Card Payment, step 2.',
+        createdAt: days(1), updatedAt: days(1)
+    };
+    const bug3Data = { env: 'Staging', browser: 'Safari 17', severity: 'Minor', priority: 'P3', assignee: 'Minh T.',
+        precond: '', steps: ['Vào trang Catalog', 'Gõ nhanh 5-6 ký tự liên tiếp vào ô search'],
+        expected: 'Chỉ gọi API 1 lần sau khi ngừng gõ 300ms', actual: 'Gọi API mỗi lần gõ 1 ký tự',
+        resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
+    const bug3 = {
+        id: 'gd_bug_3', bugNumber: 3, title: 'Search box không debounce, gọi API liên tục khi gõ', category: 'bug',
+        tags: ['search', 'performance'], status: 'archived', favorite: false, bugStatus: 'closed',
+        bugData: bug3Data, content: bugContent('Search box không debounce, gọi API liên tục khi gõ', bug3Data),
+        createdAt: days(25), updatedAt: days(8)
+    };
+
+    const testplan1 = {
+        id: 'gd_testplan_1', title: 'Release v2.4.0 Test Plan', category: 'testplan',
+        tags: ['release', 'v2.4.0'], status: 'published', favorite: true,
+        tcPlanData: { linkedTCs: [tcLogin.id, tcCheckout.id, tcSearch.id], linkedRuns: [runSprint.id] },
+        content: '## Scope\nRegression đầy đủ cho Auth, Checkout, Catalog trước khi release v2.4.0.\n\n## Strategy\nAutomated smoke suite + manual exploratory cho Checkout (module rủi ro cao nhất).\n\n## Timeline\n- Code freeze: T-3\n- Full regression: T-2\n- Sign-off: T-1',
+        createdAt: days(7), updatedAt: days(1)
+    };
+
+    const apiUsers = {
+        id: 'gd_api_users', title: 'GET /api/v1/users/{id}', category: 'api',
+        subfolder: 'Users Service', tags: ['users', 'get'], status: 'published', favorite: false,
+        apiData: { method: 'GET', endpoint: '/api/v1/users/{id}',
+            headers: [{ key: 'Authorization', value: 'Bearer {{token}}', req: true }, { key: 'Accept', value: 'application/json', req: false }],
+            params: [{ key: 'include', value: 'profile,orders', req: false }],
+            body: '', statusCode: '200',
+            response: `{\n  "id": "usr_8821",\n  "email": "demo@shop.test",\n  "name": "Demo User",\n  "createdAt": "2024-01-15T09:00:00Z"\n}` },
+        content: '', createdAt: days(40), updatedAt: days(10)
+    };
+    const apiOrders = {
+        id: 'gd_api_orders', title: 'POST /api/v1/orders', category: 'api',
+        subfolder: 'Orders Service', tags: ['orders', 'post'], status: 'draft', favorite: true,
+        apiData: { method: 'POST', endpoint: '/api/v1/orders',
+            headers: [{ key: 'Authorization', value: 'Bearer {{token}}', req: true }, { key: 'Content-Type', value: 'application/json', req: true }],
+            params: [],
+            body: `{\n  "items": [{ "sku": "TSHIRT-M-BLK", "qty": 2 }],\n  "paymentMethod": "credit_card"\n}`,
+            statusCode: '201',
+            response: `{\n  "orderId": "ord_5521",\n  "status": "confirmed",\n  "total": 458000\n}` },
+        content: '', createdAt: days(35), updatedAt: days(6)
+    };
+
+    const credAdmin = {
+        id: 'gd_cred_admin', title: 'staging-admin.shop.test', category: 'credential',
+        tags: ['staging', 'admin'], status: 'published', favorite: true,
+        username: 'qa.admin@shop.test', password: 'Demo-Only-Not-Real-Pw1!',
+        content: '', createdAt: days(50), updatedAt: days(20)
+    };
+    const credPayment = {
+        id: 'gd_cred_payment', title: 'sandbox.paymentgateway.test', category: 'credential',
+        tags: ['payment', 'sandbox'], status: 'published', favorite: false,
+        username: 'sandbox_merchant_882', password: 'Sandbox-Demo-Key-0000',
+        content: '', createdAt: days(45), updatedAt: days(15)
+    };
+
+    const envStaging = {
+        id: 'gd_env_staging', title: 'Staging', category: 'environment',
+        tags: ['staging'], status: 'published', favorite: true,
+        envData: { status: 'healthy',
+            properties: [
+                { label: 'Frontend URL', value: 'https://staging.shop.test', secret: false },
+                { label: 'Backend API URL', value: 'https://api-staging.shop.test', secret: false },
+                { label: 'Database Connection', value: 'postgres://staging-db.internal:5432/shop', secret: true }
+            ],
+            linkedCreds: [credAdmin.id], notes: 'Reset dữ liệu mỗi đêm 2h sáng. Dùng để chạy regression suite hàng ngày.' },
+        content: '', createdAt: days(60), updatedAt: days(3)
+    };
+    const envProd = {
+        id: 'gd_env_prod', title: 'Production', category: 'environment',
+        tags: ['production'], status: 'published', favorite: false,
+        envData: { status: 'degraded',
+            properties: [
+                { label: 'Frontend URL', value: 'https://shop.test', secret: false },
+                { label: 'Backend API URL', value: 'https://api.shop.test', secret: false }
+            ],
+            linkedCreds: [credPayment.id], notes: 'Đang theo dõi tăng error rate trên payment service sau bản deploy sáng nay.' },
+        content: '', createdAt: days(90), updatedAt: days(1)
+    };
+
+    const release1 = {
+        id: 'gd_release_1', title: 'v2.4.0 — Checkout Reliability', category: 'release',
+        tags: ['release'], status: 'published', favorite: true,
+        releaseData: { version: 'v2.4.0', releaseDate: new Date(now + 86400000 * 3).toISOString().slice(0, 10), status: 'in-progress',
+            linkedRuns: [runSprint.id], linkedBugs: [bug1.id, bug2.id, bug3.id], linkedEnvs: [envStaging.id, envProd.id] },
+        content: '## Highlights\n- Cải thiện độ ổn định luồng Checkout\n- Debounce cho Search\n\n## Risk\nCòn 1 bug Critical (giỏ hàng mất khi refresh) chưa fix — chặn release cho tới khi resolve.',
+        createdAt: days(3), updatedAt: days(1)
+    };
+
+    const tasks = [
+        { id: 'gd_task_1', title: 'Viết test case cho Checkout Retry Flow', category: 'task', kanbanStatus: 'todo',
+            tags: ['checkout'], status: 'draft', favorite: false, content: '', createdAt: days(2), updatedAt: days(2) },
+        { id: 'gd_task_2', title: 'Điều tra BUG-002 payment declined 500', category: 'task', kanbanStatus: 'in-progress',
+            tags: ['bug', 'payment'], status: 'draft', favorite: true, content: '', createdAt: days(1), updatedAt: days(1) },
+        { id: 'gd_task_3', title: 'Review Test Plan v2.4.0 với QA Lead', category: 'task', kanbanStatus: 'review',
+            tags: ['release'], status: 'draft', favorite: false, content: '', createdAt: days(3), updatedAt: days(1) },
+        { id: 'gd_task_4', title: 'Setup automation cho Search debounce regression', category: 'task', kanbanStatus: 'done',
+            tags: ['automation'], status: 'draft', favorite: false, content: '', createdAt: days(10), updatedAt: days(4) }
+    ];
+
+    const runbook1 = {
+        id: 'gd_rb_1', title: 'Daily Regression Kickoff Runbook', category: 'runbook',
+        tags: ['regression', 'daily'], status: 'published', favorite: false,
+        content: '# Daily Regression Kickoff\n\n1. Verify Staging đã deploy build mới nhất\n2. Chạy automated smoke suite\n3. Nếu smoke pass, trigger full regression run\n4. Log kết quả vào Test Run tương ứng\n5. Báo cáo trên kênh #qa-daily nếu có Critical/Major bug mới',
+        createdAt: days(30), updatedAt: days(5)
+    };
+    const knowledge1 = {
+        id: 'gd_kn_1', title: 'Khi nào nên Block vs Fail một bước test', category: 'knowledge',
+        tags: ['best-practices'], status: 'published', favorite: false,
+        content: '# Block vs Fail\n\n**Fail**: bước thực thi được nhưng kết quả sai với expected — luôn kèm bug report.\n\n**Blocked**: không thể thực thi bước vì một điều kiện tiên quyết khác đang lỗi (vd bug ở bước trước). Không tự tạo bug mới cho bước Blocked — link về bug đang chặn.',
+        createdAt: days(14), updatedAt: days(6)
+    };
+
+    return [
+        runbook1, knowledge1,
+        tcLogin, tcCheckout, tcSearch,
+        ...tasks,
+        bug1, bug2, bug3,
+        testplan1,
+        apiUsers, apiOrders,
+        credAdmin, credPayment,
+        envStaging, envProd,
+        runSprint,
+        release1
+    ];
+})();

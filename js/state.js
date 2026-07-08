@@ -31,6 +31,8 @@ const DocHistory = {
     MAX: 10,
     _key: id => `docvault_history_${id}`,
     save(doc) {
+        // Guest demo: leave zero trace in the browser's real localStorage.
+        if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
         if (!doc?.id || doc.category === 'credential') return;
         let snaps;
         try { snaps = JSON.parse(localStorage.getItem(this._key(doc.id)) || '[]'); } catch { snaps = []; }
@@ -47,10 +49,22 @@ const DocHistory = {
 // PERSISTENCE
 // ========================
 async function persist() {
+    // Guest demo mode: in-memory only. NEVER call DocStorage.save here — that would
+    // write to the browser's real localStorage vault key and, if a real GitHub token
+    // happens to be configured in this browser, push demo edits to the real repo.
+    // Guest edits simply live for the session and vanish on reload.
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
     await DocStorage.save(documents);
 }
 
 async function hydrate() {
+    // Guest demo mode: load the isolated sample set and stop — never touch
+    // LocalAuth, real localStorage, or GitHubSync.
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
+        documents = JSON.parse(JSON.stringify(GUEST_DEMO_DOCS));
+        return;
+    }
+
     // Clean up legacy keys from old Firebase/E2EE architecture
     localStorage.removeItem('firebase_config');
     localStorage.removeItem('e2ee_api_key');
