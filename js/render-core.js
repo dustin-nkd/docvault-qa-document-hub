@@ -822,6 +822,8 @@ const PRIO_COLOR = { P1: '#ef4444', P2: '#f97316', P3: '#3b82f6', P4: '#94a3b8' 
 function renderBugKanban(docs, isMobileSearch) {
     const SEV_COLOR = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
     const showClosed = window._bugShowClosed !== false; // default show all
+    const bm = state.batchMode;
+    const sel = state.selectedIds;
 
     const cols = [
         { id: 'new',         get label() { return t('bugNew'); },        color: '#94a3b8', icon: 'fa-circle-plus' },
@@ -863,13 +865,18 @@ function renderBugKanban(docs, isMobileSearch) {
                     const priority = d.bugData?.priority || '';
                     const ref = bugRef(d);
                     return `
-                    <div class="doc-card flex flex-col cursor-grab active:cursor-grabbing"
-                         draggable="true"
+                    <div class="doc-card flex flex-col ${!bm ? 'cursor-grab active:cursor-grabbing' : ''}${bm && sel.has(d.id) ? ' batch-selected' : ''}"
+                         draggable="${!bm}"
                          data-ondragstart="handleDragStart('${d.id}')"
                          data-ondragend="handleDragEnd"
-                         data-onclick="viewDoc('${d.id}')"
-                         style="background:var(--card); padding: 12px; margin-bottom: 0; border-radius: 8px; border-left: 3px solid ${sevColor};">
+                         data-onclick="${bm ? `toggleSelectDoc('${d.id}', event)` : `viewDoc('${d.id}')`}"
+                         style="background:var(--card); padding: 12px; margin-bottom: 0; border-radius: 8px; border-left: 3px solid ${sevColor}; position:relative;">
 
+                        ${bm ? `<div style="position:absolute;top:8px;right:8px;z-index:5;pointer-events:none;">
+                            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(d.id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(d.id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;">
+                                ${sel.has(d.id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
+                            </div>
+                        </div>` : ''}
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${sev.toUpperCase()}</span>
@@ -877,7 +884,7 @@ function renderBugKanban(docs, isMobileSearch) {
                                 ${resolution ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:${(RES_COLOR[resolution] || '#6b7280')}18; color:${RES_COLOR[resolution] || '#6b7280'};">${RES_LABEL[resolution] || resolution}</span>` : ''}
                                 ${reopenCount > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:#f8717118;color:#f87171;" title="Reopened ${reopenCount}x"><i class="fa-solid fa-rotate-left" style="font-size:8px;"></i> ${reopenCount}</span>` : ''}
                             </div>
-                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                            <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
@@ -928,6 +935,12 @@ function renderBugKanban(docs, isMobileSearch) {
                 ${showClosed ? 'Hide' : 'Show'} Closed${!showClosed && closedCount > 0 ? ` (${closedCount})` : ''}
             </button>
             <div class="flex-1"></div>
+            ${docs.length > 0 ? `
+                ${bm ? `<span class="text-xs font-semibold" style="color:var(--acc);">${sel.size} selected</span>` : ''}
+                <button class="text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
+                    ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
+                </button>
+            ` : ''}
             <button class="btn-s text-sm flex items-center gap-1.5" data-onclick="exportBugsCsv()" title="Export bugs to CSV"><i class="fa-solid fa-file-csv" style="font-size:11px;"></i> CSV</button>
             <button class="btn-p text-sm" data-onclick="createDoc('bug')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newBug')}</button>
         </div>
@@ -937,6 +950,19 @@ function renderBugKanban(docs, isMobileSearch) {
             <div class="flex items-start mx-auto w-max" style="min-height: 400px; gap: 1.25rem;">
                 ${kanbanHtml}
             </div>
+        </div>
+
+        <!-- Batch action toolbar -->
+        <div class="batch-toolbar${bm && sel.size > 0 ? ' visible' : ''}">
+            <span style="font-size:12px;font-weight:700;color:var(--tx);">${sel.size}</span>
+            <span style="font-size:11px;color:var(--tx-m);">selected</span>
+            <div style="width:1px;height:16px;background:var(--brd);margin:0 2px;"></div>
+            <button class="batch-action-btn" style="color:var(--acc);" data-onclick="showBatchBugEditModal()">
+                <i class="fa-solid fa-pen" style="font-size:10px;"></i> Edit Severity/Priority/Assignee
+            </button>
+            <button class="batch-action-btn" style="color:#f87171;" data-onclick="batchDelete()">
+                <i class="fa-solid fa-trash" style="font-size:10px;"></i> Delete
+            </button>
         </div>
     </div>`;
 }
