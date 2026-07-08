@@ -133,13 +133,48 @@ function toast(msg, type = 'success') {
 // ========================
 // MODAL
 // ========================
+// Modal focus management (Sprint 19, 19-2): move focus into the modal on
+// open, trap Tab/Shift+Tab so it can't escape to the page behind it, and
+// restore focus to whatever triggered the modal on close.
+let _modalPreviouslyFocusedEl = null;
+
+function _modalFocusables() {
+    const m = document.getElementById('modal');
+    if (!m) return [];
+    return Array.from(m.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+        .filter(el => el.offsetParent !== null);
+}
+
+function _modalTrapHandler(e) {
+    if (e.key !== 'Tab') return;
+    const m = document.getElementById('modal');
+    if (!m || m.classList.contains('hidden')) return;
+    const focusables = _modalFocusables();
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+
 function showModal(html) {
     const m = document.getElementById('modal');
+    _modalPreviouslyFocusedEl = document.activeElement;
     m.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
-    m.innerHTML = `<div class="fade-up rounded-xl p-6 w-full max-w-lg mx-4" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto;">${html}</div>`;
+    m.innerHTML = `<div class="fade-up rounded-xl p-6 w-full max-w-lg mx-4" role="dialog" aria-modal="true" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto;">${html}</div>`;
     m.onclick = (e) => { if (e.target === m) closeModal(); };
+    document.addEventListener('keydown', _modalTrapHandler);
+    const f = _modalFocusables();
+    if (f.length) f[0].focus();
 }
-function closeModal() { document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden'; }
+function closeModal() {
+    document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden';
+    document.removeEventListener('keydown', _modalTrapHandler);
+    const prev = _modalPreviouslyFocusedEl;
+    _modalPreviouslyFocusedEl = null;
+    if (prev && typeof prev.focus === 'function' && document.contains(prev)) {
+        try { prev.focus(); } catch (e) {}
+    }
+}
 
 function showDeleteModal(id, isPermanent = false) {
     const doc = documents.find(d => d.id === id);
@@ -280,6 +315,28 @@ function updateSidebar() {
     const activeDocs = documents.filter(d => d.status !== 'deleted');
     document.getElementById('cnt-all').textContent = activeDocs.length;
     document.getElementById('cnt-fav').textContent = activeDocs.filter(d => d.favorite).length;
+
+    const savedViewsWrap = document.getElementById('saved-views-wrap');
+    const savedViewsNav = document.getElementById('saved-views-nav');
+    if (savedViewsWrap && savedViewsNav) {
+        const views = (typeof _getSavedViews === 'function') ? _getSavedViews() : [];
+        savedViewsWrap.classList.toggle('hidden', views.length === 0);
+        const viewsHtml = views.map(v => {
+            const isActive = state.view === 'documents' && state.category === (v.category || 'all') && state.statusFilter === (v.statusFilter || 'all') && state.search === (v.search || '') && state.sortBy === (v.sortBy || 'updated');
+            const cls = isActive ? 'nav-item active flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm' : 'nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm';
+            return `
+                <div class="${cls}" style="color:var(--tx-m);cursor:pointer;" data-onclick="applySavedView('${v.id}')">
+                    <i class="fa-regular fa-bookmark w-4 text-center text-xs"></i>
+                    <span class="truncate">${escHtml(v.name)}</span>
+                    <button class="text-xs shrink-0 ml-auto" style="color:var(--tx-d);" title="Remove view" data-onclick="event.stopPropagation();deleteSavedView('${v.id}')"><i class="fa-solid fa-xmark"></i></button>
+                </div>`;
+        }).join('');
+        if (typeof morphdom !== 'undefined') {
+            morphdom(savedViewsNav, `<nav class="px-3 flex flex-col gap-0.5 mb-2" id="saved-views-nav">${viewsHtml}</nav>`);
+        } else {
+            savedViewsNav.innerHTML = viewsHtml;
+        }
+    }
 
     const catNav = document.getElementById('cat-nav');
     if (catNav) {

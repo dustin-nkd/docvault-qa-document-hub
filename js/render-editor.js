@@ -141,7 +141,7 @@ function renderEditor() {
                     <div class="flex items-center gap-2 mb-2 bug-step-row">
                         <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
                         <input class="form-input flex-1 bug-step-input" placeholder="${t('stepPl', {idx: idx + 1})}" value="${escHtml(step)}">
-                        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)"><i class="fa-solid fa-trash"></i></button>
+                        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 `).join('')}
             </div>
@@ -190,7 +190,7 @@ function renderEditor() {
                             <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
                             <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}">${escHtml(step.action || '')}</textarea>
                             <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}">${escHtml(step.expected || '')}</textarea>
-                            <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)"><i class="fa-solid fa-trash"></i></button>
+                            <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     `).join('')}
                 </div>
@@ -228,7 +228,7 @@ function renderEditor() {
                             <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:${prop.secret ? 'var(--acc)' : 'var(--tx-m)'};" title="${t('toggleSecret')}" data-onclick="toggleEnvSecret(this)">
                                 <i class="fa-solid ${prop.secret ? 'fa-eye-slash' : 'fa-eye'}"></i>
                             </button>
-                            <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)" aria-label="Remove property" title="Remove property"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     `).join('')}
                 </div>
@@ -279,7 +279,7 @@ function renderEditor() {
                                     <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(h.value)}">
                                     <div class="flex items-center gap-1 shrink-0">
                                         <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${h.req ? 'checked' : ''}>
-                                        <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
+                                        <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)" aria-label="Remove header" title="Remove header"><i class="fa-solid fa-xmark"></i></button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -295,7 +295,7 @@ function renderEditor() {
                                     <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(p.value)}">
                                     <div class="flex items-center gap-1 shrink-0">
                                         <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${p.req ? 'checked' : ''}>
-                                        <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
+                                        <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)" aria-label="Remove parameter" title="Remove parameter"><i class="fa-solid fa-xmark"></i></button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -572,7 +572,7 @@ window.addBugStep = function() {
     div.innerHTML = `
         <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
         <input class="form-input flex-1 bug-step-input" placeholder="Step ${idx + 1}...">
-        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)"><i class="fa-solid fa-trash"></i></button>
+        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
     `;
     container.appendChild(div);
 };
@@ -600,7 +600,7 @@ window.addTcStep = function() {
         <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
         <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}"></textarea>
         <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}"></textarea>
-        <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)"><i class="fa-solid fa-trash"></i></button>
+        <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
     `;
     container.appendChild(div);
 };
@@ -627,7 +627,7 @@ window.addApiHeader = function() {
         <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
         <div class="flex items-center gap-1">
             <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}">
-            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
+            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)" aria-label="Remove header" title="Remove header"><i class="fa-solid fa-xmark"></i></button>
         </div>
     `;
     container.appendChild(div);
@@ -644,7 +644,7 @@ window.addApiParam = function() {
         <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
         <div class="flex items-center gap-1">
             <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}">
-            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
+            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)" aria-label="Remove parameter" title="Remove parameter"><i class="fa-solid fa-xmark"></i></button>
         </div>
     `;
     container.appendChild(div);
@@ -666,7 +666,7 @@ window.addEnvProp = function() {
         <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" title="${t('toggleSecret')}" data-onclick="toggleEnvSecret(this)">
             <i class="fa-solid fa-eye"></i>
         </button>
-        <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+        <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)" aria-label="Remove property" title="Remove property"><i class="fa-solid fa-trash"></i></button>
     `;
     container.appendChild(div);
     div.querySelector('.env-prop-label').focus();
