@@ -78,6 +78,14 @@ window.toggleLockRecovery = function(button) {
     if (button) button.textContent = isOpening ? 'Cancel recovery' : 'Forgot password?';
 };
 
+// ========================
+// SYNC PENDING INDICATOR (Sprint 13, A1)
+// ========================
+window.updateSyncIndicator = function() {
+    const dot = document.getElementById('sync-pending-dot');
+    if (dot) dot.classList.toggle('hidden', !DocStorage._pending);
+};
+
 window.initTheme = function() {
     const saved = localStorage.getItem('qahub_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
