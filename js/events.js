@@ -97,6 +97,7 @@ async function init() {
 
 async function startApp() {
     initTheme();
+    initLang();
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         // Guest demo: skip LocalAuth and GitHubSync entirely — no lock screen, no
         // password hash checks, no real-token bootstrap/pull/push. Just load the

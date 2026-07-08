@@ -398,22 +398,22 @@
             <!-- Main Nav -->
             <nav class="px-3 mt-2 flex flex-col gap-0.5" id="main-nav">
                 <div class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="dashboard" data-onclick="navigate('dashboard')">
-                    <i class="fa-solid fa-chart-pie w-4 text-center text-xs"></i><span>Dashboard</span>
+                    <i class="fa-solid fa-chart-pie w-4 text-center text-xs"></i><span id="lbl-dashboard">Dashboard</span>
                 </div>
                 <div class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="documents" data-cat="all" data-onclick="navigate('documents','all')">
-                    <i class="fa-solid fa-folder-open w-4 text-center text-xs"></i><span>All Documents</span><span class="count ml-auto" id="cnt-all">0</span>
+                    <i class="fa-solid fa-folder-open w-4 text-center text-xs"></i><span id="lbl-all-documents">All Documents</span><span class="count ml-auto" id="cnt-all">0</span>
                 </div>
                 <div class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="favorites" data-onclick="navigate('favorites')">
-                    <i class="fa-solid fa-star w-4 text-center text-xs"></i><span>Favorites</span><span class="count ml-auto" id="cnt-fav">0</span>
+                    <i class="fa-solid fa-star w-4 text-center text-xs"></i><span id="lbl-favorites">Favorites</span><span class="count ml-auto" id="cnt-fav">0</span>
                 </div>
                 <div class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm mb-4" style="color:var(--tx-m);" data-view="trash" data-onclick="navigate('trash')">
-                    <i class="fa-solid fa-trash w-4 text-center text-xs"></i><span>Trash</span><span class="count ml-auto" id="cnt-trash">0</span>
+                    <i class="fa-solid fa-trash w-4 text-center text-xs"></i><span id="lbl-trash">Trash</span><span class="count ml-auto" id="cnt-trash">0</span>
                 </div>
             </nav>
 
             <!-- Categories -->
             <div class="px-5 mt-6 mb-2">
-                <p class="text-[10px] font-semibold tracking-widest uppercase" style="color:var(--tx-d);">Categories</p>
+                <p class="text-[10px] font-semibold tracking-widest uppercase" style="color:var(--tx-d);" id="lbl-categories">Categories</p>
             </div>
             <nav class="px-3 flex flex-col gap-0.5" id="cat-nav">
                 <div class="nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="documents" data-cat="runbook" data-onclick="navigate('documents','runbook')">
@@ -457,7 +457,7 @@
             
             <!-- Bottom -->
             <div class="mt-auto border-t" style="border-color:var(--brd);">
-                <div class="px-3 py-3 grid grid-cols-3">
+                <div class="px-3 py-3 grid grid-cols-4">
                     <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--tx)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="lockVault()" title="Lock vault">
                         <i class="fa-solid fa-lock-open" style="font-size:14px;"></i>
                         <span style="font-size:10px;font-weight:500;letter-spacing:0.02em;">Lock</span>
@@ -466,6 +466,10 @@
                         <i class="fa-solid fa-moon theme-icon-dark" style="font-size:14px;"></i>
                         <i class="fa-solid fa-sun theme-icon-light" style="font-size:14px;"></i>
                         <span style="font-size:10px;font-weight:500;letter-spacing:0.02em;">Theme</span>
+                    </button>
+                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--acc)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="toggleLang()" title="Switch language / Đổi ngôn ngữ">
+                        <i class="fa-solid fa-language" style="font-size:14px;"></i>
+                        <span id="lang-label" style="font-size:10px;font-weight:500;letter-spacing:0.02em;">EN</span>
                     </button>
                     <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--acc)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="showGitHubSettingsModal()" title="GitHub Settings">
                         <i class="fa-solid fa-gear" style="font-size:14px;"></i>
