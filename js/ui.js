@@ -90,6 +90,25 @@ window.toggleTheme = function() {
 };
 
 // ========================
+// LANGUAGE (Sprint 11)
+// ========================
+window.initLang = function() {
+    const label = document.getElementById('lang-label');
+    if (label) label.textContent = CURRENT_LANG === 'vi' ? 'VI' : 'EN';
+};
+window.toggleLang = function() {
+    CURRENT_LANG = CURRENT_LANG === 'vi' ? 'en' : 'vi';
+    localStorage.setItem('docvault_lang', CURRENT_LANG);
+    const label = document.getElementById('lang-label');
+    if (label) label.textContent = CURRENT_LANG === 'vi' ? 'VI' : 'EN';
+    // Static sidebar buttons (this one included) aren't touched by render(), so
+    // update the badge directly above; everything else driven by t() (nav
+    // labels, category names, form labels, toasts going forward) picks up the
+    // new language on the next render since t() re-reads CURRENT_LANG live.
+    if (typeof render === 'function') render();
+};
+
+// ========================
 // TOAST
 // ========================
 function toast(msg, type = 'success') {
@@ -245,7 +264,7 @@ function toggleSidebar() {
 
 function updateSidebar() {
     const lblDash = document.getElementById('lbl-dashboard'); if (lblDash) lblDash.textContent = t('dashboard');
-    const lblDocs = document.getElementById('lbl-documents'); if (lblDocs) lblDocs.textContent = t('documents');
+    const lblDocs = document.getElementById('lbl-all-documents'); if (lblDocs) lblDocs.textContent = t('allDocuments');
     const lblFavs = document.getElementById('lbl-favorites'); if (lblFavs) lblFavs.textContent = t('favorites');
     const lblTrash = document.getElementById('lbl-trash'); if (lblTrash) lblTrash.textContent = t('trash') || 'Trash';
     const lblCats = document.getElementById('lbl-categories'); if (lblCats) lblCats.textContent = t('categories') || 'Categories';
