@@ -1191,6 +1191,52 @@ window.cancelEdit = function() {
     navigateBack();
 };
 
+// Freezes the current step definitions of each target test case into a
+// snapshot (US-103), so a run's recorded results stay aligned even if the
+// test case is edited later. Shared by saveDoc's testrun branch and
+// rerunTestRun (B2).
+function _buildRunSnapshot(targetIds) {
+    const snapshot = {};
+    targetIds.forEach(id => {
+        const tc = documents.find(d => d.id === id);
+        if (tc && tc.tcData && Array.isArray(tc.tcData.steps)) {
+            snapshot[id] = tc.tcData.steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+        }
+    });
+    return snapshot;
+}
+
+// Start a fresh execution of the same test cases (B2 "Test Cycle"). Creates a
+// new Test Run document with the current step definitions (US-103 semantics —
+// re-execution snapshots steps as they are NOW), empty results, and the same
+// environment. All runs descending from the same original share a cycleId so
+// the viewer can show a pass-rate trend across executions.
+window.rerunTestRun = async function(runId) {
+    const orig = documents.find(d => d.id === runId);
+    if (!orig || orig.category !== 'testrun') return;
+    const targetIds = orig.runData?.targetIds || [];
+    if (!targetIds.length) { toast('This run has no test cases to re-execute.', 'warning'); return; }
+
+    const cycleId = orig.runData.cycleId || orig.id;
+    if (!orig.runData.cycleId) { orig.runData.cycleId = cycleId; orig.updatedAt = Date.now(); }
+
+    const baseTitle = (orig.title || 'Test Run').replace(/\s*\(Run \d+\)\s*$/, '');
+    const cycleRunCount = documents.filter(d => d.category === 'testrun' && d.status !== 'deleted'
+        && (d.runData?.cycleId || d.id) === cycleId).length;
+
+    const newRun = {
+        id: uid(), title: `${baseTitle} (Run ${cycleRunCount + 1})`, category: 'testrun',
+        subfolder: orig.subfolder || '', status: 'draft', content: '',
+        tags: [...(orig.tags || [])], favorite: false,
+        runData: { targetIds, results: {}, snapshot: _buildRunSnapshot(targetIds), environment: orig.runData?.environment || '', cycleId },
+        createdAt: Date.now(), updatedAt: Date.now()
+    };
+    documents.unshift(newRun);
+    await persist();
+    toast('New execution started — same test cases, fresh results.', 'success');
+    viewDoc(newRun.id);
+};
+
 // Next sequential bug number for a human-readable BUG-### reference (US-202).
 function _nextBugNumber() {
     let max = 0;
@@ -1313,17 +1359,11 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
         const environment = document.getElementById('ed-run-env')?.value.trim() || '';
         const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
-        // Freeze the current step definitions of each selected test case (US-103) so
-        // recorded results stay aligned even if a test case is edited later. Re-saving
-        // the run refreshes the snapshot to the test cases' current steps.
-        const snapshot = {};
-        targetIds.forEach(id => {
-            const tc = documents.find(d => d.id === id);
-            if (tc && tc.tcData && Array.isArray(tc.tcData.steps)) {
-                snapshot[id] = tc.tcData.steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
-            }
-        });
-        runData = { targetIds, results: existingResults, snapshot, environment };
+        // Re-saving the run refreshes the snapshot to the test cases' current steps.
+        const snapshot = _buildRunSnapshot(targetIds);
+        // Preserve cycle membership (B2) across edits of an existing run.
+        const cycleId = state.editingDoc?.runData?.cycleId;
+        runData = { targetIds, results: existingResults, snapshot, environment, cycleId };
     } else if (cat === 'testplan') {
         const linkedTCs = Array.from(document.querySelectorAll('.tp-tc-cb:checked')).map(cb => cb.value);
         const linkedRuns = Array.from(document.querySelectorAll('.tp-run-cb:checked')).map(cb => cb.value);

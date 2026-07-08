@@ -252,10 +252,43 @@ function renderViewer() {
             const blockedPct = totalSteps ? (blockedCount / totalSteps * 100) : 0;
             const untestedPct = totalSteps ? (untestedCount / totalSteps * 100) : 100;
 
+            // Test Cycle & Trend (B2): runs sharing a cycle (this run's own id is the
+            // cycle root the first time it's re-run) sorted chronologically, so a
+            // trend of pass-rate across executions can be shown.
+            const cycleId = doc.runData?.cycleId || doc.id;
+            const cycleRuns = documents.filter(d => d.category === 'testrun' && d.status !== 'deleted' && (d.runData?.cycleId || d.id) === cycleId)
+                .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
             let html = `
             ${(doc.runData?.environment || !state.sharedView) ? `<div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 ${doc.runData?.environment ? `<span class="text-xs flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" title="Environment / Build"><i class="fa-solid fa-server" style="font-size:10px;"></i>${escHtml(doc.runData.environment)}</span>` : '<span></span>'}
-                ${state.sharedView ? '' : `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="exportTestRunCsv('${doc.id}')" title="Export results to CSV"><i class="fa-solid fa-file-csv" style="font-size:11px;"></i> Export CSV</button>`}
+                ${state.sharedView ? '' : `<div class="flex items-center gap-2 ml-auto">
+                    <button class="btn-s text-xs flex items-center gap-1.5" data-onclick="rerunTestRun('${doc.id}')" title="Start a fresh execution of the same test cases"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Re-run</button>
+                    <button class="btn-s text-xs flex items-center gap-1.5" data-onclick="exportTestRunCsv('${doc.id}')" title="Export results to CSV"><i class="fa-solid fa-file-csv" style="font-size:11px;"></i> Export CSV</button>
+                </div>`}
+            </div>` : ''}
+            ${cycleRuns.length > 1 ? `
+            <div class="mb-5 p-4 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+                <p class="text-[11px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);"><i class="fa-solid fa-chart-line mr-1.5" style="color:#818cf8;"></i>Pass Rate Trend — ${cycleRuns.length} executions</p>
+                <div class="flex items-end gap-2" style="height:64px;">
+                    ${cycleRuns.map(r => {
+                        const isCurrent = r.id === doc.id;
+                        const rResults = r.runData?.results || {};
+                        const rTargets = r.runData?.targetIds || [];
+                        let rTotal = 0, rPass = 0;
+                        rTargets.forEach(tcId => {
+                            const steps = r.runData?.snapshot?.[tcId] || [];
+                            rTotal += steps.length;
+                            steps.forEach((_, i) => { if (rResults[tcId]?.[i] === 'pass') rPass++; });
+                        });
+                        const pct = rTotal ? Math.round(rPass / rTotal * 100) : 0;
+                        const color = rTotal === 0 ? 'var(--brd-l)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+                        return `<div class="flex-1 flex flex-col items-center justify-end gap-1 cursor-pointer" title="${escHtml(r.title)} — ${rTotal ? pct + '%' : 'no results'}" data-onclick="viewDoc('${r.id}')">
+                            <span class="text-[10px] font-bold" style="color:${color};">${rTotal ? pct + '%' : '—'}</span>
+                            <div style="width:100%;max-width:28px;height:${Math.max(4, pct * 0.4)}px;background:${color};border-radius:3px 3px 0 0;${isCurrent ? 'outline:2px solid #fff3;outline-offset:1px;' : ''}"></div>
+                        </div>`;
+                    }).join('')}
+                </div>
             </div>` : ''}
             <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
