@@ -49,7 +49,9 @@ document.addEventListener('keydown', (e) => {
         const menu = document.getElementById('doc-menu');
         if (menu) { menu.remove(); return; }
         if (state.view === 'editor') {
-            navigate(state.editingDoc?.id ? 'viewer' : 'documents', state.category);
+            // Route through the same unsaved-changes guard as the Cancel button
+            // (Sprint 15), instead of navigating away unconditionally.
+            cancelEdit();
         }
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'k' && (state.view === 'documents' || state.view === 'favorites')) {

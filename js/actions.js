@@ -1408,6 +1408,26 @@ window.recoverVault = async function() {
 // ========================
 // DOCUMENT CRUD
 // ========================
+// Captures every editable field currently in the editor DOM as one comparable
+// string (Sprint 15 unsaved-changes guard). Scoped to #content — the only
+// thing rendered there in the editor view — so it can't pick up sidebar or
+// header inputs. Deliberately generic (scrapes every input/textarea/select by
+// DOM order) rather than hand-listing fields per category, so a future field
+// or category can't silently slip past the guard the way a hand-maintained
+// list could.
+function _captureEditorFormState() {
+    const root = document.getElementById('content');
+    if (!root) return '';
+    const parts = [];
+    root.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.id === 'ed-content-hidden') return; // superseded by tuiEditor content below
+        parts.push(el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value);
+    });
+    parts.push('tags:' + (state.editorTags || []).join(','));
+    parts.push('content:' + (window.tuiEditor ? window.tuiEditor.getMarkdown() : ''));
+    return parts.join('|');
+}
+
 function createDoc(cat) {
     closeModal();
     pushHistory();
@@ -1426,6 +1446,7 @@ function createDoc(cat) {
     state._newTcPlanData = null;
     state._newContent = cat && TEMPLATES[cat] ? TEMPLATES[cat] : '# New Document\n\nStart writing here...';
     render();
+    state._editorSnapshot = _captureEditorFormState();
     setTimeout(() => document.getElementById('ed-title')?.focus(), 100);
 }
 
@@ -1438,6 +1459,7 @@ function editDoc(id) {
     state.editorTags = [...doc.tags];
     state.editorMode = 'edit';
     render();
+    state._editorSnapshot = _captureEditorFormState();
 }
 
 function viewDoc(id) {
@@ -1538,10 +1560,30 @@ window.reopenBug = async function(id) {
 };
 
 window.cancelEdit = function() {
+    if (state._editorSnapshot !== undefined && _captureEditorFormState() !== state._editorSnapshot) {
+        showModal(`
+            <div class="p-2 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-3xl mb-4" style="color:#f59e0b;"></i>
+                <h3 class="font-heading font-bold text-lg mb-2">Discard unsaved changes?</h3>
+                <p class="text-sm mb-6" style="color:var(--tx-m);">You have unsaved edits. Leaving now will lose them.</p>
+                <div class="flex gap-3 justify-center">
+                    <button class="btn-s" data-onclick="closeModal()">Keep Editing</button>
+                    <button class="btn-d" data-onclick="_forceCancelEdit()">Discard</button>
+                </div>
+            </div>
+        `);
+        return;
+    }
+    _forceCancelEdit();
+};
+
+window._forceCancelEdit = function() {
+    closeModal();
     if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
     window.tuiEditor = null;
     state.editorTags = [];
     state.editorMode = 'edit';
+    state._editorSnapshot = undefined;
     pendingImageReplacements.clear();
     navigateBack();
 };
@@ -1785,6 +1827,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
     window.currentViewerDocId = null;
     window.tuiEditor = null;
+    state._editorSnapshot = undefined;
     history.replaceState({}, '', _appUrl(state.editingDoc.id));
     await persist();
     await new Promise(r => setTimeout(() => requestAnimationFrame(r), 60));
