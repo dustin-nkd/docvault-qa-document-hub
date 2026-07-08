@@ -480,7 +480,10 @@ function renderEditor() {
             </div>
         </div>
         <div class="mt-4">
-            <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Release Notes <span class="opacity-60">(markdown)</span></label>
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-medium" style="color:var(--tx-m);">Release Notes <span class="opacity-60">(markdown)</span></label>
+                <button type="button" class="btn-s text-[11px] py-1 px-2.5 flex items-center gap-1.5" data-onclick="generateReleaseNotes()"><i class="fa-solid fa-wand-magic-sparkles" style="font-size:10px;"></i> Generate from linked data</button>
+            </div>
             <div id="editor-container" class="text-left"></div>
             <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
         </div>

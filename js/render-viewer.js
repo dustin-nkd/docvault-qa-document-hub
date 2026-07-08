@@ -558,6 +558,18 @@ function renderViewer() {
 
             const st = statusStyle(doc.releaseData?.status);
 
+            // Automatic GO/NO-GO gate (Sprint 17, 17-1). 80% is a fixed, non-configurable
+            // threshold — deliberately simple rather than a per-release setting, since
+            // this is a signal to prompt a conversation, not a hard release blocker.
+            const GO_THRESHOLD = 80;
+            const gate = (linkedRuns.length === 0 || totalSteps === 0)
+                ? { label: 'Not Enough Data', color: 'var(--tx-d)', bg: 'rgba(122,139,168,0.12)', border: 'var(--brd)', icon: 'fa-circle-question', detail: 'Link a test run with recorded results to compute release readiness.' }
+                : criticalBugs > 0
+                    ? { label: 'NO-GO', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)', icon: 'fa-circle-xmark', detail: `${criticalBugs} critical bug${criticalBugs > 1 ? 's' : ''} still open.` }
+                    : passPct < GO_THRESHOLD
+                        ? { label: 'NO-GO', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)', icon: 'fa-circle-xmark', detail: `Pass rate ${passPct}% is below the ${GO_THRESHOLD}% threshold.` }
+                        : { label: 'GO', color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)', icon: 'fa-circle-check', detail: `Pass rate ${passPct}% and 0 critical bugs.` };
+
             return `
             <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
                 <div class="flex items-center justify-between mb-4">
@@ -571,6 +583,13 @@ function renderViewer() {
                         </div>
                     </div>
                     <span class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${st.bg}; color:${st.color}; border:1px solid ${st.border};">${st.label}</span>
+                </div>
+                <div class="flex items-center gap-3 mb-4 p-3 rounded-lg" style="background:${gate.bg};border:1px solid ${gate.border};">
+                    <i class="fa-solid ${gate.icon} text-lg shrink-0" style="color:${gate.color};"></i>
+                    <div class="flex-1 min-w-0">
+                        <span class="font-heading font-bold text-sm" style="color:${gate.color};">${gate.label}</span>
+                        <span class="text-xs ml-2" style="color:var(--tx-m);">${gate.detail}</span>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
