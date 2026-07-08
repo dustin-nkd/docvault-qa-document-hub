@@ -753,6 +753,80 @@ window._doCompactImages = async function() {
     toast(`Compacted ${uploaded} image${uploaded !== 1 ? 's' : ''}${failed ? `, ${failed} failed` : ''}.`, failed ? 'error' : 'success');
 };
 
+// ========================
+// IMAGE GARBAGE COLLECTION (Sprint 9) — delete CDN images no document references
+// ========================
+window.cleanupUnusedImages = async function() {
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) { toast('Add a GitHub token in Settings first.', 'warning'); return; }
+    toast('Scanning for unused images…', 'info');
+    try {
+        // Refresh from GitHub first (local+remote merge) to shrink the window in
+        // which an image referenced only by an unsynced edit on another device
+        // could be misidentified as orphaned.
+        const fresh = await DocStorage.getAll();
+        if (fresh) documents = fresh;
+
+        const listUrl = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/images?ref=${settings.branch || 'main'}`;
+        const listRes = await fetch(listUrl, { headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json' } });
+        if (listRes.status === 404) { toast('No images folder found — nothing to clean up.', 'info'); return; }
+        if (!listRes.ok) throw new Error('GitHub ' + listRes.status);
+        const files = await listRes.json();
+        if (!Array.isArray(files) || files.length === 0) { toast('No images found on the CDN.', 'info'); return; }
+
+        // Referenced-by-any-document check includes Trash (status='deleted' docs
+        // are kept for 30 days, see GitHubSync._encode) — an image is only a
+        // deletion candidate if NO document, live or trashed, still links to it.
+        const referenced = new Set();
+        documents.forEach(d => {
+            if (typeof d.content !== 'string') return;
+            (d.content.match(/https:\/\/raw\.githubusercontent\.com\/[^\s)"]+\/images\/[^\s)"]+/g) || []).forEach(u => {
+                referenced.add(u.slice(u.lastIndexOf('/') + 1));
+            });
+        });
+
+        const orphans = files.filter(f => f.type === 'file' && !referenced.has(f.name));
+        if (orphans.length === 0) { toast('No unused images found — everything is referenced.', 'success'); return; }
+
+        window._pendingImageCleanup = orphans.map(f => ({ name: f.name, sha: f.sha, path: f.path }));
+        showModal(`
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(239,68,68,0.12);"><i class="fa-solid fa-broom" style="color:#f87171;"></i></div>
+                <h3 class="font-heading font-semibold text-lg mb-2">Delete ${orphans.length} unused image${orphans.length > 1 ? 's' : ''}?</h3>
+                <p class="text-sm mb-5" style="color:var(--tx-m);">These CDN files aren't referenced by any document, including Trash. This <strong style="color:#f87171;">permanently deletes</strong> them from GitHub and cannot be undone. An image referenced only by an edit not yet synced from another device could be affected.</p>
+                <div class="flex gap-3 justify-center">
+                    <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                    <button class="btn-d" data-onclick="_doCleanupUnusedImages()">Delete</button>
+                </div>
+            </div>`);
+    } catch(e) {
+        toast('Scan failed: ' + e.message, 'error');
+    }
+};
+
+window._doCleanupUnusedImages = async function() {
+    closeModal();
+    const orphans = window._pendingImageCleanup || [];
+    window._pendingImageCleanup = null;
+    if (!orphans.length) return;
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) return;
+    toast('Deleting unused images…', 'info');
+    let deleted = 0, failed = 0;
+    for (const f of orphans) {
+        try {
+            const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${f.path}`;
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: `Remove unused image ${f.name}`, sha: f.sha, branch: settings.branch || 'main' })
+            });
+            if (res.ok) deleted++; else failed++;
+        } catch(e) { failed++; }
+    }
+    toast(`Deleted ${deleted} unused image${deleted !== 1 ? 's' : ''}${failed ? `, ${failed} failed` : ''}.`, failed ? 'error' : 'success');
+};
+
 async function _migrateDocImages(doc) {
     if (!doc?.content) return;
     const CDN_RE = /https:\/\/raw\.githubusercontent\.com\/dustin-nkd\/docvault-assets\/[^\s)"]+/g;
@@ -894,6 +968,7 @@ window.showGitHubSettingsModal = async function() {
                         <span class="text-[10px]" style="color:var(--tx-d);">Store pasted images on GitHub CDN <strong style="color:#f59e0b;">(public, unencrypted)</strong> instead of inline. Shrinks the vault; images become publicly readable. Off by default.</span>
                     </label>
                     <button type="button" class="btn-s py-1.5 px-3 text-xs w-full flex items-center justify-center gap-1.5" data-onclick="closeModal();compactImages()"><i class="fa-solid fa-compress text-[10px]"></i> Compact existing inline images → CDN</button>
+                    <button type="button" class="btn-s py-1.5 px-3 text-xs w-full flex items-center justify-center gap-1.5 mt-2" data-onclick="closeModal();cleanupUnusedImages()"><i class="fa-solid fa-broom text-[10px]"></i> Clean up unused CDN images</button>
                     <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
                         <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Close</button>
                         <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
