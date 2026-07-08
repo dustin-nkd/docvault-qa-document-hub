@@ -1528,19 +1528,68 @@ window.resolveBug = async function(id, resolution) {
     toast(`Bug closed: ${label}`, 'info');
 };
 
+// Bug-duplicate picker (Sprint 15, 15-3): duplicateOf was a free-typed string
+// via prompt() and, as it turned out, never actually rendered anywhere in the
+// UI — so switching it to store a real document id (making it an actual,
+// clickable link) is a safe change with zero backward-compat display to
+// preserve.
 window.promptDuplicateBug = function(id) {
     document.getElementById('doc-menu')?.remove();
-    const ref = prompt('Enter the title or ID of the original bug:');
-    if (!ref) return;
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    const otherBugs = documents.filter(d => d.category === 'bug' && d.status !== 'deleted' && d.id !== id)
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    window._pendingDuplicateBugId = id;
+    showModal(`
+        <div class="text-left">
+            <h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);">Mark as Duplicate</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">Select the original bug this is a duplicate of.</p>
+            ${otherBugs.length === 0 ? `<p class="text-sm text-center py-6" style="color:var(--tx-d);">No other bugs to link to.</p>` : `
+            <input type="text" id="dup-bug-search" class="form-input w-full mb-3 text-sm" placeholder="Search bugs by title..." data-oninput="_filterDuplicateBugList(this.value)" autocomplete="off">
+            <div id="dup-bug-list" style="max-height:280px;overflow-y:auto;">
+                ${otherBugs.map(b => `
+                    <div class="dup-bug-row flex items-center gap-3 p-2.5 rounded-lg cursor-pointer" data-filter-key="${escHtml(b.title.toLowerCase())}" style="border:1px solid var(--brd);margin-bottom:6px;transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="_selectDuplicateOfBug('${b.id}')">
+                        <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0" style="background:var(--card);color:var(--c-bug);">${bugRef(b)}</span>
+                        <span class="text-sm flex-1 truncate" style="color:var(--tx);">${escHtml(b.title)}</span>
+                        <span class="st-badge st-${b.status} shrink-0">${b.status}</span>
+                    </div>
+                `).join('')}
+                <div id="dup-bug-empty" class="hidden text-center text-sm py-4" style="color:var(--tx-d);">No matching bugs.</div>
+            </div>`}
+            <div class="flex justify-end mt-3"><button class="btn-s" data-onclick="closeModal()">Cancel</button></div>
+        </div>
+    `);
+    setTimeout(() => document.getElementById('dup-bug-search')?.focus(), 50);
+};
+
+window._filterDuplicateBugList = function(query) {
+    const q = (query || '').trim().toLowerCase();
+    let visible = 0;
+    document.querySelectorAll('.dup-bug-row').forEach(row => {
+        const match = (row.getAttribute('data-filter-key') || '').includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    const empty = document.getElementById('dup-bug-empty');
+    if (empty) empty.classList.toggle('hidden', !(q && visible === 0));
+};
+
+window._selectDuplicateOfBug = async function(originalBugId) {
+    const id = window._pendingDuplicateBugId;
+    window._pendingDuplicateBugId = null;
+    closeModal();
+    if (!id) return;
     const idx = documents.findIndex(d => d.id === id);
     if (idx === -1) return;
     const doc = documents[idx];
     doc.bugStatus = 'closed';
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.resolution = 'duplicate';
-    doc.bugData.duplicateOf = ref.trim();
+    doc.bugData.duplicateOf = originalBugId;
     doc.updatedAt = Date.now();
-    persist().then(() => { renderContent(); toast('Marked as Duplicate', 'info'); });
+    await persist();
+    renderContent();
+    toast('Marked as Duplicate', 'info');
 };
 
 window.reopenBug = async function(id) {

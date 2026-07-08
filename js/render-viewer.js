@@ -42,6 +42,12 @@ function renderViewer() {
                 if (!run) return '';
                 return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')" title="Open the test run this bug was found in"><i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}</button>`;
             })()}
+            ${(() => {
+                if (state.sharedView || doc.bugData?.resolution !== 'duplicate' || !doc.bugData?.duplicateOf) return '';
+                const original = documents.find(d => d.id === doc.bugData.duplicateOf && d.status !== 'deleted');
+                if (!original) return '<span class="text-[11px] px-2 py-1 rounded" style="background:rgba(148,163,184,0.1);color:var(--tx-d);"><i class="fa-solid fa-copy mr-1"></i>Duplicate of a removed bug</span>';
+                return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(148,163,184,0.15);color:var(--tx-m);" data-onclick="viewDoc('${original.id}')" title="Open the original bug"><i class="fa-solid fa-copy" style="font-size:10px;"></i>Duplicate of: ${bugRef(original)} ${escHtml(original.title)}</button>`;
+            })()}
         </div>`;
         })() : ''}
 
