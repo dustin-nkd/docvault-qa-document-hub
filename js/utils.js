@@ -3,6 +3,17 @@
 // ========================
 function uid() { return 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
 
+// Credential rotation-age helper (Sprint 18, 18-2). Falls back to createdAt
+// when no explicit rotatedAt is set — a credential never marked as rotated
+// is aging since it was created. Informational only: a fixed 90-day
+// threshold flags a reminder badge, it never locks or expires anything.
+const CRED_ROTATE_THRESHOLD_DAYS = 90;
+function credRotationInfo(doc) {
+    const baseline = doc.rotatedAt ? new Date(doc.rotatedAt).getTime() : (doc.createdAt || Date.now());
+    const ageDays = Math.max(0, Math.floor((Date.now() - baseline) / 86400000));
+    return { ageDays, stale: ageDays > CRED_ROTATE_THRESHOLD_DAYS };
+}
+
 function fmtDate(ts) {
     const d = new Date(ts);
     // Guard against undefined/null/invalid timestamps, which would otherwise fall
