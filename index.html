@@ -342,6 +342,10 @@
                 <button type="submit" id="lock-submit-btn" class="btn-p w-full py-3">Unlock Vault</button>
             </form>
 
+            <button type="button" onclick="window.location.href = window.location.pathname + '?guest=1'" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
+                🎭 View Demo <span style="opacity:.85;font-weight:500;">— no password needed</span>
+            </button>
+
             <div class="mt-6 pt-6 border-t" style="border-color:var(--brd);">
                 <!-- Password hint (injected by events.js if set) -->
                 <div id="lock-pwd-hint" class="hidden mb-3 px-3 py-2 rounded-lg text-left text-xs" style="background:var(--card);border:1px solid var(--brd);">
