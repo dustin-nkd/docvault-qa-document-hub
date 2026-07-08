@@ -232,6 +232,76 @@ window.confirmBatchMoveFolder = async function() {
     renderContent();
 };
 
+// Batch edit for the Bug Kanban (Sprint 16, 16-3): sets Severity/Priority/
+// Assignee across every selected bug at once. Each field defaults to
+// "no change" so triaging severity for a batch doesn't accidentally wipe
+// everyone's assignee.
+window.showBatchBugEditModal = function() {
+    const n = state.selectedIds.size;
+    if (!n) return;
+    showModal(`
+        <div class="p-6 text-left">
+            <h3 class="font-heading font-bold text-lg mb-1">Batch Edit ${n} Bug${n > 1 ? 's' : ''}</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">Only fields you change below will be applied.</p>
+            <div class="flex flex-col gap-3">
+                <div>
+                    <label class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Severity</label>
+                    ${renderSelect('batch-bug-severity', [
+                        { value: '', label: '— No change —' },
+                        { value: 'Critical', label: t('severityCritical') },
+                        { value: 'Major', label: t('severityMajor') },
+                        { value: 'Minor', label: t('severityMinor') },
+                        { value: 'Trivial', label: t('severityTrivial') }
+                    ], '', 'w-full')}
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Priority</label>
+                    ${renderSelect('batch-bug-priority', [
+                        { value: '', label: '— No change —' },
+                        { value: 'P1', label: 'P1 — Urgent' },
+                        { value: 'P2', label: 'P2 — High' },
+                        { value: 'P3', label: 'P3 — Medium' },
+                        { value: 'P4', label: 'P4 — Low' }
+                    ], '', 'w-full')}
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Assignee</label>
+                    <input type="text" id="batch-bug-assignee" class="form-input w-full" placeholder="Leave blank for no change...">
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-5">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-p" data-onclick="confirmBatchBugEdit()">Apply</button>
+            </div>
+        </div>
+    `);
+};
+
+window.confirmBatchBugEdit = async function() {
+    const severity = document.getElementById('batch-bug-severity')?.value || '';
+    const priority = document.getElementById('batch-bug-priority')?.value || '';
+    const assignee = document.getElementById('batch-bug-assignee')?.value.trim() || '';
+    if (!severity && !priority && !assignee) { toast('No changes selected.', 'warning'); return; }
+    let changed = 0;
+    state.selectedIds.forEach(id => {
+        const doc = documents.find(d => d.id === id && d.category === 'bug');
+        if (!doc) return;
+        if (!doc.bugData) doc.bugData = {};
+        if (severity) doc.bugData.severity = severity;
+        if (priority) doc.bugData.priority = priority;
+        if (assignee) doc.bugData.assignee = assignee;
+        doc.updatedAt = Date.now();
+        changed++;
+    });
+    if (changed > 0) await persist();
+    closeModal();
+    toast(`Updated ${changed} bug${changed !== 1 ? 's' : ''}.`, 'success');
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    renderContent();
+};
+
 // ========================
 // HISTORY PANEL + DIFF VIEW
 // ========================
