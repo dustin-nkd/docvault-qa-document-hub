@@ -987,6 +987,70 @@ window._doCleanupUnusedImages = async function() {
     toast(`Deleted ${deleted} unused image${deleted !== 1 ? 's' : ''}${failed ? `, ${failed} failed` : ''}.`, failed ? 'error' : 'success');
 };
 
+// ========================
+// BACKUP EXPORT / IMPORT (Sprint 13, A2) — wires up DocStorage.exportData /
+// importData, which existed with no UI entry point anywhere in the app.
+// ========================
+window.exportBackup = async function() {
+    try {
+        await DocStorage.exportData();
+        toast('Backup exported.', 'success');
+    } catch (e) {
+        toast(e.message || 'Export failed.', 'error');
+    }
+};
+
+window.triggerImportBackup = function() {
+    let input = document.getElementById('backup-import-input');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'backup-import-input';
+        input.accept = '.json,application/json';
+        input.style.display = 'none';
+        input.addEventListener('change', () => window.handleImportBackupFile(input));
+        document.body.appendChild(input);
+    }
+    input.value = ''; // allow re-selecting the same file
+    input.click();
+};
+
+window.handleImportBackupFile = function(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    window._pendingBackupFile = file;
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(99,102,241,0.12);"><i class="fa-solid fa-box-archive" style="color:#818cf8;"></i></div>
+            <h3 class="font-heading font-semibold text-lg mb-2">Import "${escHtml(file.name)}"</h3>
+            <p class="text-sm mb-5" style="color:var(--tx-m);">Choose how to import this backup.</p>
+            <div class="flex flex-col gap-2">
+                <button class="btn-p py-2" data-onclick="_doImportBackup('merge')">Merge — add missing documents, keep existing</button>
+                <button class="btn-d py-2" data-onclick="_doImportBackup('replace')">Replace ALL documents (cannot be undone)</button>
+                <button class="btn-s py-2 mt-1" data-onclick="closeModal()">Cancel</button>
+            </div>
+        </div>`);
+};
+
+window._doImportBackup = async function(mode) {
+    closeModal();
+    const file = window._pendingBackupFile;
+    window._pendingBackupFile = null;
+    if (!file) return;
+    try {
+        const result = await DocStorage.importData(file, mode);
+        // importData() writes through DocStorage but doesn't touch the app's
+        // in-memory `documents` array — refresh it so the UI reflects the import
+        // immediately instead of on next reload.
+        const fresh = await DocStorage.getAll();
+        if (fresh) documents = fresh;
+        render();
+        toast(`Imported ${result.imported} document${result.imported !== 1 ? 's' : ''} (${result.total} total).`, 'success');
+    } catch (e) {
+        toast(e.message || 'Import failed.', 'error');
+    }
+};
+
 async function _migrateDocImages(doc) {
     if (!doc?.content) return;
     const CDN_RE = /https:\/\/raw\.githubusercontent\.com\/dustin-nkd\/docvault-assets\/[^\s)"]+/g;
@@ -1136,6 +1200,16 @@ window.showGitHubSettingsModal = async function() {
                         </button>
                     </div>
                 </form>
+            </div>
+
+            <!-- SECTION 4: BACKUP -->
+            <div class="text-left mt-5 pt-5 border-t border-[var(--brd)]">
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-box-archive text-[var(--acc)] text-[10px]"></i> 4. Backup</h4>
+                <p class="text-[11px] mb-3" style="color:var(--tx-d);">Download a local JSON copy of all documents, or restore from one. ${window.LocalAuth && window.LocalAuth.isUnlocked && window.LocalAuth.isUnlocked() ? '<strong style="color:#f59e0b;">The export includes decrypted credential passwords in plain text</strong> — store it as carefully as the vault itself.' : ''}</p>
+                <div class="flex gap-2">
+                    <button type="button" class="btn-s py-1.5 px-3 text-xs flex-1 flex items-center justify-center gap-1.5" data-onclick="exportBackup()"><i class="fa-solid fa-download text-[10px]"></i> Export Backup</button>
+                    <button type="button" class="btn-s py-1.5 px-3 text-xs flex-1 flex items-center justify-center gap-1.5" data-onclick="triggerImportBackup()"><i class="fa-solid fa-upload text-[10px]"></i> Import Backup</button>
+                </div>
             </div>
         </div>
     `);

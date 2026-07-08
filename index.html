@@ -472,7 +472,10 @@
                         <span id="lang-label" style="font-size:10px;font-weight:500;letter-spacing:0.02em;">EN</span>
                     </button>
                     <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--acc)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="showGitHubSettingsModal()" title="GitHub Settings">
-                        <i class="fa-solid fa-gear" style="font-size:14px;"></i>
+                        <span style="position:relative;display:inline-block;">
+                            <i class="fa-solid fa-gear" style="font-size:14px;"></i>
+                            <span id="sync-pending-dot" class="hidden" title="Changes pending sync" style="position:absolute;top:-3px;right:-6px;width:7px;height:7px;border-radius:50%;background:#f59e0b;box-shadow:0 0 0 2px var(--bg2);"></span>
+                        </span>
                         <span style="font-size:10px;font-weight:500;letter-spacing:0.02em;">Settings</span>
                     </button>
                 </div>

@@ -11,6 +11,31 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 
 // ========================
+// SYNC RETRY ON RECONNECT (Sprint 13, A1)
+// ========================
+// Now that the PWA (Sprint 10) works fully offline, edits made offline had no
+// path back to GitHub other than the user happening to save something else
+// while back online. Retry the pending push as soon as connectivity returns.
+window.addEventListener('online', async () => {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return; // guest mode never syncs
+    if (!DocStorage._pending) return;
+    if (!(await GitHubSync.isConfigured())) return;
+    toast('Back online — syncing pending changes…', 'info');
+    try {
+        await GitHubSync.push(documents);
+        DocStorage._pending = false;
+        if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
+        toast(t('ghSyncOk') || 'Synced to GitHub', 'success');
+    } catch (e) {
+        toast('Sync retry failed: ' + e.message, 'error');
+    }
+});
+window.addEventListener('offline', () => {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
+    toast('You are offline — changes will sync automatically once you reconnect.', 'warning');
+});
+
+// ========================
 // KEYBOARD SHORTCUTS
 // ========================
 document.addEventListener('keydown', (e) => {

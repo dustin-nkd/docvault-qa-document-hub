@@ -514,10 +514,20 @@ const DocStorage = {
         return merged;
     },
 
+    // Set when a push fails (e.g. offline) so a later 'online' event knows there's
+    // something to retry (Sprint 13, A1). Session-only — not persisted across
+    // reloads, which is an accepted simplification for this pass.
+    _pending: false,
+
     async save(docs) {
         await this._saveLocal(docs);
         if (await GitHubSync.isConfigured()) {
-            GitHubSync.push(docs).catch(e => {
+            GitHubSync.push(docs).then(() => {
+                this._pending = false;
+                if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();
+            }).catch(e => {
+                this._pending = true;
+                if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();
                 if (typeof toast === 'function') {
                     const msg = typeof t === 'function' ? t('ghSyncFail') : 'GitHub sync failed';
                     toast(msg + ': ' + e.message, 'error');
