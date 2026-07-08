@@ -1,6 +1,17 @@
 // ========================
 // NAVIGATION HISTORY
 // ========================
+// Builds the address-bar query string, preserving guest=1 in demo mode. Without
+// this, any navigation (viewDoc/saveDoc/navigate/navigateBack) calls
+// history.replaceState with a URL that drops guest=1, so a guest who opens any
+// document and then reloads would fall out of the demo into the real (locked)
+// vault. Route every history.replaceState in this file through this helper.
+function _appUrl(viewId) {
+    const guest = (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) ? 'guest=1' : '';
+    if (viewId) return '?view=' + viewId + (guest ? '&' + guest : '');
+    return guest ? '?' + guest : location.pathname;
+}
+
 window.pushHistory = function() {
     if (!state.history) state.history = [];
     const last = state.history[state.history.length - 1];
@@ -37,9 +48,9 @@ window.navigateBack = function() {
             state.editingDoc = null;
         }
         if (state.view === 'viewer' && state.editingDoc?.id) {
-            history.replaceState({}, '', '?view=' + state.editingDoc.id);
+            history.replaceState({}, '', _appUrl(state.editingDoc.id));
         } else {
-            history.replaceState({}, '', location.pathname);
+            history.replaceState({}, '', _appUrl());
         }
         render();
     } else {
@@ -68,7 +79,7 @@ window.navigate = function(view, cat, subfolder) {
     state.selectedIds = new Set();
     state.lastSelectedId = null;
     if (state.sidebarOpen) toggleSidebar();
-    history.replaceState({}, '', location.pathname);
+    history.replaceState({}, '', _appUrl());
     render();
 };
 
@@ -488,6 +499,10 @@ window.exportTestRunCsv = function(runId) {
 // SHARE DOCUMENT
 // ========================
 window.shareDoc = async function(id) {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
+        toast('Sharing is disabled in demo mode.', 'info');
+        return;
+    }
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
 
@@ -793,6 +808,10 @@ async function _migrateDocImages(doc) {
 // GITHUB SETTINGS MODAL
 // ========================
 window.showGitHubSettingsModal = async function() {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
+        toast('Settings are disabled in demo mode.', 'info');
+        return;
+    }
     let ghSettings = { owner: '', repo: '', branch: 'main', token: '' };
     const storedGh = await GitHubSync.getSettings();
     if (storedGh) {
@@ -1075,7 +1094,7 @@ function viewDoc(id) {
     state.batchMode = false;
     state.selectedIds = new Set();
     state.lastSelectedId = null;
-    history.replaceState({}, '', '?view=' + id);
+    history.replaceState({}, '', _appUrl(id));
     render();
     _migrateDocImages(doc);
 }
@@ -1371,7 +1390,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
     window.currentViewerDocId = null;
     window.tuiEditor = null;
-    history.replaceState({}, '', '?view=' + state.editingDoc.id);
+    history.replaceState({}, '', _appUrl(state.editingDoc.id));
     await persist();
     await new Promise(r => setTimeout(() => requestAnimationFrame(r), 60));
     render();

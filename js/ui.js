@@ -29,6 +29,7 @@ window.resetLockFormState = function() {
 };
 
 window.lockVault = function() {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) { toast('Demo mode — no real vault to lock.', 'info'); return; }
     if (!LocalAuth.isConfigured()) { toast('No master password set — nothing to lock.', 'info'); return; }
     sessionStorage.removeItem(LocalAuth.SESSION_KEY);
     sessionStorage.removeItem(LocalAuth.SESSION_PWD);
