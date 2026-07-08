@@ -752,7 +752,10 @@ function renderDocList() {
                                 </div>
                             </div>
                             <div class="mt-auto flex items-center justify-between border-t" style="border-color:var(--brd); padding-top: 16px;">
-                                <span class="cat-badge cat-credential">${t('credential')}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="cat-badge cat-credential">${t('credential')}</span>
+                                    ${credRotationInfo(d).stale ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.15);color:#f59e0b;" title="Not rotated in ${credRotationInfo(d).ageDays} days"><i class="fa-solid fa-rotate" style="font-size:9px;"></i> ${credRotationInfo(d).ageDays}d</span>` : ''}
+                                </div>
                                 <div class="flex items-center gap-1" style="${bm ? 'visibility:hidden;' : ''}">
                                     ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
                                     <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>

@@ -76,6 +76,11 @@ function renderEditor() {
                     <button id="ed-password-btn" class="btn-s px-3 py-2" data-onclick="togglePasswordVisibility('ed-password')"><i class="fa-solid fa-eye"></i></button>
                 </div>
             </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Last Rotated <span style="color:var(--tx-d)">(optional)</span></label>
+                <input type="date" id="ed-cred-rotated" class="form-input" value="${escHtml(doc?.rotatedAt || '')}">
+                <p class="text-[10px] mt-1" style="color:var(--tx-d);">Used for the rotation-reminder badge. Leave blank to use the creation date.</p>
+            </div>
         </div>
         ` : category === 'bug' ? `
         <div class="grid sm:grid-cols-3 gap-4 mb-4">

@@ -1276,10 +1276,95 @@ function _settingsTabBackup() {
         </div>`;
 }
 
+// Tags tab (Sprint 18, 18-1). Tag identity is addressed by INDEX into a
+// stashed window array rather than embedded raw text in data-onclick, since
+// tag names are free user text and could contain quotes/commas that the
+// CSP action-string dispatcher isn't meant to round-trip reliably.
+function _settingsTabTags() {
+    const counts = {};
+    documents.forEach(d => {
+        if (d.status === 'deleted') return;
+        (d.tags || []).forEach(tg => { counts[tg] = (counts[tg] || 0) + 1; });
+    });
+    const tags = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+    window._tagManagerList = tags;
+    if (!tags.length) {
+        return `<p class="text-xs text-center py-6" style="color:var(--tx-d);">No tags yet.</p>`;
+    }
+    return `
+        <div class="text-left">
+            <p class="text-[11px] mb-3" style="color:var(--tx-d);">Rename a tag to merge it into another (e.g. rename "payment" to "Payment" to combine them). Applies to every document that has it.</p>
+            <div class="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-1">
+                ${tags.map((tg, i) => `
+                    <div class="flex items-center gap-1.5 p-2 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                        <span class="text-[10px] shrink-0 w-12 text-right" style="color:var(--tx-d);">${counts[tg]} doc${counts[tg] !== 1 ? 's' : ''}</span>
+                        <input type="text" id="tag-rename-${i}" class="form-input flex-1 py-1 px-2 text-xs" value="${escHtml(tg)}">
+                        <button type="button" class="btn-s text-[10px] py-1 px-2 shrink-0" data-onclick="_applyTagRename(${i})">Rename</button>
+                        <button type="button" class="btn-d text-[10px] py-1 px-2 shrink-0" data-onclick="_confirmDeleteTag(${i})" title="Remove tag"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+}
+
+window._applyTagRename = async function(idx) {
+    const oldName = window._tagManagerList && window._tagManagerList[idx];
+    const input = document.getElementById(`tag-rename-${idx}`);
+    const newName = input?.value.trim();
+    if (!oldName || !newName || newName === oldName) return;
+    let changed = 0;
+    documents.forEach(d => {
+        if (!Array.isArray(d.tags) || !d.tags.includes(oldName)) return;
+        d.tags = [...new Set(d.tags.map(tg => tg === oldName ? newName : tg))]; // dedup = merge
+        d.updatedAt = Date.now();
+        changed++;
+    });
+    await persist();
+    toast(`Renamed "${oldName}" → "${newName}" on ${changed} document${changed !== 1 ? 's' : ''}.`, 'success');
+    const body = document.getElementById('settings-modal-body');
+    if (body) body.innerHTML = _settingsTabTags();
+};
+
+window._confirmDeleteTag = function(idx) {
+    const tagName = window._tagManagerList && window._tagManagerList[idx];
+    if (!tagName) return;
+    window._pendingTagDeleteIdx = idx;
+    showModal(`
+        <div class="text-center">
+            <i class="fa-solid fa-trash text-2xl mb-3" style="color:#f87171;"></i>
+            <h3 class="font-heading font-bold text-lg mb-2">Remove tag "${escHtml(tagName)}"?</h3>
+            <p class="text-sm mb-5" style="color:var(--tx-m);">Removes this tag from every document that has it. The documents themselves aren't otherwise affected.</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-d" data-onclick="_doDeleteTag()">Remove</button>
+            </div>
+        </div>`);
+};
+
+window._doDeleteTag = async function() {
+    closeModal();
+    const idx = window._pendingTagDeleteIdx;
+    window._pendingTagDeleteIdx = null;
+    const tagName = window._tagManagerList && window._tagManagerList[idx];
+    if (!tagName) return;
+    let changed = 0;
+    documents.forEach(d => {
+        if (!Array.isArray(d.tags) || !d.tags.includes(tagName)) return;
+        d.tags = d.tags.filter(tg => tg !== tagName);
+        d.updatedAt = Date.now();
+        changed++;
+    });
+    await persist();
+    toast(`Removed tag "${tagName}" from ${changed} document${changed !== 1 ? 's' : ''}.`, 'success');
+    const body = document.getElementById('settings-modal-body');
+    if (body) body.innerHTML = _settingsTabTags();
+};
+
 const SETTINGS_TABS = [
     { id: 'account', label: 'Account', icon: 'fa-lock', render: _settingsTabAccount },
     { id: 'security', label: 'Security', icon: 'fa-shield-halved', render: _settingsTabSecurity },
     { id: 'sync', label: 'Sync', icon: 'fa-rotate', render: _settingsTabSync },
+    { id: 'tags', label: 'Tags', icon: 'fa-tags', render: _settingsTabTags },
     { id: 'backup', label: 'Backup', icon: 'fa-box-archive', render: _settingsTabBackup }
 ];
 
@@ -2017,6 +2102,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     const tags = [...state.editorTags];
     const username = document.getElementById('ed-username')?.value || '';
     const password = document.getElementById('ed-password')?.value || '';
+    const rotatedAt = document.getElementById('ed-cred-rotated')?.value || '';
 
     if (!title) { toast(t('titleRequired'), 'error'); document.getElementById('ed-title')?.focus(); return; }
 
@@ -2027,7 +2113,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     if (editingIdx !== -1) {
         const idx = editingIdx;
         DocHistory.save(documents[idx]);
-        documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
+        documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
@@ -2035,14 +2121,14 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         // The document being edited vanished (deleted on another device / concurrent
         // sync). Save the edits as a fresh document instead of dereferencing
         // documents[-1] (which previously produced a broken "?view=undefined" viewer).
-        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: cat === 'bug' ? (state.editingDoc.bugStatus || 'new') : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: cat === 'bug' ? (state.editingDoc.bugStatus || 'new') : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(revived);
         toast('Original document was removed elsewhere — saved as a new copy.', 'info');
         state.editingDoc = { ...revived };
         state.view = 'viewer';
         state.category = cat;
     } else {
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
@@ -2069,6 +2155,19 @@ async function toggleFav(id) {
         render();
     }
 }
+
+// Credential rotation reminder quick action (Sprint 18, 18-2).
+window.markCredentialRotated = async function(id) {
+    if (state.sharedView) return;
+    const doc = documents.find(d => d.id === id && d.category === 'credential');
+    if (!doc) return;
+    doc.rotatedAt = new Date().toISOString().slice(0, 10);
+    doc.updatedAt = Date.now();
+    if (state.editingDoc?.id === id) state.editingDoc = { ...doc };
+    await persist();
+    render();
+    toast('Marked as rotated today.', 'success');
+};
 
 async function duplicateDoc(id) {
     const doc = documents.find(d => d.id === id);

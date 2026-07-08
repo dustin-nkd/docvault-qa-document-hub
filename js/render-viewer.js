@@ -85,6 +85,17 @@ function renderViewer() {
 
         ${doc.category === 'credential' ? `
         <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+            ${(() => {
+                const info = credRotationInfo(doc);
+                if (!info.stale) return '';
+                return `<div class="flex items-center justify-between gap-3 mb-4 p-3 rounded-lg" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <i class="fa-solid fa-triangle-exclamation shrink-0" style="color:#f59e0b;"></i>
+                        <span class="text-xs" style="color:var(--tx);">Not rotated in <strong>${info.ageDays} days</strong> — consider updating this credential.</span>
+                    </div>
+                    ${state.sharedView ? '' : `<button class="btn-s text-xs py-1 px-2.5 shrink-0" data-onclick="markCredentialRotated('${doc.id}')"><i class="fa-solid fa-rotate mr-1"></i>Mark as Rotated</button>`}
+                </div>`;
+            })()}
             <div class="mb-4">
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Username / Email</p>
                 <div class="flex items-center gap-3">
