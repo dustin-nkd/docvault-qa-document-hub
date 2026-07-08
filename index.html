@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocVault - QA Document Hub</title>
     <link rel="icon" type="image/png" href="icons/icon48.png">
-    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#070b14">
+    <link rel="apple-touch-icon" href="icons/icon128.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DocVault">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+      }
+    </script>
+
     <link href="vendor/fonts/space-grotesk/index.css" rel="stylesheet">
     <link href="vendor/fonts/dm-sans/index.css" rel="stylesheet">
     <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
