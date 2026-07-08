@@ -23,6 +23,32 @@ function renderViewer() {
             Created ${fmtDate(doc.createdAt)} &middot; Updated ${fmtDate(doc.updatedAt)}
         </p>
 
+        ${(() => {
+            if (state.sharedView || doc.category !== 'testcases') return '';
+            // A bug can reference this test case either manually (bugData.linkedTc,
+            // Sprint 16) or automatically via "Report bug from step" (bugData.foundInTc,
+            // B1) — show both kinds together, most recent first.
+            const linkedBugs = documents.filter(d => d.category === 'bug' && d.status !== 'deleted'
+                && (d.bugData?.linkedTc === doc.id || d.bugData?.foundInTc === doc.id))
+                .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+            if (!linkedBugs.length) return '';
+            const SEV = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
+            return `
+            <div class="mb-6">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Bugs (${linkedBugs.length})</p>
+                <div class="space-y-2">
+                    ${linkedBugs.map(b => {
+                        const sev = b.bugData?.severity;
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${b.id}')" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0" style="background:var(--card);color:var(--c-bug);">${bugRef(b)}</span>
+                            <span class="text-sm font-medium flex-1 truncate" style="color:var(--tx);">${escHtml(b.title)}</span>
+                            ${sev ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style="background:${(SEV[sev] || '#94a3b8')}22;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        })()}
+
         ${doc.category === 'bug' ? (() => {
             const SEV = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
             const sev = doc.bugData?.severity;
@@ -41,6 +67,12 @@ function renderViewer() {
                 const run = documents.find(d => d.id === runId && d.status !== 'deleted');
                 if (!run) return '';
                 return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')" title="Open the test run this bug was found in"><i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}</button>`;
+            })()}
+            ${(() => {
+                if (state.sharedView || !doc.bugData?.linkedTc) return '';
+                const tc = documents.find(d => d.id === doc.bugData.linkedTc && d.status !== 'deleted');
+                if (!tc) return '';
+                return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="viewDoc('${tc.id}')" title="Open the linked test case"><i class="fa-solid fa-flask-vial" style="font-size:10px;"></i>Linked TC: ${escHtml(tc.title)}</button>`;
             })()}
             ${(() => {
                 if (state.sharedView || doc.bugData?.resolution !== 'duplicate' || !doc.bugData?.duplicateOf) return '';
