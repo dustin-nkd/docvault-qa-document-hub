@@ -673,6 +673,7 @@ function renderDocList() {
                 {value: 'title', label: t('sortAZ')}
             ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)')}
             <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents</span>
+            ${state.category === 'api' && !inTrash ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="triggerApiImport()" title="Import a Postman Collection or OpenAPI spec"><i class="fa-solid fa-file-import" style="font-size:11px;"></i> Import</button>` : ''}
             <div class="flex items-center gap-2 ml-auto">
                 ${!inTrash && docs.length > 0 ? `
                     ${bm ? `<span class="text-xs font-semibold" style="color:var(--acc);">${sel.size} selected</span>
