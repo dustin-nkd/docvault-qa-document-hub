@@ -335,20 +335,32 @@ function renderEditor() {
             <input id="ed-run-env" class="form-input" placeholder="e.g. Staging · build #1234" value="${escHtml((isEdit ? doc.runData?.environment : state._newRunData?.environment) || '')}">
         </div>
         <div class="mb-4">
-            <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Select Test Cases for Execution</label>
-            <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
-                ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
-                    const isChecked = (doc?.runData?.targetIds || state._newRunData?.targetIds || []).includes(tc.id);
-                    return `
-                    <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'">
-                        <input type="checkbox" class="form-checkbox testrun-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
-                        <div class="flex-1">
-                            <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
-                            <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.steps?.length || 0} steps</div>
-                        </div>
-                    </label>
-                    `;
-                }).join('')}
+            ${(() => {
+                const allTc = documents.filter(d => d.category === 'testcases' && d.status !== 'deleted');
+                const targetIds = doc?.runData?.targetIds || state._newRunData?.targetIds || [];
+                return `
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium" style="color:var(--tx-m);">Select Test Cases for Execution</label>
+                    <span id="ed-run-tc-count" class="text-[11px]" style="color:var(--tx-d);">${targetIds.length > 0 ? `${targetIds.length} selected` : ''}</span>
+                </div>
+                ${allTc.length > 0 ? `<div class="search-w mb-2"><i class="fa-solid fa-search"></i><input type="text" id="ed-run-tc-search" class="form-input text-sm" placeholder="Filter test cases by title or module..." data-oninput="_filterTestRunTcList(this.value)"></div>` : ''}
+                <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
+                    ${allTc.length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : allTc.map(tc => {
+                        const isChecked = targetIds.includes(tc.id);
+                        const filterKey = `${tc.title} ${tc.tcData?.module || ''}`.toLowerCase();
+                        return `
+                        <label class="testrun-tc-row flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" data-filter-key="${escHtml(filterKey)}" style="border-bottom: 1px solid var(--brd); transition: background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'">
+                            <input type="checkbox" class="form-checkbox testrun-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''} data-onchange="_updateTestRunTcCount()">
+                            <div class="flex-1">
+                                <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
+                                <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.module ? escHtml(tc.tcData.module) + ' · ' : ''}${tc.tcData?.steps?.length || 0} steps</div>
+                            </div>
+                        </label>
+                        `;
+                    }).join('')}
+                    <div id="ed-run-tc-empty" class="hidden text-center text-sm py-4" style="color:var(--tx-d);">No test cases match your filter.</div>
+                </div>`;
+            })()}
             </div>
         </div>
         ` : category === 'testplan' ? `
