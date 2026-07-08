@@ -1105,6 +1105,147 @@ async function _migrateDocImages(doc) {
 // ========================
 // GITHUB SETTINGS MODAL
 // ========================
+// Settings tab content builders (Sprint 14). Presentation-only split of what
+// used to be four stacked sections in one long scrolling modal — every
+// form id and data-onclick handler below is unchanged from before, so none
+// of changeMasterPassword/savePasswordHint/generateRecoveryKey/
+// saveGitHubSettings/toggleImageCdn/compactImages/cleanupUnusedImages/
+// exportBackup/triggerImportBackup needed to change.
+function _settingsTabAccount() {
+    return `
+        <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3 text-left">
+            <div>
+                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
+                <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">New Password</label>
+                <input type="password" id="mp-new" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Confirm New Password</label>
+                <input type="password" id="mp-confirm" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn-p py-1.5 px-4 text-xs w-full flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-key text-[10px]"></i> Change Master Password
+            </button>
+        </form>`;
+}
+
+function _settingsTabSecurity() {
+    const currentHint = window.LocalAuth ? window.LocalAuth.getHint() : '';
+    const hasRecovery = !!localStorage.getItem(window.LocalAuth ? window.LocalAuth.RECOVERY_KEY : 'docvault_recovery_blob');
+    const hintSyncOn = !!(window.LocalAuth && window.LocalAuth.isHintSyncEnabled && window.LocalAuth.isHintSyncEnabled());
+    return `
+        <div class="text-left">
+            <div class="mb-4">
+                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Password Hint <span class="font-normal" style="color:var(--tx-d);">(stored unencrypted)</span></label>
+                <div class="flex gap-2">
+                    <input type="text" id="sec-hint" class="form-input flex-1 py-1.5 px-3 text-xs" placeholder="e.g. Pet name + year" maxlength="80" value="${escHtml(currentHint)}">
+                    <button type="button" class="btn-s py-1.5 px-3 text-xs whitespace-nowrap" data-onclick="savePasswordHint()">Save</button>
+                </div>
+                <label class="flex items-center gap-2 mt-2 cursor-pointer">
+                    <input type="checkbox" id="sec-hint-sync" class="form-checkbox" ${hintSyncOn ? 'checked' : ''}>
+                    <span class="text-[10px]" style="color:var(--tx-d);">Sync hint across devices <strong style="color:#f59e0b;">(readable publicly on GitHub)</strong></span>
+                </label>
+                <p class="text-[10px] mt-1" style="color:var(--tx-d);">Shown on lock screen as a reminder. Never include your actual password. Kept on this device only unless you enable sync above.</p>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Recovery Key</label>
+                <p class="text-[11px] mb-2" style="color:${hasRecovery ? 'var(--acc)' : '#f59e0b'};">
+                    <i class="fa-solid fa-${hasRecovery ? 'circle-check' : 'triangle-exclamation'} mr-1"></i>${hasRecovery ? 'Recovery key is active.' : 'No key set — forgotten password means lost data.'}
+                </p>
+                <button type="button" id="sec-gen-recovery-btn" class="btn-s py-1.5 px-4 text-xs flex items-center gap-1.5" data-onclick="generateRecoveryKey()">
+                    <i class="fa-solid fa-key text-[10px]"></i> ${hasRecovery ? 'Regenerate Key' : 'Generate Recovery Key'}
+                </button>
+                <p class="text-[10px] mt-1.5" style="color:var(--tx-d);">20-character code that can unlock your vault if you forget your password. Store it offline.</p>
+            </div>
+        </div>`;
+}
+
+function _settingsTabSync() {
+    const ghSettings = (window._settingsModalData && window._settingsModalData.ghSettings) || { token: '' };
+    const imgCdnOn = localStorage.getItem('docvault_img_cdn') === '1';
+    return `
+        <div class="text-left">
+            <div class="bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
+                <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
+                Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
+            </div>
+            <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
+            <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
+                <div>
+                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
+                    <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
+                    <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo.</p>
+                </div>
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" id="gh-img-cdn" class="form-checkbox mt-0.5" ${imgCdnOn ? 'checked' : ''} data-onchange="toggleImageCdn(this)">
+                    <span class="text-[10px]" style="color:var(--tx-d);">Store pasted images on GitHub CDN <strong style="color:#f59e0b;">(public, unencrypted)</strong> instead of inline. Shrinks the vault; images become publicly readable. Off by default.</span>
+                </label>
+                <button type="button" class="btn-s py-1.5 px-3 text-xs w-full flex items-center justify-center gap-1.5" data-onclick="closeModal();compactImages()"><i class="fa-solid fa-compress text-[10px]"></i> Compact existing inline images → CDN</button>
+                <button type="button" class="btn-s py-1.5 px-3 text-xs w-full flex items-center justify-center gap-1.5 mt-2" data-onclick="closeModal();cleanupUnusedImages()"><i class="fa-solid fa-broom text-[10px]"></i> Clean up unused CDN images</button>
+                <div class="pt-3 mt-2 border-t border-[var(--brd)] flex justify-end">
+                    <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-save text-[10px]"></i> Save Token
+                    </button>
+                </div>
+            </form>
+        </div>`;
+}
+
+function _settingsTabBackup() {
+    const unlocked = !!(window.LocalAuth && window.LocalAuth.isUnlocked && window.LocalAuth.isUnlocked());
+    return `
+        <div class="text-left">
+            <p class="text-[11px] mb-3" style="color:var(--tx-d);">Download a local JSON copy of all documents, or restore from one. ${unlocked ? '<strong style="color:#f59e0b;">The export includes decrypted credential passwords in plain text</strong> — store it as carefully as the vault itself.' : ''}</p>
+            <div class="flex gap-2">
+                <button type="button" class="btn-s py-1.5 px-3 text-xs flex-1 flex items-center justify-center gap-1.5" data-onclick="exportBackup()"><i class="fa-solid fa-download text-[10px]"></i> Export Backup</button>
+                <button type="button" class="btn-s py-1.5 px-3 text-xs flex-1 flex items-center justify-center gap-1.5" data-onclick="triggerImportBackup()"><i class="fa-solid fa-upload text-[10px]"></i> Import Backup</button>
+            </div>
+        </div>`;
+}
+
+const SETTINGS_TABS = [
+    { id: 'account', label: 'Account', icon: 'fa-lock', render: _settingsTabAccount },
+    { id: 'security', label: 'Security', icon: 'fa-shield-halved', render: _settingsTabSecurity },
+    { id: 'sync', label: 'Sync', icon: 'fa-rotate', render: _settingsTabSync },
+    { id: 'backup', label: 'Backup', icon: 'fa-box-archive', render: _settingsTabBackup }
+];
+
+function _renderSettingsModal() {
+    const activeTab = window._settingsTab || 'account';
+    return `
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-heading font-bold text-lg flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> DocVault Settings</h3>
+                <button type="button" class="text-base leading-none" style="color:var(--tx-d);" data-onclick="closeModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex gap-1 mb-5 p-1 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+                ${SETTINGS_TABS.map(tb => `
+                    <button type="button" class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors" style="${activeTab === tb.id ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'}" data-onclick="_switchSettingsTab('${tb.id}')">
+                        <i class="fa-solid ${tb.icon}" style="font-size:10px;"></i> ${tb.label}
+                    </button>
+                `).join('')}
+            </div>
+            <div id="settings-modal-body">${(SETTINGS_TABS.find(tb => tb.id === activeTab) || SETTINGS_TABS[0]).render()}</div>
+        </div>`;
+}
+
+window._switchSettingsTab = function(tab) {
+    window._settingsTab = tab;
+    const body = document.getElementById('settings-modal-body');
+    const tabDef = SETTINGS_TABS.find(tb => tb.id === tab);
+    if (!body || !tabDef) return;
+    body.innerHTML = tabDef.render();
+    // Update tab pill active styles in place (avoids re-animating the whole modal).
+    document.querySelectorAll('#modal [data-onclick^="_switchSettingsTab"]').forEach(btn => {
+        const isActive = btn.getAttribute('data-onclick') === `_switchSettingsTab('${tab}')`;
+        btn.style.background = isActive ? 'var(--acc)' : 'transparent';
+        btn.style.color = isActive ? '#fff' : 'var(--tx-m)';
+    });
+};
+
 window.showGitHubSettingsModal = async function() {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         toast('Settings are disabled in demo mode.', 'info');
@@ -1115,104 +1256,9 @@ window.showGitHubSettingsModal = async function() {
     if (storedGh) {
         ghSettings = { ...ghSettings, ...storedGh };
     }
-    const currentHint = window.LocalAuth ? window.LocalAuth.getHint() : '';
-    const hasRecovery = !!localStorage.getItem(window.LocalAuth ? window.LocalAuth.RECOVERY_KEY : 'docvault_recovery_blob');
-    const hintSyncOn = !!(window.LocalAuth && window.LocalAuth.isHintSyncEnabled && window.LocalAuth.isHintSyncEnabled());
-    const imgCdnOn = localStorage.getItem('docvault_img_cdn') === '1';
-
-    showModal(`
-        <div>
-            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> DocVault Settings</h3>
-
-            <!-- SECTION 1: MASTER PASSWORD -->
-            <div class="mb-5 pb-5 border-b border-[var(--brd)] text-left">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-lock text-[var(--acc)] text-[10px]"></i> 1. Master Password</h4>
-                <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3">
-                    <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
-                        <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">New Password</label>
-                        <input type="password" id="mp-new" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Confirm New Password</label>
-                        <input type="password" id="mp-confirm" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="btn-p py-1.5 px-4 text-xs w-full flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-key text-[10px]"></i> Change Master Password
-                    </button>
-                </form>
-            </div>
-
-            <!-- SECTION 2: SECURITY -->
-            <div class="mb-5 pb-5 border-b border-[var(--brd)] text-left">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-shield-halved text-[var(--acc)] text-[10px]"></i> 2. Security</h4>
-                <div class="mb-4">
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Password Hint <span class="font-normal" style="color:var(--tx-d);">(stored unencrypted)</span></label>
-                    <div class="flex gap-2">
-                        <input type="text" id="sec-hint" class="form-input flex-1 py-1.5 px-3 text-xs" placeholder="e.g. Pet name + year" maxlength="80" value="${escHtml(currentHint)}">
-                        <button type="button" class="btn-s py-1.5 px-3 text-xs whitespace-nowrap" data-onclick="savePasswordHint()">Save</button>
-                    </div>
-                    <label class="flex items-center gap-2 mt-2 cursor-pointer">
-                        <input type="checkbox" id="sec-hint-sync" class="form-checkbox" ${hintSyncOn ? 'checked' : ''}>
-                        <span class="text-[10px]" style="color:var(--tx-d);">Sync hint across devices <strong style="color:#f59e0b;">(readable publicly on GitHub)</strong></span>
-                    </label>
-                    <p class="text-[10px] mt-1" style="color:var(--tx-d);">Shown on lock screen as a reminder. Never include your actual password. Kept on this device only unless you enable sync above.</p>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Recovery Key</label>
-                    <p class="text-[11px] mb-2" style="color:${hasRecovery ? 'var(--acc)' : '#f59e0b'};">
-                        <i class="fa-solid fa-${hasRecovery ? 'circle-check' : 'triangle-exclamation'} mr-1"></i>${hasRecovery ? 'Recovery key is active.' : 'No key set — forgotten password means lost data.'}
-                    </p>
-                    <button type="button" id="sec-gen-recovery-btn" class="btn-s py-1.5 px-4 text-xs flex items-center gap-1.5" data-onclick="generateRecoveryKey()">
-                        <i class="fa-solid fa-key text-[10px]"></i> ${hasRecovery ? 'Regenerate Key' : 'Generate Recovery Key'}
-                    </button>
-                    <p class="text-[10px] mt-1.5" style="color:var(--tx-d);">20-character code that can unlock your vault if you forget your password. Store it offline.</p>
-                </div>
-            </div>
-
-            <!-- SECTION 3: GITHUB SYNC -->
-            <div class="text-left">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-rotate text-[var(--acc)] text-[10px]"></i> 3. GitHub Sync</h4>
-                <div class="bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
-                    <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
-                    Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
-                </div>
-                <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
-                <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
-                    <div>
-                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
-                        <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
-                        <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo.</p>
-                    </div>
-                    <label class="flex items-start gap-2 cursor-pointer">
-                        <input type="checkbox" id="gh-img-cdn" class="form-checkbox mt-0.5" ${imgCdnOn ? 'checked' : ''} data-onchange="toggleImageCdn(this)">
-                        <span class="text-[10px]" style="color:var(--tx-d);">Store pasted images on GitHub CDN <strong style="color:#f59e0b;">(public, unencrypted)</strong> instead of inline. Shrinks the vault; images become publicly readable. Off by default.</span>
-                    </label>
-                    <button type="button" class="btn-s py-1.5 px-3 text-xs w-full flex items-center justify-center gap-1.5" data-onclick="closeModal();compactImages()"><i class="fa-solid fa-compress text-[10px]"></i> Compact existing inline images → CDN</button>
-                    <button type="button" class="btn-s py-1.5 px-3 text-xs w-full flex items-center justify-center gap-1.5 mt-2" data-onclick="closeModal();cleanupUnusedImages()"><i class="fa-solid fa-broom text-[10px]"></i> Clean up unused CDN images</button>
-                    <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
-                        <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Close</button>
-                        <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-save text-[10px]"></i> Save Token
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- SECTION 4: BACKUP -->
-            <div class="text-left mt-5 pt-5 border-t border-[var(--brd)]">
-                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-box-archive text-[var(--acc)] text-[10px]"></i> 4. Backup</h4>
-                <p class="text-[11px] mb-3" style="color:var(--tx-d);">Download a local JSON copy of all documents, or restore from one. ${window.LocalAuth && window.LocalAuth.isUnlocked && window.LocalAuth.isUnlocked() ? '<strong style="color:#f59e0b;">The export includes decrypted credential passwords in plain text</strong> — store it as carefully as the vault itself.' : ''}</p>
-                <div class="flex gap-2">
-                    <button type="button" class="btn-s py-1.5 px-3 text-xs flex-1 flex items-center justify-center gap-1.5" data-onclick="exportBackup()"><i class="fa-solid fa-download text-[10px]"></i> Export Backup</button>
-                    <button type="button" class="btn-s py-1.5 px-3 text-xs flex-1 flex items-center justify-center gap-1.5" data-onclick="triggerImportBackup()"><i class="fa-solid fa-upload text-[10px]"></i> Import Backup</button>
-                </div>
-            </div>
-        </div>
-    `);
+    window._settingsModalData = { ghSettings };
+    window._settingsTab = window._settingsTab || 'account';
+    showModal(_renderSettingsModal());
 };
 
 window.toggleImageCdn = function(el) {
