@@ -435,25 +435,29 @@ function t(key, params = {}) {
 // ========================
 // CAT_META
 // ========================
+// labelPlural is explicit per category rather than derived by appending 's'
+// to label — several labels (Test Cases, Credentials, Environments, Test
+// Runs, API Specs) are already plural/uncountable, so blindly adding 's'
+// produced things like "Credentialss" in the documents-list header.
 const CAT_META = {
-    runbook: { get label() { return t('runbook'); }, icon: 'fa-book', color: 'var(--c-run)', cls: 'cat-runbook' },
-    testcases: { get label() { return t('testcases'); }, icon: 'fa-flask-vial', color: 'var(--c-tc)', cls: 'cat-testcases' },
-    knowledge: { get label() { return t('knowledge'); }, icon: 'fa-lightbulb', color: 'var(--c-kn)', cls: 'cat-knowledge' },
-    task: { get label() { return t('task'); }, icon: 'fa-list-check', color: 'var(--c-task)', cls: 'cat-task' },
-    bug: { get label() { return t('bug'); }, icon: 'fa-bug', color: 'var(--c-bug)', cls: 'cat-bug' },
-    testplan: { get label() { return t('testplan'); }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
-    api: { label: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
-    credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
-    environment: { label: 'Environments', icon: 'fa-network-wired', color: 'var(--c-env)', cls: 'cat-environment' },
-    testrun: { get label() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' },
-    release: { get label() { return t('release'); }, icon: 'fa-rocket', color: 'var(--c-rel)', cls: 'cat-release' }
+    runbook: { get label() { return t('runbook'); }, get labelPlural() { return t('runbook') + 's'; }, icon: 'fa-book', color: 'var(--c-run)', cls: 'cat-runbook' },
+    testcases: { get label() { return t('testcases'); }, get labelPlural() { return t('testcases'); }, icon: 'fa-flask-vial', color: 'var(--c-tc)', cls: 'cat-testcases' },
+    knowledge: { get label() { return t('knowledge'); }, get labelPlural() { return t('knowledge'); }, icon: 'fa-lightbulb', color: 'var(--c-kn)', cls: 'cat-knowledge' },
+    task: { get label() { return t('task'); }, get labelPlural() { return t('task') + 's'; }, icon: 'fa-list-check', color: 'var(--c-task)', cls: 'cat-task' },
+    bug: { get label() { return t('bug'); }, get labelPlural() { return t('bug') + 's'; }, icon: 'fa-bug', color: 'var(--c-bug)', cls: 'cat-bug' },
+    testplan: { get label() { return t('testplan'); }, get labelPlural() { return t('testplan') + 's'; }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
+    api: { label: 'API Specs', labelPlural: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
+    credential: { label: 'Credentials', labelPlural: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
+    environment: { label: 'Environments', labelPlural: 'Environments', icon: 'fa-network-wired', color: 'var(--c-env)', cls: 'cat-environment' },
+    testrun: { get label() { return t('testrun'); }, get labelPlural() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' },
+    release: { get label() { return t('release'); }, get labelPlural() { return t('release') + 's'; }, icon: 'fa-rocket', color: 'var(--c-rel)', cls: 'cat-release' }
 };
 
 // Safe accessor for category metadata (US-405). Documents with an unknown or
 // legacy category (e.g. from an import) would otherwise crash rendering when
 // code reads CAT_META[cat].color/.icon/.cls/.label directly.
 function getCatMeta(category) {
-    return CAT_META[category] || { label: category || 'Unknown', icon: 'fa-file', color: '#7a8ba8', cls: 'cat-unknown' };
+    return CAT_META[category] || { label: category || 'Unknown', labelPlural: (category || 'Unknown') + 's', icon: 'fa-file', color: '#7a8ba8', cls: 'cat-unknown' };
 }
 
 // ========================
