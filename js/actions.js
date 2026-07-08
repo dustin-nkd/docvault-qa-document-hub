@@ -496,6 +496,166 @@ window.exportTestRunCsv = function(runId) {
 };
 
 // ========================
+// API IMPORT — Postman Collection v2.x / OpenAPI 3.x (Sprint 12)
+// ========================
+function _parsePostmanRequest(item, subfolderPath) {
+    const req = item.request;
+    if (!req) return null;
+    const method = (req.method || 'GET').toUpperCase();
+    let endpoint = '';
+    if (typeof req.url === 'string') endpoint = req.url;
+    else if (req.url && typeof req.url === 'object') endpoint = req.url.raw || ('/' + (req.url.path || []).join('/'));
+
+    const headers = (req.header || []).filter(h => !h.disabled).map(h => ({ key: h.key || '', value: h.value || '', req: true }));
+    const params = ((req.url && req.url.query) || []).filter(q => !q.disabled).map(q => ({ key: q.key || '', value: q.value || '', req: false }));
+
+    let body = '';
+    if (req.body) {
+        if (req.body.mode === 'raw') body = req.body.raw || '';
+        else if (req.body.mode === 'urlencoded') body = (req.body.urlencoded || []).filter(p => !p.disabled).map(p => `${p.key}=${p.value}`).join('&');
+    }
+
+    let statusCode = '200', response = '';
+    if (Array.isArray(item.response) && item.response.length) {
+        statusCode = String(item.response[0].code || 200);
+        response = item.response[0].body || '';
+    }
+
+    return {
+        title: item.name || endpoint || 'Untitled Request',
+        subfolder: subfolderPath.join('/'),
+        apiData: { method, endpoint, headers, params, body, statusCode, response }
+    };
+}
+
+// Postman collections nest requests inside folders (item[].item[]...); walk the
+// tree and flatten it, turning the folder path into a DocVault subfolder.
+function _parsePostmanCollection(json) {
+    const results = [];
+    (function walk(items, path) {
+        (items || []).forEach(it => {
+            if (Array.isArray(it.item)) walk(it.item, [...path, it.name || 'Folder']);
+            else if (it.request) { const p = _parsePostmanRequest(it, path); if (p) results.push(p); }
+        });
+    })(json.item, []);
+    return results;
+}
+
+function _parseOpenApi(json) {
+    const results = [];
+    const paths = json.paths || {};
+    const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+    Object.keys(paths).forEach(pathKey => {
+        const pathItem = paths[pathKey] || {};
+        METHODS.forEach(m => {
+            const op = pathItem[m];
+            if (!op) return;
+
+            const headers = [], params = [];
+            (op.parameters || []).forEach(p => {
+                const entry = { key: p.name || '', value: p.example !== undefined ? String(p.example) : '', req: !!p.required };
+                (p.in === 'header' ? headers : params).push(entry);
+            });
+
+            let body = '';
+            try {
+                const jc = op.requestBody && op.requestBody.content && op.requestBody.content['application/json'];
+                if (jc) body = JSON.stringify(jc.example !== undefined ? jc.example : jc.schema, null, 2);
+            } catch (e) {}
+
+            let statusCode = '200', response = '';
+            try {
+                const responses = op.responses || {};
+                const codes = Object.keys(responses);
+                const okCode = codes.find(c => c.startsWith('2')) || codes[0];
+                if (okCode) {
+                    statusCode = okCode;
+                    const jc = responses[okCode].content && responses[okCode].content['application/json'];
+                    if (jc) response = JSON.stringify(jc.example !== undefined ? jc.example : jc.schema, null, 2);
+                }
+            } catch (e) {}
+
+            results.push({
+                title: op.summary || `${m.toUpperCase()} ${pathKey}`,
+                subfolder: (op.tags && op.tags[0]) || '',
+                apiData: { method: m.toUpperCase(), endpoint: pathKey, headers, params, body, statusCode, response }
+            });
+        });
+    });
+    return results;
+}
+
+window.triggerApiImport = function() {
+    let input = document.getElementById('api-import-input');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'api-import-input';
+        input.accept = '.json,application/json';
+        input.style.display = 'none';
+        input.addEventListener('change', () => window.handleApiImportFile(input));
+        document.body.appendChild(input);
+    }
+    input.value = ''; // allow re-importing the same file
+    input.click();
+};
+
+window.handleApiImportFile = function(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        let json;
+        try { json = JSON.parse(e.target.result); }
+        catch (err) { toast('Could not parse file — not valid JSON.', 'error'); return; }
+
+        let parsed = [], formatLabel = '';
+        try {
+            const isPostman = Array.isArray(json.item) || (json.info && /postman/i.test(json.info.schema || ''));
+            const isOpenApi = !!(json.openapi || json.swagger);
+            if (isPostman) { parsed = _parsePostmanCollection(json); formatLabel = 'Postman Collection'; }
+            else if (isOpenApi) { parsed = _parseOpenApi(json); formatLabel = 'OpenAPI'; }
+            else { toast('Unrecognized file — expected a Postman Collection or OpenAPI spec.', 'error'); return; }
+        } catch (err) { toast('Failed to parse the file: ' + err.message, 'error'); return; }
+
+        if (!parsed.length) { toast('No API requests found in this file.', 'warning'); return; }
+
+        window._pendingApiImport = parsed;
+        const folders = new Set(parsed.map(p => p.subfolder).filter(Boolean));
+        showModal(`
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.12);"><i class="fa-solid fa-file-import" style="color:var(--acc);"></i></div>
+                <h3 class="font-heading font-semibold text-lg mb-2">Import ${parsed.length} API request${parsed.length > 1 ? 's' : ''}?</h3>
+                <p class="text-sm mb-5" style="color:var(--tx-m);">Detected format: <strong style="color:var(--tx);">${formatLabel}</strong>${folders.size ? ` across ${folders.size} folder${folders.size > 1 ? 's' : ''}` : ''}. Each becomes a new draft API Specs document (tagged "imported"). Existing documents aren't checked for duplicates.</p>
+                <div class="flex gap-3 justify-center">
+                    <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                    <button class="btn-p" data-onclick="_doApiImport()">Import</button>
+                </div>
+            </div>`);
+    };
+    reader.onerror = () => toast('Could not read the file.', 'error');
+    reader.readAsText(file);
+};
+
+window._doApiImport = async function() {
+    closeModal();
+    const parsed = window._pendingApiImport || [];
+    window._pendingApiImport = null;
+    if (!parsed.length) return;
+    const now = Date.now();
+    parsed.forEach((p, i) => {
+        documents.unshift({
+            id: uid(), title: p.title, category: 'api', subfolder: p.subfolder || '',
+            status: 'draft', content: '', tags: ['imported'], favorite: false,
+            apiData: p.apiData, createdAt: now + i, updatedAt: now + i
+        });
+    });
+    await persist();
+    render();
+    toast(`Imported ${parsed.length} API spec${parsed.length > 1 ? 's' : ''}.`, 'success');
+};
+
+// ========================
 // SHARE DOCUMENT
 // ========================
 window.shareDoc = async function(id) {
