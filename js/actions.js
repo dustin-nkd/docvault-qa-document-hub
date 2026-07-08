@@ -1776,6 +1776,89 @@ window.rerunTestRun = async function(runId) {
     viewDoc(newRun.id);
 };
 
+// ========================
+// RELEASE NOTES GENERATOR (Sprint 17, 17-2)
+// ========================
+// Builds a Markdown changelog from the release editor's currently-checked
+// linked runs/bugs/environments and writes it into the Toast UI Editor.
+// Reads the live form (not saved releaseData), so it reflects link changes
+// the user hasn't saved yet — consistent with how saveDoc() itself reads
+// these same checkboxes.
+window.generateReleaseNotes = function() {
+    const hasLinks = document.querySelectorAll('.ed-rel-run:checked, .ed-rel-bug:checked, .ed-rel-env:checked').length > 0;
+    if (!hasLinks) {
+        toast('Link some test runs, bugs, or environments first.', 'warning');
+        return;
+    }
+    // Checked AFTER hasLinks: a brand-new release doc's content is never truly
+    // blank (it starts from the "# New Document..." placeholder), so checking
+    // this first would show "Replace existing notes?" even when nothing has
+    // been linked yet to generate from.
+    const currentMd = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    if (currentMd.trim()) {
+        showModal(`
+            <div class="text-center">
+                <i class="fa-solid fa-triangle-exclamation text-2xl mb-3" style="color:#f59e0b;"></i>
+                <h3 class="font-heading font-bold text-lg mb-2">Replace existing notes?</h3>
+                <p class="text-sm mb-5" style="color:var(--tx-m);">This will overwrite the current Release Notes content.</p>
+                <div class="flex gap-3 justify-center">
+                    <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                    <button class="btn-d" data-onclick="closeModal();_doGenerateReleaseNotes()">Replace</button>
+                </div>
+            </div>`);
+        return;
+    }
+    _doGenerateReleaseNotes();
+};
+
+window._doGenerateReleaseNotes = function() {
+    const version = document.getElementById('ed-rel-version')?.value.trim() || 'Unreleased';
+    const releaseDate = document.getElementById('ed-rel-date')?.value || '';
+    const runs = Array.from(document.querySelectorAll('.ed-rel-run:checked')).map(cb => documents.find(d => d.id === cb.value)).filter(Boolean);
+    const bugs = Array.from(document.querySelectorAll('.ed-rel-bug:checked')).map(cb => documents.find(d => d.id === cb.value)).filter(Boolean);
+    const envs = Array.from(document.querySelectorAll('.ed-rel-env:checked')).map(cb => documents.find(d => d.id === cb.value)).filter(Boolean);
+
+    if (!runs.length && !bugs.length && !envs.length) {
+        toast('Link some test runs, bugs, or environments first.', 'warning');
+        return;
+    }
+
+    let md = `# Release ${version}\n`;
+    if (releaseDate) md += `**Date:** ${releaseDate}\n`;
+
+    if (bugs.length) {
+        md += `\n## Fixed\n`;
+        bugs.forEach(b => {
+            const ref = bugRef(b);
+            md += `- ${ref ? ref + ' — ' : ''}${b.title}${b.bugData?.severity ? ` (${b.bugData.severity})` : ''}\n`;
+        });
+    }
+
+    if (runs.length) {
+        md += `\n## Tested\n`;
+        runs.forEach(r => {
+            const results = r.runData?.results || {};
+            const targetIds = r.runData?.targetIds || [];
+            let total = 0, pass = 0;
+            targetIds.forEach(tcId => {
+                const steps = r.runData?.snapshot?.[tcId] || [];
+                total += steps.length;
+                steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') pass++; });
+            });
+            const pct = total ? Math.round(pass / total * 100) : null;
+            md += `- ${r.title}${pct !== null ? ` (${pct}% pass)` : ' (no results recorded)'}\n`;
+        });
+    }
+
+    if (envs.length) {
+        md += `\n## Environments\n`;
+        envs.forEach(e => { md += `- ${e.title}${e.envData?.status ? ` — ${e.envData.status}` : ''}\n`; });
+    }
+
+    if (window.tuiEditor) window.tuiEditor.setMarkdown(md);
+    toast('Release notes generated — review before saving.', 'success');
+};
+
 // Next sequential bug number for a human-readable BUG-### reference (US-202).
 function _nextBugNumber() {
     let max = 0;
