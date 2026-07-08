@@ -1588,6 +1588,29 @@ window._forceCancelEdit = function() {
     navigateBack();
 };
 
+// Filters the test-case picker in the Test Run editor (Sprint 15, 15-2) by
+// title/module. Pure DOM show/hide — never re-renders the checkbox list —
+// so in-progress selections that haven't been synced back into state yet
+// are never lost while the user is typing a filter.
+window._filterTestRunTcList = function(query) {
+    const q = (query || '').trim().toLowerCase();
+    let visible = 0;
+    document.querySelectorAll('.testrun-tc-row').forEach(row => {
+        const match = (row.getAttribute('data-filter-key') || '').includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    const empty = document.getElementById('ed-run-tc-empty');
+    if (empty) empty.classList.toggle('hidden', !(q && visible === 0));
+};
+
+window._updateTestRunTcCount = function() {
+    const el = document.getElementById('ed-run-tc-count');
+    if (!el) return;
+    const checked = document.querySelectorAll('.testrun-tc-cb:checked').length;
+    el.textContent = checked > 0 ? `${checked} selected` : '';
+};
+
 // Freezes the current step definitions of each target test case into a
 // snapshot (US-103), so a run's recorded results stay aligned even if the
 // test case is edited later. Shared by saveDoc's testrun branch and
