@@ -84,6 +84,81 @@ window.navigate = function(view, cat, subfolder) {
 };
 
 // ========================
+// SAVED VIEWS (Sprint 19, 19-1)
+// ========================
+// A saved view is just a named snapshot of {category, statusFilter, search,
+// sortBy}. Written to real localStorage like theme/lang (a UI preference,
+// not vault data) — EXCEPT in guest mode, where it's skipped entirely rather
+// than persisted, matching DocHistory's "leave zero trace" precedent, since
+// the search text saved here could reveal what a demo visitor was looking at.
+function _getSavedViews() {
+    try { return JSON.parse(localStorage.getItem('docvault_saved_views') || '[]'); } catch (e) { return []; }
+}
+function _setSavedViews(views) {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
+    localStorage.setItem('docvault_saved_views', JSON.stringify(views));
+}
+
+window.showSaveViewModal = function() {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
+        toast('Saved views aren’t available in demo mode.', 'info');
+        return;
+    }
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.12);"><i class="fa-regular fa-bookmark" style="color:var(--acc);"></i></div>
+            <h3 class="font-heading font-bold text-lg mb-2">Save Current View</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">Saves the current category, status filter, search, and sort as a one-click shortcut in the sidebar.</p>
+            <input type="text" id="save-view-name" class="form-input w-full mb-4" placeholder="e.g. My open criticals" maxlength="40">
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-p" data-onclick="_doSaveView()">Save</button>
+            </div>
+        </div>`);
+    setTimeout(() => document.getElementById('save-view-name')?.focus(), 50);
+};
+
+window._doSaveView = function() {
+    const name = document.getElementById('save-view-name')?.value.trim();
+    if (!name) { toast('Enter a name for this view.', 'warning'); return; }
+    const views = _getSavedViews();
+    views.push({ id: uid(), name, category: state.category, statusFilter: state.statusFilter, search: state.search, sortBy: state.sortBy });
+    _setSavedViews(views);
+    closeModal();
+    render();
+    toast(`Saved view "${name}".`, 'success');
+};
+
+window.applySavedView = function(id) {
+    const v = _getSavedViews().find(x => x.id === id);
+    if (!v) return;
+    // Mirrors navigate()'s body, but restores the saved filters instead of
+    // resetting them to defaults.
+    if (state.view === 'editor') syncEditorState();
+    pushHistory();
+    state.view = 'documents';
+    state.category = v.category || 'all';
+    state.subfolder = '';
+    state.statusFilter = v.statusFilter || 'all';
+    state.search = v.search || '';
+    state.sortBy = v.sortBy || 'updated';
+    state.editingDoc = null;
+    state.editorTags = [];
+    state.editorMode = 'edit';
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    if (state.sidebarOpen) toggleSidebar();
+    history.replaceState({}, '', _appUrl());
+    render();
+};
+
+window.deleteSavedView = function(id) {
+    _setSavedViews(_getSavedViews().filter(v => v.id !== id));
+    render();
+};
+
+// ========================
 // BATCH OPERATIONS
 // ========================
 window.toggleBatchMode = function() {
