@@ -1740,13 +1740,14 @@ async function saveDoc() {
         const steps = Array.from(stepInputs).map(inp => inp.value.trim()).filter(v => v);
         const assignee = document.getElementById('ed-bug-assignee')?.value || '';
         const priority = document.getElementById('ed-bug-priority')?.value || 'P3';
+        const linkedTc = document.getElementById('ed-bug-linked-tc')?.value || '';
         const expected = document.getElementById('ed-bug-expected')?.value || '';
         const actual = document.getElementById('ed-bug-actual')?.value || '';
         // For a new bug prefilled from a failed test step (B1), the link fields live
         // on state._newBugData; for an edit they live on the existing doc.
         const existing = state.editingDoc?.bugData || state._newBugData || {};
 
-        bugData = { env, browser, severity, priority, assignee, precond, steps, expected, actual,
+        bugData = { env, browser, severity, priority, assignee, precond, steps, expected, actual, linkedTc,
             resolution: existing.resolution || '',
             duplicateOf: existing.duplicateOf || '',
             reopenCount: existing.reopenCount || 0,
