@@ -355,7 +355,13 @@ function executeAction(code, event, element) {
     }
 }
 
+// e.target is only guaranteed to be a real Element (with .closest()) when a
+// user actually interacts with the page. A keydown/click/etc dispatched with
+// target=document (automated testing, some extensions, or a stray future
+// document.dispatchEvent call) has e.target === document, which has no
+// .closest() and would otherwise crash every delegated handler below.
 document.addEventListener('click', (e) => {
+    if (!(e.target instanceof Element)) return;
     // close date picker when clicking outside
     const dpPanel = document.getElementById('dp-panel');
     if (dpPanel && !dpPanel.classList.contains('hidden')) {
@@ -369,6 +375,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('input', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-oninput]');
     if (target) {
         executeAction(target.getAttribute('data-oninput'), e, target);
@@ -376,6 +383,7 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('change', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-onchange]');
     if (target) {
         executeAction(target.getAttribute('data-onchange'), e, target);
@@ -383,6 +391,7 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-onkeydown]');
     if (target) {
         executeAction(target.getAttribute('data-onkeydown'), e, target);
@@ -390,6 +399,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('mouseover', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-onmouseenter]');
     if (target) {
         executeAction(target.getAttribute('data-onmouseenter'), e, target);
@@ -397,6 +407,7 @@ document.addEventListener('mouseover', (e) => {
 });
 
 document.addEventListener('mouseout', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-onmouseleave]');
     if (target) {
         executeAction(target.getAttribute('data-onmouseleave'), e, target);
@@ -439,6 +450,7 @@ window.handleDrop = async function(event, newStatus) {
 };
 
 document.addEventListener('dragstart', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-ondragstart]');
     if (target) {
         const action = target.getAttribute('data-ondragstart');
@@ -450,6 +462,7 @@ document.addEventListener('dragstart', (e) => {
 });
 
 document.addEventListener('dragend', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-ondragend]');
     if (target) {
         window.handleDragEnd(e, target);
@@ -457,6 +470,7 @@ document.addEventListener('dragend', (e) => {
 });
 
 document.addEventListener('dragover', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-ondragover]');
     if (target) {
         window.handleDragOver(e);
@@ -464,6 +478,7 @@ document.addEventListener('dragover', (e) => {
 });
 
 document.addEventListener('drop', (e) => {
+    if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-ondrop]');
     if (target) {
         const action = target.getAttribute('data-ondrop');
@@ -484,6 +499,7 @@ let _touchStartPos = null;
 let _touchDragging = false;
 
 document.addEventListener('touchstart', (e) => {
+    if (!(e.target instanceof Element)) return;
     const card = e.target.closest('[data-ondragstart]');
     if (!card) return;
     const action = card.getAttribute('data-ondragstart');
