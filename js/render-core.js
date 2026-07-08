@@ -332,6 +332,15 @@ function _getDashboardMetrics(docs) {
         .sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))
         .slice(0, 4);
 
+    // Critical bugs aging past a 48h SLA (Sprint 16, 16-2) — a distinct, more
+    // urgent signal than the generic 30-day "stale" widget above: a Critical
+    // bug open for 2 days deserves attention regardless of when it was last
+    // touched (unlike "stale", which only fires on 30 days of no updates).
+    const SLA_MS = 48 * 60 * 60 * 1000;
+    const criticalAging = openBugs
+        .filter(b => b.bugData?.severity === 'Critical' && (now - (b.createdAt || 0)) > SLA_MS)
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
     // Coverage by module — test cases whose subfolder = module, covered = included in any run
     const tcs = docs.filter(d => d.category === 'testcases');
     const coveredIds = new Set(runs.flatMap(r => r.runData?.targetIds || []));
@@ -347,7 +356,7 @@ function _getDashboardMetrics(docs) {
         .sort((a, b) => b.pct - a.pct)
         .slice(0, 4);
 
-    return { bugs, openBugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage };
+    return { bugs, openBugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage, criticalAging };
 }
 
 function _renderHealthWidgets(m, inPanel) {
@@ -431,6 +440,23 @@ function _renderHealthWidgets(m, inPanel) {
                     ${cols.map(c => m.board[c.key] > 0 ? `<div style="flex:${m.board[c.key]};background:${c.color};"></div>` : '').join('')}
                 </div>
                 <p class="text-[10px] mt-2" style="color:var(--tx-d);">${m.tasks.length} task${m.tasks.length > 1 ? 's' : ''} total</p>
+            </div>`);
+    }
+
+    // Widget 3b: Critical Bugs Aging (SLA >48h)
+    if (m.criticalAging.length > 0) {
+        const fmtAge = ms => { const h = Math.floor(ms / 3600000); return h < 48 ? `${h}h` : `${Math.floor(h / 24)}d`; };
+        widgets.push(`
+            <div class="doc-card p-4" style="border-color:#ef4444;">
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:#f87171;"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Critical Bugs Aging <span style="color:var(--tx-d);">&gt;48h</span></p>
+                <div class="flex flex-col gap-2">
+                    ${m.criticalAging.slice(0, 4).map(b => `
+                        <div class="flex items-center gap-2 cursor-pointer" data-onclick="viewDoc('${b.id}')">
+                            <span class="text-[10px] font-mono font-bold shrink-0" style="color:#f87171;">${bugRef(b)}</span>
+                            <span class="text-[11px] flex-1 truncate" style="color:var(--tx-m);">${escHtml(b.title)}</span>
+                            <span class="text-[10px] shrink-0 font-bold" style="color:#f87171;font-variant-numeric:tabular-nums;">${fmtAge(Date.now() - (b.createdAt || 0))}</span>
+                        </div>`).join('')}
+                </div>
             </div>`);
     }
 
