@@ -15,7 +15,7 @@ function updateHeader() {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
         actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
-        const catLabel = state.view === 'favorites' ? t('favorites') : (state.category === 'all' ? t('allDocuments') : getCatMeta(state.category).label + 's');
+        const catLabel = state.view === 'favorites' ? t('favorites') : (state.category === 'all' ? t('allDocuments') : getCatMeta(state.category).labelPlural);
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
         actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'editor') {
