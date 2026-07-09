@@ -19,7 +19,8 @@ let state = {
     sharedView: false,  // true when viewing a public share link (read-only)
     batchMode: false,
     selectedIds: new Set(),
-    lastSelectedId: null
+    lastSelectedId: null,
+    docListPage: 1 // Sprint 22: pagination for the documents grid
 };
 
 let documents = [];
