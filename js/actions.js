@@ -226,10 +226,12 @@ window.batchDelete = function() {
 
 window.confirmBatchDelete = async function() {
     const ids = [...state.selectedIds];
+    let firstDoc = null;
     ids.forEach(id => {
         const doc = documents.find(d => d.id === id);
-        if (doc) { doc.status = 'deleted'; doc.deletedAt = Date.now(); doc.updatedAt = Date.now(); }
+        if (doc) { doc.status = 'deleted'; doc.deletedAt = Date.now(); doc.updatedAt = Date.now(); if (!firstDoc) firstDoc = doc; }
     });
+    if (firstDoc) ActivityLog.record('trashed', firstDoc, { note: `batch: ${ids.length} document${ids.length > 1 ? 's' : ''}`, batchCount: ids.length });
     await persist();
     closeModal();
     const n = ids.length;
@@ -261,11 +263,15 @@ window.confirmBatchAddTag = async function() {
     const tag = document.getElementById('batch-tag-input')?.value?.trim();
     if (!tag) return;
     let changed = 0;
+    let firstDoc = null;
     state.selectedIds.forEach(id => {
         const doc = documents.find(d => d.id === id);
-        if (doc && !doc.tags.includes(tag)) { doc.tags.push(tag); doc.updatedAt = Date.now(); changed++; }
+        if (doc && !doc.tags.includes(tag)) { doc.tags.push(tag); doc.updatedAt = Date.now(); changed++; if (!firstDoc) firstDoc = doc; }
     });
-    if (changed > 0) await persist();
+    if (changed > 0) {
+        ActivityLog.record('tagged', firstDoc, { note: `tag "${tag}" added to ${changed} document${changed > 1 ? 's' : ''}`, batchCount: changed });
+        await persist();
+    }
     closeModal();
     toast(`Tag "${tag}" added to ${changed} document${changed !== 1 ? 's' : ''}`, 'success');
     state.batchMode = false;
@@ -295,13 +301,15 @@ window.showBatchFolderModal = function() {
 
 window.confirmBatchMoveFolder = async function() {
     const folder = document.getElementById('batch-folder-input')?.value?.trim() || '';
+    let firstDoc = null;
     state.selectedIds.forEach(id => {
         const doc = documents.find(d => d.id === id);
-        if (doc) { doc.subfolder = folder; doc.updatedAt = Date.now(); }
+        if (doc) { doc.subfolder = folder; doc.updatedAt = Date.now(); if (!firstDoc) firstDoc = doc; }
     });
+    const n = state.selectedIds.size;
+    if (firstDoc) ActivityLog.record('moved', firstDoc, { note: `moved ${n} document${n > 1 ? 's' : ''} to ${folder || 'no folder'}`, batchCount: n });
     await persist();
     closeModal();
-    const n = state.selectedIds.size;
     toast(`${n} document${n > 1 ? 's' : ''} moved to ${folder || 'no folder'}`, 'success');
     state.batchMode = false;
     state.selectedIds = new Set();
@@ -2320,6 +2328,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         const idx = editingIdx;
         DocHistory.save(documents[idx]);
         documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
+        ActivityLog.record('updated', documents[idx]);
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
         state.view = 'viewer';
@@ -2336,6 +2345,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     } else {
         const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
         documents.unshift(newDoc);
+        ActivityLog.record('created', newDoc);
         toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
         state.view = 'viewer';
@@ -2392,6 +2402,7 @@ async function duplicateDoc(id) {
     // otherwise the copy would collide with the original's number.
     if (dup.category === 'bug') dup.bugNumber = _nextBugNumber();
     documents.unshift(dup);
+    ActivityLog.record('created', dup, { note: 'duplicated' });
     await persist();
     toast(t('docDuplicated'), 'success');
     render();

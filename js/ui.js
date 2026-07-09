@@ -206,6 +206,7 @@ async function confirmDelete(id) {
         doc.status = 'deleted';
         doc.deletedAt = Date.now();
         doc.updatedAt = Date.now();
+        ActivityLog.record('trashed', doc);
     }
     await persist();
     closeModal();
@@ -220,6 +221,7 @@ async function restoreDoc(id) {
         doc.status = 'draft';
         delete doc.deletedAt;
         doc.updatedAt = Date.now();
+        ActivityLog.record('restored', doc);
     }
     await persist();
     toast(t('docRestored') || "Document Restored", 'success');
@@ -227,6 +229,8 @@ async function restoreDoc(id) {
 }
 
 async function hardDeleteDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (doc) ActivityLog.record('deleted', doc);
     await DocStorage.addDeletedIds([id]);
     documents = documents.filter(d => d.id !== id);
     await persist();
@@ -252,7 +256,13 @@ function showEmptyTrashModal() {
 }
 
 async function emptyTrash() {
-    const trashedIds = documents.filter(d => d.status === 'deleted').map(d => d.id);
+    const trashed = documents.filter(d => d.status === 'deleted');
+    if (trashed.length > 0) {
+        // One summary entry rather than one per doc — emptying trash can be
+        // dozens of docs at once, which would flood a 200-entry log.
+        ActivityLog.record('deleted', trashed[0], { note: `emptied trash (${trashed.length} document${trashed.length > 1 ? 's' : ''})`, batchCount: trashed.length });
+    }
+    const trashedIds = trashed.map(d => d.id);
     await DocStorage.addDeletedIds(trashedIds);
     documents = documents.filter(d => d.status !== 'deleted');
     await persist();
@@ -390,7 +400,7 @@ function updateSidebar() {
         n.classList.remove('active');
         const v = n.dataset.view;
         const c = n.dataset.cat;
-        if (v === state.view && (v === 'dashboard' || v === 'favorites' || c === state.category)) {
+        if (v === state.view && (v === 'dashboard' || v === 'favorites' || v === 'activity' || c === state.category)) {
             n.classList.add('active');
         }
     });
