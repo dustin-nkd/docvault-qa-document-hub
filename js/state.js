@@ -47,6 +47,49 @@ const DocHistory = {
 };
 
 // ========================
+// ACTIVITY LOG (Sprint 24)
+// ========================
+// A lightweight personal "what did I do lately" timeline across the whole
+// vault — NOT a real audit trail (no per-device identity, not synced to
+// GitHub, no tamper-evidence) and NOT access control. Scoped-down on
+// purpose: this app has exactly one user, so "who did what" has one
+// answer, and there's no second identity to restrict — see the BA/PO
+// discussion that led here. Local-only, capped, purely a convenience so a
+// single user can see "what changed across my vault recently" instead of
+// only per-document history (DocHistory above).
+const ActivityLog = {
+    KEY: 'docvault_activity_log',
+    MAX: 200,
+
+    record(type, doc, meta = {}) {
+        if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return; // leave zero trace in demo mode
+        if (!doc) return;
+        let entries;
+        try { entries = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { entries = []; }
+        entries.unshift({
+            ts: Date.now(),
+            type, // 'created' | 'updated' | 'trashed' | 'restored' | 'deleted' | 'tagged' | 'moved'
+            docId: doc.id,
+            title: doc.title,
+            category: doc.category,
+            ...meta
+        });
+        localStorage.setItem(this.KEY, JSON.stringify(entries.slice(0, this.MAX)));
+    },
+
+    getAll() {
+        // Guest demo must never surface this browser's real activity log —
+        // same isolation guarantee as the rest of guest mode.
+        if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return [];
+        try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { return []; }
+    },
+
+    clear() {
+        localStorage.removeItem(this.KEY);
+    }
+};
+
+// ========================
 // PERSISTENCE
 // ========================
 async function persist() {

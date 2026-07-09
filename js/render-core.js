@@ -223,6 +223,7 @@ function renderContent() {
 
     const c = document.getElementById('content');
     if (state.view === 'dashboard') updateDOM(c, renderDashboard());
+    else if (state.view === 'activity') updateDOM(c, renderActivityLog());
     else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') updateDOM(c, renderDocList());
     else if (state.view === 'editor') {
         if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
@@ -665,6 +666,66 @@ function renderDashboard() {
         </div>
     </div>`;
 }
+
+// ========================
+// ACTIVITY LOG (Sprint 24)
+// ========================
+const ACTIVITY_META = {
+    created:  { icon: 'fa-solid fa-file-circle-plus', color: '#10b981', label: 'Created' },
+    updated:  { icon: 'fa-solid fa-pen',               color: '#60a5fa', label: 'Updated' },
+    trashed:  { icon: 'fa-solid fa-trash',              color: '#f59e0b', label: 'Moved to trash' },
+    restored: { icon: 'fa-solid fa-rotate-left',        color: '#10b981', label: 'Restored' },
+    deleted:  { icon: 'fa-solid fa-trash-can',          color: '#ef4444', label: 'Permanently deleted' },
+    tagged:   { icon: 'fa-solid fa-tag',                color: '#818cf8', label: 'Tagged' },
+    moved:    { icon: 'fa-regular fa-folder',           color: '#818cf8', label: 'Moved' }
+};
+
+function renderActivityLog() {
+    const entries = (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll() : [];
+    return `<div class="fade-up max-w-3xl mx-auto">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h2 class="font-heading font-semibold text-lg">Activity</h2>
+                <p class="text-xs" style="color:var(--tx-d);">A personal timeline of changes across this vault — last ${ActivityLog.MAX} actions, kept on this device only.</p>
+            </div>
+            ${entries.length > 0 ? `<button class="btn-s text-xs py-1.5 px-3" data-onclick="clearActivityLog()"><i class="fa-solid fa-broom mr-1.5"></i>Clear</button>` : ''}
+        </div>
+        ${entries.length === 0 ? `
+            <div class="text-center py-20">
+                <i class="fa-regular fa-clock text-4xl mb-4 block" style="color:var(--tx-d);"></i>
+                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">No activity yet</p>
+                <p class="text-xs" style="color:var(--tx-d);">Create, edit, or organize a document and it'll show up here.</p>
+            </div>
+        ` : `
+            <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+                ${entries.map((e, i) => {
+                    const meta = ACTIVITY_META[e.type] || { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: e.type };
+                    const docExists = documents.some(d => d.id === e.docId);
+                    return `
+                    <div class="flex items-center gap-3 px-4 py-3" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};${i > 0 ? 'border-top:1px solid var(--brd);' : ''}">
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:${meta.color}1a;">
+                            <i class="${meta.icon}" style="font-size:11px;color:${meta.color};"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm truncate" style="color:var(--tx);">
+                                <span style="color:${meta.color};font-weight:600;">${meta.label}</span>
+                                ${docExists ? `<span class="cursor-pointer hover:underline" data-onclick="viewDoc('${e.docId}')"> ${escHtml(e.title)}</span>` : ` ${escHtml(e.title)}`}
+                            </p>
+                            ${e.note ? `<p class="text-xs" style="color:var(--tx-d);">${escHtml(e.note)}</p>` : ''}
+                        </div>
+                        <span class="text-[11px] shrink-0" style="color:var(--tx-d);">${fmtDate(e.ts)}</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        `}
+    </div>`;
+}
+
+window.clearActivityLog = function() {
+    ActivityLog.clear();
+    renderContent();
+    toast('Activity log cleared.', 'info');
+};
 
 // ========================
 // DOCUMENT LIST
