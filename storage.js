@@ -447,16 +447,6 @@ const GitHubSync = {
         return DocStorage ? await DocStorage._encryptCredPasswords(activeDocs, pwd) : activeDocs;
     },
 
-    async _getFileMeta(path, settings) {
-        try {
-            const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}?ref=${settings.branch || 'main'}`;
-            const res = await fetch(url, { headers: this._headers(settings.token) });
-            if (!res.ok) return null;
-            const data = await res.json();
-            return data.sha || null;
-        } catch(e) { return null; }
-    },
-
     async _getFile(path, settings) {
         const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}?ref=${settings.branch || 'main'}`;
         const res = await fetch(url, { headers: this._headers(settings.token) });
@@ -465,51 +455,84 @@ const GitHubSync = {
         return res.json(); // { content, sha, ... }
     },
 
-    async _putFile(path, contentB64, settings, shaKey, retryOnConflict) {
-        const sha = localStorage.getItem(shaKey);
-        const body = { message: `DocVault sync ${new Date().toISOString()}`, content: contentB64, branch: settings.branch || 'main' };
-        if (sha) body.sha = sha;
-        const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`;
-        const res = await fetch(url, { method: 'PUT', headers: this._headers(settings.token), body: JSON.stringify(body) });
-        if ((res.status === 409 || res.status === 422) && retryOnConflict) {
-            // Someone else wrote THIS file since we last read its sha — fetch
-            // the fresh sha and retry once. Shard-level conflicts are far
-            // rarer than the old single-file model: two devices only collide
-            // here if they touched a doc in the same shard.
-            const freshSha = await this._getFileMeta(path, settings);
-            if (freshSha) {
-                localStorage.setItem(shaKey, freshSha);
-                return this._putFile(path, contentB64, settings, shaKey, false);
-            }
-        }
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.message || `GitHub push error (${path}): ${res.status}`);
-        }
-        const data = await res.json();
-        localStorage.setItem(shaKey, data.content.sha);
-        return data;
-    },
-
     _b64encode(str) { return btoa(unescape(encodeURIComponent(str))); },
     _b64decode(b64) { return decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))); },
 
+    async _decodePayload(raw, pwd) {
+        if (Vault.isEncrypted(raw)) {
+            if (!pwd) throw new Error('Vault is locked');
+            return await Vault.decrypt(raw, pwd);
+        }
+        return JSON.parse(raw);
+    },
+
+    // Writes `payload` to `path`. On a sha conflict (someone else wrote this
+    // exact file since we last read it — the ONLY case two devices actually
+    // collide in the sharded model, since it's scoped to one shard instead
+    // of the whole vault), fetches what's currently there, merges it with
+    // our local payload via `mergeFn`, and retries once with the merged
+    // result — instead of blindly overwriting with stale local content,
+    // which would silently drop the other device's edit. Mirrors legacy
+    // push()'s pull-merge-retry, just scoped per-file. Returns the payload
+    // that actually ended up written (== local payload if no conflict
+    // occurred, or the merged one if it did) so the caller can update its
+    // fingerprint cache / local doc state to match what's really on GitHub.
+    async _putWithMerge(path, settings, shaKey, pwd, localPayload, mergeFn) {
+        let sha = localStorage.getItem(shaKey);
+        let payload = localPayload;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const content = pwd ? await Vault.encrypt(payload, pwd) : JSON.stringify(payload);
+            const body = { message: `DocVault sync ${new Date().toISOString()}`, content: this._b64encode(content), branch: settings.branch || 'main' };
+            if (sha) body.sha = sha;
+            const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`;
+            const res = await fetch(url, { method: 'PUT', headers: this._headers(settings.token), body: JSON.stringify(body) });
+
+            if ((res.status === 409 || res.status === 422) && attempt === 0) {
+                const remoteFile = await this._getFile(path, settings);
+                if (remoteFile) {
+                    sha = remoteFile.sha;
+                    const remotePayload = await this._decodePayload(this._b64decode(remoteFile.content), pwd);
+                    payload = mergeFn(localPayload, remotePayload);
+                    continue;
+                }
+            }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || `GitHub push error (${path}): ${res.status}`);
+            }
+            const data = await res.json();
+            localStorage.setItem(shaKey, data.content.sha);
+            return { payload, merged: payload !== localPayload };
+        }
+        throw new Error(`GitHub push error (${path}): conflict persisted after merge retry`);
+    },
+
     // Pushes only the shards (and the small meta file) whose content
-    // actually changed since the last successful push.
+    // actually changed since the last successful push. Returns any docs
+    // that came from a conflict-merge (i.e. another device's edit to a doc
+    // in the same shard) so the caller can fold them back into its own
+    // in-memory state — otherwise that device wouldn't see the other
+    // device's change until its next full pull.
     async pushSharded(docs, securityMeta = null) {
         const settings = await this.getSettings();
-        if (!settings) return;
+        if (!settings) return { mergedDocs: [] };
         const pwd = this._pwd();
         const safeDocs = await this._prepDocsForShards(docs);
         const shards = this._groupByShard(safeDocs);
+        const deletedIds = DocStorage._getLocalDeletedIds();
+        const mergedDocs = [];
 
         for (let i = 0; i < this.SHARD_COUNT; i++) {
             const fp = this._shardFingerprint(shards[i]);
             const fpKey = this.SHARD_FP_PREFIX + i;
             if (fp === localStorage.getItem(fpKey)) continue; // unchanged — zero network calls
-            const content = pwd ? await Vault.encrypt(shards[i], pwd) : JSON.stringify(shards[i]);
-            await this._putFile(this._shardPath(i), this._b64encode(content), settings, this.SHARD_SHA_PREFIX + i, true);
-            localStorage.setItem(fpKey, fp);
+
+            const result = await this._putWithMerge(
+                this._shardPath(i), settings, this.SHARD_SHA_PREFIX + i, pwd, shards[i],
+                (local, remote) => DocStorage._merge(local, Array.isArray(remote) ? remote : [], deletedIds)
+            );
+            if (result.merged) mergedDocs.push(...result.payload);
+            localStorage.setItem(fpKey, this._shardFingerprint(result.payload));
         }
 
         const meta = securityMeta || this._getLocalSecurityMeta();
@@ -517,11 +540,17 @@ const GitHubSync = {
             cfg: settings,
             rb: meta.recoveryBlob || null,
             hint: meta.passwordHint || null,
-            deletedIds: [...DocStorage._getLocalDeletedIds()]
+            deletedIds: [...deletedIds]
         };
-        const metaContent = pwd ? await Vault.encrypt(metaPayload, pwd) : JSON.stringify(metaPayload);
-        await this._putFile(this.META_PATH, this._b64encode(metaContent), settings, this.META_SHA_KEY, true);
+        await this._putWithMerge(this.META_PATH, settings, this.META_SHA_KEY, pwd, metaPayload, (local, remote) => ({
+            cfg: local.cfg || remote.cfg,
+            rb: local.rb !== undefined ? local.rb : remote.rb,
+            hint: local.hint !== undefined ? local.hint : remote.hint,
+            deletedIds: [...new Set([...(local.deletedIds || []), ...(remote.deletedIds || [])])]
+        }));
         if (securityMeta) this._applySecurityMeta(securityMeta);
+
+        return { mergedDocs };
     },
 
     // Pulls the meta file + all shards (parallel) and reassembles the full
@@ -623,6 +652,44 @@ const GitHubSync = {
             mismatchCount: mismatches.length,
             mismatches: mismatches.slice(0, 5) // cap — just enough to diagnose, not flood output
         };
+    },
+
+    // ========================
+    // SYNC DISPATCHER — auto-detect + self-migrate, no manual token/testing needed
+    // ========================
+    // Always asks the remote which format is authoritative (never trusts a
+    // local flag) so every device naturally converges to sharded mode as
+    // soon as ANY device has migrated it — no coordination needed, and no
+    // device is ever left writing to an abandoned legacy file. This is what
+    // DocStorage.getAll()/save() actually call; push()/pull() above stay
+    // untouched as the underlying legacy implementation.
+    async syncPull() {
+        const sharded = await this.pullSharded();
+        if (sharded) return sharded;
+
+        // Not sharded remotely yet. Read the legacy file (unchanged current
+        // behavior) and, in the background, attempt a one-time migration.
+        // Failure here is silent and harmless — this device just keeps
+        // working on the legacy path exactly as it does today, and
+        // migration is retried on this device's next pull. Deliberately
+        // fire-and-forget so this doesn't add latency to the current load.
+        const legacy = await this.pull();
+        if (legacy) {
+            this.migrateToSharded()
+                .then(() => this.verifyShardedMigration())
+                .then(report => {
+                    if (report.ok) console.log('[GitHubSync] Auto-migrated vault to sharded sync.', report);
+                    else console.warn('[GitHubSync] Sharded migration verification failed — staying on legacy sync (no data at risk, old file untouched).', report);
+                })
+                .catch(e => console.warn('[GitHubSync] Sharded migration attempt failed — staying on legacy sync.', e));
+        }
+        return legacy;
+    },
+
+    async syncPush(docs, options = {}) {
+        const isSharded = await this.isRemoteSharded();
+        if (isSharded) return this.pushSharded(docs, options.securityMeta);
+        return this.push(docs, true, options);
     }
 };
 
@@ -752,7 +819,7 @@ const DocStorage = {
 
         if (!(await GitHubSync.isConfigured())) return local;
 
-        const remote = await GitHubSync.pull();
+        const remote = await GitHubSync.syncPull();
         if (!remote) return local;
 
         const { docs: remoteDocs, deletedIds: remoteDeletedIds } = remote;
@@ -776,9 +843,24 @@ const DocStorage = {
     async save(docs) {
         const savedLocally = await this._saveLocal(docs);
         if (await GitHubSync.isConfigured()) {
-            GitHubSync.push(docs).then(() => {
+            GitHubSync.syncPush(docs).then(async (result) => {
                 this._pending = false;
                 if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();
+                // Sharded push hit a per-shard conflict and merged in another
+                // device's edit to a doc we didn't touch (see
+                // GitHubSync._putWithMerge) — fold that into our in-memory
+                // state now, otherwise this device wouldn't see it until its
+                // next full pull.
+                if (result && Array.isArray(result.mergedDocs) && result.mergedDocs.length > 0 && typeof documents !== 'undefined' && Array.isArray(documents)) {
+                    const byId = new Map(documents.map(d => [d.id, d]));
+                    result.mergedDocs.forEach(d => {
+                        const existing = byId.get(d.id);
+                        if (!existing || d.updatedAt > existing.updatedAt) byId.set(d.id, d);
+                    });
+                    documents = [...byId.values()];
+                    await this._saveLocal(documents);
+                    if (typeof render === 'function') render();
+                }
             }).catch(e => {
                 this._pending = true;
                 if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();

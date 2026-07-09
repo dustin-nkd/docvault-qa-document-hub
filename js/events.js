@@ -22,7 +22,7 @@ window.addEventListener('online', async () => {
     if (!(await GitHubSync.isConfigured())) return;
     toast('Back online — syncing pending changes…', 'info');
     try {
-        await GitHubSync.push(documents);
+        await GitHubSync.syncPush(documents);
         DocStorage._pending = false;
         if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
         toast(t('ghSyncOk') || 'Synced to GitHub', 'success');
@@ -173,7 +173,7 @@ async function startApp() {
     // If security metadata exists locally, push now so it is available cross-device.
     // Handles users who saved it before metadata sync was implemented.
     if ((localStorage.getItem(LocalAuth.RECOVERY_KEY) || LocalAuth.getHint()) && await GitHubSync.isConfigured()) {
-        GitHubSync.push(documents, true, { securityMeta: GitHubSync._getLocalSecurityMeta() }).catch(() => {});
+        GitHubSync.syncPush(documents, { securityMeta: GitHubSync._getLocalSecurityMeta() }).catch(() => {});
     }
     handleUrlParams();
 }
