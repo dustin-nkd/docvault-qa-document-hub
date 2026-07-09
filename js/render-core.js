@@ -686,7 +686,7 @@ function renderActivityLog() {
         <div class="flex items-center justify-between mb-5">
             <div>
                 <h2 class="font-heading font-semibold text-lg">Activity</h2>
-                <p class="text-xs" style="color:var(--tx-d);">A personal timeline of changes across this vault — last ${ActivityLog.MAX} actions, kept on this device only.</p>
+                <p class="text-xs" style="color:var(--tx-d);">A personal timeline of changes across this vault — last ${ActivityLog.MAX} actions, synced across your devices.</p>
             </div>
             ${entries.length > 0 ? `<button class="btn-s text-xs py-1.5 px-3" data-onclick="clearActivityLog()"><i class="fa-solid fa-broom mr-1.5"></i>Clear</button>` : ''}
         </div>
