@@ -230,11 +230,17 @@ function handleUrlParams() {
 // ========================
 // CSP EVENT DELEGATOR (executeAction)
 // ========================
-// Split a "fn(args)" argument list on TOP-LEVEL commas only, leaving commas that
-// sit inside quoted strings untouched (US-404). A naive argsStr.split(',') broke
-// values such as a subfolder named "QA, Release 1". Handles \' and \" escapes.
-function _splitArgs(str) {
-    const args = [];
+// Split a string on a TOP-LEVEL delimiter only, leaving delimiters that sit
+// inside quoted strings untouched. Handles \' and \" escapes. Shared by
+// _splitArgs (comma-separated call arguments, US-404 — a naive split broke
+// values such as a subfolder named "QA, Release 1") and executeAction's
+// statement splitter (semicolon-separated calls). Splitting on the raw
+// delimiter before this quote-aware pass is what let a value containing an
+// unescaped `;` (a character escHtml() never touches) smuggle in and execute
+// an attacker-chosen second function call — this is the security fix for
+// that class of bug: quote-awareness must happen before ANY delimiter split.
+function _splitTopLevel(str, delim) {
+    const parts = [];
     let cur = '', quote = null;
     for (let i = 0; i < str.length; i++) {
         const c = str[i];
@@ -244,14 +250,18 @@ function _splitArgs(str) {
             else if (c === quote) { quote = null; }
         } else if (c === "'" || c === '"') {
             quote = c; cur += c;
-        } else if (c === ',') {
-            args.push(cur); cur = '';
+        } else if (c === delim) {
+            parts.push(cur); cur = '';
         } else {
             cur += c;
         }
     }
-    args.push(cur);
-    return args;
+    parts.push(cur);
+    return parts;
+}
+
+function _splitArgs(str) {
+    return _splitTopLevel(str, ',');
 }
 
 function executeAction(code, event, element) {
@@ -261,7 +271,7 @@ function executeAction(code, event, element) {
         event.stopPropagation();
     }
 
-    const calls = code.split(';').map(s => s.trim()).filter(Boolean);
+    const calls = _splitTopLevel(code, ';').map(s => s.trim()).filter(Boolean);
     for (const call of calls) {
         if (call === 'event.stopPropagation()') continue;
 
