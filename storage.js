@@ -630,6 +630,34 @@ const LocalAuth = {
     // if the password turns out to be wrong for existing remote data (US-401).
     PROVISIONAL_KEY: 'docvault_provisional',
 
+    // Attempts to repair a stale local HASH_KEY by verifying the typed password
+    // against the public GitHub vault. Reuses GitHubSync.bootstrap(), which pulls
+    // the vault unauthenticated, decrypts it with the given password (via the
+    // session password set below), and — on success — re-saves both the GitHub
+    // settings and the document cache locally, re-encrypted under this password.
+    // Returns true only if the remote vault genuinely decrypted with `password`.
+    async _recoverStaleHash(password) {
+        if (typeof GitHubSync === 'undefined') return false;
+        if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return false;
+        const prevPwd = sessionStorage.getItem(this.SESSION_PWD);
+        sessionStorage.setItem(this.SESSION_PWD, password);
+        try {
+            const d = GitHubSync.DEFAULTS;
+            const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
+            if (!ok) return false;
+            localStorage.setItem(this.HASH_KEY, await this._hash(password));
+            return true;
+        } catch(e) {
+            console.error(e);
+            return false;
+        } finally {
+            // unlock() re-sets SESSION_PWD itself right after this returns, but
+            // clean up here too in case a caller checks it before that happens.
+            if (prevPwd) sessionStorage.setItem(this.SESSION_PWD, prevPwd);
+            else sessionStorage.removeItem(this.SESSION_PWD);
+        }
+    },
+
     async unlock(password) {
         const btn = document.getElementById('lock-submit-btn');
         if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
@@ -649,9 +677,21 @@ const LocalAuth = {
                 localStorage.setItem(this.HASH_KEY, hash);
                 sessionStorage.setItem(this.PROVISIONAL_KEY, '1');
             } else if (hash !== stored) {
-                if (btn) btn.innerHTML = 'Unlock Vault';
-                if (typeof toast === 'function') toast(typeof t === 'function' ? t('mpIncorrect') : 'Incorrect password.', 'error');
-                return;
+                // The local hash can go stale when the master password is changed on
+                // a different device (changePassword() only updates the device it
+                // runs on — HASH_KEY is never synced). Before rejecting, check
+                // whether the typed password decrypts the public vault on GitHub; if
+                // it does, it's the legitimate new password and this device just
+                // hasn't caught up yet. Re-run the same bootstrap this app uses for a
+                // brand-new device to repair the stale local hash/settings/doc cache,
+                // instead of forcing a localStorage wipe to recover.
+                const recovered = await this._recoverStaleHash(password);
+                if (!recovered) {
+                    if (btn) btn.innerHTML = 'Unlock Vault';
+                    if (typeof toast === 'function') toast(typeof t === 'function' ? t('mpIncorrect') : 'Incorrect password.', 'error');
+                    return;
+                }
+                if (typeof toast === 'function') toast('Master password was changed on another device — this device is now in sync.', 'success');
             }
 
             sessionStorage.setItem(this.SESSION_PWD, password);
