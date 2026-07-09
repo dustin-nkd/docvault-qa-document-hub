@@ -208,6 +208,13 @@ function renderViewer() {
                     <span class="text-xs font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
                 </div>
 
+                <!-- Try it: send a live request from the browser -->
+                <div class="flex items-center gap-2 px-4 py-3" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
+                    <input id="api-tryit-baseurl" type="text" class="form-input text-xs font-mono flex-1" placeholder="https://api.example.com (base URL)" value="${escHtml(localStorage.getItem('docvault_api_tryit_baseurl') || '')}" data-onchange="saveApiTryitBaseUrl(this.value)">
+                    <button id="api-tryit-btn" class="btn-p text-xs py-1.5 px-3 shrink-0" data-onclick="tryApiRequest('${doc.id}')" title="Send a real request using this base URL + the endpoint/headers/params/body above"><i class="fa-solid fa-play mr-1.5"></i>Try it</button>
+                </div>
+                <div id="api-tryit-result"></div>
+
                 <div class="p-5">
                     ${(headers.length || params.length) ? `
                     <!-- REQUEST section label -->
