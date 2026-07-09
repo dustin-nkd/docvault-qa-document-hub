@@ -1,8 +1,13 @@
 // ========================
 // FILTER / SORT HELPERS
 // ========================
-window.applyStatusFilter = function(val) { state.statusFilter = val; renderContent(); };
-window.applySortBy = function(val) { state.sortBy = val; renderContent(); };
+window.applyStatusFilter = function(val) { state.statusFilter = val; state.docListPage = 1; renderContent(); };
+window.applySortBy = function(val) { state.sortBy = val; state.docListPage = 1; renderContent(); };
+window.setDocListPage = function(p) {
+    state.docListPage = p;
+    renderContent();
+    document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
 // ========================
 // HEADER
@@ -664,6 +669,13 @@ function renderDashboard() {
 // ========================
 // DOCUMENT LIST
 // ========================
+// Sprint 22: cap how many cards render at once so a large vault doesn't
+// rebuild+diff hundreds of doc-card templates on every render() call (each
+// keystroke, checkbox toggle, favorite, etc.) — see the render-core.js perf
+// audit. Doesn't apply to the Kanban boards (task/bug), which have their own
+// column-based layout and are unaffected by this list-view cost.
+const DOC_LIST_PAGE_SIZE = 60;
+
 function renderDocList() {
     const docs = getFiltered();
     const isMobileSearch = state.view === 'documents' || state.view === 'favorites';
@@ -675,9 +687,22 @@ function renderDocList() {
         return renderBugKanban(docs, isMobileSearch);
     }
 
+    // Clamp the current page against the live filtered count rather than
+    // resetting it from every individual filter-changing action — covers
+    // search/category/sort/status changes uniformly (a stale page number
+    // from a larger result set just clamps down to the new last page).
+    const totalPages = Math.max(1, Math.ceil(docs.length / DOC_LIST_PAGE_SIZE));
+    if (state.docListPage > totalPages) state.docListPage = totalPages;
+    if (state.docListPage < 1) state.docListPage = 1;
+    const pageStart = (state.docListPage - 1) * DOC_LIST_PAGE_SIZE;
+    const pageDocs = docs.slice(pageStart, pageStart + DOC_LIST_PAGE_SIZE);
+
     const bm = state.batchMode;
     const sel = state.selectedIds;
     const inTrash = state.view === 'trash';
+    // "Select all" spans the whole filtered set (selectAllDocs() does too),
+    // not just the current page — a page fully selected but with other
+    // pages partially selected should still read as "not all selected".
     const allSelected = docs.length > 0 && docs.every(d => sel.has(d.id));
 
     const batchCheckbox = (id) => bm ? `
@@ -707,7 +732,7 @@ function renderDocList() {
                 {value: 'created', label: t('newest')},
                 {value: 'title', label: t('sortAZ')}
             ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)')}
-            <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents</span>
+            <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents${totalPages > 1 ? ` · page ${state.docListPage}/${totalPages}` : ''}</span>
             ${!inTrash ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="showSaveViewModal()" title="Save this category + filter + sort combination"><i class="fa-regular fa-bookmark" style="font-size:11px;"></i> Save View</button>` : ''}
             ${state.category === 'api' && !inTrash ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="triggerApiImport()" title="Import a Postman Collection or OpenAPI spec"><i class="fa-solid fa-file-import" style="font-size:11px;"></i> Import</button>` : ''}
             <div class="flex items-center gap-2 ml-auto">
@@ -734,7 +759,7 @@ function renderDocList() {
             </div>
         ` : `
             <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                ${docs.map(d => {
+                ${pageDocs.map(d => {
                     if (d.category === 'credential') {
                         const domain = guessDomain(d.title);
                         const favUrl = `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`;
@@ -802,6 +827,15 @@ function renderDocList() {
                 `;}).join('')}
             </div>
         `}
+
+        <!-- Pagination -->
+        ${totalPages > 1 ? `
+        <div class="flex items-center justify-center gap-3 mt-6">
+            <button class="btn-s text-xs px-3 py-1.5" ${state.docListPage <= 1 ? 'disabled' : ''} style="${state.docListPage <= 1 ? 'opacity:.4;cursor:not-allowed;' : ''}" data-onclick="setDocListPage(${state.docListPage - 1})"><i class="fa-solid fa-chevron-left mr-1.5" style="font-size:10px;"></i>Prev</button>
+            <span class="text-xs" style="color:var(--tx-m);">Page ${state.docListPage} of ${totalPages}</span>
+            <button class="btn-s text-xs px-3 py-1.5" ${state.docListPage >= totalPages ? 'disabled' : ''} style="${state.docListPage >= totalPages ? 'opacity:.4;cursor:not-allowed;' : ''}" data-onclick="setDocListPage(${state.docListPage + 1})">Next<i class="fa-solid fa-chevron-right ml-1.5" style="font-size:10px;"></i></button>
+        </div>
+        ` : ''}
 
         <!-- Batch action toolbar -->
         <div class="batch-toolbar${bm && sel.size > 0 ? ' visible' : ''}">
