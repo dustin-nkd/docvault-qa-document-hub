@@ -250,6 +250,17 @@
             #sidebar.open { transform: translateX(0); }
         }
 
+        /* Sprint 25 responsive audit: the guest-demo banner (js/events.js
+           renderGuestBanner) is centered at the top of the viewport, which
+           overlaps the header's hamburger button and "New Document" button
+           on narrow screens regardless of which view is active (header
+           button count varies per view, so a fixed top offset would be
+           fragile) — move it to the bottom instead, where it can never
+           collide with the header. */
+        @media (max-width: 640px) {
+            #guest-banner { top: auto !important; bottom: 14px !important; }
+        }
+
         /* ── Custom Date Picker ── */
         .dp-wrap { position: relative; }
         .dp-trigger {

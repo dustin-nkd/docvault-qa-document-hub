@@ -16,33 +16,54 @@ function updateHeader() {
     const h = document.getElementById('app-header');
     let title = '', actions = '';
 
+    // Sprint 25 responsive audit: header action buttons overflowed the
+    // viewport on mobile (up to 195px past a 375px-wide screen in the
+    // 5-button viewer case), pushing the primary action — Save, in the
+    // editor — almost entirely off-screen and untappable. Labels now hide
+    // below the `sm` breakpoint, leaving icon-only buttons (matching the
+    // existing Ctrl+K search button pattern) with a `title` tooltip for
+    // recoverable affordance; icons stay visible always so buttons remain
+    // recognizable and tappable at every width.
     if (state.view === 'dashboard') {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
-        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()" title="${t('newDoc')}"><i class="fa-solid fa-plus text-xs"></i> <span class="hidden sm:inline">${t('newDoc')}</span></button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
         const catLabel = state.view === 'favorites' ? t('favorites') : (state.category === 'all' ? t('allDocuments') : getCatMeta(state.category).labelPlural);
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
-        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()" title="${t('newDoc')}"><i class="fa-solid fa-plus text-xs"></i> <span class="hidden sm:inline">${t('newDoc')}</span></button>`;
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
-            <button class="btn-s" data-onclick="cancelEdit()"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
-            <button class="btn-p" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>
+            <button class="btn-s" data-onclick="cancelEdit()" title="${t('cancel')}"><i class="fa-solid fa-xmark sm:mr-1.5"></i><span class="hidden sm:inline">${t('cancel')}</span></button>
+            <button class="btn-p" data-onclick="saveDoc()" title="${t('save')}"><i class="fa-solid fa-check sm:mr-1.5"></i><span class="hidden sm:inline">${t('save')}</span></button>
         `;
     } else if (state.view === 'viewer') {
         const doc = documents.find(d => d.id === state.editingDoc?.id);
         title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
         if (state.sharedView) {
             actions = state.history?.length > 0
-                ? `<button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>`
+                ? `<button class="btn-s" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left sm:mr-1.5"></i><span class="hidden sm:inline">${t('back')}</span></button>`
                 : `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open DocVault</button>`;
         } else {
+            // Even icon-only, 5 buttons (Share/Back/History/Export/Edit) don't
+            // fit a narrow phone screen (measured 104px overflow at 375px
+            // wide). Below `sm`, keep only Back + Edit directly visible and
+            // fold Share/History/Export into a "more" dropdown instead —
+            // above `sm`, show the full row exactly as before.
+            const hasHistoryExport = doc && doc.category !== 'credential';
             actions = `
-                <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
-                <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="showHistoryPanel('${doc.id}')"><i class="fa-regular fa-clock mr-1.5"></i>History</button>` : ''}
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="exportDoc('${doc.id}')"><i class="fa-solid fa-file-export mr-1.5"></i>Export</button>` : ''}
-                <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
+                <div class="hidden sm:flex items-center gap-2">
+                    <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
+                    <button class="btn-s" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
+                    ${hasHistoryExport ? `<button class="btn-s" data-onclick="showHistoryPanel('${doc.id}')" title="History"><i class="fa-regular fa-clock mr-1.5"></i>History</button>` : ''}
+                    ${hasHistoryExport ? `<button class="btn-s" data-onclick="exportDoc('${doc.id}')" title="Export"><i class="fa-solid fa-file-export mr-1.5"></i>Export</button>` : ''}
+                    <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
+                </div>
+                <div class="flex sm:hidden items-center gap-2">
+                    <button class="btn-s" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left"></i></button>
+                    <button class="btn-s" data-onclick="showViewerMoreMenu('${doc ? doc.id : ''}', this)" title="More actions"><i class="fa-solid fa-ellipsis"></i></button>
+                    <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen"></i></button>
+                </div>
             `;
         }
     } else if (state.view === 'trash') {
@@ -61,13 +82,42 @@ function updateHeader() {
             </div>
         ` : ''}
         <div class="flex items-center gap-2">
-        <button class="btn-s flex items-center justify-center h-[38px] gap-1.5" data-onclick="openSearch()" title="Global Search (Ctrl+K)">
+        <button class="hidden sm:flex btn-s items-center justify-center h-[38px] gap-1.5" data-onclick="openSearch()" title="Global Search (Ctrl+K)">
             <i class="fa-solid fa-magnifying-glass"></i> <span class="hidden sm:inline">Ctrl+K</span>
         </button>
         ${actions}
 </div>
     `;
 }
+
+// Mobile-only "more actions" dropdown for the viewer header (Sprint 25
+// responsive audit) — Share/History/Export collapse in here below the `sm`
+// breakpoint so Back/Edit (the two most-used actions) stay directly
+// tappable instead of the whole row overflowing off-screen.
+window.showViewerMoreMenu = function(id, btn) {
+    const old = document.getElementById('viewer-more-menu');
+    if (old) { old.remove(); return; }
+    const doc = documents.find(d => d.id === id);
+    const hasHistoryExport = doc && doc.category !== 'credential';
+    const rect = btn.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'viewer-more-menu';
+    menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:4px;z-index:80;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);`;
+    menu.innerHTML = `
+        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);" data-onclick="document.getElementById('viewer-more-menu').remove();shareDoc('${id}')">
+            <i class="fa-solid fa-share-nodes w-4 text-center"></i> ${t('share') || 'Share'}</button>
+        ${hasHistoryExport ? `<button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);" data-onclick="document.getElementById('viewer-more-menu').remove();showHistoryPanel('${id}')">
+            <i class="fa-regular fa-clock w-4 text-center"></i> History</button>` : ''}
+        ${hasHistoryExport ? `<button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);" data-onclick="document.getElementById('viewer-more-menu').remove();exportDoc('${id}')">
+            <i class="fa-solid fa-file-export w-4 text-center"></i> Export</button>` : ''}
+    `;
+    document.body.appendChild(menu);
+    setTimeout(() => {
+        document.addEventListener('click', function closeOnce(e) {
+            if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeOnce); }
+        });
+    }, 0);
+};
 
 // ========================
 // GET FILTERED DOCS
