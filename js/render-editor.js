@@ -376,7 +376,6 @@ function renderEditor() {
                     <div id="ed-run-tc-empty" class="hidden text-center text-sm py-4" style="color:var(--tx-d);">No test cases match your filter.</div>
                 </div>`;
             })()}
-            </div>
         </div>
         ` : category === 'testplan' ? `
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
