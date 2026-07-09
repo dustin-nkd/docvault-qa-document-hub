@@ -1599,6 +1599,36 @@ window.toggleImageCdn = function(el) {
     toast(on ? 'New images will be stored on the public GitHub CDN.' : 'New images will be stored inline (encrypted).', 'info');
 };
 
+// Manual test trigger for the sharded-sync migration (Sprint 23). NOT wired
+// into any UI button — call from the console/preview_eval only. Additive:
+// writes new shard files + a meta file to the configured GitHub repo, never
+// touches or deletes the existing single-file vault. Safe to call multiple
+// times (idempotent). Prints a byte-level comparison report so migration
+// correctness can be confirmed against real data before anything switches
+// over to reading/writing shards by default.
+window.testShardedSync = async function() {
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
+        console.warn('[testShardedSync] Not available in guest demo mode (no real GitHub vault to test against).');
+        return;
+    }
+    if (!(await GitHubSync.isConfigured())) {
+        console.warn('[testShardedSync] GitHub sync is not configured — nothing to migrate.');
+        return;
+    }
+    console.log('[testShardedSync] Migrating to sharded storage (additive — legacy file untouched)...');
+    const migrateResult = await GitHubSync.migrateToSharded();
+    console.log('[testShardedSync] Migration wrote shards for', migrateResult.migratedDocCount, 'docs.');
+
+    console.log('[testShardedSync] Verifying: re-reading legacy file + shards and comparing...');
+    const report = await GitHubSync.verifyShardedMigration();
+    if (report.ok) {
+        console.log(`[testShardedSync] ✅ VERIFIED — ${report.legacyCount} docs match exactly between legacy file and shards.`);
+    } else {
+        console.error('[testShardedSync] ❌ MISMATCH —', report);
+    }
+    return report;
+};
+
 window.saveGitHubSettings = async function() {
     const token = document.getElementById('gh-token').value.trim();
     const d = GitHubSync.DEFAULTS;

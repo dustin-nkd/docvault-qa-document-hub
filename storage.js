@@ -382,6 +382,247 @@ const GitHubSync = {
             console.error('[GitHubSync] push failed:', e);
             throw e;
         }
+    },
+
+    // ========================
+    // SHARDED SYNC (Sprint 23 — incremental sync)
+    // ========================
+    // push()/pull() above re-upload the ENTIRE vault as one file on every
+    // single save, regardless of how many docs actually changed. This splits
+    // the vault into SHARD_COUNT fixed files (docs bucketed by a stable hash
+    // of their id) so a save only needs to re-upload the shard(s) that
+    // actually changed, and two devices only collide if they touch a doc in
+    // the SAME shard concurrently (vs. today: ANY two concurrent saves
+    // collide, regardless of what they touched).
+    //
+    // Deliberately additive and NOT wired into DocStorage.save()/getAll()
+    // yet — DATA_PATH (the old single file) is never read, written, or
+    // deleted by any method below. migrateToSharded() / verifyShardedMigration()
+    // are meant to be run manually (see js/actions.js window.testShardedSync)
+    // to prove correctness against a real vault before anything switches over.
+    SHARD_COUNT: 16,
+    SHARDS_DIR: 'database/shards',
+    META_PATH: 'database/vault-meta.json',
+    SHARD_SHA_PREFIX: 'github_shard_sha_',
+    SHARD_FP_PREFIX: 'github_shard_fp_',
+    META_SHA_KEY: 'github_meta_sha',
+
+    _shardIndex(id) {
+        let h = 0;
+        const s = String(id);
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+        return Math.abs(h) % this.SHARD_COUNT;
+    },
+
+    _shardPath(i) { return `${this.SHARDS_DIR}/shard-${i}.json`; },
+
+    _groupByShard(docs) {
+        const shards = Array.from({ length: this.SHARD_COUNT }, () => []);
+        (docs || []).forEach(d => shards[this._shardIndex(d.id)].push(d));
+        return shards;
+    },
+
+    // Deterministic fingerprint of a shard's PLAINTEXT content, used to skip
+    // re-uploading (and re-encrypting) shards that didn't change. Can't
+    // fingerprint the ciphertext — AES-GCM's random IV means identical
+    // plaintext never produces identical ciphertext twice.
+    _shardFingerprint(shardDocs) {
+        return shardDocs.map(d => `${d.id}:${d.updatedAt}`).sort().join('|');
+    },
+
+    // Same prep _encode() does (30-day trash TTL auto-purge + credential
+    // password double-encryption) but run ONCE over the full doc list before
+    // sharding, instead of duplicated per-shard.
+    async _prepDocsForShards(docs) {
+        const pwd = this._pwd();
+        const TRASH_TTL = 30 * 24 * 60 * 60 * 1000;
+        const autoPurgedIds = [];
+        const activeDocs = docs.filter(d => {
+            if (d.status !== 'deleted') return true;
+            const age = Date.now() - (d.deletedAt || 0);
+            if (age >= TRASH_TTL) { autoPurgedIds.push(d.id); return false; }
+            return true;
+        });
+        if (autoPurgedIds.length > 0 && DocStorage) await DocStorage.addDeletedIds(autoPurgedIds);
+        return DocStorage ? await DocStorage._encryptCredPasswords(activeDocs, pwd) : activeDocs;
+    },
+
+    async _getFileMeta(path, settings) {
+        try {
+            const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}?ref=${settings.branch || 'main'}`;
+            const res = await fetch(url, { headers: this._headers(settings.token) });
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.sha || null;
+        } catch(e) { return null; }
+    },
+
+    async _getFile(path, settings) {
+        const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}?ref=${settings.branch || 'main'}`;
+        const res = await fetch(url, { headers: this._headers(settings.token) });
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`GitHub fetch error (${path}): ${res.status}`);
+        return res.json(); // { content, sha, ... }
+    },
+
+    async _putFile(path, contentB64, settings, shaKey, retryOnConflict) {
+        const sha = localStorage.getItem(shaKey);
+        const body = { message: `DocVault sync ${new Date().toISOString()}`, content: contentB64, branch: settings.branch || 'main' };
+        if (sha) body.sha = sha;
+        const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`;
+        const res = await fetch(url, { method: 'PUT', headers: this._headers(settings.token), body: JSON.stringify(body) });
+        if ((res.status === 409 || res.status === 422) && retryOnConflict) {
+            // Someone else wrote THIS file since we last read its sha — fetch
+            // the fresh sha and retry once. Shard-level conflicts are far
+            // rarer than the old single-file model: two devices only collide
+            // here if they touched a doc in the same shard.
+            const freshSha = await this._getFileMeta(path, settings);
+            if (freshSha) {
+                localStorage.setItem(shaKey, freshSha);
+                return this._putFile(path, contentB64, settings, shaKey, false);
+            }
+        }
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || `GitHub push error (${path}): ${res.status}`);
+        }
+        const data = await res.json();
+        localStorage.setItem(shaKey, data.content.sha);
+        return data;
+    },
+
+    _b64encode(str) { return btoa(unescape(encodeURIComponent(str))); },
+    _b64decode(b64) { return decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))); },
+
+    // Pushes only the shards (and the small meta file) whose content
+    // actually changed since the last successful push.
+    async pushSharded(docs, securityMeta = null) {
+        const settings = await this.getSettings();
+        if (!settings) return;
+        const pwd = this._pwd();
+        const safeDocs = await this._prepDocsForShards(docs);
+        const shards = this._groupByShard(safeDocs);
+
+        for (let i = 0; i < this.SHARD_COUNT; i++) {
+            const fp = this._shardFingerprint(shards[i]);
+            const fpKey = this.SHARD_FP_PREFIX + i;
+            if (fp === localStorage.getItem(fpKey)) continue; // unchanged — zero network calls
+            const content = pwd ? await Vault.encrypt(shards[i], pwd) : JSON.stringify(shards[i]);
+            await this._putFile(this._shardPath(i), this._b64encode(content), settings, this.SHARD_SHA_PREFIX + i, true);
+            localStorage.setItem(fpKey, fp);
+        }
+
+        const meta = securityMeta || this._getLocalSecurityMeta();
+        const metaPayload = {
+            cfg: settings,
+            rb: meta.recoveryBlob || null,
+            hint: meta.passwordHint || null,
+            deletedIds: [...DocStorage._getLocalDeletedIds()]
+        };
+        const metaContent = pwd ? await Vault.encrypt(metaPayload, pwd) : JSON.stringify(metaPayload);
+        await this._putFile(this.META_PATH, this._b64encode(metaContent), settings, this.META_SHA_KEY, true);
+        if (securityMeta) this._applySecurityMeta(securityMeta);
+    },
+
+    // Pulls the meta file + all shards (parallel) and reassembles the full
+    // doc list. Returns null if this vault hasn't been migrated to sharded
+    // storage yet (no meta file remotely) — callers should fall back to the
+    // legacy pull() in that case.
+    async pullSharded() {
+        const settings = await this.getSettings();
+        if (!settings) return null;
+        const pwd = this._pwd();
+
+        const metaFile = await this._getFile(this.META_PATH, settings);
+        if (!metaFile) return null;
+        localStorage.setItem(this.META_SHA_KEY, metaFile.sha);
+        const metaRaw = this._b64decode(metaFile.content);
+        let meta;
+        if (Vault.isEncrypted(metaRaw)) {
+            if (!pwd) throw new Error('Vault is locked');
+            meta = await Vault.decrypt(metaRaw, pwd);
+        } else {
+            meta = JSON.parse(metaRaw);
+        }
+
+        const shardFiles = await Promise.all(
+            Array.from({ length: this.SHARD_COUNT }, (_, i) => this._getFile(this._shardPath(i), settings))
+        );
+
+        const allDocs = [];
+        for (let i = 0; i < shardFiles.length; i++) {
+            const file = shardFiles[i];
+            if (!file) continue;
+            localStorage.setItem(this.SHARD_SHA_PREFIX + i, file.sha);
+            const raw = this._b64decode(file.content);
+            let shardDocs;
+            if (Vault.isEncrypted(raw)) {
+                if (!pwd) throw new Error('Vault is locked');
+                shardDocs = await Vault.decrypt(raw, pwd);
+            } else {
+                shardDocs = JSON.parse(raw);
+            }
+            if (Array.isArray(shardDocs)) {
+                allDocs.push(...shardDocs);
+                localStorage.setItem(this.SHARD_FP_PREFIX + i, this._shardFingerprint(shardDocs));
+            }
+        }
+
+        return {
+            docs: allDocs,
+            cfg: meta.cfg || null,
+            deletedIds: meta.deletedIds || [],
+            recoveryBlob: meta.rb || null,
+            passwordHint: meta.hint || null
+        };
+    },
+
+    // True if this vault has already been migrated to sharded storage
+    // remotely (meta file exists), independent of whether THIS device has
+    // synced it yet.
+    async isRemoteSharded() {
+        const settings = await this.getSettings();
+        if (!settings) return false;
+        return !!(await this._getFile(this.META_PATH, settings));
+    },
+
+    // One-time, ADDITIVE migration: reads the existing single-file vault via
+    // the legacy pull(), writes it out as SHARD_COUNT shard files + a meta
+    // file. Does NOT touch or delete DATA_PATH — the old single file stays
+    // exactly as it was, readable as a manual fallback/backup. Idempotent —
+    // safe to re-run (unchanged shards are fingerprint-skipped after the
+    // first run).
+    async migrateToSharded() {
+        const legacy = await this.pull();
+        if (!legacy) throw new Error('Could not read the existing vault (pull() returned nothing) — nothing to migrate.');
+        await this.pushSharded(legacy.docs, {
+            recoveryBlob: localStorage.getItem(LocalAuth.RECOVERY_KEY) || null,
+            passwordHint: (window.LocalAuth && LocalAuth.isHintSyncEnabled && LocalAuth.isHintSyncEnabled() && LocalAuth.getHint) ? LocalAuth.getHint() : ''
+        });
+        return { migratedDocCount: legacy.docs.length };
+    },
+
+    // Reads back BOTH the legacy single file and the freshly-written shards
+    // and byte-compares the reassembled doc sets. Does not mutate anything.
+    async verifyShardedMigration() {
+        const legacy = await this.pull();
+        const sharded = await this.pullSharded();
+        if (!legacy || !sharded) return { ok: false, reason: 'missing legacy or sharded data', hasLegacy: !!legacy, hasSharded: !!sharded };
+        const norm = arr => [...arr].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0).map(d => JSON.stringify(d));
+        const legacyNorm = norm(legacy.docs);
+        const shardedNorm = norm(sharded.docs);
+        const mismatches = [];
+        const max = Math.max(legacyNorm.length, shardedNorm.length);
+        for (let i = 0; i < max; i++) {
+            if (legacyNorm[i] !== shardedNorm[i]) mismatches.push({ index: i, legacy: legacyNorm[i], sharded: shardedNorm[i] });
+        }
+        return {
+            ok: mismatches.length === 0 && legacy.docs.length === sharded.docs.length,
+            legacyCount: legacy.docs.length,
+            shardedCount: sharded.docs.length,
+            mismatchCount: mismatches.length,
+            mismatches: mismatches.slice(0, 5) // cap — just enough to diagnose, not flood output
+        };
     }
 };
 
