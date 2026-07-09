@@ -801,6 +801,84 @@ window._doApiImport = async function() {
 };
 
 // ========================
+// API TRY-IT — send a live request from the browser
+// ========================
+window.saveApiTryitBaseUrl = function(v) {
+    localStorage.setItem('docvault_api_tryit_baseurl', v || '');
+};
+
+window.tryApiRequest = async function(docId) {
+    const doc = documents.find(d => d.id === docId);
+    if (!doc || !doc.apiData) return;
+    const api = doc.apiData;
+
+    const btn = document.getElementById('api-tryit-btn');
+    const resultEl = document.getElementById('api-tryit-result');
+    const baseUrlInput = document.getElementById('api-tryit-baseurl');
+    const baseUrl = (baseUrlInput?.value || '').trim().replace(/\/+$/, '');
+    if (!baseUrl) {
+        toast('Enter a base URL first (e.g. https://api.example.com).', 'error');
+        baseUrlInput?.focus();
+        return;
+    }
+
+    const path = (api.endpoint || '/').trim();
+    const fullPath = path.startsWith('/') ? path : '/' + path;
+    const params = (api.params || []).filter(p => p.key && p.key.trim());
+    const query = params.length
+        ? '?' + params.map(p => `${encodeURIComponent(p.key.trim())}=${encodeURIComponent(p.value || '')}`).join('&')
+        : '';
+    const url = baseUrl + fullPath + query;
+
+    const headers = {};
+    (api.headers || []).forEach(h => { if (h.key && h.key.trim()) headers[h.key.trim()] = h.value || ''; });
+
+    const method = (api.method || 'GET').toUpperCase();
+    const opts = { method, headers };
+    if (!['GET', 'HEAD'].includes(method) && api.body && api.body.trim()) {
+        opts.body = api.body;
+        if (!Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) {
+            headers['Content-Type'] = 'application/json';
+        }
+    }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Sending...'; }
+    if (resultEl) resultEl.innerHTML = '';
+
+    const start = performance.now();
+    try {
+        const res = await fetch(url, opts);
+        const elapsed = Math.round(performance.now() - start);
+        const text = await res.text();
+        let pretty = text;
+        try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(e) { /* not JSON, show raw */ }
+
+        const expected = parseInt(api.statusCode || '200');
+        const matches = res.status === expected;
+        const statusColor = res.status < 300 ? '#10b981' : res.status < 400 ? '#60a5fa' : res.status < 500 ? '#f97316' : '#ef4444';
+
+        if (resultEl) resultEl.innerHTML = `
+            <div class="px-4 pt-4">
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <span class="text-xs font-bold px-2 py-0.5 rounded font-mono" style="background:${statusColor}22;color:${statusColor};">${res.status} ${escHtml(res.statusText || '')}</span>
+                    <span class="text-xs" style="color:var(--tx-d);">${elapsed}ms</span>
+                    ${matches
+                        ? `<span class="text-xs font-medium" style="color:#10b981;"><i class="fa-solid fa-check mr-1"></i>Matches expected ${expected}</span>`
+                        : `<span class="text-xs font-medium" style="color:#f97316;"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Expected ${expected}</span>`}
+                </div>
+                <pre id="viewer-api-tryit-response" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar mb-4" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-tryit-response', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(pretty || '(empty response body)')}</pre>
+            </div>`;
+    } catch(e) {
+        if (resultEl) resultEl.innerHTML = `
+            <div class="px-4 pt-4">
+                <p class="text-xs py-2 px-3 rounded-lg" style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.2);"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>Request failed — likely blocked by CORS, an invalid URL, or the endpoint is unreachable. This runs directly from your browser with no server-side proxy.</p>
+            </div>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-play mr-1.5"></i>Try it'; }
+    }
+};
+
+// ========================
 // SHARE DOCUMENT
 // ========================
 window.shareDoc = async function(id) {
