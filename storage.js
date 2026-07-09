@@ -487,8 +487,21 @@ const DocStorage = {
             } else {
                 localStorage.setItem(key, toStore);
             }
+            return true;
         } catch(e) {
+            // Previously this only logged to console — a user who exceeded the
+            // browser's ~5-10MB per-origin localStorage quota (plausible with
+            // embedded images/attachments in a large vault) would have their
+            // edit silently vanish on the next reload with zero warning
+            // (Sprint 21 optimization audit). Now it surfaces clearly instead.
             console.error('Error saving docs locally:', e);
+            const isQuotaError = e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014;
+            if (typeof toast === 'function') {
+                toast(isQuotaError
+                    ? 'Could not save — local storage is full. Free up space (delete old documents/images) or your changes will be lost on reload.'
+                    : 'Could not save your changes locally: ' + e.message, 'error');
+            }
+            return false;
         }
     },
 
@@ -520,7 +533,7 @@ const DocStorage = {
     _pending: false,
 
     async save(docs) {
-        await this._saveLocal(docs);
+        const savedLocally = await this._saveLocal(docs);
         if (await GitHubSync.isConfigured()) {
             GitHubSync.push(docs).then(() => {
                 this._pending = false;
@@ -534,6 +547,7 @@ const DocStorage = {
                 }
             });
         }
+        return savedLocally;
     },
 
     async exportData() {

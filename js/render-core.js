@@ -52,7 +52,7 @@ function updateHeader() {
         ${isSearchView ? `
             <div class="search-w hidden sm:block" style="width:280px;">
                 <i class="fa-solid fa-search"></i>
-                <input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();">
+                <input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;debouncedRenderContent();">
             </div>
         ` : ''}
         <div class="flex items-center gap-2">
@@ -199,6 +199,15 @@ function updateDOM(el, htmlStr) {
 // ========================
 // RENDER CONTENT
 // ========================
+// Debounced wrapper used by search inputs (Sprint 21): state.search is set
+// synchronously on every keystroke so the input stays responsive, but the
+// expensive re-filter/re-sort/re-render of the (potentially large) document
+// list is delayed until typing pauses.
+// executeAction() dispatches via window[funcName](), and a top-level `const`
+// (unlike a `function` declaration) does NOT become a window property — must
+// assign explicitly or data-oninput="debouncedRenderContent()" would no-op.
+window.debouncedRenderContent = debounce(() => renderContent(), 180);
+
 function renderContent() {
     if (state.view === 'editor') syncEditorState();
 
@@ -683,7 +692,7 @@ function renderDocList() {
 
     return `<div class="fade-up max-w-6xl mx-auto">
         <!-- Mobile search -->
-        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;debouncedRenderContent();"></div>` : ''}
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
@@ -924,7 +933,7 @@ function renderBugKanban(docs, isMobileSearch) {
 
     return `<div class="fade-up max-w-full">
         <!-- Mobile search -->
-        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;debouncedRenderContent();"></div>` : ''}
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
@@ -1040,7 +1049,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
 
     return `<div class="fade-up max-w-full">
         <!-- Mobile search -->
-        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchTasks')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchTasks')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;debouncedRenderContent();"></div>` : ''}
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
