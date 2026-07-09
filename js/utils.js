@@ -3,6 +3,17 @@
 // ========================
 function uid() { return 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
 
+// Delays calling fn until `wait` ms after the last call — used to avoid
+// re-filtering/re-rendering the full document list on every single keystroke
+// in search inputs (Sprint 21).
+function debounce(fn, wait) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), wait);
+    };
+}
+
 // Credential rotation-age helper (Sprint 18, 18-2). Falls back to createdAt
 // when no explicit rotatedAt is set — a credential never marked as rotated
 // is aging since it was created. Informational only: a fixed 90-day
