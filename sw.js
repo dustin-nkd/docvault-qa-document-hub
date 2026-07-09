@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v1';
+const SW_VERSION = 'v2'; // Sprint 22: Tailwind CDN JIT -> pre-built CSS (see APP_SHELL below)
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
@@ -22,7 +22,7 @@ const APP_SHELL = [
     './js/actions.js',
     './js/search.js',
     './js/events.js',
-    './vendor/tailwind/tailwindcss-play.js',
+    './vendor/tailwind/tailwind.generated.css',
     './vendor/toastui/toastui-editor.min.css',
     './vendor/toastui/toastui-editor-dark.min.css',
     './vendor/toastui/toastui-editor-all.min.js',
