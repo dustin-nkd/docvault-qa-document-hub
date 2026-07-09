@@ -47,19 +47,24 @@ const DocHistory = {
 };
 
 // ========================
-// ACTIVITY LOG (Sprint 24)
+// ACTIVITY LOG (Sprint 24, synced Sprint 25)
 // ========================
 // A lightweight personal "what did I do lately" timeline across the whole
-// vault — NOT a real audit trail (no per-device identity, not synced to
-// GitHub, no tamper-evidence) and NOT access control. Scoped-down on
-// purpose: this app has exactly one user, so "who did what" has one
-// answer, and there's no second identity to restrict — see the BA/PO
-// discussion that led here. Local-only, capped, purely a convenience so a
-// single user can see "what changed across my vault recently" instead of
-// only per-document history (DocHistory above).
+// vault — NOT a real audit trail (no tamper-evidence, no access control) —
+// see the BA/PO discussion that led here: this app has one user, so "who
+// did what" has one answer, but a cross-device "what changed recently" is
+// still useful. Synced piggybacking on the sharded-sync meta file
+// (GitHubSync.pushSharded/pullSharded, storage.js) — each entry carries a
+// stable `id` specifically so entries from different devices can be merged
+// (union + dedup by id, newest MAX kept) instead of one device's history
+// clobbering another's.
 const ActivityLog = {
     KEY: 'docvault_activity_log',
     MAX: 200,
+
+    _genId() {
+        return 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    },
 
     record(type, doc, meta = {}) {
         if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return; // leave zero trace in demo mode
@@ -67,6 +72,7 @@ const ActivityLog = {
         let entries;
         try { entries = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { entries = []; }
         entries.unshift({
+            id: this._genId(),
             ts: Date.now(),
             type, // 'created' | 'updated' | 'trashed' | 'restored' | 'deleted' | 'tagged' | 'moved'
             docId: doc.id,
@@ -82,6 +88,25 @@ const ActivityLog = {
         // same isolation guarantee as the rest of guest mode.
         if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return [];
         try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { return []; }
+    },
+
+    // Union local + remote entries by id, newest-first, capped at MAX.
+    // Pure function — used both to fold incoming remote entries into local
+    // storage (pullSharded) and to resolve a meta-file push conflict
+    // between two devices' logs (GitHubSync's meta mergeFn).
+    merge(localEntries, remoteEntries) {
+        const byId = new Map();
+        (remoteEntries || []).forEach(e => { if (e && e.id) byId.set(e.id, e); });
+        (localEntries || []).forEach(e => { if (e && e.id) byId.set(e.id, e); }); // local wins on id collision (shouldn't happen — ids are random)
+        return [...byId.values()].sort((a, b) => b.ts - a.ts).slice(0, this.MAX);
+    },
+
+    // Merges `remoteEntries` into this device's local log (used on pull).
+    mergeIncoming(remoteEntries) {
+        if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
+        if (!Array.isArray(remoteEntries) || remoteEntries.length === 0) return;
+        const merged = this.merge(this.getAll(), remoteEntries);
+        localStorage.setItem(this.KEY, JSON.stringify(merged));
     },
 
     clear() {

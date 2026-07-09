@@ -540,14 +540,24 @@ const GitHubSync = {
             cfg: settings,
             rb: meta.recoveryBlob || null,
             hint: meta.passwordHint || null,
-            deletedIds: [...deletedIds]
+            deletedIds: [...deletedIds],
+            activityLog: (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll() : []
         };
-        await this._putWithMerge(this.META_PATH, settings, this.META_SHA_KEY, pwd, metaPayload, (local, remote) => ({
+        const metaResult = await this._putWithMerge(this.META_PATH, settings, this.META_SHA_KEY, pwd, metaPayload, (local, remote) => ({
             cfg: local.cfg || remote.cfg,
             rb: local.rb !== undefined ? local.rb : remote.rb,
             hint: local.hint !== undefined ? local.hint : remote.hint,
-            deletedIds: [...new Set([...(local.deletedIds || []), ...(remote.deletedIds || [])])]
+            deletedIds: [...new Set([...(local.deletedIds || []), ...(remote.deletedIds || [])])],
+            activityLog: (typeof ActivityLog !== 'undefined')
+                ? ActivityLog.merge(local.activityLog, remote.activityLog)
+                : (local.activityLog || remote.activityLog || [])
         }));
+        // A meta conflict means another device pushed activity entries we
+        // don't have locally yet — fold the merged result back in now
+        // rather than waiting for this device's next pull.
+        if (metaResult.merged && typeof ActivityLog !== 'undefined') {
+            ActivityLog.mergeIncoming(metaResult.payload.activityLog);
+        }
         if (securityMeta) this._applySecurityMeta(securityMeta);
 
         return { mergedDocs };
@@ -596,6 +606,11 @@ const GitHubSync = {
                 localStorage.setItem(this.SHARD_FP_PREFIX + i, this._shardFingerprint(shardDocs));
             }
         }
+
+        // Fold any activity entries from other devices into this device's
+        // local log now — otherwise they'd only ever be visible on the
+        // device that recorded them, defeating the point of syncing it.
+        if (typeof ActivityLog !== 'undefined') ActivityLog.mergeIncoming(meta.activityLog);
 
         return {
             docs: allDocs,
