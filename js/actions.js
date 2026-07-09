@@ -807,6 +807,24 @@ window.saveApiTryitBaseUrl = function(v) {
     localStorage.setItem('docvault_api_tryit_baseurl', v || '');
 };
 
+// Simulates a network round-trip and returns the doc's own saved status/body
+// as the "live" response — no fetch() call happens, so it works with no
+// backend, no CORS, and no internet (see API_TRYIT_MOCK_BASE, constants.js).
+async function _mockApiResponse(api) {
+    await new Promise(r => setTimeout(r, 250 + Math.random() * 350));
+    const statusText = {
+        200: 'OK', 201: 'Created', 204: 'No Content', 400: 'Bad Request',
+        401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found', 500: 'Internal Server Error'
+    };
+    const status = parseInt(api.statusCode || '200') || 200;
+    return {
+        status,
+        statusText: statusText[status] || '',
+        text: async () => (api.response && api.response.trim()) ? api.response : '{}',
+        mocked: true
+    };
+}
+
 window.tryApiRequest = async function(docId) {
     const doc = documents.find(d => d.id === docId);
     if (!doc || !doc.apiData) return;
@@ -845,9 +863,11 @@ window.tryApiRequest = async function(docId) {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Sending...'; }
     if (resultEl) resultEl.innerHTML = '';
 
+    const isMock = baseUrl.toLowerCase() === API_TRYIT_MOCK_BASE.toLowerCase();
+
     const start = performance.now();
     try {
-        const res = await fetch(url, opts);
+        const res = isMock ? await _mockApiResponse(api) : await fetch(url, opts);
         const elapsed = Math.round(performance.now() - start);
         const text = await res.text();
         let pretty = text;
@@ -865,6 +885,7 @@ window.tryApiRequest = async function(docId) {
                     ${matches
                         ? `<span class="text-xs font-medium" style="color:#10b981;"><i class="fa-solid fa-check mr-1"></i>Matches expected ${expected}</span>`
                         : `<span class="text-xs font-medium" style="color:#f97316;"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Expected ${expected}</span>`}
+                    ${res.mocked ? `<span class="text-xs font-medium" style="color:#8b5cf6;"><i class="fa-solid fa-flask mr-1"></i>Mocked response — no real network call</span>` : ''}
                 </div>
                 <pre id="viewer-api-tryit-response" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar mb-4" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-tryit-response', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(pretty || '(empty response body)')}</pre>
             </div>`;
