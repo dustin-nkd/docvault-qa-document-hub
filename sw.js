@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v3'; // Sprint 25b: style.css changed (dead popup CSS removed) — bump so the old app-shell cache is purged on activate instead of a stale style.css lingering
+const SW_VERSION = 'v4'; // Sprint 27 mobile UX rework: index.html + js/render-core.js changed — bump so the app-shell cache is purged on activate
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [

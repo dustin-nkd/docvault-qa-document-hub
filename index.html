@@ -253,6 +253,15 @@
             #guest-banner { top: 82px !important; }
         }
 
+        /* Sprint 27 mobile UX rework: the header's own "New Document" button
+           duplicates the FAB (#mobile-fab) below `md`. Tailwind's `hidden`
+           utility can't be used here because style.css's `.hidden` rule is
+           `!important` and always beats a plain `md:flex` override — so this
+           uses a dedicated class + matching breakpoint instead. */
+        @media (max-width: 767px) {
+            .header-new-doc-btn { display: none; }
+        }
+
         /* ── Custom Date Picker ── */
         .dp-wrap { position: relative; }
         .dp-trigger {
