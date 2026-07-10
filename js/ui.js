@@ -307,11 +307,21 @@ function showTemplateModal() {
 // ========================
 // SIDEBAR
 // ========================
+// Sprint 26: sidebar open/close now uses plain Tailwind translate utilities
+// (toggled directly) instead of a hand-rolled `.open` class + inline
+// `@media` block in index.html. Below `md`, `-translate-x-full`/
+// `translate-x-0` (whichever this toggles on) controls visibility; at `md`
+// and up, index.html's static `md:translate-x-0` always wins in the
+// cascade (Tailwind emits responsive variants after the base utility, same
+// specificity, so the media-scoped rule takes precedence there) regardless
+// of which plain class is toggled — so this never needs to special-case
+// desktop.
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const ov = document.getElementById('mob-overlay');
     state.sidebarOpen = !state.sidebarOpen;
-    sb.classList.toggle('open', state.sidebarOpen);
+    sb.classList.toggle('-translate-x-full', !state.sidebarOpen);
+    sb.classList.toggle('translate-x-0', state.sidebarOpen);
     ov.classList.toggle('hidden', !state.sidebarOpen);
 }
 
