@@ -376,7 +376,7 @@
         <aside id="sidebar" class="w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);">
             <div class="sidebar-line h-[2px] w-full shrink-0"></div>
             <!-- Logo -->
-            <div class="px-5 py-5 flex items-center gap-3">
+            <div class="px-5 py-5 flex items-center gap-3 shrink-0">
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--acc);">
                     <i class="fa-solid fa-vault text-white text-sm"></i>
                 </div>
@@ -386,6 +386,12 @@
                 </div>
             </div>
 
+            <!-- Sprint 25a: scrollable nav region so a tall category list (many
+                 categories/subfolders, or a short viewport from Windows display
+                 scaling) can never push the Bottom footer (Lock/Theme/Lang/
+                 Settings) below the fold with no way to reach it — the aside
+                 itself has no scroll, and neither did this region before. -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar">
             <!-- Main Nav -->
             <nav class="px-3 mt-2 flex flex-col gap-0.5" id="main-nav">
                 <div class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="dashboard" data-onclick="navigate('dashboard')">
@@ -455,10 +461,10 @@
                     <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-testrun);"></span><span id="label-testrun">Test Runs</span><span class="count ml-auto" id="cnt-testrun">0</span>
                 </div>
             </nav>
+            </div>
 
-            
             <!-- Bottom -->
-            <div class="mt-auto border-t" style="border-color:var(--brd);">
+            <div class="shrink-0 border-t" style="border-color:var(--brd);">
                 <div class="px-3 py-3 grid grid-cols-4">
                     <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--tx)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="lockVault()" title="Lock vault">
                         <i class="fa-solid fa-lock-open" style="font-size:14px;"></i>
