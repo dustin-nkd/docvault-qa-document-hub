@@ -18,11 +18,11 @@ function updateHeader() {
 
     if (state.view === 'dashboard') {
         title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
-        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
+        actions = `<button class="btn-p header-new-doc-btn flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'documents' || state.view === 'favorites') {
         const catLabel = state.view === 'favorites' ? t('favorites') : (state.category === 'all' ? t('allDocuments') : getCatMeta(state.category).labelPlural);
         title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
-        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
+        actions = `<button class="btn-p header-new-doc-btn flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
@@ -51,7 +51,7 @@ function updateHeader() {
 
     const isSearchView = state.view === 'documents' || state.view === 'favorites';
     h.innerHTML = `
-        <button class="md:hidden mr-1 p-2 rounded-lg" style="color:var(--tx-m);" data-onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+        <button class="hidden mr-1 p-2 rounded-lg" style="color:var(--tx-m);" data-onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
         ${title}
         <div class="flex-1"></div>
         ${isSearchView ? `
@@ -468,7 +468,7 @@ function _renderHealthWidgets(m, inPanel) {
                     ${m.criticalAging.slice(0, 4).map(b => `
                         <div class="flex items-center gap-2 cursor-pointer" data-onclick="viewDoc('${b.id}')">
                             <span class="text-[10px] font-mono font-bold shrink-0" style="color:#f87171;">${bugRef(b)}</span>
-                            <span class="text-[11px] flex-1 truncate" style="color:var(--tx-m);">${escHtml(b.title)}</span>
+                            <span class="text-[11px] flex-1 min-w-0 truncate" style="color:var(--tx-m);">${escHtml(b.title)}</span>
                             <span class="text-[10px] shrink-0 font-bold" style="color:#f87171;font-variant-numeric:tabular-nums;">${fmtAge(Date.now() - (b.createdAt || 0))}</span>
                         </div>`).join('')}
                 </div>
@@ -485,7 +485,7 @@ function _renderHealthWidgets(m, inPanel) {
                     ${m.stale.map(d => `
                         <div class="flex items-center gap-2 cursor-pointer" data-onclick="viewDoc('${d.id}')">
                             <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#fb923c;"></span>
-                            <span class="text-[11px] flex-1 truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
+                            <span class="text-[11px] flex-1 min-w-0 truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
                             <span class="text-[10px] shrink-0 font-medium" style="color:var(--tx-d);font-variant-numeric:tabular-nums;">${fmtAge(Date.now() - (d.updatedAt || 0))}</span>
                         </div>`).join('')}
                 </div>
@@ -516,7 +516,7 @@ function _renderHealthWidgets(m, inPanel) {
         return `
             <div>
                 <h3 class="font-heading font-semibold text-base mb-3" style="color:var(--tx);">QA Health</h3>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     ${widgets.join('')}
                 </div>
             </div>`;
@@ -577,7 +577,7 @@ function renderDashboard() {
         </div>
 
         <!-- MAIN 2-COLUMN LAYOUT -->
-        <div class="grid lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             <!-- LEFT: QA Health + Recently Updated -->
             <div class="lg:col-span-2 flex flex-col gap-6">
@@ -819,7 +819,7 @@ function renderDocList() {
                 ${!state.search && !inTrash ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
             </div>
         ` : `
-            <div class="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 ${pageDocs.map(d => {
                     if (d.category === 'credential') {
                         const domain = guessDomain(d.title);
