@@ -245,12 +245,35 @@
         @keyframes pulse-s { 0%,100% { opacity: .35; } 50% { opacity: .6; } }
         .pulse-s { animation: pulse-s 3s ease-in-out infinite; }
 
-        /* Sprint 27: the guest-demo banner (js/events.js renderGuestBanner)
-           defaults to top:10px, which overlaps the header on narrow screens
-           — move it below the header on mobile instead (also keeps it clear
-           of the new #bottom-nav / FAB at the bottom of the screen). */
+        /* On mobile, lift the (already bottom-right-anchored, see
+           js/events.js renderGuestBanner) banner clear of #bottom-nav
+           (60px tall) and shrink it to drop the long description text, so
+           it stays a small, low-impact badge instead of a wide bar. */
         @media (max-width: 640px) {
-            #guest-banner { top: 82px !important; }
+            #guest-banner {
+                bottom: 76px !important;
+                right: 12px !important;
+                padding: 6px 8px 6px 10px !important;
+                gap: 6px !important;
+            }
+            #guest-banner .gb-text { display: none; }
+            #guest-banner .gb-exit { padding: 3px 9px !important; font-size: 11px !important; }
+
+            /* Doc viewer header (Share/Back/History/Export/Edit): icon-only
+               below `sm` already (see js/render-core.js), but .btn-s/.btn-p's
+               default 18px side padding is sized for icon+label and made the
+               row wider than the viewport with an icon alone. Tighten it. */
+            .hdr-icon-btn { padding-left: 10px !important; padding-right: 10px !important; }
+        }
+
+        /* Header button/search labels: NOT Tailwind's `hidden sm:inline` —
+           this codebase's `.hidden{display:none!important}` (above) always
+           wins over a plain `sm:inline` regardless of source order, so that
+           pattern silently never shows the label at ANY width (this was
+           already true for the pre-existing search button's "Ctrl+K" label
+           before this fix). Use a dedicated class + matching breakpoint. */
+        @media (max-width: 639px) {
+            .hdr-btn-label, .hdr-sm-block { display: none; }
         }
 
         /* Sprint 27 mobile UX rework: the header's own "New Document" button
