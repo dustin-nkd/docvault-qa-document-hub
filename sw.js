@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v2'; // Sprint 22: Tailwind CDN JIT -> pre-built CSS (see APP_SHELL below)
+const SW_VERSION = 'v3'; // Sprint 25b: style.css changed (dead popup CSS removed) — bump so the old app-shell cache is purged on activate instead of a stale style.css lingering
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
