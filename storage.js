@@ -455,6 +455,22 @@ const GitHubSync = {
         return res.json(); // { content, sha, ... }
     },
 
+    // ONE call listing every file's current sha in the repo (git tree API),
+    // so pullSharded() can tell which shards actually changed since the
+    // last pull without fetching+decrypting all of them first. Returns
+    // {path: sha} or null on failure (caller falls back to the slower path).
+    async _getTree(settings) {
+        try {
+            const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/git/trees/${settings.branch || 'main'}?recursive=1`;
+            const res = await fetch(url, { headers: this._headers(settings.token) });
+            if (!res.ok) return null;
+            const data = await res.json();
+            const map = {};
+            (data.tree || []).forEach(entry => { if (entry.type === 'blob') map[entry.path] = entry.sha; });
+            return map;
+        } catch (e) { return null; }
+    },
+
     _b64encode(str) { return btoa(unescape(encodeURIComponent(str))); },
     _b64decode(b64) { return decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))); },
 
@@ -563,48 +579,96 @@ const GitHubSync = {
         return { mergedDocs };
     },
 
-    // Pulls the meta file + all shards (parallel) and reassembles the full
-    // doc list. Returns null if this vault hasn't been migrated to sharded
-    // storage yet (no meta file remotely) — callers should fall back to the
-    // legacy pull() in that case.
+    // Pulls only what actually changed since the last successful pull
+    // (checked via one git-tree listing call), reassembling the full doc
+    // list from a mix of freshly-fetched shards and the existing local
+    // cache for anything unchanged. Returns null if this vault hasn't been
+    // migrated to sharded storage yet (no meta file remotely) — callers
+    // should fall back to the legacy pull() in that case.
+    //
+    // Perf note: the original version of this method unconditionally
+    // fetched + decrypted the meta file AND all SHARD_COUNT shards on
+    // EVERY pull (every app load, every save's post-conflict re-pull),
+    // regardless of whether anything had changed remotely. That's 17
+    // network round-trips + up to 17 AES-GCM decrypts every time, which
+    // measured slower in practice than the single-file legacy pull() it
+    // replaced — the opposite of the intended optimization. This version
+    // adds one cheap tree-listing call up front and only does real work
+    // for files whose sha actually moved.
     async pullSharded() {
         const settings = await this.getSettings();
         if (!settings) return null;
         const pwd = this._pwd();
 
-        const metaFile = await this._getFile(this.META_PATH, settings);
-        if (!metaFile) return null;
-        localStorage.setItem(this.META_SHA_KEY, metaFile.sha);
-        const metaRaw = this._b64decode(metaFile.content);
+        const tree = await this._getTree(settings);
+        if (!tree) return null; // tree API unreachable — caller falls back to legacy pull()
+        const metaSha = tree[this.META_PATH];
+        if (!metaSha) return null; // vault not migrated to sharded mode yet
+
         let meta;
-        if (Vault.isEncrypted(metaRaw)) {
-            if (!pwd) throw new Error('Vault is locked');
-            meta = await Vault.decrypt(metaRaw, pwd);
+        if (metaSha === localStorage.getItem(this.META_SHA_KEY)) {
+            // Meta hasn't changed since our last pull — everything it
+            // carries was already applied to local storage back then.
+            meta = {
+                cfg: settings,
+                rb: localStorage.getItem(LocalAuth.RECOVERY_KEY) || null,
+                hint: (window.LocalAuth && LocalAuth.getHint) ? LocalAuth.getHint() : '',
+                deletedIds: [...DocStorage._getLocalDeletedIds()],
+                activityLog: (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll() : []
+            };
         } else {
-            meta = JSON.parse(metaRaw);
+            const metaFile = await this._getFile(this.META_PATH, settings);
+            if (!metaFile) return null;
+            localStorage.setItem(this.META_SHA_KEY, metaFile.sha);
+            const metaRaw = this._b64decode(metaFile.content);
+            meta = await this._decodePayload(metaRaw, pwd);
         }
 
-        const shardFiles = await Promise.all(
-            Array.from({ length: this.SHARD_COUNT }, (_, i) => this._getFile(this._shardPath(i), settings))
-        );
+        // "Unchanged shard" only means "skip re-fetching it" if we actually
+        // have trustworthy local content to fall back to. Relying on the
+        // shard-sha cache alone is NOT enough — it can be ahead of the
+        // actual local doc cache (e.g. a prior _saveLocal() failed on a
+        // full localStorage quota, per Sprint 21, after a sync had already
+        // cached the new shard shas; or this is the first call after a
+        // fresh migration, which pushes shards but never populates
+        // DocStorage's local cache itself). When there's no local doc data
+        // to fall back on, treat every shard as changed and fetch it for
+        // real — falling back to the pre-optimization behavior only in
+        // that narrow case, instead of silently returning empty/stale data.
+        const localAll = (DocStorage ? await DocStorage._getLocal() : null) || [];
+        const hasLocalFallback = localAll.length > 0;
 
-        const allDocs = [];
-        for (let i = 0; i < shardFiles.length; i++) {
-            const file = shardFiles[i];
+        const changedIndices = [];
+        for (let i = 0; i < this.SHARD_COUNT; i++) {
+            const remoteSha = tree[this._shardPath(i)];
+            if (!remoteSha) continue;
+            const unchanged = hasLocalFallback && remoteSha === localStorage.getItem(this.SHARD_SHA_PREFIX + i);
+            if (!unchanged) changedIndices.push(i);
+        }
+
+        const changedFiles = await Promise.all(changedIndices.map(i => this._getFile(this._shardPath(i), settings)));
+        const freshDocsByShard = {};
+        for (let k = 0; k < changedIndices.length; k++) {
+            const i = changedIndices[k];
+            const file = changedFiles[k];
             if (!file) continue;
             localStorage.setItem(this.SHARD_SHA_PREFIX + i, file.sha);
             const raw = this._b64decode(file.content);
-            let shardDocs;
-            if (Vault.isEncrypted(raw)) {
-                if (!pwd) throw new Error('Vault is locked');
-                shardDocs = await Vault.decrypt(raw, pwd);
-            } else {
-                shardDocs = JSON.parse(raw);
-            }
+            const shardDocs = await this._decodePayload(raw, pwd);
             if (Array.isArray(shardDocs)) {
-                allDocs.push(...shardDocs);
+                freshDocsByShard[i] = shardDocs;
                 localStorage.setItem(this.SHARD_FP_PREFIX + i, this._shardFingerprint(shardDocs));
             }
+        }
+
+        // Reassemble: freshly-fetched content for shards that changed (or
+        // that we had no trustworthy fallback for), the existing local doc
+        // cache (grouped the same way) for anything genuinely unchanged.
+        const localByShard = this._groupByShard(localAll);
+        const allDocs = [];
+        for (let i = 0; i < this.SHARD_COUNT; i++) {
+            const docs = Object.prototype.hasOwnProperty.call(freshDocsByShard, i) ? freshDocsByShard[i] : localByShard[i];
+            allDocs.push(...docs);
         }
 
         // Fold any activity entries from other devices into this device's
@@ -623,11 +687,15 @@ const GitHubSync = {
 
     // True if this vault has already been migrated to sharded storage
     // remotely (meta file exists), independent of whether THIS device has
-    // synced it yet.
+    // synced it yet. Called on every save (syncPush), so this uses the
+    // cheap tree listing rather than fetching the full meta file content
+    // just to check it exists.
     async isRemoteSharded() {
         const settings = await this.getSettings();
         if (!settings) return false;
-        return !!(await this._getFile(this.META_PATH, settings));
+        const tree = await this._getTree(settings);
+        if (tree) return !!tree[this.META_PATH];
+        return !!(await this._getFile(this.META_PATH, settings)); // tree API unreachable — fall back
     },
 
     // One-time, ADDITIVE migration: reads the existing single-file vault via
