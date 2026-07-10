@@ -245,11 +245,6 @@
         @keyframes pulse-s { 0%,100% { opacity: .35; } 50% { opacity: .6; } }
         .pulse-s { animation: pulse-s 3s ease-in-out infinite; }
 
-        @media (max-width: 768px) {
-            #sidebar { position: fixed; z-index: 50; transform: translateX(-100%); transition: transform .3s ease; }
-            #sidebar.open { transform: translateX(0); }
-        }
-
         /* ── Custom Date Picker ── */
         .dp-wrap { position: relative; }
         .dp-trigger {
@@ -373,7 +368,7 @@
 
     <div class="flex h-screen w-full">
         <!-- Sidebar -->
-        <aside id="sidebar" class="w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);">
+        <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300 w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);">
             <div class="sidebar-line h-[2px] w-full shrink-0"></div>
             <!-- Logo -->
             <div class="px-5 py-5 flex items-center gap-3 shrink-0">
