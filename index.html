@@ -245,6 +245,14 @@
         @keyframes pulse-s { 0%,100% { opacity: .35; } 50% { opacity: .6; } }
         .pulse-s { animation: pulse-s 3s ease-in-out infinite; }
 
+        /* Sprint 27: the guest-demo banner (js/events.js renderGuestBanner)
+           defaults to top:10px, which overlaps the header on narrow screens
+           — move it below the header on mobile instead (also keeps it clear
+           of the new #bottom-nav / FAB at the bottom of the screen). */
+        @media (max-width: 640px) {
+            #guest-banner { top: 82px !important; }
+        }
+
         /* ── Custom Date Picker ── */
         .dp-wrap { position: relative; }
         .dp-trigger {
@@ -323,6 +331,34 @@
 
     <!-- Mobile overlay -->
     <div id="mob-overlay" class="fixed inset-0 z-[45] bg-black/50 hidden md:hidden" data-onclick="toggleSidebar()"></div>
+
+    <!-- Mobile Bottom Navigation (Sprint 27) — reuses the same .nav-item /
+         data-view attributes as the sidebar's Main Nav so updateSidebar()'s
+         existing active-state highlighting (js/ui.js) applies here for free,
+         no new JS needed to keep it in sync. z-40, below the sidebar (z-50)
+         and its overlay (z-[45]) so opening the sidebar correctly covers it. -->
+    <nav id="bottom-nav" class="md:hidden fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t" style="height:60px;background:var(--bg2);border-color:var(--brd);">
+        <div class="flex-1 flex flex-col items-center justify-center gap-1 nav-item" style="color:var(--tx-m);" data-view="dashboard" data-onclick="navigate('dashboard')">
+            <i class="fa-solid fa-chart-pie" style="font-size:15px;"></i>
+            <span style="font-size:10px;">Dashboard</span>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center gap-1 nav-item" style="color:var(--tx-m);" data-view="documents" data-cat="all" data-onclick="navigate('documents','all')">
+            <i class="fa-solid fa-folder-open" style="font-size:15px;"></i>
+            <span style="font-size:10px;">Docs</span>
+        </div>
+        <div class="flex-1"></div> <!-- reserved space under the FAB -->
+        <div class="flex-1 flex flex-col items-center justify-center gap-1 nav-item" style="color:var(--tx-m);" data-view="favorites" data-onclick="navigate('favorites')">
+            <i class="fa-solid fa-star" style="font-size:15px;"></i>
+            <span style="font-size:10px;">Favorites</span>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center gap-1" style="color:var(--tx-m);cursor:pointer;" data-onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars" style="font-size:15px;"></i>
+            <span style="font-size:10px;">Menu</span>
+        </div>
+    </nav>
+    <button id="mobile-fab" class="md:hidden fixed z-40 flex items-center justify-center" style="bottom:32px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,0.4);border:3px solid var(--bg2);" data-onclick="showTemplateModal()" title="New Document">
+        <i class="fa-solid fa-plus" style="font-size:20px;"></i>
+    </button>
 
 
     <!-- Lock Screen -->
@@ -490,7 +526,7 @@
             <!-- Header -->
             <header id="app-header" class="shrink-0 flex items-center gap-4 px-6 py-4 border-b" style="background:var(--bg-glass);backdrop-filter:blur(12px);border-color:var(--brd);"></header>
             <!-- Content -->
-            <div id="content" class="flex-1 overflow-y-auto px-6 py-5"></div>
+            <div id="content" class="flex-1 overflow-y-auto px-6 pt-5 pb-24 md:pb-5"></div>
         </main>
     </div>
 
