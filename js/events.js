@@ -191,13 +191,17 @@ async function _checkRemoteExists(owner, repo, branch) {
 // ========================
 // Visible, unmissable indicator that this is sample data (not the real vault),
 // plus an exit link. Injected as a floating pill instead of a layout-affecting
-// bar, so it can't break the app's fixed h-screen layout.
+// bar, so it can't break the app's fixed h-screen layout. Anchored to the
+// bottom-right corner (not top-center) so it can never sit on top of the
+// header — the header's own button count/text varies by view (e.g. the doc
+// viewer's Share/Back/History/Export/Edit row), so any top-anchored position
+// tuned for one view's header height ends up colliding with another's.
 function renderGuestBanner() {
     if (document.getElementById('guest-banner')) return;
     const banner = document.createElement('div');
     banner.id = 'guest-banner';
-    banner.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:300;display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;font-size:12px;font-weight:600;padding:7px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,0.35);pointer-events:auto;';
-    banner.innerHTML = `<span>🎭 Guest Demo — sample data, nothing is saved</span><a href="${location.pathname}" style="color:#fff;background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:999px;text-decoration:none;">Exit demo</a>`;
+    banner.style.cssText = 'position:fixed;bottom:24px;right:20px;z-index:300;display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;font-size:12px;font-weight:600;padding:7px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,0.35);pointer-events:auto;';
+    banner.innerHTML = `<span class="gb-emoji">🎭</span><span class="gb-text">Guest Demo — sample data, nothing is saved</span><a href="${location.pathname}" class="gb-exit" style="color:#fff;background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:999px;text-decoration:none;white-space:nowrap;">Exit demo</a>`;
     document.body.appendChild(banner);
 
     // Hide entry points to real-vault operations that make no sense (and must

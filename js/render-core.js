@@ -38,11 +38,11 @@ function updateHeader() {
                 : `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open DocVault</button>`;
         } else {
             actions = `
-                <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
-                <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="showHistoryPanel('${doc.id}')"><i class="fa-regular fa-clock mr-1.5"></i>History</button>` : ''}
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="exportDoc('${doc.id}')"><i class="fa-solid fa-file-export mr-1.5"></i>Export</button>` : ''}
-                <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
+                <button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="shareDoc('${doc ? doc.id : ''}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>
+                <button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left sm:mr-1.5"></i><span class="hdr-btn-label">${t('back')}</span></button>
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="showHistoryPanel('${doc.id}')" title="History"><i class="fa-regular fa-clock sm:mr-1.5"></i><span class="hdr-btn-label">History</span></button>` : ''}
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="exportDoc('${doc.id}')" title="Export"><i class="fa-solid fa-file-export sm:mr-1.5"></i><span class="hdr-btn-label">Export</span></button>` : ''}
+                <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>
             `;
         }
     } else if (state.view === 'trash') {
@@ -55,14 +55,14 @@ function updateHeader() {
         ${title}
         <div class="flex-1"></div>
         ${isSearchView ? `
-            <div class="search-w hidden sm:block" style="width:280px;">
+            <div class="search-w hdr-sm-block" style="width:280px;">
                 <i class="fa-solid fa-search"></i>
                 <input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;debouncedRenderContent();">
             </div>
         ` : ''}
         <div class="flex items-center gap-2">
         <button class="btn-s flex items-center justify-center h-[38px] gap-1.5" data-onclick="openSearch()" title="Global Search (Ctrl+K)">
-            <i class="fa-solid fa-magnifying-glass"></i> <span class="hidden sm:inline">Ctrl+K</span>
+            <i class="fa-solid fa-magnifying-glass"></i> <span class="hdr-btn-label">Ctrl+K</span>
         </button>
         ${actions}
 </div>
