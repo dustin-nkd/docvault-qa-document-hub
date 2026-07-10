@@ -546,7 +546,7 @@ function renderDashboard() {
     Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
     const nonZeroCats = Object.entries(catCounts).filter(([, v]) => v > 0);
 
-    return `<div class="fade-up max-w-6xl mx-auto">
+    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
 
         <!-- KEY METRICS ROW -->
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
@@ -776,7 +776,7 @@ function renderDocList() {
     const cardAction = (id) => bm ? `toggleSelectDoc('${id}', event)` : `viewDoc('${id}')`;
     const cardCls = (id) => `doc-card p-4 flex flex-col${bm && sel.has(id) ? ' batch-selected' : ''}`;
 
-    return `<div class="fade-up max-w-6xl mx-auto">
+    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
         <!-- Mobile search -->
         ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;debouncedRenderContent();"></div>` : ''}
 
@@ -819,7 +819,7 @@ function renderDocList() {
                 ${!state.search && !inTrash ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
             </div>
         ` : `
-            <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div class="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 ${pageDocs.map(d => {
                     if (d.category === 'credential') {
                         const domain = guessDomain(d.title);
