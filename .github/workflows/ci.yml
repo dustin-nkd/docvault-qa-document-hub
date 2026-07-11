@@ -1,0 +1,54 @@
+name: CI
+
+# Phase-0 build contract: validate the reproducible Vite build (npm ci + build
+# + dist smoke) on branch pushes and PRs into main. Pushes to main are handled
+# by deploy.yml. Actions are pinned to a commit SHA per the migration plan.
+on:
+  push:
+    branches-ignore:
+      - main
+      - gh-pages
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & smoke-test dist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (reproducible)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke-test dist
+        run: |
+          set -euo pipefail
+          echo "Checking build output…"
+          test -f dist/index.html          || { echo "missing dist/index.html"; exit 1; }
+          test -f dist/storage.js          || { echo "missing dist/storage.js"; exit 1; }
+          test -f dist/js/events.js        || { echo "missing dist/js/events.js"; exit 1; }
+          test -f dist/js/constants.js     || { echo "missing dist/js/constants.js"; exit 1; }
+          # Vite emitted and linked a fingerprinted stylesheet
+          grep -q 'assets/index-.*\.css' dist/index.html || { echo "hashed CSS not linked"; exit 1; }
+          # the still-classic app scripts were copied and are referenced
+          grep -q 'src="js/events.js"' dist/index.html || { echo "app scripts not wired"; exit 1; }
+          # regression guard: no inline on* event handlers should reach index.html
+          if grep -nE '[^-]on(click|submit|load|error|focus|input|change|mouseover|mouseout)="' dist/index.html; then
+            echo "ERROR: inline event handler leaked into dist/index.html"; exit 1
+          fi
+          echo "dist smoke checks passed"
