@@ -47,6 +47,9 @@ jobs:
           grep -q 'assets/index-.*\.css' dist/index.html || { echo "hashed CSS not linked"; exit 1; }
           # the still-classic app scripts were copied and are referenced
           grep -q 'src="js/events.js"' dist/index.html || { echo "app scripts not wired"; exit 1; }
+          # the service worker got its precache manifest injected from the build
+          test -f dist/sw.js || { echo "missing dist/sw.js"; exit 1; }
+          grep -q '__PRECACHE__' dist/sw.js || { echo "SW precache manifest not injected"; exit 1; }
           # regression guard: no inline on* event handlers should reach index.html
           if grep -nE '[^-]on(click|submit|load|error|focus|input|change|mouseover|mouseout)="' dist/index.html; then
             echo "ERROR: inline event handler leaked into dist/index.html"; exit 1
