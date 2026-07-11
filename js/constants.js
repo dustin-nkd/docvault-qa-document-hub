@@ -8,6 +8,50 @@
 const GUEST_MODE = new URLSearchParams(location.search).get('guest') === '1';
 
 // ========================
+// DECLARATIVE-DISPATCH ALLOWLIST (XSS hardening — Phase 0)
+// ========================
+// executeAction() (js/events.js) and selectCustomOption() (js/render-editor.js)
+// both resolve a function by name out of a DOM attribute and call window[name].
+// Without this gate, a stored-XSS-injected data-on* / onChangeCode attribute
+// could invoke ANY global function — browser built-ins like open()/fetch() or
+// exposed non-UI helpers. This is the exhaustive set of function names the app
+// itself dispatches declaratively; both dispatchers refuse (and log) anything
+// else. Regenerate when adding a new data-on* action or renderSelect change
+// handler (see the enumeration in the Phase-0 dispatcher-hardening work).
+const DISPATCH_ACTIONS = new Set([
+    '_applyTagRename', '_confirmDeleteTag', '_copyPre', '_copyProp', '_doApiImport',
+    '_doCleanupUnusedImages', '_doCompactImages', '_doDeleteTag', '_doGenerateReleaseNotes',
+    '_doImportBackup', '_doSaveView', '_filterDuplicateBugList', '_filterTestRunTcList',
+    '_forceCancelEdit', '_selectDuplicateOfBug', '_switchSettingsTab', '_updateTestRunTcCount',
+    'addApiHeader', 'addApiParam', 'addBugStep', 'addEnvProp', 'addTcStep', 'applySavedView',
+    'applySortBy', 'applyStatusFilter', 'batchDelete', 'cancelEdit', 'changeEditorCat',
+    'cleanupUnusedImages', 'clearActivityLog', 'closeModal', 'closeSearch', 'compactImages',
+    'confirmBatchAddTag', 'confirmBatchBugEdit', 'confirmBatchDelete',
+    'confirmBatchMoveFolder', 'confirmDelete', 'copyPassword', 'copyUsername', 'createDoc',
+    'debouncedRenderContent', 'deleteSavedView', 'dpClear', 'dpNext', 'dpPrev', 'dpSelect',
+    'dpToday', 'dpToggle', 'duplicateDoc', 'editDoc', 'emptyTrash', 'exportBackup',
+    'exportBugsCsv', 'exportDoc', 'exportTestRunCsv', 'filterSubfolderDropdown', 'formatJson',
+    'generateRecoveryKey', 'generateReleaseNotes', 'handleDragStart', 'handleDrop',
+    'handleTagInput', 'hardDeleteDoc', 'lockVault', 'markCredentialRotated', 'navigate',
+    'navigateBack', 'openSearch', 'promptDuplicateBug', 'removeApiHeader', 'removeApiParam',
+    'removeBugStep', 'removeEnvProp', 'removeTag', 'removeTcStep', 'renderContent',
+    'reopenBug', 'reportBugFromStep', 'rerunTestRun', 'resolveBug', 'restoreDoc',
+    'restoreSnapshot', 'revokeShare', 'saveApiTryitBaseUrl', 'saveDoc', 'savePasswordHint',
+    'selectAllDocs', 'selectCustomOption', 'selectSearchResult', 'selectSubfolder',
+    'setDocListPage', 'setSearchFilter', 'showBatchBugEditModal', 'showBatchFolderModal',
+    'showBatchTagModal', 'showDeleteModal', 'showDocMenu', 'showEmptyTrashModal',
+    'showGitHubSettingsModal', 'showHistoryPanel', 'showSaveViewModal', 'showShareManager',
+    'showSnapshotDiff', 'showTemplateModal', 'toggleBatchMode', 'toggleCustomSelect',
+    'toggleEnvSecret', 'toggleFav', 'toggleImageCdn', 'toggleLang', 'togglePasswordVisibility',
+    'toggleSelectDoc', 'toggleSidebar', 'toggleSubfolderDropdown', 'toggleTheme',
+    'triggerApiImport', 'triggerImportBackup', 'tryApiRequest', 'updateTestRunNote',
+    'updateTestRunStep', 'viewDoc',
+    // former inline on* handlers, converted to data-on* + delegated listeners (Phase 0)
+    'changeMasterPassword', 'goToApp', 'recoverVault', 'saveGitHubSettings', 'submitUnlock',
+    'toggleLockRecovery', 'viewGuestDemo'
+]);
+
+// ========================
 // API TRY-IT MOCK SERVER (demo/testing only)
 // ========================
 // A real fetch() to a made-up base URL would just fail on CORS or DNS, so the

@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocVault - QA Document Hub</title>
-    <link rel="icon" type="image/png" href="icons/icon48.png">
-    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./assets/icon48-CxoPpoNj.png">
+    <link rel="manifest" href="./assets/manifest-Drm8DMF4.json">
     <meta name="theme-color" content="#070b14">
-    <link rel="apple-touch-icon" href="icons/icon128.png">
+    <link rel="apple-touch-icon" href="./assets/icon128-U6FNOjHh.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DocVault">
@@ -17,16 +17,9 @@
       }
     </script>
 
-    <link href="vendor/fonts/space-grotesk/index.css" rel="stylesheet">
-    <link href="vendor/fonts/dm-sans/index.css" rel="stylesheet">
-    <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
-    <link href="style.css" rel="stylesheet">
-    <link rel="stylesheet" href="vendor/toastui/toastui-editor.min.css" />
-    <link rel="stylesheet" href="vendor/toastui/toastui-editor-dark.min.css" />
     <!-- Sprint 22: pre-built by the "Deploy to GitHub Pages" workflow (tailwind.config.js
          + src/input.css) instead of the CDN JIT compiler, which recompiled Tailwind's
          full runtime engine (~450KB) on every page load and isn't meant for production. -->
-    <link rel="stylesheet" href="vendor/tailwind/tailwind.generated.css">
     <script src="vendor/toastui/toastui-editor-all.min.js"></script>
 
     <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('qahub_theme')||'dark')}catch(e){}</script>
@@ -336,6 +329,7 @@
         .dp-foot-btn.dp-today-btn { color: var(--acc); }
         .dp-foot-btn.dp-today-btn:hover { background: rgba(16,185,129,.1); }
     </style>
+  <link rel="stylesheet" crossorigin href="./assets/index-D6FdAAHP.css">
 </head>
 <body class="bg-[var(--bg)] text-[var(--tx)] h-screen w-screen overflow-hidden font-sans">
     <div id="debug-err" style="position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:99999;font-size:12px;padding:5px;display:none;"></div>
@@ -402,12 +396,12 @@
             <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
             <p class="text-sm mb-8" style="color:var(--tx-m);" id="lock-screen-hint">Your vault is end-to-end encrypted. Enter your Master Password to decrypt.</p>
 
-            <form onsubmit="event.preventDefault(); window.LocalAuth.unlock(document.getElementById('master-password').value);">
+            <form data-onsubmit="submitUnlock()">
                 <input type="password" id="master-password" class="form-input text-center text-lg tracking-widest mb-4" placeholder="••••••••" autocomplete="current-password" required>
                 <button type="submit" id="lock-submit-btn" class="btn-p w-full py-3">Unlock Vault</button>
             </form>
 
-            <button type="button" onclick="window.location.href = window.location.pathname + '?guest=1'" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
+            <button type="button" data-onclick="viewGuestDemo()" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
                 🎭 View Demo <span style="opacity:.85;font-weight:500;">— no password needed</span>
             </button>
 
@@ -420,12 +414,12 @@
                 <p id="lock-screen-sub" class="text-xs" style="color:var(--tx-d);">First time? The password you enter will become your Master Password.</p>
                 <!-- Recovery toggle (shown when hint or recovery metadata exists) -->
                 <div id="lock-recovery-toggle" class="hidden mt-3">
-                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" onclick="toggleLockRecovery(this)">Forgot password?</button>
+                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" data-onclick="toggleLockRecovery(this)">Forgot password?</button>
                 </div>
                 <!-- Recovery panel -->
                 <div id="lock-recovery-panel" class="hidden mt-4">
                     <p class="text-xs mb-2" style="color:var(--tx-m);">Enter your 20-character recovery key:</p>
-                    <form onsubmit="event.preventDefault(); recoverVault();">
+                    <form data-onsubmit="recoverVault()">
                         <input type="text" id="recovery-code-input" class="form-input text-center w-full mb-3" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off" maxlength="23" style="font-family:monospace;font-size:13px;letter-spacing:0.05em;">
                         <button type="submit" id="recover-submit-btn" class="btn-p w-full py-2 text-sm">Recover Access</button>
                     </form>
