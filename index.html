@@ -402,12 +402,12 @@
             <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
             <p class="text-sm mb-8" style="color:var(--tx-m);" id="lock-screen-hint">Your vault is end-to-end encrypted. Enter your Master Password to decrypt.</p>
 
-            <form onsubmit="event.preventDefault(); window.LocalAuth.unlock(document.getElementById('master-password').value);">
+            <form data-onsubmit="submitUnlock()">
                 <input type="password" id="master-password" class="form-input text-center text-lg tracking-widest mb-4" placeholder="••••••••" autocomplete="current-password" required>
                 <button type="submit" id="lock-submit-btn" class="btn-p w-full py-3">Unlock Vault</button>
             </form>
 
-            <button type="button" onclick="window.location.href = window.location.pathname + '?guest=1'" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
+            <button type="button" data-onclick="viewGuestDemo()" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
                 🎭 View Demo <span style="opacity:.85;font-weight:500;">— no password needed</span>
             </button>
 
@@ -420,12 +420,12 @@
                 <p id="lock-screen-sub" class="text-xs" style="color:var(--tx-d);">First time? The password you enter will become your Master Password.</p>
                 <!-- Recovery toggle (shown when hint or recovery metadata exists) -->
                 <div id="lock-recovery-toggle" class="hidden mt-3">
-                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" onclick="toggleLockRecovery(this)">Forgot password?</button>
+                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" data-onclick="toggleLockRecovery(this)">Forgot password?</button>
                 </div>
                 <!-- Recovery panel -->
                 <div id="lock-recovery-panel" class="hidden mt-4">
                     <p class="text-xs mb-2" style="color:var(--tx-m);">Enter your 20-character recovery key:</p>
-                    <form onsubmit="event.preventDefault(); recoverVault();">
+                    <form data-onsubmit="recoverVault()">
                         <input type="text" id="recovery-code-input" class="form-input text-center w-full mb-3" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off" maxlength="23" style="font-family:monospace;font-size:13px;letter-spacing:0.05em;">
                         <button type="submit" id="recover-submit-btn" class="btn-p w-full py-2 text-sm">Recover Access</button>
                     </form>

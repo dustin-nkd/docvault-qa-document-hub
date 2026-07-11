@@ -45,7 +45,10 @@ const DISPATCH_ACTIONS = new Set([
     'toggleEnvSecret', 'toggleFav', 'toggleImageCdn', 'toggleLang', 'togglePasswordVisibility',
     'toggleSelectDoc', 'toggleSidebar', 'toggleSubfolderDropdown', 'toggleTheme',
     'triggerApiImport', 'triggerImportBackup', 'tryApiRequest', 'updateTestRunNote',
-    'updateTestRunStep', 'viewDoc'
+    'updateTestRunStep', 'viewDoc',
+    // former inline on* handlers, converted to data-on* + delegated listeners (Phase 0)
+    'changeMasterPassword', 'goToApp', 'recoverVault', 'saveGitHubSettings', 'submitUnlock',
+    'toggleLockRecovery', 'viewGuestDemo'
 ]);
 
 // ========================

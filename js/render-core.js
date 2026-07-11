@@ -35,7 +35,7 @@ function updateHeader() {
         if (state.sharedView) {
             actions = state.history?.length > 0
                 ? `<button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>`
-                : `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open DocVault</button>`;
+                : `<button class="btn-p text-sm" data-onclick="goToApp()">Open DocVault</button>`;
         } else {
             actions = `
                 <button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left sm:mr-1.5"></i><span class="hdr-btn-label">${t('back')}</span></button>
@@ -829,7 +829,7 @@ function renderDocList() {
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-3">
                                     <div class="cred-avatar ${credAvatarColor(d.title)}">
-                                        <img class="cred-favicon" src="${favUrl}" alt="" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.style.display='none'">
+                                        <img class="cred-favicon" src="${favUrl}" alt="">
                                         <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
                                     </div>
                                     <div class="min-w-0">
