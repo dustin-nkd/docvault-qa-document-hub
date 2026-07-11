@@ -955,6 +955,16 @@ window.shareDoc = async function(id) {
             : doc.category === 'testplan'
             ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])]
             : [];
+        // Security containment: strip secret-flagged environment properties
+        // (and the legacy secret `dbInfo`) so they never enter a public share
+        // payload — applied to BOTH the shared document's own envData AND any
+        // environment carried inside a linked release/test-plan/environment
+        // doc, since secrets can hide on those derivative paths too.
+        const stripEnvSecrets = (ed) => ed ? {
+            ...ed,
+            properties: Array.isArray(ed.properties) ? ed.properties.filter(p => !p.secret) : ed.properties,
+            dbInfo: undefined,
+        } : ed;
         const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
             ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
@@ -963,18 +973,9 @@ window.shareDoc = async function(id) {
                   .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
             : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
             ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
-                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: d.envData, tcData: d.tcData }))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: stripEnvSecrets(d.envData), tcData: d.tcData }))
             : [];
-        // Security containment: strip secret-flagged environment properties
-        // (and the legacy secret `dbInfo`) so they never enter a public share
-        // payload; keep only non-secret environment info shareable.
-        const shareEnvData = doc.envData ? {
-            ...doc.envData,
-            properties: Array.isArray(doc.envData.properties)
-                ? doc.envData.properties.filter(p => !p.secret)
-                : doc.envData.properties,
-            dbInfo: undefined,
-        } : doc.envData;
+        const shareEnvData = stripEnvSecrets(doc.envData);
         const plain = new TextEncoder().encode(JSON.stringify({
             title: doc.title, category: doc.category, content: doc.content,
             tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
