@@ -1906,7 +1906,7 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
         actual: '',
         foundInRun: runId, foundInTc: tcId, foundInStep: stepIdx
     };
-    state._newContent = `> Reported from test run **${run.title}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
+    state._newContent = `> Reported from test run **${escHtml(run.title)}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
     render();
     setTimeout(() => document.getElementById('ed-bug-actual')?.focus(), 120);
 };
