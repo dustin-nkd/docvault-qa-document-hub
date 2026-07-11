@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v6'; // Security containment: block credential share + strip secrets from share payload — js/actions.js, js/render-core.js changed
+const SW_VERSION = 'v7'; // Security containment follow-up: strip secrets from linked-doc envData in release/testplan shares — js/actions.js changed
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
