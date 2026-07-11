@@ -920,6 +920,17 @@ window.shareDoc = async function(id) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
 
+    // Security containment (pre-migration): a share link publishes AES-GCM
+    // ciphertext to the PUBLIC assets repo with the decryption key in the URL
+    // fragment (#key=), so anyone holding the link can decrypt everything in
+    // the payload. Credential documents hold plaintext username/password and
+    // must never be shared this way. Disabled until the platform migration
+    // replaces this with a sanitized, server-side share resolver.
+    if (doc.category === 'credential') {
+        toast('Sharing is disabled for credential documents for security.', 'info');
+        return;
+    }
+
     const settings = await GitHubSync.getSettings();
     if (!settings || !settings.token) {
         toast('Configure GitHub in Settings to share documents.', 'warning');
@@ -949,16 +960,25 @@ window.shareDoc = async function(id) {
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
             : doc.category === 'environment' && doc.envData?.linkedCreds?.length
             ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
-                  .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
             : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
             ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: d.envData, tcData: d.tcData }))
             : [];
+        // Security containment: strip secret-flagged environment properties
+        // (and the legacy secret `dbInfo`) so they never enter a public share
+        // payload; keep only non-secret environment info shareable.
+        const shareEnvData = doc.envData ? {
+            ...doc.envData,
+            properties: Array.isArray(doc.envData.properties)
+                ? doc.envData.properties.filter(p => !p.secret)
+                : doc.envData.properties,
+            dbInfo: undefined,
+        } : doc.envData;
         const plain = new TextEncoder().encode(JSON.stringify({
             title: doc.title, category: doc.category, content: doc.content,
             tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
-            username: doc.username, password: doc.password,
-            envData: doc.envData,
+            envData: shareEnvData,
             runData: doc.runData,
             releaseData: doc.releaseData,
             tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
