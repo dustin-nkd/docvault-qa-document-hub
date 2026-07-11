@@ -26,8 +26,8 @@ function updateHeader() {
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
         actions = `
-            <button class="btn-s" data-onclick="cancelEdit()"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
-            <button class="btn-p" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>
+            <button class="btn-s flex items-center justify-center h-[38px]" data-onclick="cancelEdit()"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
+            <button class="btn-p flex items-center justify-center h-[38px]" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>
         `;
     } else if (state.view === 'viewer') {
         const doc = documents.find(d => d.id === state.editingDoc?.id);

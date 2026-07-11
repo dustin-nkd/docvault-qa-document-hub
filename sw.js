@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v5'; // Sprint 27 UX follow-up: doc-viewer header + guest-banner rework — index.html, js/render-core.js, js/events.js changed
+const SW_VERSION = 'v6'; // editor header: make Cancel/Save match the 38px header button height — js/render-core.js changed
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
