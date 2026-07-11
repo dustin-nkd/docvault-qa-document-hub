@@ -913,6 +913,17 @@ window.tryApiRequest = async function(docId) {
 // SHARE DOCUMENT
 // ========================
 window.shareDoc = async function(id) {
+    // Public share-link creation is DISABLED (out of V1 scope, per migration
+    // decision 2026-07-11). Secrets can hide in apiData / Markdown / linked
+    // docs with no reliable classification flag, and a public link carries its
+    // AES key in the URL fragment — so no "clone-and-strip" sanitizer is safe.
+    // The platform migration replaces this with members-only, server-side
+    // sanitized sharing. Existing links still resolve (loadSharedDoc) and stay
+    // revocable; only creating NEW links is turned off. The former creation
+    // flow is retained below (unreachable) for reference until that rewrite.
+    toast('Public sharing is disabled — share within your team instead.', 'info');
+    return;
+
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         toast('Sharing is disabled in demo mode.', 'info');
         return;
