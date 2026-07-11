@@ -48,7 +48,11 @@ const DISPATCH_ACTIONS = new Set([
     'updateTestRunStep', 'viewDoc',
     // former inline on* handlers, converted to data-on* + delegated listeners (Phase 0)
     'changeMasterPassword', 'goToApp', 'recoverVault', 'saveGitHubSettings', 'submitUnlock',
-    'toggleLockRecovery', 'viewGuestDemo'
+    'toggleLockRecovery', 'viewGuestDemo',
+    // set dynamically via setAttribute('data-onclick', …) on rendered-Markdown
+    // code blocks (js/render-core.js), so it isn't a literal data-on* attribute
+    // in source and must be listed by hand.
+    'copyCodeBlock'
 ]);
 
 // ========================
