@@ -920,6 +920,15 @@ window.shareDoc = async function(id) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
 
+    // Security: a share link publishes AES-GCM ciphertext with the decryption
+    // key in the URL fragment (#key=), so anyone holding the link can decrypt
+    // the payload. Credential documents hold plaintext username/password and
+    // must never be shared this way.
+    if (doc.category === 'credential') {
+        toast('Sharing is disabled for credential documents for security.', 'info');
+        return;
+    }
+
     const settings = await GitHubSync.getSettings();
     if (!settings || !settings.token) {
         toast('Configure GitHub in Settings to share documents.', 'warning');
@@ -944,21 +953,28 @@ window.shareDoc = async function(id) {
             : doc.category === 'testplan'
             ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])]
             : [];
+        // Security: drop secret-flagged environment properties (and the legacy
+        // secret dbInfo) from anything that enters the share payload — the
+        // document's own envData AND any environment carried in a linked doc.
+        const stripEnvSecrets = (ed) => ed ? {
+            ...ed,
+            properties: Array.isArray(ed.properties) ? ed.properties.filter(p => !p.secret) : ed.properties,
+            dbInfo: undefined,
+        } : ed;
         const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
             ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
             : doc.category === 'environment' && doc.envData?.linkedCreds?.length
             ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
-                  .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
             : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
             ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
-                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: d.envData, tcData: d.tcData }))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: stripEnvSecrets(d.envData), tcData: d.tcData }))
             : [];
         const plain = new TextEncoder().encode(JSON.stringify({
             title: doc.title, category: doc.category, content: doc.content,
             tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
-            username: doc.username, password: doc.password,
-            envData: doc.envData,
+            envData: stripEnvSecrets(doc.envData),
             runData: doc.runData,
             releaseData: doc.releaseData,
             tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,

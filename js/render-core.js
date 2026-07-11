@@ -38,7 +38,7 @@ function updateHeader() {
                 : `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open DocVault</button>`;
         } else {
             actions = `
-                <button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="shareDoc('${doc ? doc.id : ''}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="shareDoc('${doc.id}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>` : ''}
                 <button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left sm:mr-1.5"></i><span class="hdr-btn-label">${t('back')}</span></button>
                 ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="showHistoryPanel('${doc.id}')" title="History"><i class="fa-regular fa-clock sm:mr-1.5"></i><span class="hdr-btn-label">History</span></button>` : ''}
                 ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="exportDoc('${doc.id}')" title="Export"><i class="fa-solid fa-file-export sm:mr-1.5"></i><span class="hdr-btn-label">Export</span></button>` : ''}
@@ -878,7 +878,7 @@ function renderDocList() {
                             </div>
                         </div>
                         <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
-                        <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${excerpt(d.content, 100)}</p>
+                        <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${escHtml(excerpt(d.content, 100))}</p>
                         <div class="flex items-center gap-1.5 flex-wrap mb-3">
                             ${d.tags.slice(0, 3).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
                             ${d.tags.length > 3 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 3}</span>` : ''}
