@@ -1,11 +1,18 @@
 // DocVault service worker — caches the app shell so the PWA installs and keeps
-// working fully offline after a first successful load. Bump SW_VERSION whenever
-// shipped files change; the old cache is purged on activate so nothing gets
-// permanently stuck on stale code.
-const SW_VERSION = 'v8'; // Disable public share-link creation (out of V1) — js/actions.js, js/render-core.js, js/ui.js changed
+// working fully offline after a first successful load.
+//
+// The un-built app served from the repo root uses the literal fallbacks below.
+// The Vite build (vite.config.js) PREPENDS `self.__BUILD_ID__` (a content hash)
+// and `self.__PRECACHE__` (the exact list of emitted files) to dist/sw.js, so
+// the built PWA precaches the real fingerprinted assets — the raw paths below
+// don't exist after bundling (CSS/fonts are hashed into assets/), which would
+// otherwise make cache.addAll reject and silently precache nothing. The build
+// id also busts the cache automatically whenever the output changes, so there's
+// no SW_VERSION to bump by hand for built releases.
+const SW_VERSION = self.__BUILD_ID__ || 'v8';
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
-const APP_SHELL = [
+const APP_SHELL = self.__PRECACHE__ || [
     './',
     './index.html',
     './storage.js',

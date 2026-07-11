@@ -1080,7 +1080,7 @@ async function loadSharedDoc(shareId, keyBase64) {
         render();
     } catch(e) {
         console.error('[loadSharedDoc]', e);
-        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" onclick="window.location.href=window.location.pathname">Go to DocVault</button></div></div>`;
+        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" data-onclick="goToApp()">Go to DocVault</button></div></div>`;
     }
 }
 
@@ -1399,7 +1399,7 @@ async function _migrateDocImages(doc) {
 // exportBackup/triggerImportBackup needed to change.
 function _settingsTabAccount() {
     return `
-        <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3 text-left">
+        <form data-onsubmit="changeMasterPassword()" class="flex flex-col gap-3 text-left">
             <div>
                 <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
                 <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
@@ -1459,7 +1459,7 @@ function _settingsTabSync() {
                 Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
             </div>
             <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
-            <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
+            <form data-onsubmit="saveGitHubSettings()" class="flex flex-col gap-3">
                 <div>
                     <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
                     <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
@@ -1906,7 +1906,7 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
         actual: '',
         foundInRun: runId, foundInTc: tcId, foundInStep: stepIdx
     };
-    state._newContent = `> Reported from test run **${run.title}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
+    state._newContent = `> Reported from test run **${escHtml(run.title)}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
     render();
     setTimeout(() => document.getElementById('ed-bug-actual')?.focus(), 120);
 };
