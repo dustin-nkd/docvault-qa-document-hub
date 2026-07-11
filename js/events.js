@@ -362,8 +362,14 @@ function executeAction(code, event, element) {
                 });
             }
 
-            if (typeof window[funcName] === 'function') {
-                window[funcName](...args);
+            // XSS hardening: only invoke names the app declares as UI actions
+            // (see DISPATCH_ACTIONS in js/constants.js). Without this, an
+            // injected data-on* attribute could call any global (open, fetch, …)
+            // or a non-UI helper. Refuse and log anything else.
+            if (DISPATCH_ACTIONS.has(funcName)) {
+                if (typeof window[funcName] === 'function') window[funcName](...args);
+            } else {
+                console.warn('[dispatch] refused non-allowlisted action:', funcName);
             }
         }
     }
