@@ -362,14 +362,8 @@ function executeAction(code, event, element) {
                 });
             }
 
-            // XSS hardening: only invoke names the app declares as UI actions
-            // (see DISPATCH_ACTIONS in js/constants.js). Without this, an
-            // injected data-on* attribute could call any global (open, fetch, …)
-            // or a non-UI helper. Refuse and log anything else.
-            if (DISPATCH_ACTIONS.has(funcName)) {
-                if (typeof window[funcName] === 'function') window[funcName](...args);
-            } else {
-                console.warn('[dispatch] refused non-allowlisted action:', funcName);
+            if (typeof window[funcName] === 'function') {
+                window[funcName](...args);
             }
         }
     }
@@ -433,46 +427,6 @@ document.addEventListener('mouseout', (e) => {
         executeAction(target.getAttribute('data-onmouseleave'), e, target);
     }
 });
-
-// Delegated submit handler. Every form in this app is a JS-handled SPA form
-// (no real HTTP submit), so always preventDefault and dispatch the declared
-// action. Replaces inline onsubmit="event.preventDefault(); fn()" so a strict
-// CSP can forbid inline event handlers. submit bubbles, so delegation works.
-document.addEventListener('submit', (e) => {
-    if (!(e.target instanceof Element)) return;
-    const target = e.target.closest('[data-onsubmit]');
-    if (target) {
-        e.preventDefault();
-        executeAction(target.getAttribute('data-onsubmit'), e, target);
-    }
-});
-
-// Credential-favicon presentation, formerly inline onload/onerror on the <img>.
-// load/error on <img> don't bubble, so listen in the capture phase on document.
-document.addEventListener('load', (e) => {
-    const t = e.target;
-    if (t instanceof Element && t.classList.contains('cred-favicon')) {
-        t.classList.add('loaded');
-        if (t.nextElementSibling) t.nextElementSibling.style.display = 'none';
-        if (t.parentElement) t.parentElement.classList.add('has-favicon');
-    }
-}, true);
-document.addEventListener('error', (e) => {
-    const t = e.target;
-    if (t instanceof Element && t.classList.contains('cred-favicon')) {
-        t.style.display = 'none';
-    }
-}, true);
-
-// Small navigation wrappers so the pre-auth lock screen and the shared-doc
-// error screen use data-on* + the dispatch allowlist instead of inline
-// handlers containing raw expressions / object-method calls.
-window.goToApp = () => { window.location.href = window.location.pathname; };
-window.viewGuestDemo = () => { window.location.href = window.location.pathname + '?guest=1'; };
-window.submitUnlock = () => {
-    const el = document.getElementById('master-password');
-    if (window.LocalAuth && el) window.LocalAuth.unlock(el.value);
-};
 
 // ========================
 // DRAG HANDLERS (Kanban)

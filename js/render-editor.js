@@ -747,9 +747,7 @@ window.selectCustomOption = function(id, val, label, onChangeCode) {
         // argument (never string-interpolated into code), so a value containing
         // quotes or commas cannot inject anything (US-403).
         const m = onChangeCode.match(/^([a-zA-Z0-9_]+)\((.*)\)$/);
-        // XSS hardening: gate against the same declarative-action allowlist as
-        // executeAction (see DISPATCH_ACTIONS in js/constants.js).
-        if (m && DISPATCH_ACTIONS.has(m[1]) && typeof window[m[1]] === 'function') {
+        if (m && typeof window[m[1]] === 'function') {
             const args = m[2].trim() === '' ? [] : m[2].split(',').map(s => {
                 s = s.trim();
                 if (s === 'this.value') return val;
@@ -758,8 +756,6 @@ window.selectCustomOption = function(id, val, label, onChangeCode) {
                 return s;
             });
             window[m[1]](...args);
-        } else if (m && !DISPATCH_ACTIONS.has(m[1])) {
-            console.warn('[dispatch] refused non-allowlisted select action:', m[1]);
         }
     }
 };

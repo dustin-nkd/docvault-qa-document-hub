@@ -1,0 +1,4430 @@
+
+window.addEventListener('error', function(e) {
+    const el = document.getElementById('debug-err');
+    if (el) { el.style.display = 'block'; el.innerText += '\n' + e.message + ' at ' + e.filename + ':' + e.lineno; }
+});
+window.addEventListener('unhandledrejection', function(e) {
+    const el = document.getElementById('debug-err');
+    if (el) { el.style.display = 'block'; el.innerText += '\nPromise Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason); }
+});
+
+// ========================
+// CONSTANTS
+// ========================
+const CAT_META = {
+    runbook: { get label() { return t('runbook'); }, icon: 'fa-book', color: 'var(--c-run)', cls: 'cat-runbook' },
+    testcases: { get label() { return t('testcases'); }, icon: 'fa-flask-vial', color: 'var(--c-tc)', cls: 'cat-testcases' },
+    knowledge: { get label() { return t('knowledge'); }, icon: 'fa-lightbulb', color: 'var(--c-kn)', cls: 'cat-knowledge' },
+    task: { get label() { return t('task'); }, icon: 'fa-list-check', color: 'var(--c-task)', cls: 'cat-task' },
+    bug: { get label() { return t('bug'); }, icon: 'fa-bug', color: 'var(--c-bug)', cls: 'cat-bug' },
+    testplan: { get label() { return t('testplan'); }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
+    api: { label: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
+    credential: { label: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
+    environment: { label: 'Environments', icon: 'fa-network-wired', color: 'var(--c-env)', cls: 'cat-environment' },
+    testrun: { get label() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' },
+    release: { get label() { return t('release'); }, icon: 'fa-rocket', color: 'var(--c-rel)', cls: 'cat-release' }
+};
+
+const TEMPLATES = {
+    runbook: `# [Title]
+
+## Purpose
+Mô tả mục đích của runbook này.
+
+## Prerequisites
+- Điều kiện tiên quyết 1
+- Điều kiện tiên quyết 2
+
+## Steps
+
+### Bước 1: [Tên bước]
+1. Hành động cụ thể
+2. Kiểm tra kết quả
+
+### Bước 2: [Tên bước]
+1. Hành động cụ thể
+2. Kiểm tra kết quả
+
+## Expected Results
+Mô tả kết quả mong đợi.
+
+## Troubleshooting
+| Vấn đề | Nguyên nhân | Giải pháp |
+|--------|-------------|-----------|
+| Lỗi X  | Y           | Z         |
+
+## References
+- [Link tài liệu tham khảo](#)`,
+    onboarding: `# [Title]
+
+## Welcome
+Giới thiệu tổng quan cho thành viên mới.
+
+## Week 1: Setup & Orientation
+- [ ] Cài đặt môi trường development
+- [ ] Access các hệ thống cần thiết
+- [ ] Review coding standards
+- [ ] Setup testing tools
+
+## Week 2: Learning & Practice
+- [ ] Study architecture documents
+- [ ] Pair testing với team member
+- [ ] Thực hiện test cases mẫu
+- [ ] Join daily standup
+
+## Week 3: Hands-on
+- [ ] Tự viết test cases
+- [ ] Execute test suite
+- [ ] Report bugs theo standard
+- [ ] Review session với mentor
+
+## Key Contacts
+| Role | Name | Contact |
+|------|------|---------|
+| QA Lead | - | - |
+
+## Resources
+- Wiki nội bộ
+- Training materials`,
+    testcases: `# [Title]
+
+## Module Information
+- **Module**: Tên module
+- **Version**: x.x.x
+- **Last Updated**: YYYY-MM-DD
+
+## Test Environment
+- OS, Browser, Device info
+- Test data requirements
+
+## Test Cases
+
+### TC-001: [Tên test case]
+- **Priority**: High / Medium / Low
+- **Type**: Functional / Regression / Smoke
+- **Pre-condition**: Mô tả điều kiện trước test
+
+**Steps:**
+1. Bước 1
+2. Bước 2
+3. Bước 3
+
+**Expected Result:** Mô tả kết quả mong đợi
+
+**Actual Result:** (Điền khi execute)
+
+**Status:** Pass / Fail / Blocked / Not Run
+
+---
+
+### TC-002: [Tên test case]
+- **Priority**: Medium
+- **Type**: Functional
+- **Pre-condition**: ...
+
+**Steps:**
+1. ...
+2. ...
+
+**Expected Result:** ...
+
+## Notes
+Ghi chú thêm nếu có.`,
+    knowledge: `# [Title]
+
+## Context
+Mô tả bối cảnh / vấn đề cần lưu trữ kiến thức.
+
+## Problem
+Mô tả chi tiết vấn đề đã gặp phải.
+
+## Solution
+Giải pháp đã áp dụng:
+
+1. Bước giải quyết
+2. Chi tiết implement
+3. Cấu hình cần thiết
+
+\`\`\`
+// Code example nếu cần
+\`\`\`
+
+## Key Learnings
+- Điểm học được 1
+- Điểm học được 2
+
+## Best Practices
+- Practice 1
+- Practice 2
+
+## References
+- [Tài liệu tham khảo](#)
+- Related documents`,
+    task: `# [Task Title]
+
+## Description
+Mô tả chi tiết công việc cần làm.
+
+## Sub-tasks
+- [ ] Việc 1
+- [ ] Việc 2
+- [ ] Việc 3
+
+## Notes
+Ghi chú thêm trong quá trình làm việc.`,
+    bug: `# [Bug Title]
+
+## Pre-conditions
+Điều kiện trước khi test.
+
+## Steps to Reproduce
+1. Bước 1
+2. Bước 2
+3. Bước 3
+
+## Expected Behavior
+Mô tả kết quả mong đợi.
+
+## Actual Behavior
+Mô tả kết quả thực tế (lỗi).
+
+## Logs / Payload / Data
+\`\`\`json
+{
+  "example": "data"
+}
+\`\`\``,
+    testplan: `# [Release / Feature] Test Plan
+
+## Scope
+Phạm vi test trong release/feature này.
+
+## Test Strategy
+Chiến lược test (Manual, Automation, Performance...).
+
+## Environments
+Môi trường cần test.
+
+## Devices & Browsers
+- Chrome/Edge
+- iOS/Android
+
+## Timeline
+Thời gian dự kiến.`,
+    meeting: `# [Meeting Topic]
+
+## Date: YYYY-MM-DD
+## Attendees: 
+- 
+- 
+
+## Discussion Points
+- Vấn đề 1
+- Vấn đề 2
+
+## Action Items
+- [ ] Action 1 (@nguoi_thuc_hien)
+- [ ] Action 2 (@nguoi_thuc_hien)`,
+    
+    credential: `# [System / Tool Name]
+
+## Environment Info
+- **URL / Portal**: 
+- **Type**: Staging / Production / Internal
+
+## Accounts
+**Account 1 (Admin)**
+- Username: \`admin\`
+- Password: \`password123\`
+
+**Account 2 (Test User)**
+- Username: \`test_user\`
+- Password: \`password123\`
+
+## Database Access
+- Host: 
+- User: 
+- Pass: 
+
+## Notes
+- Ghi chú về cách đổi pass, VPN cần thiết...`,
+    api: `# [API Endpoint]
+
+## Method & URL
+\`GET /api/v1/resource\`
+
+## Headers
+- Authorization: Bearer {token}
+- Content-Type: application/json
+
+## Request Payload
+\`\`\`json
+{
+  "key": "value"
+}
+\`\`\`
+
+## Response (200 OK)
+\`\`\`json
+{
+  "status": "success"
+}
+\`\`\``,
+    testrun: ``
+};
+
+const SAMPLE_DOCS = [
+    {
+        id: 'doc_001', title: 'Regression Test Execution Runbook', category: 'runbook',
+        tags: ['regression', 'sprint', 'automation'], status: 'published', favorite: true,
+        content: `# Regression Test Execution Runbook\n\n## Purpose\nHướng dẫn chi tiết quy trình thực hiện regression test cho mỗi sprint cycle.\n\n## Prerequisites\n- Test environment đã được deploy bản build mới\n- Test data đã được chuẩn bị sẵn trong database\n- Automation test suite đã được update latest code\n\n## Steps\n\n### Bước 1: Verify Test Environment\n1. Kiểm tra version của build trên Staging\n2. Xác nhận database migration đã chạy thành công\n3. Verify các third-party services đang hoạt động\n\n### Bước 2: Execute Automated Regression\n1. Mở terminal và chạy lệnh:\n\`\`\`bash\nnpm run test:regression -- --env=staging\n\`\`\`\n2. Monitor test execution trên Dashboard\n3. Chờ kết quả và kiểm tra report\n\n### Bước 3: Manual Regression for Critical Paths\n1. Login flow (SSO + Local)\n2. Payment checkout flow\n3. Admin panel key functions\n\n## Expected Results\n- Tất cả automated tests PASS\n- Không có critical/high bugs mới\n- Test report được gửi đến Slack channel\n\n## Troubleshooting\n| Vấn đề | Nguyên nhân | Giải pháp |\n|--------|-------------|-----------|\n| Flaky tests | Timing issue | Re-run với retry |\n| DB connection fail | Migration lỗi | Rollback và re-deploy |`,
+        createdAt: Date.now() - 86400000 * 15, updatedAt: Date.now() - 86400000 * 2
+    },
+    {
+        id: 'doc_002', title: 'CI/CD Pipeline Troubleshooting Guide', category: 'runbook',
+        tags: ['ci-cd', 'jenkins', 'troubleshooting'], status: 'published', favorite: false,
+        content: `# CI/CD Pipeline Troubleshooting Guide\n\n## Purpose\nCung cấp các bước xử lý khi CI/CD pipeline bị lỗi.\n\n## Common Issues\n\n### Build Failed\n1. Kiểm tra Jenkins console output\n2. Xác nhận không có merge conflict\n3. Verify dependencies version\n\n### Test Stage Failed\n1. Download test report artifact\n2. Phân tích failed test cases\n3. Kiểm tra test data / environment\n\n### Deploy Failed\n1. Kiểm tra Kubernetes pod logs\n2. Verify health check endpoint\n3. Rollback nếu cần thiết\n\n## Escalation\n- Level 1: QA Engineer tự xử lý (15 phút)\n- Level 2: Escalate đến DevOps (30 phút)\n- Level 3: Escalate đến Tech Lead (1 giờ)`,
+        createdAt: Date.now() - 86400000 * 30, updatedAt: Date.now() - 86400000 * 5
+    },
+    {
+        id: 'doc_003', title: 'QA Team Onboarding Guide', category: 'onboarding',
+        tags: ['onboarding', 'team', 'setup'], status: 'published', favorite: true,
+        content: `# QA Team Onboarding Guide\n\n## Welcome to QA Team!\nChào mừng bạn gia nhập đội ngũ QA. Document này sẽ giúp bạn nhanh chóng hòa nhập.\n\n## Week 1: Setup\n- [ ] Cài đặt JDK 17, Node.js 18, Python 3.11\n- [ ] Setup IDE (IntelliJ / VS Code với extensions)\n- [ ] Cài đặt Docker Desktop\n- [ ] Request access: Jira, Confluence, GitHub, Slack, Figma\n- [ ] Clone repo test-automation và chạy được sample test\n\n## Week 2: Learning\n- [ ] Đọc Architecture Overview document\n- [ ] Study Testing Strategy document\n- [ ] Join 2 pairing sessions với senior QA\n- [ ] Thực hiện 5 test cases trên Staging\n\n## Week 3: Hands-on\n- [ ] Viết 10 test cases mới cho module được assign\n- [ ] Execute full test suite cho 1 feature\n- [ ] Log 3 bugs Jira theo format chuẩn\n- [ ] Present test result trong team meeting\n\n## Key Contacts\n| Role | Name | Slack |\n|------|------|-------|\n| QA Lead | Lan N. | @lan.n |\n| Senior QA | Minh T. | @minh.t |`,
+        createdAt: Date.now() - 86400000 * 60, updatedAt: Date.now() - 86400000 * 10
+    },
+    {
+        id: 'doc_004', title: 'Testing Tools Setup Manual', category: 'onboarding',
+        tags: ['tools', 'setup', 'installation'], status: 'draft', favorite: false,
+        content: `# Testing Tools Setup Manual\n\n## Selenium WebDriver\n\`\`\`bash\nnpm install selenium-webdriver\nnpm install @wdio/cli --save-dev\n\`\`\`\n\n## Playwright\n\`\`\`bash\nnpm init playwright@latest\n\`\`\`\n\n## Postman\n1. Download từ postman.com\n2. Import collection từ shared workspace\n3. Setup environment variables\n\n## JMeter\n1. Download từ jmeter.apache.org\n2. Cài đặt JDK 11+\n3. Configure JVM args cho performance testing`,
+        createdAt: Date.now() - 86400000 * 20, updatedAt: Date.now() - 86400000 * 8
+    },
+    {
+        id: 'doc_005', title: 'Login Module Test Cases', category: 'testcases',
+        tags: ['login', 'auth', 'smoke'], status: 'published', favorite: false,
+        content: `# Login Module Test Cases\n\n## Module: Authentication\n**Version**: 2.4.0 | **Updated**: 2024-01-15\n\n### TC-L001: Login with valid credentials\n- **Priority**: High | **Type**: Smoke\n- **Pre-condition**: User account đã tồn tại và active\n\n**Steps:**\n1. Navigate đến /login\n2. Nhập valid email vào trường Email\n3. Nhập valid password vào trường Password\n4. Click button "Sign In"\n\n**Expected Result:** User đăng nhập thành công, redirect đến dashboard, hiển thị user avatar.\n\n---\n\n### TC-L002: Login with invalid password\n- **Priority**: High | **Type**: Functional\n- **Pre-condition**: User account đã tồn tại\n\n**Steps:**\n1. Navigate đến /login\n2. Nhập valid email\n3. Nhập sai password 3 lần\n\n**Expected Result:** Hiển thị lỗi "Invalid credentials", sau 3 lần hiển thị CAPTCHA.\n\n---\n\n### TC-L003: Login with empty fields\n- **Priority**: Medium | **Type**: Validation\n\n**Steps:**\n1. Navigate đến /login\n2. Để trống cả 2 trường\n3. Click "Sign In"\n\n**Expected Result:** Hiển thị validation error cho cả 2 trường.`,
+        createdAt: Date.now() - 86400000 * 45, updatedAt: Date.now() - 86400000 * 3
+    },
+    {
+        id: 'doc_006', title: 'Payment Gateway Integration Tests', category: 'testcases',
+        tags: ['payment', 'integration', 'critical'], status: 'draft', favorite: true,
+        content: `# Payment Gateway Integration Tests\n\n## Module: Payment\n**Priority**: Critical\n\n### TC-P001: Successful card payment\n1. Add item to cart\n2. Proceed to checkout\n3. Select Credit Card payment\n4. Enter valid card details (test card: 4242 4242 4242 4242)\n5. Click "Pay Now"\n\n**Expected:** Payment success, order status = Confirmed, receipt email sent.\n\n### TC-P002: Payment decline handling\n1. Same flow với declined card (4000 0000 0000 0002)\n\n**Expected:** Hiển thị "Payment declined", order status = Pending, user có thể retry.\n\n### TC-P003: Payment timeout\n1. Simulate network timeout trong payment processing\n\n**Expected:** Hiển thị timeout message, order không bị duplicate khi retry.`,
+        createdAt: Date.now() - 86400000 * 12, updatedAt: Date.now() - 86400000 * 1
+    },
+    {
+        id: 'doc_007', title: 'API Testing Best Practices', category: 'knowledge',
+        tags: ['api', 'best-practices', 'postman'], status: 'published', favorite: false,
+        content: `# API Testing Best Practices\n\n## Context\nTổng hợp các best practices khi thực hiện API testing trong project.\n\n## Core Principles\n\n### 1. Test Independence\nMỗi test case phải độc lập, không phụ thuộc vào kết quả của test khác.\n\n### 2. Use Environment Variables\n\`\`\`json\n{\n  "base_url": "{{\$env.BASE_URL}}",\n  "auth_token": "{{\$env.AUTH_TOKEN}}"\n}\n\`\`\`\n\n### 3. Verify Status Code, Headers, and Body\n\`\`\`javascript\npm.test("Status is 200", () => pm.response.to.have.status(200));\npm.test("Content-Type is JSON", () => {\n  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');\n});\npm.test("Response has id", () => {\n  pm.expect(pm.response.json()).to.have.property('id');\n});\n\`\`\`\n\n### 4. Negative Testing\n- Gửi invalid data types\n- Test missing required fields\n- Verify proper error messages\n- Check rate limiting behavior\n\n### 5. Use Assertions Effectively\n- Kiểm tra exact match cho status codes\n- Use contains/matches cho dynamic data\n- Validate schema cho response body`,
+        createdAt: Date.now() - 86400000 * 90, updatedAt: Date.now() - 86400000 * 7
+    },
+    {
+        id: 'doc_008', title: 'Performance Testing Metrics', category: 'knowledge',
+        tags: ['performance', 'metrics', 'jmeter'], status: 'published', favorite: false,
+        content: `# Performance Testing Metrics & Thresholds\n\n## Key Metrics\n\n| Metric | Threshold | Tool |\n|--------|-----------|------|\n| Response Time (p95) | < 2000ms | JMeter |\n| Throughput | > 100 req/s | JMeter |\n| Error Rate | < 1% | JMeter |\n| CPU Usage | < 80% | Grafana |\n| Memory Usage | < 85% | Grafana |\n| DB Connection Pool | < 80% max | APM |\n\n## Test Scenarios\n\n### Baseline Test\n- 10 concurrent users, 5 minutes\n- Mục đích: lấy baseline metrics\n\n### Load Test\n- 100 concurrent users, ramp-up 10 phút, steady 20 phút\n- Mục đích: verify system under normal load\n\n### Stress Test\n- Ramp lên 500 users cho đến khi hệ thống fail\n- Mục đích: tìm điểm break\n\n## Reporting\nTemplate report gồm: Executive Summary, Metrics Dashboard, Bottleneck Analysis, Recommendations.`,
+        createdAt: Date.now() - 86400000 * 50, updatedAt: Date.now() - 86400000 * 15
+    },
+    {
+        id: 'doc_009', title: 'Bug Report Template & Standards', category: 'knowledge',
+        tags: ['bug-report', 'jira', 'standards'], status: 'published', favorite: true,
+        content: `# Bug Report Template & Standards\n\n## Bug Report Format (Jira)\n\n### Title Format\n\`[Module] Brief description of the bug\`\n\nExample: \`[Login] Unable to login with special characters in password\`\n\n### Description Template\n\`\`\`\n**Environment:** Staging / Production\n**Browser:** Chrome 120 / Safari 17\n**Device:** Desktop / Mobile (iOS 17 / Android 14)\n\n**Steps to Reproduce:**\n1. Go to [URL]\n2. Click on [element]\n3. Enter [data]\n4. Observe [behavior]\n\n**Expected Result:**\nMô tả kết quả mong đợi.\n\n**Actual Result:**\nMô tả kết quả thực tế.\n\n**Attachments:**\n- Screenshot / Video\n- Console logs\n- Network har file (nếu cần)\n\`\`\`\n\n## Severity & Priority\n| Severity | Definition | Example |\n|----------|------------|--------|\n| Critical | System crash, data loss | Payment double-charge |\n| Major | Feature broken, no workaround | Cannot submit form |\n| Minor | Feature partially broken | UI misalignment |\n| Trivial | Cosmetic issue | Typos |`,
+        createdAt: Date.now() - 86400000 * 70, updatedAt: Date.now() - 86400000 * 20
+    },
+    {
+        id: 'doc_010', title: 'Database Migration Verification', category: 'runbook',
+        tags: ['database', 'migration', 'verify'], status: 'draft', favorite: false,
+        content: `# Database Migration Verification Runbook\n\n## Purpose\nĐảm bảo mỗi database migration được verify trước và sau khi apply trên Staging/Production.\n\n## Pre-Migration Checks\n1. Backup database hiện tại\n2. Review migration SQL script\n3. Estimate execution time trên staging\n4. Verify rollback script sẵn sàng\n\n## Post-Migration Verification\n1. Kiểm tra table structure: \`\\d table_name\`\n2. Verify data integrity: compare row counts\n3. Check indexes đã được tạo\n4. Verify foreign key constraints\n5. Run smoke tests trên affected modules\n\n## Rollback Procedure\n1. Stop application\n2. Apply rollback migration\n3. Verify data integrity\n4. Restart application\n5. Run smoke tests`,
+        createdAt: Date.now() - 86400000 * 5, updatedAt: Date.now() - 86400000 * 1
+    }
+];
+
+// ========================
+// STATE
+// ========================
+// Tracks base64 → CDN URL swaps pending until the next Save
+const pendingImageReplacements = new Map();
+
+let state = {
+    view: 'dashboard', // dashboard | documents | favorites | editor | viewer
+    category: 'all',
+    search: '',
+    statusFilter: 'all',
+    sortBy: 'updated',
+    editingDoc: null, // null = new, object = editing
+    editorTags: [],
+    editorMode: 'edit', // edit | preview
+    sidebarOpen: false,
+    history: [],
+    sharedView: false,  // true when viewing a public share link (read-only)
+    batchMode: false,
+    selectedIds: new Set(),
+    lastSelectedId: null
+};
+
+let documents = [];
+
+// ========================
+// DOCUMENT HISTORY
+// ========================
+const DocHistory = {
+    MAX: 10,
+    _key: id => `docvault_history_${id}`,
+    save(doc) {
+        if (!doc?.id || doc.category === 'credential') return;
+        let snaps;
+        try { snaps = JSON.parse(localStorage.getItem(this._key(doc.id)) || '[]'); } catch { snaps = []; }
+        if (snaps.length && snaps[0].content === (doc.content || '') && snaps[0].title === doc.title) return;
+        snaps.unshift({ ts: Date.now(), title: doc.title, content: doc.content || '', tags: doc.tags || [], status: doc.status, subfolder: doc.subfolder || '' });
+        localStorage.setItem(this._key(doc.id), JSON.stringify(snaps.slice(0, this.MAX)));
+    },
+    get(id) {
+        try { return JSON.parse(localStorage.getItem(this._key(id)) || '[]'); } catch { return []; }
+    }
+};
+
+// ========================
+// PERSISTENCE
+// ========================
+async function persist() {
+    await DocStorage.save(documents);
+}
+
+async function hydrate() {
+    // Clean up legacy keys from old Firebase/E2EE architecture
+    localStorage.removeItem('firebase_config');
+    localStorage.removeItem('e2ee_api_key');
+    localStorage.removeItem('e2ee_bin_id');
+    sessionStorage.removeItem('e2ee_master_password');
+
+    const settings = await DocStorage.getSettings();
+    const saved = await DocStorage.getAll();
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+        documents = saved;
+    } else {
+        documents = [...SAMPLE_DOCS];
+    }
+
+    let migrated = false;
+    documents.forEach(d => {
+        if (d.category === 'onboarding') {
+            d.category = 'knowledge';
+            d.subfolder = d.subfolder || 'Onboarding';
+            migrated = true;
+        } else if (d.category === 'meeting') {
+            d.category = 'knowledge';
+            d.subfolder = d.subfolder || 'Meeting Notes';
+            migrated = true;
+        }
+    });
+    if (migrated) await persist();
+}
+
+// ========================
+// UTILS
+// ========================
+function uid() { return 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
+function fmtDate(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return t('justNow');
+    if (diff < 3600000) return t('minsAgo', {m: Math.floor(diff/60000)});
+    if (diff < 86400000) return t('hoursAgo', {h: Math.floor(diff/3600000)});
+    if (diff < 604800000) return t('daysAgo', {d: Math.floor(diff/86400000)});
+    return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+function excerpt(text, len = 120) {
+    if (!text) return '';
+    const clean = text
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')                          // strip markdown images
+        .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=\r\n]+/g, '')   // strip inline base64
+        .replace(/https?:\/\/\S+/g, '')                                   // strip bare URLs
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')                          // links → label text
+        .replace(/[#*`>|_~\\]/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
+    return clean.length > len ? clean.substring(0, len) + '...' : clean;
+}
+function escHtml(s) {
+    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+// ========================
+// MARKDOWN RENDERER
+// ========================
+function renderMd(text) {
+    if (!text) return `<p style="color:var(--tx-d)">${t('noContent')}</p>`;
+    let h = text;
+    
+    // Extract code blocks and inline code
+    const codeBlocks = [];
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+        const rawCodeB64 = btoa(unescape(encodeURIComponent(code.trim())));
+        codeBlocks.push(`
+<pre><button class="code-copy-btn" data-onclick="copyCodeBlock(this, '${rawCodeB64}')" title="Copy"><i class="fa-regular fa-copy"></i></button><code>${escHtml(code.trim())}</code></pre>`);
+        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+    });
+    
+    const inlineCodes = [];
+    h = h.replace(/`([^`]+)`/g, (_, code) => {
+        inlineCodes.push(`<code>${escHtml(code)}</code>`);
+        return `__INLINE_CODE_${inlineCodes.length - 1}__`;
+    });
+
+    // Headers
+    h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    // Bold + Italic
+    h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+    // Strikethrough
+    h = h.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    // Blockquote
+    h = h.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+    // HR
+    h = h.replace(/^---+$/gm, '<hr>');
+    // Checkbox
+    h = h.replace(/^- \[x\] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" class="form-checkbox" checked disabled> <span class="align-middle">$1</span></li>');
+    h = h.replace(/^- \[ \] (.+)$/gm, '<li class="chk-li" style="list-style:none;"><input type="checkbox" class="form-checkbox" disabled> <span class="align-middle">$1</span></li>');
+    // Unordered list
+    h = h.replace(/^- (.+)$/gm, '<li class="ul-li">$1</li>');
+    // Ordered list
+    h = h.replace(/^\d+\. (.+)$/gm, '<li class="ol-li">$1</li>');
+    
+    // Group lists
+    h = h.replace(/((?:<li class="chk-li".*?>.*<\/li>\n?)+)/g, '<ul style="list-style:none;padding-left:4px;">$1</ul>');
+    h = h.replace(/((?:<li class="ul-li".*?>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+    h = h.replace(/((?:<li class="ol-li".*?>.*<\/li>\n?)+)/g, '<ol style="list-style-type:decimal;padding-left:24px;">$1</ol>');
+    // Simple table support
+    h = h.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm, (_, headerRow, sep, bodyRows) => {
+        const headers = headerRow.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+        const rows = bodyRows.trim().split('\n').map(row => {
+            const cells = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+            return `<tr>${cells}</tr>`;
+        }).join('');
+        return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+    });
+    // Images (before links — ! distinguishes them)
+    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" style="max-width:100%;border-radius:6px;margin:6px 0;display:block;">');
+    // Links
+    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    
+    // Paragraphs - wrap loose lines
+    h = h.replace(/^(?!<[houblptd]|<\/|<li|<input|<tr|<table|__CODE_BLOCK_|__INLINE_CODE_)([^\n]+)$/gm, '<p>$1</p>');
+    h = h.replace(/<p><\/p>/g, '');
+
+    // Restore inline codes and code blocks
+    h = h.replace(/__INLINE_CODE_(\d+)__/g, (_, idx) => inlineCodes[idx]);
+    h = h.replace(/__CODE_BLOCK_(\d+)__/g, (_, idx) => codeBlocks[idx]);
+
+    return h;
+}
+
+// ========================
+// TOAST
+// ========================
+function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    const colors = { success: 'border-l-4 border-emerald-500', error: 'border-l-4 border-rose-500', info: 'border-l-4 border-cyan-500' };
+    const icons = { success: 'fa-check-circle text-emerald-400', error: 'fa-exclamation-circle text-rose-400', info: 'fa-info-circle text-cyan-400' };
+    el.className = `toast flex items-center gap-3 px-4 py-3 rounded-lg ${colors[type] || colors.info}`;
+    el.style.cssText = 'background:var(--card);pointer-events:auto;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.4);';
+    el.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span class="text-sm" style="color:var(--tx);">${msg}</span>`;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ========================
+// MODAL
+// ========================
+function showModal(html) {
+    const m = document.getElementById('modal');
+    m.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
+    m.innerHTML = `<div class="fade-up rounded-xl p-6 w-full max-w-lg mx-4" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto;">${html}</div>`;
+    m.onclick = (e) => { if (e.target === m) closeModal(); };
+}
+function closeModal() { document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden'; }
+
+function showDeleteModal(id, isPermanent = false) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    
+    const actionStr = isPermanent ? `hardDeleteDoc('${id}')` : `confirmDelete('${id}')`;
+    const titleStr = isPermanent ? (t('delTitleForever') || 'Delete Permanently') : t('delTitle');
+    const warningStr = isPermanent ? (t('delConfirmForever') || 'Are you sure you want to permanently delete this? It cannot be recovered.') : t('delConfirm');
+    const btnStr = isPermanent ? (t('delConfirmBtnForever') || 'Permanently Delete') : t('delConfirmBtn');
+
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.1);">
+                <i class="fa-solid fa-trash text-rose-400"></i>
+            </div>
+            <h3 class="font-heading font-semibold text-lg mb-2">${titleStr}</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">${warningStr} "<strong style="color:var(--tx);">${escHtml(doc.title)}</strong>"?</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
+                <button class="btn-d" data-onclick="${actionStr}">${btnStr}</button>
+            </div>
+        </div>
+    `);
+}
+
+async function confirmDelete(id) {
+    const doc = documents.find(d => d.id === id);
+    if (doc) {
+        doc.status = 'deleted';
+        doc.deletedAt = Date.now();
+        doc.updatedAt = Date.now();
+    }
+    await persist();
+    closeModal();
+    toast(t('docDeleted'), 'success');
+    if (state.view === 'viewer' || state.view === 'editor') navigate('documents', state.category);
+    else render();
+}
+
+async function restoreDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (doc) {
+        doc.status = 'draft';
+        delete doc.deletedAt;
+        doc.updatedAt = Date.now();
+    }
+    await persist();
+    toast(t('docRestored') || "Document Restored", 'success');
+    render();
+}
+
+async function hardDeleteDoc(id) {
+    await DocStorage.addDeletedIds([id]);
+    documents = documents.filter(d => d.id !== id);
+    await persist();
+    closeModal();
+    toast(t('docDeletedForever') || "Permanently Deleted", 'success');
+    render();
+}
+
+function showEmptyTrashModal() {
+    showModal(`
+        <div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.1);">
+                <i class="fa-solid fa-dumpster-fire text-rose-400"></i>
+            </div>
+            <h3 class="font-heading font-semibold text-lg mb-2">${t('emptyTrashTitle') || 'Empty Trash'}</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">${t('emptyTrashConfirm') || 'Are you sure you want to permanently delete all items in the Trash? This action cannot be undone.'}</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
+                <button class="btn-d" data-onclick="emptyTrash()">${t('emptyTrashBtn') || 'Empty Trash'}</button>
+            </div>
+        </div>
+    `);
+}
+
+async function emptyTrash() {
+    const trashedIds = documents.filter(d => d.status === 'deleted').map(d => d.id);
+    await DocStorage.addDeletedIds(trashedIds);
+    documents = documents.filter(d => d.status !== 'deleted');
+    await persist();
+    closeModal();
+    toast(t('trashEmptied') || "Trash Emptied", 'success');
+    render();
+}
+
+// ========================
+// TEMPLATE MODAL
+// ========================
+function showTemplateModal() {
+    const cats = Object.entries(CAT_META);
+    showModal(`
+        <div>
+            <h3 class="font-heading font-semibold text-lg mb-1">${t('newDoc')}</h3>
+            <p class="text-sm mb-5" style="color:var(--tx-m);">${t('chooseTemplate')}</p>
+            <button class="tpl-card w-full mb-4 flex items-center gap-4 text-left" data-onclick="createDoc(null)">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(16,185,129,0.1);">
+                    <i class="fa-solid fa-file-circle-plus" style="color:var(--acc);"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold" style="color:var(--tx);">${t('blankPage')}</p>
+                    <p class="text-xs" style="color:var(--tx-d);">${t('startFromScratch')}</p>
+                </div>
+            </button>
+            <div class="grid grid-cols-2 gap-3">
+                ${cats.map(([key, meta]) => `
+                    <button class="tpl-card text-left" data-onclick="createDoc('${key}')">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style="background:${meta.color}15;">
+                            <i class="fa-solid ${meta.icon} text-xs" style="color:${meta.color};"></i>
+                        </div>
+                        <p class="text-sm font-semibold" style="color:var(--tx);">${meta.label}</p>
+                        <p class="text-[11px] mt-0.5" style="color:var(--tx-d);">${t('template')} ${meta.label}</p>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `);
+}
+
+// ========================
+// SIDEBAR
+// ========================
+
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('mob-overlay');
+    state.sidebarOpen = !state.sidebarOpen;
+    sb.classList.toggle('open', state.sidebarOpen);
+    ov.classList.toggle('hidden', !state.sidebarOpen);
+}
+
+function updateSidebar() {
+
+    const lblDash = document.getElementById('lbl-dashboard'); if (lblDash) lblDash.textContent = t('dashboard');
+    const lblDocs = document.getElementById('lbl-documents'); if (lblDocs) lblDocs.textContent = t('documents');
+    const lblFavs = document.getElementById('lbl-favorites'); if (lblFavs) lblFavs.textContent = t('favorites');
+    const lblTrash = document.getElementById('lbl-trash'); if (lblTrash) lblTrash.textContent = t('trash') || 'Trash';
+    const lblCats = document.getElementById('lbl-categories'); if (lblCats) lblCats.textContent = t('categories') || 'Categories';
+    
+    const activeDocs = documents.filter(d => d.status !== 'deleted');
+    document.getElementById('cnt-all').textContent = activeDocs.length;
+    document.getElementById('cnt-fav').textContent = activeDocs.filter(d => d.favorite).length;
+
+    // Render categories dynamically
+    const catNav = document.getElementById('cat-nav');
+    if (catNav) {
+        let catHtml = '';
+        Object.entries(CAT_META).forEach(([k, m]) => {
+            const catDocs = activeDocs.filter(d => d.category === k);
+            const isActiveCat = state.view === 'documents' && state.category === k && !state.subfolder;
+            const cls = isActiveCat ? 'nav-item active flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm' : 'nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm';
+            
+            catHtml += `
+                <div class="${cls}" style="color:var(--tx-m); cursor:pointer;" data-onclick="navigate('documents','${k}')">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background:${m.color};"></span>
+                    <span class="truncate">${m.label}</span>
+                    <span class="count ml-auto">${catDocs.length}</span>
+                </div>
+            `;
+            
+            // Subfolders
+            const subfolders = [...new Set(catDocs.filter(d => d.subfolder).map(d => d.subfolder))];
+            if (subfolders.length > 0) {
+                subfolders.sort().forEach(sf => {
+                    const sfCount = catDocs.filter(d => d.subfolder === sf).length;
+                    const isActiveSf = state.view === 'documents' && state.category === k && state.subfolder === sf;
+                    const sfCls = isActiveSf ? 'nav-item active flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2' : 'nav-item flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2';
+                    
+                    catHtml += `
+                        <div class="${sfCls}" style="color:var(--tx-m); cursor:pointer; border-color:${isActiveSf ? m.color : 'transparent'}; transition:all 0.2s;" data-onclick="navigate('documents','${k}','${sf.replace(/'/g, "\\'")}')">
+                            <i class="fa-regular fa-folder w-3 text-center opacity-50"></i>
+                            <span class="truncate">${escHtml(sf)}</span>
+                            <span class="count ml-auto" style="font-size:10px;">${sfCount}</span>
+                        </div>
+                    `;
+                });
+            }
+        });
+        
+        if (typeof morphdom !== 'undefined') {
+            morphdom(catNav, `<nav class="px-3 flex flex-col gap-0.5" id="cat-nav">${catHtml}</nav>`);
+        } else {
+            catNav.innerHTML = catHtml;
+        }
+    }
+
+    const trashCount = documents.filter(d => d.status === 'deleted').length;
+    const cntTrash = document.getElementById('cnt-trash');
+    if (cntTrash) cntTrash.textContent = trashCount;
+    
+    document.getElementById('storage-info').textContent = activeDocs.length + ' documents saved locally';
+
+    // Active state
+    document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.remove('active');
+        const v = n.dataset.view;
+        const c = n.dataset.cat;
+        if (v === state.view && (v === 'dashboard' || v === 'favorites' || c === state.category)) {
+            n.classList.add('active');
+        }
+    });
+}
+
+// ========================
+// HEADER
+// ========================
+function updateHeader() {
+    const h = document.getElementById('app-header');
+    let title = '', actions = '';
+
+    if (state.view === 'dashboard') {
+        title = `<h2 class="font-heading font-bold text-lg">${t('dashboard')}</h2>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
+    } else if (state.view === 'documents' || state.view === 'favorites') {
+        const catLabel = state.category === 'all' ? t('allDocuments') : (state.view === 'favorites' ? t('favorites') : CAT_META[state.category]?.label + 's');
+        title = `<h2 class="font-heading font-bold text-lg">${catLabel}</h2>`;
+        actions = `<button class="btn-p flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
+    } else if (state.view === 'editor') {
+        title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
+        actions = `
+            <button class="btn-s" data-onclick="cancelEdit()"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
+            <button class="btn-p" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>
+        `;
+    } else if (state.view === 'viewer') {
+        const doc = documents.find(d => d.id === state.editingDoc?.id);
+        title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
+        if (state.sharedView) {
+            actions = state.history?.length > 0
+                ? `<button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>`
+                : `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open DocVault</button>`;
+        } else {
+            actions = `
+                <button class="btn-s" data-onclick="shareDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-share-nodes mr-1.5"></i>${t('share') || 'Share'}</button>
+                <button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s" data-onclick="showHistoryPanel('${doc.id}')"><i class="fa-regular fa-clock mr-1.5"></i>History</button>` : ''}
+                <button class="btn-p" data-onclick="editDoc('${doc ? doc.id : ''}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
+            `;
+        }
+    }
+
+    const isSearchView = state.view === 'documents' || state.view === 'favorites';
+    h.innerHTML = `
+        <button class="md:hidden mr-1 p-2 rounded-lg" style="color:var(--tx-m);" data-onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+        ${title}
+        <div class="flex-1"></div>
+        ${isSearchView ? `
+            <div class="search-w hidden sm:block" style="width:280px;">
+                <i class="fa-solid fa-search"></i>
+                <input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();">
+            </div>
+        ` : ''}
+        <div class="flex items-center gap-2">
+        <button class="btn-s flex items-center justify-center h-[38px] gap-1.5" data-onclick="openSearch()" title="Global Search (Ctrl+K)">
+            <i class="fa-solid fa-magnifying-glass"></i> <span class="hidden sm:inline">Ctrl+K</span>
+        </button>
+        ${actions}
+</div>
+    `;
+}
+
+// ========================
+// NAVIGATION
+// ========================
+window.pushHistory = function() {
+    if (!state.history) state.history = [];
+    const last = state.history[state.history.length - 1];
+    const current = {
+        view: state.view,
+        category: state.category,
+        subfolder: state.subfolder || '',
+        docId: state.editingDoc?.id || null
+    };
+    
+    // Only push if something actually changed
+    if (!last || last.view !== current.view || last.category !== current.category || last.subfolder !== current.subfolder || last.docId !== current.docId) {
+        state.history.push(current);
+        if (state.history.length > 20) state.history.shift(); // Keep max 20 history items
+    }
+};
+
+window.navigateBack = function() {
+    if (state.history && state.history.length > 0) {
+        const prev = state.history.pop();
+        state.view = prev.view;
+        state.category = prev.category;
+        state.subfolder = prev.subfolder;
+        state.search = '';
+        state.statusFilter = 'all';
+        
+        if (prev.docId) {
+            const doc = documents.find(d => d.id === prev.docId);
+            if (doc) {
+                state.editingDoc = { ...doc };
+                state.editorTags = [...doc.tags];
+            } else {
+                state.editingDoc = null;
+            }
+        } else {
+            state.editingDoc = null;
+        }
+        // Sync URL to restored view
+        if (state.view === 'viewer' && state.editingDoc?.id) {
+            history.replaceState({}, '', '?view=' + state.editingDoc.id);
+        } else {
+            history.replaceState({}, '', location.pathname);
+        }
+        render();
+    } else {
+        // Fallback
+        if (state.view === 'editor' || state.view === 'viewer') {
+            navigate('documents', state.category);
+        } else {
+            navigate('dashboard');
+        }
+    }
+};
+
+window.navigate = function(view, cat, subfolder = '') {
+    if (state.view === 'editor') syncEditorState();
+    pushHistory();
+    state.view = view;
+    if (cat !== undefined) state.category = cat;
+    if (view === 'favorites' || view === 'trash' || view === 'search') state.category = 'all';
+    state.subfolder = subfolder;
+    state.search = '';
+    state.statusFilter = 'all';
+    state.editingDoc = null;
+    state.editorTags = [];
+    state.editorMode = 'edit';
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    if (state.sidebarOpen) toggleSidebar();
+    history.replaceState({}, '', location.pathname);
+    render();
+}
+
+// ========================
+// GET FILTERED DOCS
+// ========================
+function getFiltered() {
+    let docs = [...documents];
+    if (state.view === 'trash') {
+        docs = docs.filter(d => d.status === 'deleted');
+    } else {
+        docs = docs.filter(d => d.status !== 'deleted');
+        if (state.view === 'favorites') docs = docs.filter(d => d.favorite);
+        else if (state.category !== 'all') {
+            docs = docs.filter(d => d.category === state.category);
+            if (state.subfolder) docs = docs.filter(d => d.subfolder === state.subfolder);
+        }
+    }
+    if (state.search) {
+        const q = state.search.toLowerCase();
+        docs = docs.filter(d => d.title.toLowerCase().includes(q) || (d.content && d.content.toLowerCase().includes(q)) || d.tags.some(t => t.toLowerCase().includes(q)));
+    }
+    if (state.statusFilter !== 'all') docs = docs.filter(d => d.status === state.statusFilter);
+    docs.sort((a, b) => {
+        if (state.sortBy === 'updated') return b.updatedAt - a.updatedAt;
+        if (state.sortBy === 'created') return b.createdAt - a.createdAt;
+        if (state.sortBy === 'title') return a.title.localeCompare(b.title);
+        return 0;
+    });
+    return docs;
+}
+
+// ========================
+// RENDER CONTENT
+// ========================
+window.syncEditorState = function() {
+    if (state.view !== 'editor') return;
+    
+    // Do not sync if the editor DOM is not actually loaded yet (prevents wiping state on initial render)
+    const titleEl = document.getElementById('ed-title');
+    if (!titleEl) return;
+    
+    const title = titleEl.value || '';
+    const cat = document.getElementById('ed-cat')?.value || 'runbook';
+    const subfolder = document.getElementById('ed-subfolder')?.value || '';
+    const status = document.getElementById('ed-status')?.value || 'draft';
+    const content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    
+    let bugData = null;
+    let tcData = null;
+    let apiData = null;
+    if (cat === 'bug') {
+        bugData = {
+            env: document.getElementById('ed-bug-env')?.value || '',
+            browser: document.getElementById('ed-bug-browser')?.value || '',
+            severity: document.getElementById('ed-bug-severity')?.value || 'Minor',
+            precond: document.getElementById('ed-bug-precond')?.value || '',
+            steps: Array.from(document.querySelectorAll('.bug-step-input')).map(inp => inp.value),
+            expected: document.getElementById('ed-bug-expected')?.value || '',
+            actual: document.getElementById('ed-bug-actual')?.value || ''
+        };
+    } else if (cat === 'testcases') {
+        tcData = {
+            module: document.getElementById('ed-tc-module')?.value || '',
+            precond: document.getElementById('ed-tc-precond')?.value || '',
+            data: document.getElementById('ed-tc-data')?.value || '',
+            steps: Array.from(document.querySelectorAll('.tc-step-row')).map(row => ({
+                action: row.querySelector('.tc-step-action')?.value || '',
+                expected: row.querySelector('.tc-step-expected')?.value || ''
+            }))
+        };
+    } else if (cat === 'api') {
+        apiData = {
+            method: document.getElementById('ed-api-method')?.value || 'GET',
+            endpoint: document.getElementById('ed-api-endpoint')?.value || '',
+            headers: Array.from(document.querySelectorAll('.api-header-row')).map(row => ({
+                key: row.querySelector('.api-key')?.value || '',
+                value: row.querySelector('.api-value')?.value || '',
+                req: row.querySelector('.api-req')?.checked || false
+            })),
+            params: Array.from(document.querySelectorAll('.api-param-row')).map(row => ({
+                key: row.querySelector('.api-key')?.value || '',
+                value: row.querySelector('.api-value')?.value || '',
+                req: row.querySelector('.api-req')?.checked || false
+            })),
+            body: document.getElementById('ed-api-body')?.value || '',
+            response: document.getElementById('ed-api-response')?.value || ''
+        };
+    }
+
+    if (state.editingDoc) {
+        state.editingDoc.title = title;
+        state.editingDoc.subfolder = subfolder;
+        state.editingDoc.category = cat;
+        state.editingDoc.status = status;
+        if (window.tuiEditor || document.getElementById('ed-content-hidden')) state.editingDoc.content = content;
+        if (cat === 'bug') state.editingDoc.bugData = bugData;
+        if (cat === 'testcases') state.editingDoc.tcData = tcData;
+        if (cat === 'api') state.editingDoc.apiData = apiData;
+    } else {
+        state._newTitle = title;
+        state._newSubfolder = subfolder;
+        state._newCat = cat;
+        state._newStatus = status;
+        if (window.tuiEditor || document.getElementById('ed-content-hidden')) state._newContent = content;
+        state._newBugData = bugData;
+        state._newTcData = tcData;
+        state._newApiData = apiData;
+    }
+}
+
+function updateDOM(el, htmlStr) {
+    if (typeof morphdom !== 'undefined') {
+        morphdom(el, `<div id="${el.id}" class="${el.className}">${htmlStr}</div>`, {
+            onBeforeElUpdated: function(fromEl, toEl) {
+                // Preserve live ToastUI containers — morphdom must not touch them
+                if (fromEl.id === 'editor-container' || fromEl.id === 'viewer-container') return false;
+                return true;
+            }
+        });
+    } else {
+        el.innerHTML = htmlStr;
+    }
+}
+
+
+
+function renderContent() {
+
+    if (state.view === 'editor') syncEditorState();
+    
+    // Reset viewer cache and clean up instances when leaving the viewer
+    if (state.view !== 'viewer') {
+        if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
+        window.currentViewerDocId = null;
+    }
+    
+    const c = document.getElementById('content');
+    if (state.view === 'dashboard') updateDOM(c, renderDashboard());
+    else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') updateDOM(c, renderDocList());
+    else if (state.view === 'editor') {
+        // Destroy viewer before switching to editor
+        if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
+        c.innerHTML = renderEditor();
+        window.tuiEditor = null;
+        const container = document.getElementById('editor-container');
+        if (container) {
+            const hiddenTa = document.getElementById('ed-content-hidden');
+            const initialVal = hiddenTa ? hiddenTa.value : '';
+            window.tuiEditor = new toastui.Editor({
+                el: container,
+                height: 'calc(100vh - 300px)',
+                initialEditType: 'markdown',
+                previewStyle: 'vertical',
+                initialValue: initialVal,
+                theme: 'dark',
+                hooks: {
+                    addImageBlobHook: uploadImageToCloud
+                }
+            });
+        }
+    }
+    else if (state.view === 'viewer') {
+        const isSameDoc = window.currentViewerDocId === state.editingDoc?.id;
+        if (isSameDoc) {
+            updateDOM(c, renderViewer());
+        } else {
+            if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
+            if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
+            c.innerHTML = renderViewer();
+            window.currentViewerDocId = state.editingDoc?.id;
+            // Defer ToastUI viewer factory until after the browser has
+            // fully processed any pending editor destroy() cleanup
+            // (mutation observers, event listeners).  A bare setTimeout(0)
+            // was not enough when transitioning editor → viewer on save,
+            // causing a blank content area that only resolved on F5.
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    const container = document.getElementById('viewer-container');
+                    if (!container) return;
+                    const hiddenTa = document.getElementById('vw-content-hidden');
+                    window.tuiViewer = toastui.Editor.factory({
+                        el: container,
+                        viewer: true,
+                        initialValue: hiddenTa ? hiddenTa.value : '',
+                        theme: 'dark'
+                    });
+                    // Inject copy buttons into ToastUI-rendered code blocks
+                    setTimeout(() => {
+                        container.querySelectorAll('pre code').forEach(codeEl => {
+                            const pre = codeEl.parentElement;
+                            if (pre.querySelector('.code-copy-btn')) return;
+                            const b64 = btoa(unescape(encodeURIComponent(codeEl.textContent)));
+                            const btn = document.createElement('button');
+                            btn.className = 'code-copy-btn';
+                            btn.title = 'Copy';
+                            btn.setAttribute('data-onclick', `copyCodeBlock(this, '${b64}')`);
+                            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                            pre.style.position = 'relative';
+                            pre.insertBefore(btn, pre.firstChild);
+                        });
+                    }, 100);
+                }, 50);
+            });
+        }
+    }
+}
+
+function render() {
+    updateSidebar();
+    updateHeader();
+    renderContent();
+}
+
+// ========================
+// DASHBOARD
+// ========================
+function renderDashboard() {
+    const activeDocs = documents.filter(d => d.status !== 'deleted');
+    const total = activeDocs.length;
+    const favs = activeDocs.filter(d => d.favorite).length;
+    const recent = [...activeDocs].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
+    const catCounts = {};
+    Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
+
+    return `<div class="fade-up max-w-6xl mx-auto">
+        <!-- Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div class="stat-card sc-total p-4">
+                <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">Total</p>
+                <p class="font-heading font-bold text-2xl" style="color:var(--acc);">${total}</p>
+                <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
+            </div>
+            ${Object.entries(CAT_META).map(([k, m]) => `
+                <div class="stat-card sc-${{runbook:'run',testcases:'tc',knowledge:'kn',task:'task',bug:'bug',testplan:'tp',api:'api',credential:'cred',environment:'env',testrun:'testrun'}[k]} p-4">
+                    <p class="text-xs font-medium mb-1" style="color:var(--tx-d);">${m.label}</p>
+                    <p class="font-heading font-bold text-2xl" style="color:${m.color};">${catCounts[k]}</p>
+                    <p class="text-[11px] mt-1" style="color:var(--tx-d);">documents</p>
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- Recent -->
+            <div class="lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-heading font-semibold text-base">${t('recentlyUpdated')}</h3>
+                    <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('documents','all')">${t('viewAll')} <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i></button>
+                </div>
+                <div class="flex flex-col gap-2.5">
+                    ${recent.length === 0 ? `<div class="text-center py-10" style="color:var(--tx-d);"><i class="fa-solid fa-inbox text-3xl mb-3 pulse-s block"></i><p class="text-sm">${t('noDocYet')}</p></div>` :
+                    recent.map(d => `
+                        <div class="doc-card p-4 flex items-start gap-3" data-onclick="viewDoc('${d.id}')">
+                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style="background:${CAT_META[d.category].color}12;">
+                                <i class="fa-solid ${CAT_META[d.category].icon} text-xs" style="color:${CAT_META[d.category].color};"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(d.title)}</p>
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                    <span class="st-badge st-${d.status}">${d.status}</span>
+                                    <span class="text-[11px]" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
+                                </div>
+                            </div>
+                            <button class="fav-btn ${d.favorite ? 'on' : ''} text-sm p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Quick Actions + Favorites -->
+            <div class="flex flex-col gap-6">
+                <div>
+                    <h3 class="font-heading font-semibold text-base mb-4">Quick Actions</h3>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        ${Object.entries(CAT_META).map(([k, m]) => `
+                            <button class="tpl-card text-center py-4" data-onclick="createDoc('${k}')">
+                                <i class="fa-solid ${m.icon} text-lg mb-2 block" style="color:${m.color};"></i>
+                                <p class="text-xs font-semibold" style="color:var(--tx);">${m.label}</p>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-heading font-semibold text-base">${t('favorites')}</h3>
+                        <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('favorites')">${t('viewAll')}</button>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        ${favs === 0 ? `<p class="text-xs text-center py-4" style="color:var(--tx-d);">${t('noFavorites')}</p>` :
+                        activeDocs.filter(d => d.favorite).slice(0, 4).map(d => `
+                            <div class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer" style="transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="viewDoc('${d.id}')">
+                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${CAT_META[d.category].color};"></span>
+                                <span class="text-xs truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ========================
+// DOCUMENT LIST
+// ========================
+function renderDocList() {
+    const docs = getFiltered();
+    const isMobileSearch = state.view === 'documents' || state.view === 'favorites';
+
+    if (state.category === 'task' && state.view === 'documents') {
+        return renderKanbanBoard(docs, isMobileSearch);
+    }
+
+    const bm = state.batchMode;
+    const sel = state.selectedIds;
+    const inTrash = state.view === 'trash';
+    const allSelected = docs.length > 0 && docs.every(d => sel.has(d.id));
+
+    const batchCheckbox = (id) => bm ? `
+        <div style="position:absolute;top:10px;right:10px;z-index:5;pointer-events:none;">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd2)'};background:${sel.has(id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
+                ${sel.has(id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
+            </div>
+        </div>` : '';
+
+    const cardAction = (id) => bm ? `toggleSelectDoc('${id}', event)` : `viewDoc('${id}')`;
+    const cardCls = (id) => `doc-card p-4 flex flex-col${bm && sel.has(id) ? ' batch-selected' : ''}`;
+
+    return `<div class="fade-up max-w-6xl mx-auto">
+        <!-- Mobile search -->
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchDocs')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+            ${renderSelect('hdr-status-filter', [
+                {value: 'all', label: t('allStatus')},
+                {value: 'published', label: 'Published'},
+                {value: 'draft', label: 'Draft'},
+                {value: 'archived', label: 'Archived'}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'state.statusFilter=this.value;renderContent();')}
+            ${renderSelect('hdr-sort-by', [
+                {value: 'updated', label: t('recentlyUpdated')},
+                {value: 'created', label: t('newest')},
+                {value: 'title', label: t('sortAZ')}
+            ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'state.sortBy=this.value;renderContent();')}
+            <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents</span>
+            <div class="flex items-center gap-2 ml-auto">
+                ${!inTrash && docs.length > 0 ? `
+                    ${bm ? `<span class="text-xs font-semibold" style="color:var(--acc);">${sel.size} selected</span>
+                    <button class="text-xs py-1 px-2.5 rounded-md font-medium" style="color:var(--acc);border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.06);" data-onclick="selectAllDocs()">
+                        ${allSelected ? 'Deselect all' : 'Select all'}
+                    </button>` : ''}
+                    <button class="text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
+                        ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
+                    </button>
+                ` : ''}
+                ${inTrash && docs.length > 0 ? `<button class="btn-d text-xs py-1 px-2.5" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
+            </div>
+        </div>
+
+        <!-- Grid -->
+        ${docs.length === 0 ? `
+            <div class="text-center py-20">
+                <i class="fa-solid ${inTrash ? 'fa-trash' : 'fa-folder-open'} text-4xl mb-4 pulse-s block" style="color:var(--tx-d);"></i>
+                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">${state.search ? t('noDocFound') : (inTrash ? (t('trashEmpty') || 'Trash is empty') : t('noDocYet'))}</p>
+                <p class="text-xs mb-5" style="color:var(--tx-d);">${state.search ? t('tryDiffKey') : (inTrash ? '' : t('createFirstDoc'))}</p>
+                ${!state.search && !inTrash ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
+            </div>
+        ` : `
+            <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                ${docs.map(d => {
+                    if (d.category === 'credential') {
+                        const domain = guessDomain(d.title);
+                        const favUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+                        return `
+                        <div class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
+                            ${batchCheckbox(d.id)}
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="cred-avatar ${credAvatarColor(d.title)}">
+                                        <img class="cred-favicon" src="${favUrl}" alt="" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.remove()">
+                                        <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h4 class="text-sm font-semibold leading-snug truncate" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                                        ${d.username ? `<p class="text-[11px] truncate mt-0.5" style="color:var(--tx-m);">${escHtml(d.username)}</p>` : ''}
+                                    </div>
+                                </div>
+                                ${!bm ? `<div class="flex items-center gap-1 shrink-0 ml-2">
+                                    <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                        <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                    </button>
+                                    <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
+                                </div>` : ''}
+                            </div>
+                            <div class="mt-auto flex items-center justify-between border-t" style="border-color:var(--brd); padding-top: 16px;">
+                                <span class="cat-badge cat-credential">${t('credential')}</span>
+                                ${!bm ? `<div class="flex items-center gap-1">
+                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
+                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
+                                </div>` : ''}
+                            </div>
+                        </div>`;
+                    }
+                    return `
+                    <div class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
+                        ${batchCheckbox(d.id)}
+                        <div class="flex items-start justify-between mb-2.5">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="cat-badge ${CAT_META[d.category].cls}">${CAT_META[d.category].label}</span>
+                                ${d.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(d.subfolder)}</span>` : ''}
+                                <span class="st-badge st-${d.status}">${d.status}</span>
+                            </div>
+                            ${!bm ? `<div class="flex items-center gap-1 shrink-0 ml-2">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                </button>
+                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                            </div>` : ''}
+                        </div>
+                        <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                        <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${excerpt(d.content, 100)}</p>
+                        <div class="flex items-center gap-1.5 flex-wrap mb-3">
+                            ${d.tags.slice(0, 3).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+                            ${d.tags.length > 3 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 3}</span>` : ''}
+                        </div>
+                        <p class="text-[11px]" style="color:var(--tx-d);"><i class="fa-regular fa-clock mr-1"></i>${fmtDate(d.updatedAt)}</p>
+                    </div>
+                `;}).join('')}
+            </div>
+        `}
+
+        <!-- Batch action toolbar -->
+        <div class="batch-toolbar${bm && sel.size > 0 ? ' visible' : ''}">
+            <span style="font-size:12px;font-weight:700;color:var(--tx);">${sel.size}</span>
+            <span style="font-size:11px;color:var(--tx-m);">selected</span>
+            <div style="width:1px;height:16px;background:var(--brd);margin:0 2px;"></div>
+            <button class="batch-action-btn" style="color:var(--acc);" data-onclick="showBatchTagModal()">
+                <i class="fa-solid fa-tag" style="font-size:10px;"></i> Add tag
+            </button>
+            <button class="batch-action-btn" style="color:#818cf8;" data-onclick="showBatchFolderModal()">
+                <i class="fa-regular fa-folder" style="font-size:10px;"></i> Move
+            </button>
+            <button class="batch-action-btn" style="color:#f87171;" data-onclick="batchDelete()">
+                <i class="fa-solid fa-trash" style="font-size:10px;"></i> Delete
+            </button>
+        </div>
+    </div>`;
+}
+
+
+// ========================
+// BATCH OPERATIONS
+// ========================
+window.toggleBatchMode = function() {
+    state.batchMode = !state.batchMode;
+    if (!state.batchMode) {
+        state.selectedIds = new Set();
+        state.lastSelectedId = null;
+    }
+    renderContent();
+};
+
+window.toggleSelectDoc = function(id, event) {
+    if (!state.batchMode) {
+        state.batchMode = true;
+        state.selectedIds = new Set([id]);
+        state.lastSelectedId = id;
+        renderContent();
+        return;
+    }
+    // Shift+click range selection
+    if (event && event.shiftKey && state.lastSelectedId && state.lastSelectedId !== id) {
+        const docs = getFiltered();
+        const ids = docs.map(d => d.id);
+        const a = ids.indexOf(state.lastSelectedId);
+        const b = ids.indexOf(id);
+        if (a !== -1 && b !== -1) {
+            const [from, to] = a < b ? [a, b] : [b, a];
+            for (let i = from; i <= to; i++) state.selectedIds.add(ids[i]);
+        }
+    } else {
+        if (state.selectedIds.has(id)) state.selectedIds.delete(id);
+        else state.selectedIds.add(id);
+        state.lastSelectedId = id;
+    }
+    renderContent();
+};
+
+window.selectAllDocs = function() {
+    const docs = getFiltered();
+    const allSelected = docs.every(d => state.selectedIds.has(d.id));
+    if (allSelected) {
+        state.selectedIds = new Set();
+    } else {
+        docs.forEach(d => state.selectedIds.add(d.id));
+    }
+    renderContent();
+};
+
+window.batchDelete = function() {
+    const n = state.selectedIds.size;
+    if (!n) return;
+    showModal(`
+        <div class="p-6 text-center">
+            <i class="fa-solid fa-trash text-3xl mb-4" style="color:#f87171;"></i>
+            <h3 class="font-heading font-bold text-lg mb-2">Delete ${n} document${n > 1 ? 's' : ''}?</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">They will be moved to trash and can be restored later.</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-d" data-onclick="confirmBatchDelete()">Delete ${n}</button>
+            </div>
+        </div>
+    `);
+};
+
+window.confirmBatchDelete = async function() {
+    const ids = [...state.selectedIds];
+    ids.forEach(id => {
+        const doc = documents.find(d => d.id === id);
+        if (doc) { doc.status = 'deleted'; doc.deletedAt = Date.now(); doc.updatedAt = Date.now(); }
+    });
+    await persist();
+    closeModal();
+    const n = ids.length;
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    toast(`${n} document${n > 1 ? 's' : ''} moved to trash`, 'success');
+    renderContent();
+};
+
+window.showBatchTagModal = function() {
+    const n = state.selectedIds.size;
+    if (!n) return;
+    showModal(`
+        <div class="p-6">
+            <h3 class="font-heading font-bold text-lg mb-1">Add tag</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">Will be added to ${n} selected document${n > 1 ? 's' : ''}.</p>
+            <input type="text" id="batch-tag-input" class="form-input w-full mb-5" placeholder="Tag name..." autocomplete="off">
+            <div class="flex gap-3 justify-end">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-p" data-onclick="confirmBatchAddTag()">Add tag</button>
+            </div>
+        </div>
+    `);
+    setTimeout(() => document.getElementById('batch-tag-input')?.focus(), 50);
+};
+
+window.confirmBatchAddTag = async function() {
+    const tag = document.getElementById('batch-tag-input')?.value?.trim();
+    if (!tag) return;
+    let changed = 0;
+    state.selectedIds.forEach(id => {
+        const doc = documents.find(d => d.id === id);
+        if (doc && !doc.tags.includes(tag)) { doc.tags.push(tag); doc.updatedAt = Date.now(); changed++; }
+    });
+    if (changed > 0) await persist();
+    closeModal();
+    toast(`Tag "${tag}" added to ${changed} document${changed !== 1 ? 's' : ''}`, 'success');
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    renderContent();
+};
+
+window.showBatchFolderModal = function() {
+    const n = state.selectedIds.size;
+    if (!n) return;
+    const folders = [...new Set(documents.filter(d => d.subfolder && d.status !== 'deleted').map(d => d.subfolder))].sort();
+    showModal(`
+        <div class="p-6">
+            <h3 class="font-heading font-bold text-lg mb-1">Move to folder</h3>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">${n} document${n > 1 ? 's' : ''} will be moved. Leave blank to clear folder.</p>
+            <input type="text" id="batch-folder-input" class="form-input w-full mb-2" placeholder="Folder name..." autocomplete="off" list="batch-folder-list">
+            <datalist id="batch-folder-list">${folders.map(f => `<option value="${escHtml(f)}">`).join('')}</datalist>
+            <div class="flex gap-3 justify-end mt-5">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-p" data-onclick="confirmBatchMoveFolder()">Move</button>
+            </div>
+        </div>
+    `);
+    setTimeout(() => document.getElementById('batch-folder-input')?.focus(), 50);
+};
+
+window.confirmBatchMoveFolder = async function() {
+    const folder = document.getElementById('batch-folder-input')?.value?.trim() || '';
+    state.selectedIds.forEach(id => {
+        const doc = documents.find(d => d.id === id);
+        if (doc) { doc.subfolder = folder; doc.updatedAt = Date.now(); }
+    });
+    await persist();
+    closeModal();
+    const n = state.selectedIds.size;
+    toast(`${n} document${n > 1 ? 's' : ''} moved to ${folder || 'no folder'}`, 'success');
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    renderContent();
+};
+
+window.showHistoryPanel = function(id) {
+    const snaps = DocHistory.get(id);
+    if (!snaps.length) {
+        toast('No history yet — snapshots are saved each time you update a document.', 'info');
+        return;
+    }
+    const rows = snaps.map((s, i) => `
+        <div class="flex items-start gap-3 p-3 rounded-lg" style="border:1px solid var(--brd);background:var(--bg2);margin-bottom:8px;">
+            <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(s.title)}</div>
+                <div class="text-xs mt-1" style="color:var(--tx-d);">${new Date(s.ts).toLocaleString()} &middot; ${(s.content||'').length.toLocaleString()} chars</div>
+                <span class="st-badge st-${s.status}" style="display:inline-block;margin-top:4px;">${s.status}</span>
+            </div>
+            <button class="btn-s text-xs py-1.5 px-3 shrink-0" data-onclick="restoreSnapshot('${id}', ${i})">
+                <i class="fa-solid fa-rotate-left mr-1"></i>Restore
+            </button>
+        </div>
+    `).join('');
+    showModal(`
+        <div class="p-5">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);">
+                    <i class="fa-regular fa-clock" style="color:#818cf8;font-size:15px;"></i>
+                </div>
+                <div>
+                    <h3 class="font-heading font-semibold" style="color:var(--tx);">Document History</h3>
+                    <p class="text-xs" style="color:var(--tx-m);">${snaps.length} snapshot${snaps.length > 1 ? 's' : ''} &middot; newest first &middot; max 10</p>
+                </div>
+            </div>
+            <div style="max-height:380px;overflow-y:auto;padding-right:2px;">${rows}</div>
+            <div class="flex justify-end mt-4">
+                <button class="btn-s" data-onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    `);
+};
+
+window.restoreSnapshot = async function(id, index) {
+    const snaps = DocHistory.get(id);
+    const snap = snaps[index];
+    if (!snap) return;
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx === -1) return;
+    DocHistory.save(documents[idx]);
+    documents[idx] = { ...documents[idx], title: snap.title, content: snap.content, tags: snap.tags || [], status: snap.status, subfolder: snap.subfolder || '', updatedAt: Date.now() };
+    state.editingDoc = { ...documents[idx] };
+    closeModal();
+    toast('Version restored — current state saved to history.', 'success');
+    await persist();
+    render();
+};
+
+// Document context menu (dropdown)
+function showDocMenu(id, btn) {
+    // Xóa menu cũ nếu có
+    const old = document.getElementById('doc-menu');
+    if (old) old.remove();
+
+    const rect = btn.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'doc-menu';
+    menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:4px;z-index:80;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);`;
+    let menuHtml = '';
+    if (state.view === 'trash') {
+        menuHtml = `
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--acc);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();restoreDoc('${id}')">
+                <i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('restore') || 'Restore'} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}', true)">
+                <i class="fa-solid fa-trash w-4 text-center"></i> ${t('deleteForever') || 'Delete Forever'} </button>
+        `;
+    } else {
+        menuHtml = `
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--c-run);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();shareDoc('${id}')">
+                <i class="fa-solid fa-share-nodes w-4 text-center"></i> ${t('share') || 'Share Link'} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
+                <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
+                <i class="fa-solid fa-copy w-4 text-center"></i> ${t('duplicate')} </button>
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
+                <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
+        `;
+    }
+    menu.innerHTML = menuHtml;
+    document.body.appendChild(menu);
+    // Đóng khi click ngoài
+    setTimeout(() => {
+        const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
+        document.addEventListener('click', close);
+    }, 10);
+}
+
+// Unified copy-to-clipboard: changes icon to check + green, no size change
+function _copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+        if (!btn) return;
+        const icon = btn.querySelector('i');
+        if (icon) {
+            const origClass = icon.className;
+            const origBtnColor = btn.style.color;
+            icon.className = icon.className.replace(/fa-regular|fa-light/, 'fa-solid').replace('fa-copy', 'fa-check');
+            if (origBtnColor) {
+                // Small no-bg button with inline color: turn icon + text green
+                icon.style.color = '#10b981';
+                btn.style.color = '#10b981';
+            }
+            // btn-p (no inline color): only class changes; icon inherits white from CSS — visible on colored bg
+            setTimeout(() => {
+                icon.className = origClass;
+                icon.style.color = '';
+                btn.style.color = origBtnColor;
+            }, 2000);
+        }
+    }).catch(() => toast(t('copyFail'), 'error'));
+}
+window._shareCopyFeedback = function(btn, url) { _copyText(url, btn); };
+window._copyProp = function(btn) { _copyText(btn.dataset.copyValue || '', btn); };
+
+// Safe base64 encode for Uint8Arrays — spread operator stack-overflows on large arrays
+function uint8ToBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+}
+
+// ========================
+// SHARE DOCUMENT
+// ========================
+window.shareDoc = async function(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) {
+        toast('Configure GitHub in Settings to share documents.', 'warning');
+        return;
+    }
+
+    showModal(`
+        <div class="text-center py-6">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-4" style="color:var(--acc)"></i>
+            <p class="text-sm" style="color:var(--tx-m)">Generating secure link...</p>
+        </div>
+    `);
+
+    try {
+        // Random 256-bit AES key — NOT derived from master password
+        const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+        const keyBase64 = uint8ToBase64(keyBytes);
+
+        // Encrypt doc with raw AES-256-GCM
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+        // Embed all type-specific fields so the shared viewer renders correctly
+        const allLinkedIds = doc.category === 'release'
+            ? [...(doc.releaseData?.linkedRuns || []), ...(doc.releaseData?.linkedBugs || []), ...(doc.releaseData?.linkedEnvs || [])]
+            : doc.category === 'testplan'
+            ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])]
+            : [];
+        const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
+            ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
+            : doc.category === 'environment' && doc.envData?.linkedCreds?.length
+            ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
+            : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
+            ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: d.envData, tcData: d.tcData }))
+            : [];
+        const plain = new TextEncoder().encode(JSON.stringify({
+            title: doc.title, category: doc.category, content: doc.content,
+            tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
+            username: doc.username, password: doc.password,
+            envData: doc.envData,
+            runData: doc.runData,
+            releaseData: doc.releaseData,
+            tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
+            tcPlanData: doc.tcPlanData,
+            _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
+        }));
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, rawKey, plain);
+
+        // Pack iv + ciphertext → base64 (use loop, not spread — spread stack-overflows on large arrays)
+        const packed = new Uint8Array(12 + cipher.byteLength);
+        packed.set(iv);
+        packed.set(new Uint8Array(cipher), 12);
+        const encContent = uint8ToBase64(packed);
+
+        // Upload to GitHub shared/ folder
+        const shareId = `sh_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+        const res = await fetch(
+            `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${shareId}.enc`,
+            {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: `Share: ${doc.title}`, content: btoa(unescape(encodeURIComponent(encContent))), branch: settings.branch || 'main' })
+            }
+        );
+        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+        // Build share URL — key lives in fragment (never sent to server)
+        const shareUrl = `${location.origin}${location.pathname}?shareId=${shareId}#key=${encodeURIComponent(keyBase64)}`;
+
+        showModal(`
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(16,185,129,0.1);">
+                    <i class="fa-solid fa-check text-emerald-400 text-xl"></i>
+                </div>
+                <h3 class="font-heading font-semibold text-lg mb-2">Link Ready!</h3>
+                <p class="text-sm mb-4" style="color:var(--tx-m);">Anyone with this link can view the document. The content is end-to-end encrypted.</p>
+                <div class="flex items-center gap-2 p-3 rounded-lg border mb-5 text-left" style="background:var(--bg);border-color:var(--brd);">
+                    <input type="text" readonly id="share-url-input" value="${escHtml(shareUrl)}" class="flex-1 bg-transparent text-xs outline-none font-mono" style="color:var(--tx);">
+                    <button class="shrink-0 btn-s px-3 py-1.5 text-xs" onclick="window._shareCopyFeedback(this,document.getElementById('share-url-input').value)">
+                        <i class="fa-regular fa-copy mr-1"></i>Copy
+                    </button>
+                </div>
+                <button class="btn-s px-4" data-onclick="closeModal()">Close</button>
+            </div>
+        `);
+    } catch(e) {
+        console.error('[shareDoc]', e);
+        toast('Failed to create share link: ' + e.message, 'error');
+        closeModal();
+    }
+};
+
+async function loadSharedDoc(shareId, keyBase64) {
+    try {
+        const d = GitHubSync.DEFAULTS;
+        const rawUrl = `https://raw.githubusercontent.com/${d.owner}/${d.repo}/${d.branch}/shared/${shareId}.enc`;
+        const res = await fetch(rawUrl);
+        if (!res.ok) throw new Error('Document not found or link has expired.');
+
+        // File raw content IS encContent (pure base64 string from uint8ToBase64)
+        const fileText = await res.text();
+        const encContent = fileText.trim();
+        const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+
+        const packed = Uint8Array.from(atob(encContent), c => c.charCodeAt(0));
+        const iv = packed.slice(0, 12);
+        const cipher = packed.slice(12);
+
+        const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+        const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, rawKey, cipher);
+        const doc = JSON.parse(new TextDecoder().decode(plain));
+        const embeddedLinkedDocs = doc._linkedDocs || [];
+        delete doc._linkedDocs;
+
+        // Render in read-only viewer (no edit/delete/duplicate)
+        const mainDoc = { ...doc, id: shareId, status: doc.status || 'published', favorite: false, updatedAt: doc.createdAt || Date.now(), tags: doc.tags || [] };
+        documents = [mainDoc, ...embeddedLinkedDocs];
+        state.view = 'viewer';
+        state.sharedView = true;
+        state.editingDoc = documents[0];
+        document.getElementById('sidebar').style.display = 'none';
+        const sbBtn = document.querySelector('button[data-onclick="toggleSidebar()"]');
+        if (sbBtn) sbBtn.style.display = 'none';
+        render();
+    } catch(e) {
+        console.error('[loadSharedDoc]', e);
+        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" onclick="window.location.href=window.location.pathname">Go to DocVault</button></div></div>`;
+    }
+}
+
+// ========================
+// IMAGE UPLOAD — instant paste + background GitHub CDN
+// ========================
+async function uploadImageToCloud(blob, callback) {
+    // Step 1: insert base64 immediately so image appears in editor without any wait
+    let base64DataUrl;
+    try {
+        base64DataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error(t('imgReadFail')));
+            reader.readAsDataURL(blob);
+        });
+    } catch(err) {
+        toast(t('imgProcessFail'), 'error');
+        return;
+    }
+
+    // Insert immediately — no waiting, image shows at cursor right away
+    callback(base64DataUrl, blob.name || 'image');
+
+    // Step 2: upload to GitHub in background (non-blocking)
+    const settings = await GitHubSync.getSettings();
+    if (!settings || !settings.token) return; // no CDN configured, keep base64
+
+    const ext = blob.type.split('/')[1] || 'png';
+    const filename = `img_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
+    const path = (settings.path || 'images').replace(/\/+$/, '') + '/' + filename;
+
+    try {
+        const res = await fetch(
+            `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${settings.token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/vnd.github+json'
+                },
+                body: JSON.stringify({
+                    message: `Upload image: ${filename}`,
+                    content: base64DataUrl.split(',')[1],
+                    branch: settings.branch || 'main'
+                })
+            }
+        );
+
+        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+        const data = await res.json();
+        const cdnUrl = data.content.download_url;
+
+        // Step 3: register replacement — base64 → CDN URL applied on next Save (no re-render, no flicker)
+        pendingImageReplacements.set(base64DataUrl, cdnUrl);
+        toast(t('imgUploadSuccess'), 'success');
+    } catch(err) {
+        // Silent fail — base64 is already in editor, document still works fine
+        console.warn('[IMG] GitHub upload failed, keeping base64:', err.message);
+    }
+}
+
+window.showGitHubSettingsModal = async function() {
+    let ghSettings = { owner: '', repo: '', branch: 'main', token: '', path: 'images' };
+    const storedGh = await GitHubSync.getSettings();
+    if (storedGh) {
+        ghSettings = { ...ghSettings, ...storedGh };
+    }
+
+    showModal(`
+        <div>
+            <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2" style="color:var(--tx);"><i class="fa-solid fa-sliders text-[var(--acc)]"></i> DocVault Settings</h3>
+
+            <!-- SECTION 1: MASTER PASSWORD -->
+            <div class="mb-5 pb-5 border-b border-[var(--brd)] text-left">
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-lock text-[var(--acc)] text-[10px]"></i> 1. Master Password</h4>
+                <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
+                        <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">New Password</label>
+                        <input type="password" id="mp-new" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Confirm New Password</label>
+                        <input type="password" id="mp-confirm" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-p py-1.5 px-4 text-xs w-full flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-key text-[10px]"></i> Change Master Password
+                    </button>
+                </form>
+            </div>
+
+            <!-- SECTION 2: GITHUB SYNC -->
+            <div class="text-left">
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-rotate text-[var(--acc)] text-[10px]"></i> 2. GitHub Sync</h4>
+                <div class="bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
+                    <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
+                    Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
+                </div>
+                <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
+                        <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
+                        <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo.</p>
+                    </div>
+                    <div class="pt-3 mt-2 border-t border-[var(--brd)] flex gap-2 justify-end">
+                        <button type="button" class="btn-s py-1.5 px-4 text-xs" data-onclick="closeModal()">Close</button>
+                        <button type="submit" class="btn-p py-1.5 px-4 text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-save text-[10px]"></i> Save Token
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `);
+}
+
+window.saveGitHubSettings = async function() {
+    const token = document.getElementById('gh-token').value.trim();
+    const d = GitHubSync.DEFAULTS;
+    if (token) {
+        await GitHubSync.saveSettings({ ...d, token });
+        toast(t('ghSaveSuccess'), "success");
+        closeModal();
+    } else {
+        GitHubSync.clearSettings();
+        toast(t('ghCleared'), "info");
+        closeModal();
+    }
+}
+
+window.changeMasterPassword = async function() {
+    const current = document.getElementById('mp-current').value;
+    const newPwd = document.getElementById('mp-new').value;
+    const confirm = document.getElementById('mp-confirm').value;
+
+    if (!current || !newPwd || !confirm) {
+        toast(t('mpFillAll'), "warning");
+        return;
+    }
+    if (newPwd !== confirm) {
+        toast(t('mpMismatch'), "error");
+        return;
+    }
+    if (newPwd.length < 4) {
+        toast(t('mpTooShort'), "warning");
+        return;
+    }
+
+    try {
+        await window.LocalAuth.changePassword(current, newPwd);
+        toast(t('mpChanged'), "success");
+        document.getElementById('mp-current').value = '';
+        document.getElementById('mp-new').value = '';
+        document.getElementById('mp-confirm').value = '';
+    } catch (e) {
+        toast(e.message || t('mpChangeFail'), "error");
+    }
+}
+
+// ========================
+// EDITOR
+// ========================
+function renderEditor() {
+    const doc = state.editingDoc;
+    const isEdit = !!doc;
+    const title = isEdit ? doc.title : (state._newTitle || '');
+    const category = isEdit ? doc.category : (state._newCat || 'runbook');
+    const status = isEdit ? doc.status : (state._newStatus || 'draft');
+    const content = isEdit ? doc.content : (state._newContent || '');
+    const tags = isEdit ? doc.tags : state.editorTags;
+    const bugData = isEdit ? doc.bugData : state._newBugData;
+    const tcData = isEdit ? doc.tcData : state._newTcData;
+    const apiData = isEdit ? doc.apiData : state._newApiData;
+    const runData = isEdit ? doc.runData : state._newRunData;
+    const envData = isEdit ? doc.envData : state._newEnvData;
+    const releaseData = isEdit ? doc.releaseData : state._newReleaseData;
+    const tcPlanData = isEdit ? doc.tcPlanData : state._newTcPlanData;
+
+    const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
+    const existingFolders = [...new Set(documents.filter(d => d.subfolder).map(d => d.subfolder))];
+
+    return `<div class="fade-up max-w-4xl mx-auto">
+        
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div class="md:col-span-2 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${category === 'credential' ? 'Service Name' : 'Title'}</label>
+                    <input id="ed-title" class="form-input" placeholder="${category === 'credential' ? t('egCred') : t('enterTitle')}" value="${escHtml(title)}">
+                </div>
+                <div class="relative">
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Sub-folder <span style="color:var(--tx-d)">(Optional)</span></label>
+                    <div class="subfolder-select-wrapper" style="position:relative;">
+                        <input id="ed-subfolder" class="form-select w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onclick="toggleSubfolderDropdown()" data-oninput="filterSubfolderDropdown()">
+                        <div id="subfolder-dropdown" class="hidden" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+                            ${existingFolders.map(f => `<div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectSubfolder('${escHtml(f.replace(/'/g, "\\'"))}')">${escHtml(f)}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('category')}</label>
+                    ${renderSelect('ed-cat', Object.entries(CAT_META).map(([k, m]) => ({value: k, label: m.label})), category, 'w-full', 'changeEditorCat(this.value)')}
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('status')}</label>
+                    ${renderSelect('ed-status', [
+                        {value: 'draft', label: t('statusDraft')},
+                        {value: 'published', label: t('statusPublished')},
+                        {value: 'archived', label: t('statusArchived')}
+                    ], status, 'w-full')}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tags -->
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tags')}</label>
+            <div class="flex flex-wrap items-center gap-2 p-2.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);min-height:42px;" id="tag-container" data-onclick="document.getElementById('tag-input').focus()">
+                ${tags.map((t, i) => `<span class="tag">${escHtml(t)}<span class="rm" data-onclick="event.stopPropagation();removeTag(${i})">&times;</span></span>`).join('')}
+                <input id="tag-input" class="bg-transparent border-none outline-none text-sm flex-1 min-w-[100px]" style="color:var(--tx);" placeholder="${tags.length === 0 ? t('enterTag') : ''}" data-onkeydown="handleTagInput(event)">
+            </div>
+        </div>
+
+        ${category === 'credential' ? `
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('usernameEmail')}</label>
+                <input id="ed-username" class="form-input" placeholder="e.g. admin" value="${escHtml(doc?.username || '')}">
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('passwordField')}</label>
+                <div class="flex items-center gap-2">
+                    <input type="password" id="ed-password" class="form-input" placeholder="••••••••" value="${escHtml(doc?.password || '')}">
+                    <button id="ed-password-btn" class="btn-s px-3 py-2" data-onclick="togglePasswordVisibility('ed-password')"><i class="fa-solid fa-eye"></i></button>
+                </div>
+            </div>
+        </div>
+        ` : category === 'bug' ? `
+        <div class="grid sm:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugEnv')}</label>
+                <input id="ed-bug-env" class="form-input" placeholder="${t('bugEnvPl')}" value="${escHtml(bugData?.env || '')}">
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugDevice')}</label>
+                <input id="ed-bug-browser" class="form-input" placeholder="${t('bugDevicePl')}" value="${escHtml(bugData?.browser || '')}">
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
+                ${renderSelect('ed-bug-severity', [
+                    {value: 'Critical', label: t('severityCritical')},
+                    {value: 'Major', label: t('severityMajor')},
+                    {value: 'Minor', label: t('severityMinor')},
+                    {value: 'Trivial', label: t('severityTrivial')}
+                ], bugData?.severity || 'Minor', 'w-full')}
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugPrecond')}</label>
+            <textarea id="ed-bug-precond" class="form-input" style="height:60px;" placeholder="${t('bugPrecondPl')}">${escHtml(bugData?.precond || '')}</textarea>
+        </div>
+        
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSteps')}</label>
+            <div id="bug-steps-container">
+                ${(Array.isArray(bugData?.steps) ? bugData.steps : (bugData?.steps ? [bugData.steps] : [''])).map((step, idx) => `
+                    <div class="flex items-center gap-2 mb-2 bug-step-row">
+                        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+                        <input class="form-input flex-1 bug-step-input" placeholder="${t('stepPl', {idx: idx + 1})}" value="${escHtml(step)}">
+                        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn-s text-xs mt-1" data-onclick="addBugStep()"><i class="fa-solid fa-plus mr-1"></i> ${t('addStep')}</button>
+        </div>
+        
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugExpected')}</label>
+                <textarea id="ed-bug-expected" class="form-input" style="height:100px;" placeholder="${t('bugExpectedPl')}">${escHtml(bugData?.expected || '')}</textarea>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugActual')}</label>
+                <textarea id="ed-bug-actual" class="form-input" style="height:100px;" placeholder="${t('bugActualPl')}">${escHtml(bugData?.actual || '')}</textarea>
+            </div>
+        </div>
+        ` : category === 'testcases' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
+                    <input id="ed-tc-module" class="form-input" placeholder="${t('tcModulePl')}" value="${escHtml(tcData?.module || '')}">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcData')}</label>
+                    <input id="ed-tc-data" class="form-input" placeholder="${t('tcDataPl')}" value="${escHtml(tcData?.data || '')}">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcPrecond')}</label>
+                <textarea id="ed-tc-precond" class="form-input" style="height:60px;" placeholder="${t('tcPrecondPl')}">${escHtml(tcData?.precond || '')}</textarea>
+            </div>
+            
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('tcSteps')}</label>
+                    <div class="flex items-center gap-2" style="width: calc(100% - 30px);">
+                        <span class="text-xs font-medium flex-1 text-center" style="color:var(--tx-d);">${t('tcAction')}</span>
+                        <span class="text-xs font-medium flex-1 text-center" style="color:var(--tx-d);">${t('tcExpected')}</span>
+                    </div>
+                </div>
+                <div id="tc-steps-container">
+                    ${(tcData?.steps?.length ? tcData.steps : [{action: '', expected: ''}]).map((step, idx) => `
+                        <div class="flex items-start gap-2 mb-2 tc-step-row">
+                            <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+                            <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}">${escHtml(step.action || '')}</textarea>
+                            <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}">${escHtml(step.expected || '')}</textarea>
+                            <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="btn-s text-sm mt-2" data-onclick="addTcStep()"><i class="fa-solid fa-plus mr-1"></i> ${t('addStep')}</button>
+            </div>
+        </div>
+        ` : category === 'environment' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('healthStatus')}</label>
+                    ${renderSelect('ed-env-status', [
+                        {value: 'healthy', label: '🟢 Healthy (Up & Running)'},
+                        {value: 'maintenance', label: '🟡 Maintenance'},
+                        {value: 'down', label: '🔴 Down (Offline)'}
+                    ], envData?.status || 'healthy', 'w-full text-sm')}
+                </div>
+            </div>
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('properties')}</label>
+                </div>
+                <div id="env-props-container">
+                    ${((envData?.properties && envData.properties.length > 0) ? envData.properties : (envData?.frontendUrl || envData?.backendUrl || envData?.dbInfo) ?
+                        // Migrate old format to new
+                        [
+                            ...(envData?.frontendUrl ? [{label: 'Frontend URL', value: envData.frontendUrl, secret: false}] : []),
+                            ...(envData?.backendUrl ? [{label: 'Backend API URL', value: envData.backendUrl, secret: false}] : []),
+                            ...(envData?.dbInfo ? [{label: 'Database Connection', value: envData.dbInfo, secret: true}] : [])
+                        ] : [{label: '', value: '', secret: false}]
+                    ).map((prop, idx) => `
+                        <div class="flex items-center gap-2 mb-2 env-prop-row">
+                            <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="${t('envLabelPl')}" value="${escHtml(prop.label || '')}">
+                            <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="${t('envValuePl')}" value="${escHtml(prop.value || '')}">
+                            <input type="checkbox" class="env-prop-secret hidden" ${prop.secret ? 'checked' : ''}>
+                            <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:${prop.secret ? 'var(--acc)' : 'var(--tx-m)'};" title="${t('toggleSecret')}" data-onclick="toggleEnvSecret(this)">
+                                <i class="fa-solid ${prop.secret ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                            </button>
+                            <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="btn-s text-sm mt-2" data-onclick="addEnvProp()"><i class="fa-solid fa-plus mr-1"></i> ${t('addProperty')}</button>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('linkedCreds')}</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'credential' && d.status !== 'deleted').map(c => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="form-checkbox ed-env-cred" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
+                            <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(c.title)}</span>
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">${t('noCredFound')}</div>`}
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('notes')}</label>
+                <textarea id="ed-env-notes" class="form-input text-sm w-full" style="height:80px;" placeholder="${t('envNotesPl')}">${escHtml(envData?.notes || '')}</textarea>
+            </div>
+        </div>
+        ` : category === 'api' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiMethod')}</label>
+                    ${renderSelect('ed-api-method', ['GET','POST','PUT','PATCH','DELETE'].map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono text-sm')}
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiEndpoint')}</label>
+                    <input id="ed-api-endpoint" class="form-input font-mono text-sm w-full" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
+                </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-6 mb-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('apiHeaders')}</label>
+                    </div>
+                    <div id="api-headers-container">
+                        ${(apiData?.headers?.length ? apiData.headers : []).map(h => `
+                            <div class="flex items-center gap-2 mb-2 api-header-row">
+                                <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(h.key)}">
+                                <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(h.value)}">
+                                <div class="flex items-center gap-1">
+                                    <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${h.req ? 'checked' : ''}>
+                                    <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn-s text-xs mt-1" data-onclick="addApiHeader()"><i class="fa-solid fa-plus mr-1"></i> ${t('addHeader')}</button>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('apiParams')}</label>
+                    </div>
+                    <div id="api-params-container">
+                        ${(apiData?.params?.length ? apiData.params : []).map(p => `
+                            <div class="flex items-center gap-2 mb-2 api-param-row">
+                                <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}" value="${escHtml(p.key)}">
+                                <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(p.value)}">
+                                <div class="flex items-center gap-1">
+                                    <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}" ${p.req ? 'checked' : ''}>
+                                    <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn-s text-xs mt-1" data-onclick="addApiParam()"><i class="fa-solid fa-plus mr-1"></i> ${t('addParam')}</button>
+                </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-6 mb-2">
+                <div>
+                    <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
+                        <span>${t('apiBody')}</span>
+                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-body')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                    </label>
+                    <textarea id="ed-api-body" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(apiData?.body || '')}</textarea>
+                </div>
+                <div>
+                    <label class="text-xs font-medium flex items-center justify-between mb-1.5" style="color:var(--tx-m);">
+                        <span>${t('apiResponse')}</span>
+                        <button class="text-[10px] opacity-70 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                    </label>
+                    <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:120px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
+                </div>
+            </div>
+        </div>
+        ` : category === 'testrun' ? `
+        <div class="mb-4">
+            <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Select Test Cases for Execution</label>
+            <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
+                ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
+                    const isChecked = (doc?.runData?.targetIds || state._newRunData?.targetIds || []).includes(tc.id);
+                    return `
+                    <label class="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" style="border-bottom: 1px solid var(--brd); transition: background .15s;" onmouseenter="this.style.background='var(--card)'" onmouseleave="this.style.background='transparent'">
+                        <input type="checkbox" class="form-checkbox testrun-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
+                            <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.steps?.length || 0} steps</div>
+                        </div>
+                    </label>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        ` : category === 'testplan' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Cases <span class="opacity-60">(for coverage tracking)</span></label>
+                <div class="p-3 rounded-lg flex flex-col gap-1 max-h-52 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0
+                        ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test cases available.</div>`
+                        : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
+                            const isChecked = (tcPlanData?.linkedTCs || []).includes(tc.id);
+                            return `<label class="flex items-center gap-3 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background='transparent'">
+                                <input type="checkbox" class="form-checkbox tp-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
+                                    <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.steps?.length || 0} steps · ${tc.tcData?.module ? escHtml(tc.tcData.module) : 'no module'}</div>
+                                </div>
+                            </label>`;
+                        }).join('')}
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Runs <span class="opacity-60">(to view execution coverage)</span></label>
+                <div class="p-3 rounded-lg flex flex-col gap-1 max-h-40 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').length === 0
+                        ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test runs found.</div>`
+                        : documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => {
+                            const isChecked = (tcPlanData?.linkedRuns || []).includes(run.id);
+                            return `<label class="flex items-center gap-2 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background='transparent'">
+                                <input type="checkbox" class="form-checkbox tp-run-cb" value="${run.id}" ${isChecked ? 'checked' : ''}>
+                                <i class="fa-solid fa-play-circle text-xs" style="color:var(--c-testrun);"></i>
+                                <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
+                            </label>`;
+                        }).join('')}
+                </div>
+            </div>
+        </div>
+        <div id="editor-container" class="mt-4 text-left"></div>
+        <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
+        ` : category === 'release' ? `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Version</label>
+                    <input id="ed-rel-version" class="form-input text-sm w-full font-mono" placeholder="e.g. v1.2.0" value="${escHtml(releaseData?.version || '')}">
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Status</label>
+                    ${renderSelect('ed-rel-status', [
+                        {value: 'planning', label: '📋 Planning'},
+                        {value: 'in-progress', label: '🔨 In Progress'},
+                        {value: 'released', label: '🚀 Released'},
+                        {value: 'cancelled', label: '❌ Cancelled'}
+                    ], releaseData?.status || 'planning', 'w-full text-sm')}
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Release Date</label>
+                    <input id="ed-rel-date" type="date" class="form-input text-sm w-full" value="${escHtml(releaseData?.releaseDate || '')}">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Test Runs</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="form-checkbox ed-rel-run" value="${run.id}" ${(releaseData?.linkedRuns || []).includes(run.id) ? 'checked' : ''}>
+                            <i class="fa-solid fa-play-circle text-xs" style="color:var(--c-testrun);"></i>
+                            <span class="text-sm font-medium" style="color:var(--tx);">${escHtml(run.title)}</span>
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No test runs found. Create some Test Runs first.</div>`}
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Bug Reports</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'bug' && d.status !== 'deleted').map(bug => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="form-checkbox ed-rel-bug" value="${bug.id}" ${(releaseData?.linkedBugs || []).includes(bug.id) ? 'checked' : ''}>
+                            <i class="fa-solid fa-bug text-xs" style="color:var(--c-bug);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(bug.title)}</span>
+                            ${bug.bugData?.severity ? `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:${bug.bugData.severity === 'Critical' ? '#ef444422' : bug.bugData.severity === 'Major' ? '#f9731622' : '#f59e0b22'}; color:${bug.bugData.severity === 'Critical' ? '#ef4444' : bug.bugData.severity === 'Major' ? '#f97316' : '#f59e0b'};">${escHtml(bug.bugData.severity)}</span>` : ''}
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No bug reports found.</div>`}
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Environments</label>
+                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                    ${documents.filter(d => d.category === 'environment' && d.status !== 'deleted').map(env => `
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="form-checkbox ed-rel-env" value="${env.id}" ${(releaseData?.linkedEnvs || []).includes(env.id) ? 'checked' : ''}>
+                            <i class="fa-solid fa-network-wired text-xs" style="color:var(--c-env);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(env.title)}</span>
+                            ${env.envData?.status ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full" style="background:${env.envData.status === 'healthy' ? '#10b98122' : env.envData.status === 'down' ? '#ef444422' : '#f59e0b22'}; color:${env.envData.status === 'healthy' ? '#10b981' : env.envData.status === 'down' ? '#ef4444' : '#f59e0b'};">${escHtml(env.envData.status)}</span>` : ''}
+                        </label>
+                    `).join('') || `<div class="text-xs text-center py-2" style="color:var(--tx-d);">No environments found.</div>`}
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Release Notes <span class="opacity-60">(markdown)</span></label>
+            <div id="editor-container" class="text-left"></div>
+            <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
+        </div>
+        ` : `
+        <!-- Content area -->
+        <div id="editor-container" class="mt-4 text-left"></div>
+        <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
+        `}
+
+        <div class="flex items-center gap-3 mt-5">
+            <button class="btn-s" data-onclick="cancelEdit()">${t('cancel')}</button>
+            <button class="btn-p ml-auto" data-onclick="saveDoc()">${t('save')}</button>
+        </div>
+    </div>`;
+}
+
+
+function handleTagInput(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const inp = e.target;
+        const val = inp.value.trim().toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF_-]/g, '');
+        if (val && !state.editorTags.includes(val)) {
+            state.editorTags.push(val);
+            inp.value = '';
+            renderContent();
+            setTimeout(() => document.getElementById('tag-input')?.focus(), 50);
+        }
+    } else if (e.key === 'Backspace' && !e.target.value && state.editorTags.length > 0) {
+        state.editorTags.pop();
+        renderContent();
+        setTimeout(() => document.getElementById('tag-input')?.focus(), 50);
+    }
+}
+
+function removeTag(i) {
+    state.editorTags.splice(i, 1);
+    renderContent();
+    setTimeout(() => document.getElementById('tag-input')?.focus(), 50);
+}
+
+// ========================
+// VIEWER
+// ========================
+function renderViewer() {
+    const doc = documents.find(d => d.id === state.editingDoc?.id);
+    if (!doc) return `<div class="text-center py-20" style="color:var(--tx-d);">Document not found.</div>`;
+
+    return `<div class="fade-up max-w-4xl mx-auto">
+        <!-- Meta -->
+        <div class="flex flex-wrap items-center gap-2.5 mb-4">
+            <span class="cat-badge ${CAT_META[doc.category].cls}">${CAT_META[doc.category].label}</span>
+            ${doc.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(doc.subfolder)}</span>` : ''}
+            <span class="st-badge st-${doc.status}">${doc.status}</span>
+            ${(doc.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+            ${state.sharedView ? '' : `<button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="toggleFav('${doc.id}')">
+                <i class="fa-${doc.favorite ? 'solid' : 'regular'} fa-star"></i>
+            </button>`}
+        </div>
+        <!-- Title -->
+        <h1 class="font-heading font-bold text-2xl mb-2" style="color:var(--tx);">${escHtml(doc.title)}</h1>
+        
+        <p class="text-xs mb-6" style="color:var(--tx-d);">
+            Created ${fmtDate(doc.createdAt)} &middot; Updated ${fmtDate(doc.updatedAt)}
+        </p>
+
+        ${doc.category === 'credential' ? `
+        <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="cred-avatar ${credAvatarColor(doc.title)}">
+                    <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${guessDomain(doc.title)}.ico" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.remove()">
+                    <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-1.5" style="color:var(--tx-d);">Username / Email</p>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+                            <span class="text-sm font-mono truncate" style="color:var(--tx);">${escHtml(doc.username || 'N/A')}</span>
+                        </div>
+                        ${doc.username ? `<button class="btn-s py-2 px-4 shrink-0" data-onclick="copyUsername('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>${t('copy')}</button>` : ''}
+                    </div>
+                </div>
+            </div>
+            <div>
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-1.5" style="color:var(--tx-d);">Password</p>
+                ${state.sharedView ? `
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);">
+                    <i class="fa-solid fa-lock text-sm"></i>
+                    <span class="text-sm">Password hidden in shared view</span>
+                </div>` : `
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+                        <input type="password" id="view-pw" value="${escHtml(doc.password || '')}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider" style="color:var(--tx);" readonly>
+                        <button id="view-pw-btn" class="text-xs p-1" style="color:var(--tx-m);transition:color .2s;" data-onmouseenter="this.style.color='var(--tx)'" data-onmouseleave="this.style.color='var(--tx-m)'" data-onclick="togglePasswordVisibility('view-pw')"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                    <button class="btn-p py-2 px-4" data-onclick="copyPassword('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>Copy</button>
+                </div>`}
+            </div>
+        </div>
+        ` : ''}
+
+        ${doc.category === 'environment' ? `
+        <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-heading font-semibold text-lg" style="color:var(--tx);">Environment Details</h3>
+                <span class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${doc.envData?.status === 'healthy' ? '#10b98122' : doc.envData?.status === 'down' ? '#ef444422' : '#f59e0b22'}; color:${doc.envData?.status === 'healthy' ? '#10b981' : doc.envData?.status === 'down' ? '#ef4444' : '#f59e0b'}; border:1px solid ${doc.envData?.status === 'healthy' ? '#10b98155' : doc.envData?.status === 'down' ? '#ef444455' : '#f59e0b55'};">
+                    <i class="fa-solid fa-circle text-[8px] mr-1.5"></i>${doc.envData?.status || 'Unknown'}
+                </span>
+            </div>
+            
+            ${(() => {
+                // Support both new (properties[]) and old (frontendUrl/backendUrl/dbInfo) format
+                const props = doc.envData?.properties || [];
+                const legacyProps = [];
+                if (!props.length) {
+                    if (doc.envData?.frontendUrl) legacyProps.push({label: 'Frontend URL', value: doc.envData.frontendUrl, secret: false});
+                    if (doc.envData?.backendUrl) legacyProps.push({label: 'Backend API URL', value: doc.envData.backendUrl, secret: false});
+                    if (doc.envData?.dbInfo) legacyProps.push({label: 'Database Connection', value: doc.envData.dbInfo, secret: true});
+                }
+                const allProps = props.length ? props : legacyProps;
+                if (!allProps.length) return '';
+                
+                return `<div class="grid sm:grid-cols-2 gap-4 mb-5">
+                    ${allProps.map(prop => `
+                    <div class="p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                        <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${escHtml(prop.label)}</p>
+                        <div class="flex items-center gap-2">
+                            ${prop.secret ? `
+                                <input type="password" id="view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}" value="${escHtml(prop.value)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
+                                <button class="btn-s px-2 py-1 text-xs" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}')"><i class="fa-solid fa-eye"></i></button>
+                            ` : `
+                                ${prop.value.startsWith('http') ? 
+                                    `<a href="${escHtml(prop.value)}" target="_blank" class="text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(prop.value)}</a>` :
+                                    `<span class="text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`
+                                }
+                            `}
+                            <button class="btn-s px-2 py-1 text-xs" data-copy-value="${escHtml(prop.value)}" data-onclick="_copyProp(this)"><i class="fa-solid fa-copy"></i></button>
+                        </div>
+                    </div>
+                    `).join('')}
+                </div>`;
+            })()}
+
+            ${doc.envData?.linkedCreds?.length ? `
+            <div>
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Credentials</p>
+                <div class="flex flex-wrap gap-2">
+                    ${doc.envData.linkedCreds.map(id => {
+                        const cred = documents.find(d => d.id === id && d.status !== 'deleted');
+                        if (!cred) return '';
+                        return `
+                        <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'" data-onclick="viewDoc('${cred.id}')">
+                            <i class="fa-solid fa-key text-xs" style="color:var(--c-cred);"></i>
+                            <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(cred.title)}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+        </div>
+        ` : ''}
+
+        ${doc.category === 'testrun' ? `
+        <!-- Test Run Execution UI -->
+        ${(() => {
+            const results = doc.runData?.results || {};
+            const targetIds = doc.runData?.targetIds || [];
+            const targets = documents.filter(d => targetIds.includes(d.id) && d.status !== 'deleted');
+            
+            let totalSteps = 0;
+            let passCount = 0;
+            let failCount = 0;
+            let blockedCount = 0;
+            
+            targets.forEach(tc => {
+                const steps = tc.tcData?.steps || [];
+                totalSteps += steps.length;
+                steps.forEach((_, i) => {
+                    const st = results[tc.id]?.[i];
+                    if (st === 'pass') passCount++;
+                    if (st === 'fail') failCount++;
+                    if (st === 'blocked') blockedCount++;
+                });
+            });
+            
+            const untestedCount = totalSteps - (passCount + failCount + blockedCount);
+            const passPct = totalSteps ? (passCount / totalSteps * 100) : 0;
+            const failPct = totalSteps ? (failCount / totalSteps * 100) : 0;
+            const blockedPct = totalSteps ? (blockedCount / totalSteps * 100) : 0;
+            const untestedPct = totalSteps ? (untestedCount / totalSteps * 100) : 100;
+            
+            let html = `
+            <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('pass')}</div>
+                    <div class="text-3xl font-bold" style="color:#10b981;">${passCount}</div>
+                </div>
+                <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('fail')}</div>
+                    <div class="text-3xl font-bold" style="color:#ef4444;">${failCount}</div>
+                </div>
+                <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('blocked')}</div>
+                    <div class="text-3xl font-bold" style="color:#f59e0b;">${blockedCount}</div>
+                </div>
+                <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('untested')}</div>
+                    <div class="text-3xl font-bold" style="color:var(--tx-m);">${untestedCount}</div>
+                </div>
+            </div>
+            
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider" style="color:var(--tx-m);">${t('testRunProgress')} (${totalSteps} steps)</span>
+                    <span class="text-xs font-medium" style="color:var(--tx);">${Math.round(passPct)}% Passed</span>
+                </div>
+                <div class="w-full h-1.5 rounded-full overflow-hidden flex" style="background:var(--bg2); border:1px solid var(--brd);">
+                    <div style="width:${passPct}%;background:#10b981;transition:width .4s ease;"></div>
+                    <div style="width:${failPct}%;background:#ef4444;transition:width .4s ease;"></div>
+                    <div style="width:${blockedPct}%;background:#f59e0b;transition:width .4s ease;"></div>
+                    <div style="width:${untestedPct}%;background:transparent;"></div>
+                </div>
+            </div>
+            <div class="space-y-4">
+            `;
+            
+            if (targets.length === 0) {
+                html += `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases selected.</div>`;
+            } else {
+                targets.forEach(tc => {
+                    const steps = tc.tcData?.steps || [];
+                    const tcNote = doc.runData?.results?.[tc.id]?.note || '';
+                    html += `
+                    <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+                        <div class="px-4 py-3 flex items-center gap-3" style="background:var(--bg2); border-bottom:1px solid var(--brd);">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
+                            <span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
+                            ${state.sharedView ? '' : `<button class="btn-s text-xs ml-auto" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
+                        </div>
+                        <div class="bg-transparent p-4">
+                            ${steps.length === 0 ? `<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>` :
+                            steps.map((step, idx) => {
+                                const status = results[tc.id]?.[idx] || 'untested';
+                                const statusColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
+                                const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
+                                return `
+                                <div class="py-4 ${idx !== steps.length - 1 ? 'border-b' : ''}" style="border-color:var(--brd);">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/5" style="color:var(--tx-m);">Step ${idx + 1}</span>
+                                    </div>
+                                    <div class="flex flex-col md:flex-row gap-4">
+                                        <div class="flex-1 space-y-2">
+                                            <div class="text-sm leading-relaxed" style="color:var(--tx);">${escHtml(step.action).replace(/\n/g, '<br>')}</div>
+                                            ${step.expected ? `<div class="text-[13px] leading-relaxed" style="color:var(--tx-m);"><span class="font-semibold opacity-60 uppercase text-[10px] tracking-wider mr-1">Expected:</span> ${escHtml(step.expected).replace(/\n/g, '<br>')}</div>` : ''}
+                                        </div>
+                                        <div class="shrink-0 flex items-start">
+                                            ${state.sharedView ? `
+                                            <span class="px-3 py-1.5 text-[11px] font-medium rounded-lg" style="background:${status !== 'untested' ? statusColors[status] + '22' : 'var(--bg2)'}; color:${statusColors[status]}; border:1px solid ${status !== 'untested' ? statusColors[status] + '55' : 'var(--brd)'};">
+                                                ${statusLabels[status]}
+                                            </span>
+                                            ` : `
+                                            <div class="flex rounded-lg overflow-hidden border" style="border-color:var(--brd); background:var(--bg2); box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                                <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'pass' ? 'bg-emerald-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'pass' ? 'color:var(--tx-m);' : ''} border-right:1px solid var(--brd);" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'pass')" title="${t('pass')}"><i class="fa-solid fa-check mr-1.5"></i>Pass</button>
+                                                <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'fail' ? 'bg-rose-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'fail' ? 'color:var(--tx-m);' : ''} border-right:1px solid var(--brd);" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'fail')" title="${t('fail')}"><i class="fa-solid fa-xmark mr-1.5"></i>Fail</button>
+                                                <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'blocked' ? 'bg-amber-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'blocked' ? 'color:var(--tx-m);' : ''}" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'blocked')" title="${t('blocked')}"><i class="fa-solid fa-ban mr-1.5"></i>Block</button>
+                                            </div>
+                                            `}
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+
+                            ${state.sharedView ? (tcNote ? `
+                            <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+                                <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
+                                <p class="text-sm" style="color:var(--tx);">${escHtml(tcNote)}</p>
+                            </div>` : '') : `
+                            <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+                                <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
+                                <textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution..." data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>
+                            </div>`}
+                        </div>
+                    </div>
+                    `;
+                });
+            }
+            html += `</div>`;
+            return html;
+        })()}
+        ` : doc.category === 'testplan' ? `
+        ${(() => {
+            const linkedTCs = (doc.tcPlanData?.linkedTCs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+            const linkedRuns = (doc.tcPlanData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+
+            // Which TCs have been executed in at least one linked run
+            const coveredTCIds = new Set();
+            linkedRuns.forEach(run => (run.runData?.targetIds || []).forEach(id => coveredTCIds.add(id)));
+
+            // Overall step pass rate from linked runs over linked TCs
+            let totalSteps = 0, passSteps = 0;
+            linkedRuns.forEach(run => {
+                const results = run.runData?.results || {};
+                linkedTCs.forEach(tc => {
+                    const steps = tc.tcData?.steps || [];
+                    totalSteps += steps.length;
+                    steps.forEach((_, i) => { if (results[tc.id]?.[i] === 'pass') passSteps++; });
+                });
+            });
+            const passPct = totalSteps > 0 ? Math.round(passSteps / totalSteps * 100) : null;
+            const coveredCount = linkedTCs.filter(tc => coveredTCIds.has(tc.id)).length;
+            const coveragePct = linkedTCs.length > 0 ? Math.round(coveredCount / linkedTCs.length * 100) : null;
+
+            return `
+            <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(245,158,11,0.12);">
+                        <i class="fa-solid fa-clipboard-list" style="color:var(--c-tp);"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold" style="color:var(--tx);">Test Coverage</div>
+                        <div class="text-xs mt-0.5" style="color:var(--tx-d);">${linkedTCs.length} test cases · ${linkedRuns.length} runs linked</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Test Cases</div>
+                        <div class="text-2xl font-bold" style="color:var(--c-tp);">${linkedTCs.length}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Coverage</div>
+                        <div class="text-2xl font-bold" style="color:${coveragePct === null ? 'var(--tx-d)' : coveragePct === 100 ? '#10b981' : coveragePct >= 70 ? '#f59e0b' : '#ef4444'};">${coveragePct !== null ? coveragePct + '%' : '—'}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Pass Rate</div>
+                        <div class="text-2xl font-bold" style="color:${passPct === null ? 'var(--tx-d)' : passPct >= 80 ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'};">${passPct !== null ? passPct + '%' : '—'}</div>
+                    </div>
+                </div>
+                ${linkedTCs.length > 0 ? `
+                <div class="mb-1">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[11px] uppercase tracking-wider font-medium" style="color:var(--tx-d);">Coverage Progress</span>
+                        <span class="text-[11px]" style="color:var(--tx-m);">${coveredCount} / ${linkedTCs.length} covered</span>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full overflow-hidden" style="background:var(--card);border:1px solid var(--brd);">
+                        <div style="width:${coveragePct || 0}%;height:100%;background:linear-gradient(90deg,#10b981,#34d399);transition:width .4s ease;border-radius:9999px;"></div>
+                    </div>
+                </div>` : ''}
+            </div>
+            ${linkedTCs.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Cases (${linkedTCs.length})</p>
+                <div class="space-y-2">
+                    ${linkedTCs.map(tc => {
+                        const isCovered = coveredTCIds.has(tc.id);
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${tc.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                            <i class="fa-solid fa-flask-vial text-xs shrink-0" style="color:var(--c-tc);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(tc.title)}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="background:${isCovered ? '#10b98120' : 'rgba(122,139,168,0.1)'}; color:${isCovered ? '#10b981' : 'var(--tx-d)'};">${isCovered ? 'Covered' : 'Not run'}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+            ${linkedRuns.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Runs (${linkedRuns.length})</p>
+                <div class="space-y-2">
+                    ${linkedRuns.map(run => {
+                        const results = run.runData?.results || {};
+                        let rTotal = 0, rPass = 0;
+                        linkedTCs.forEach(tc => {
+                            const steps = tc.tcData?.steps || [];
+                            rTotal += steps.length;
+                            steps.forEach((_, i) => { if (results[tc.id]?.[i] === 'pass') rPass++; });
+                        });
+                        const pct = rTotal ? Math.round(rPass / rTotal * 100) : null;
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                            <i class="fa-solid fa-play-circle text-sm shrink-0" style="color:var(--c-testrun);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
+                            <span class="text-xs font-mono font-semibold" style="color:${pct === null ? 'var(--tx-d)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444'};">${pct !== null ? pct + '%' : '—'}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+            `;
+        })()}
+        ` : doc.category === 'release' ? `
+        ${(() => {
+            const linkedRuns = (doc.releaseData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+            const linkedBugs = (doc.releaseData?.linkedBugs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+            const linkedEnvs = (doc.releaseData?.linkedEnvs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+
+            let totalSteps = 0, passSteps = 0;
+            linkedRuns.forEach(run => {
+                const results = run.runData?.results || {};
+                (run.runData?.targetIds || []).forEach(tcId => {
+                    const tc = documents.find(d => d.id === tcId);
+                    if (!tc) return;
+                    const steps = tc.tcData?.steps || [];
+                    totalSteps += steps.length;
+                    steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') passSteps++; });
+                });
+            });
+            const passPct = totalSteps ? Math.round(passSteps / totalSteps * 100) : null;
+            const criticalBugs = linkedBugs.filter(b => b.bugData?.severity === 'Critical').length;
+            const sevColor = s => s === 'Critical' ? '#ef4444' : s === 'Major' ? '#f97316' : s === 'Minor' ? '#f59e0b' : '#7a8ba8';
+
+            const statusStyle = s => ({
+                released: { bg: '#10b98122', color: '#10b981', border: '#10b98155', label: '🚀 Released' },
+                'in-progress': { bg: '#6366f122', color: '#6366f1', border: '#6366f155', label: '🔨 In Progress' },
+                cancelled: { bg: '#ef444422', color: '#ef4444', border: '#ef444455', label: '❌ Cancelled' },
+                planning: { bg: 'rgba(122,139,168,0.12)', color: 'var(--tx-m)', border: 'var(--brd)', label: '📋 Planning' }
+            }[s] || { bg: 'rgba(122,139,168,0.12)', color: 'var(--tx-m)', border: 'var(--brd)', label: '📋 Planning' });
+
+            const st = statusStyle(doc.releaseData?.status);
+
+            return `
+            <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(168,85,247,0.12);">
+                            <i class="fa-solid fa-rocket" style="color:var(--c-rel);"></i>
+                        </div>
+                        <div>
+                            <div class="font-mono font-bold text-xl" style="color:var(--c-rel);">${escHtml(doc.releaseData?.version || 'v?.?.?')}</div>
+                            ${doc.releaseData?.releaseDate ? `<div class="text-xs mt-0.5" style="color:var(--tx-d);">Release Date: ${escHtml(doc.releaseData.releaseDate)}</div>` : ''}
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${st.bg}; color:${st.color}; border:1px solid ${st.border};">${st.label}</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Test Runs</div>
+                        <div class="text-2xl font-bold" style="color:var(--c-rel);">${linkedRuns.length}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Pass Rate</div>
+                        <div class="text-2xl font-bold" style="color:${passPct === null ? 'var(--tx-d)' : passPct >= 80 ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'};">${passPct !== null ? passPct + '%' : '—'}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Total Bugs</div>
+                        <div class="text-2xl font-bold" style="color:${linkedBugs.length === 0 ? '#10b981' : '#ef4444'};">${linkedBugs.length}</div>
+                    </div>
+                    <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
+                        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Critical</div>
+                        <div class="text-2xl font-bold" style="color:${criticalBugs === 0 ? '#10b981' : '#ef4444'};">${criticalBugs}</div>
+                    </div>
+                </div>
+            </div>
+            ${linkedRuns.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Runs (${linkedRuns.length})</p>
+                <div class="space-y-2">
+                    ${linkedRuns.map(run => {
+                        const results = run.runData?.results || {};
+                        let rTotal = 0, rPass = 0;
+                        (run.runData?.targetIds || []).forEach(tcId => {
+                            const tc = documents.find(d => d.id === tcId);
+                            if (!tc) return;
+                            const steps = tc.tcData?.steps || [];
+                            rTotal += steps.length;
+                            steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') rPass++; });
+                        });
+                        const pct = rTotal ? Math.round(rPass / rTotal * 100) : null;
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                            <i class="fa-solid fa-play-circle text-sm shrink-0" style="color:var(--c-testrun);"></i>
+                            <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
+                            <span class="text-xs font-mono font-semibold" style="color:${pct === null ? 'var(--tx-d)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444'};">${pct !== null ? pct + '%' : '—'}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+            ${linkedBugs.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Bug Reports (${linkedBugs.length})</p>
+                <div class="space-y-2">
+                    ${linkedBugs.map(bug => `
+                    <div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${bug.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        <i class="fa-solid fa-bug text-sm shrink-0" style="color:var(--c-bug);"></i>
+                        <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(bug.title)}</span>
+                        ${bug.bugData?.severity ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:${sevColor(bug.bugData.severity)}22; color:${sevColor(bug.bugData.severity)};">${escHtml(bug.bugData.severity)}</span>` : ''}
+                    </div>`).join('')}
+                </div>
+            </div>` : ''}
+            ${linkedEnvs.length ? `
+            <div class="mb-4">
+                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Environments (${linkedEnvs.length})</p>
+                <div class="flex flex-wrap gap-2">
+                    ${linkedEnvs.map(env => `
+                    <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${env.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        <i class="fa-solid fa-network-wired text-xs" style="color:var(--c-env);"></i>
+                        <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(env.title)}</span>
+                        ${env.envData?.status ? `<span class="w-1.5 h-1.5 rounded-full shrink-0 ml-1" style="background:${env.envData.status === 'healthy' ? '#10b981' : env.envData.status === 'down' ? '#ef4444' : '#f59e0b'};"></span>` : ''}
+                    </div>`).join('')}
+                </div>
+            </div>` : ''}
+            ${(() => {
+                // Compare with the most recent previous release (by createdAt)
+                const otherReleases = documents
+                    .filter(d => d.category === 'release' && d.status !== 'deleted' && d.id !== doc.id)
+                    .sort((a, b) => b.createdAt - a.createdAt);
+                const prev = otherReleases[0];
+                if (!prev) return '';
+                // Compute prev stats
+                const prevRuns = (prev.releaseData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+                const prevBugs = (prev.releaseData?.linkedBugs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+                let prevTotal = 0, prevPass = 0;
+                prevRuns.forEach(run => {
+                    const results = run.runData?.results || {};
+                    (run.runData?.targetIds || []).forEach(tcId => {
+                        const tc = documents.find(d => d.id === tcId);
+                        if (!tc) return;
+                        const steps = tc.tcData?.steps || [];
+                        prevTotal += steps.length;
+                        steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') prevPass++; });
+                    });
+                });
+                const prevPct = prevTotal ? Math.round(prevPass / prevTotal * 100) : null;
+                const prevCritical = prevBugs.filter(b => b.bugData?.severity === 'Critical').length;
+                const deltaPct = (passPct !== null && prevPct !== null) ? passPct - prevPct : null;
+                const deltaBugs = linkedBugs.length - prevBugs.length;
+                const deltaCrit = criticalBugs - prevCritical;
+                const delta = (v, invert = false) => {
+                    if (v === 0) return `<span style="color:var(--tx-d);">±0</span>`;
+                    const up = v > 0;
+                    const good = invert ? !up : up;
+                    return `<span style="color:${good ? '#10b981' : '#ef4444'};">${up ? '+' : ''}${v}</span>`;
+                };
+                return `
+                <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+                    <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">vs. Previous Release — <span style="color:var(--tx-m);">${escHtml(prev.releaseData?.version || prev.title)}</span></p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="p-3 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                            <div class="text-[10px] uppercase tracking-wider mb-1" style="color:var(--tx-d);">Pass Rate</div>
+                            <div class="text-lg font-bold font-mono">${passPct !== null ? passPct + '%' : '—'}</div>
+                            <div class="text-xs mt-0.5">${deltaPct !== null ? delta(deltaPct) : '<span style="color:var(--tx-d);">—</span>'} vs ${prevPct !== null ? prevPct + '%' : '—'}</div>
+                        </div>
+                        <div class="p-3 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                            <div class="text-[10px] uppercase tracking-wider mb-1" style="color:var(--tx-d);">Total Bugs</div>
+                            <div class="text-lg font-bold font-mono">${linkedBugs.length}</div>
+                            <div class="text-xs mt-0.5">${delta(deltaBugs, true)} vs ${prevBugs.length}</div>
+                        </div>
+                        <div class="p-3 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                            <div class="text-[10px] uppercase tracking-wider mb-1" style="color:var(--tx-d);">Critical Bugs</div>
+                            <div class="text-lg font-bold font-mono">${criticalBugs}</div>
+                            <div class="text-xs mt-0.5">${delta(deltaCrit, true)} vs ${prevCritical}</div>
+                        </div>
+                    </div>
+                </div>`;
+            })()}
+            `;
+        })()}
+        ${doc.content && doc.content.trim() ? `
+        <div class="mt-6">
+            <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
+            <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
+        </div>` : ''}
+        ` : (!doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
+        <!-- Content -->
+        <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
+        </div>
+        `}
+        <textarea id="vw-content-hidden" style="display:none;">${escHtml(doc.content)}</textarea>
+        
+        <!-- Actions bottom (hidden in shared view) -->
+        ${state.sharedView ? '' : `
+        <div class="flex items-center gap-3 mt-5">
+            <button class="btn-p" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
+            <button class="btn-s" data-onclick="duplicateDoc('${doc.id}')"><i class="fa-solid fa-copy mr-1.5"></i>${t('duplicate')}</button>
+            <button class="btn-d ml-auto" data-onclick="showDeleteModal('${doc.id}')"><i class="fa-solid fa-trash mr-1.5"></i>${t('delete')}</button>
+        </div>
+        `}
+    </div>`;
+}
+
+// ========================
+// ACTIONS
+// ========================
+window.updateTestRunStep = async function(runDocId, tcId, stepIdx, status) {
+    if (state.sharedView) return;
+    const doc = documents.find(d => d.id === runDocId);
+    if (!doc || !doc.runData) return;
+    
+    if (!doc.runData.results) doc.runData.results = {};
+    if (!doc.runData.results[tcId]) doc.runData.results[tcId] = {};
+    
+    doc.runData.results[tcId][stepIdx] = status;
+    doc.updatedAt = Date.now();
+    
+    if (state.editingDoc?.id === runDocId) {
+        state.editingDoc = { ...doc };
+    }
+    
+    await persist();
+    render();
+};
+
+window.updateTestRunNote = async function(runDocId, tcId, note) {
+    if (state.sharedView) return;
+    const doc = documents.find(d => d.id === runDocId);
+    if (!doc || !doc.runData) return;
+    
+    if (!doc.runData.results) doc.runData.results = {};
+    if (!doc.runData.results[tcId]) doc.runData.results[tcId] = {};
+    
+    doc.runData.results[tcId].note = note;
+    doc.updatedAt = Date.now();
+    
+    if (state.editingDoc?.id === runDocId) {
+        state.editingDoc = { ...doc };
+    }
+    
+    await persist();
+};
+
+function createDoc(cat) {
+    closeModal();
+    pushHistory();
+    state.view = 'editor';
+    state.editingDoc = null;
+    state.editorTags = [];
+    state.editorMode = 'edit';
+    state._newCat = cat || 'runbook';
+    state._newTitle = '';
+    state._newSubfolder = '';
+    state._newStatus = 'draft';
+    state._newBugData = null;
+    state._newTcData = null;
+    state._newApiData = null;
+    state._newRunData = null;
+    state._newTcPlanData = null;
+    state._newContent = cat && TEMPLATES[cat] ? TEMPLATES[cat] : '# New Document\n\nStart writing here...';
+    render();
+    setTimeout(() => document.getElementById('ed-title')?.focus(), 100);
+}
+
+function editDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    pushHistory();
+    state.view = 'editor';
+    state.editingDoc = { ...doc };
+    state.editorTags = [...doc.tags];
+    state.editorMode = 'edit';
+    render();
+}
+
+function viewDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    pushHistory();
+    state.view = 'viewer';
+    state.editingDoc = { ...doc };
+    state.batchMode = false;
+    state.selectedIds = new Set();
+    state.lastSelectedId = null;
+    history.replaceState({}, '', '?view=' + id);
+    render();
+}
+
+window.cancelEdit = function() {
+    if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
+    window.tuiEditor = null;
+    state.editorTags = [];
+    state.editorMode = 'edit';
+    pendingImageReplacements.clear();
+    navigateBack();
+}
+
+async function saveDoc() {
+    const title = document.getElementById('ed-title')?.value.trim();
+    const subfolder = document.getElementById('ed-subfolder')?.value.trim() || '';
+    const cat = document.getElementById('ed-cat')?.value;
+    const status = document.getElementById('ed-status')?.value;
+    
+    let content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    // Apply any pending base64 → CDN URL swaps accumulated since last save
+    if (pendingImageReplacements.size > 0) {
+        pendingImageReplacements.forEach((cdnUrl, base64Url) => {
+            content = content.split(base64Url).join(cdnUrl);
+        });
+        pendingImageReplacements.clear();
+    }
+    let finalContent = content;
+    let bugData = null;
+    let tcData = null;
+    let apiData = null;
+    let runData = null;
+    let envData = null;
+    let releaseData = null;
+    let tcPlanData = null;
+    
+    if (cat === 'bug') {
+        const env = document.getElementById('ed-bug-env')?.value || '';
+        const browser = document.getElementById('ed-bug-browser')?.value || '';
+        const severity = document.getElementById('ed-bug-severity')?.value || 'Minor';
+        const precond = document.getElementById('ed-bug-precond')?.value || '';
+        const stepInputs = document.querySelectorAll('.bug-step-input');
+        const steps = Array.from(stepInputs).map(inp => inp.value.trim()).filter(v => v);
+        const expected = document.getElementById('ed-bug-expected')?.value || '';
+        const actual = document.getElementById('ed-bug-actual')?.value || '';
+        
+        bugData = { env, browser, severity, precond, steps, expected, actual };
+        
+        finalContent = `# ${title}
+
+## ${t('bugEnv')}
+- **Environment:** ${env || '-'}
+- **Device/Browser:** ${browser || '-'}
+- **Severity:** ${severity}
+
+${precond ? `## ${t('bugPrecond')}\n${precond}\n` : ''}
+## ${t('bugSteps')}\n${steps.length ? steps.map((s, i) => (i + 1) + '. ' + s).join('\n') : '-'}
+
+## ${t('bugExpected')}
+${expected || '-'}
+
+## ${t('bugActual')}
+${actual || '-'}`;
+    } else if (cat === 'testcases') {
+        const module = document.getElementById('ed-tc-module')?.value || '';
+        const precond = document.getElementById('ed-tc-precond')?.value || '';
+        const testData = document.getElementById('ed-tc-data')?.value || '';
+        const stepRows = document.querySelectorAll('.tc-step-row');
+        const steps = Array.from(stepRows).map(row => ({
+            action: row.querySelector('.tc-step-action')?.value.trim() || '',
+            expected: row.querySelector('.tc-step-expected')?.value.trim() || ''
+        })).filter(s => s.action || s.expected);
+        
+        tcData = { module, precond, data: testData, steps };
+        
+        finalContent = `# ${title}
+
+${module ? `**Module:** ${module}` : ''}
+
+${precond ? `## ${t('tcPrecond')}\n${precond}\n` : ''}
+${testData ? `## ${t('tcData')}\n${testData}\n` : ''}
+
+## ${t('tcSteps')}
+| Step | ${t('tcAction')} | ${t('tcExpected')} |
+|---|---|---|
+${steps.length ? steps.map((s, i) => `| ${i+1} | ${s.action.replace(/\n/g, '<br>')} | ${s.expected.replace(/\n/g, '<br>')} |`).join('\n') : '| - | - | - |'}
+`;
+    } else if (cat === 'api') {
+        const method = document.getElementById('ed-api-method')?.value || 'GET';
+        const endpoint = document.getElementById('ed-api-endpoint')?.value || '';
+        
+        const hRows = document.querySelectorAll('.api-header-row');
+        const headers = Array.from(hRows).map(row => ({
+            key: row.querySelector('.api-key')?.value.trim() || '',
+            value: row.querySelector('.api-value')?.value.trim() || '',
+            req: row.querySelector('.api-req')?.checked || false
+        })).filter(s => s.key || s.value);
+        
+        const pRows = document.querySelectorAll('.api-param-row');
+        const params = Array.from(pRows).map(row => ({
+            key: row.querySelector('.api-key')?.value.trim() || '',
+            value: row.querySelector('.api-value')?.value.trim() || '',
+            req: row.querySelector('.api-req')?.checked || false
+        })).filter(s => s.key || s.value);
+
+        const body = document.getElementById('ed-api-body')?.value || '';
+        const response = document.getElementById('ed-api-response')?.value || '';
+        
+        apiData = { method, endpoint, headers, params, body, response };
+        
+        finalContent = `# ${title}
+
+**Method:** \`${method}\` | **Endpoint:** \`${endpoint}\`
+
+${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${headers.map(h => `| ${h.key || '-'} | ${h.value || '-'} | ${h.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
+${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${p.key || '-'} | ${p.value || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
+${body ? `## ${t('apiBody')}\n\`\`\`json\n${body}\n\`\`\`\n` : ''}
+${response ? `## ${t('apiResponse')}\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
+    } else if (cat === 'testrun') {
+        const checkboxes = document.querySelectorAll('.testrun-tc-cb:checked');
+        const targetIds = Array.from(checkboxes).map(cb => cb.value);
+        const existingResults = (state.editingDoc && state.editingDoc.runData && state.editingDoc.runData.results) ? state.editingDoc.runData.results : {};
+        runData = { targetIds, results: existingResults };
+    } else if (cat === 'testplan') {
+        const linkedTCs = Array.from(document.querySelectorAll('.tp-tc-cb:checked')).map(cb => cb.value);
+        const linkedRuns = Array.from(document.querySelectorAll('.tp-run-cb:checked')).map(cb => cb.value);
+        tcPlanData = { linkedTCs, linkedRuns };
+    } else if (cat === 'release') {
+        const version = document.getElementById('ed-rel-version')?.value || '';
+        const releaseDate = document.getElementById('ed-rel-date')?.value || '';
+        const relStatus = document.getElementById('ed-rel-status')?.value || 'planning';
+        const linkedRuns = Array.from(document.querySelectorAll('.ed-rel-run:checked')).map(cb => cb.value);
+        const linkedBugs = Array.from(document.querySelectorAll('.ed-rel-bug:checked')).map(cb => cb.value);
+        const linkedEnvs = Array.from(document.querySelectorAll('.ed-rel-env:checked')).map(cb => cb.value);
+        releaseData = { version, releaseDate, status: relStatus, linkedRuns, linkedBugs, linkedEnvs };
+    } else if (cat === 'environment') {
+        const envStatus = document.getElementById('ed-env-status')?.value || 'healthy';
+        const propRows = document.querySelectorAll('.env-prop-row');
+        const properties = Array.from(propRows).map(row => ({
+            label: row.querySelector('.env-prop-label')?.value.trim() || '',
+            value: row.querySelector('.env-prop-value')?.value.trim() || '',
+            secret: row.querySelector('.env-prop-secret')?.checked || false
+        })).filter(p => p.label || p.value);
+        const linkedCreds = Array.from(document.querySelectorAll('.ed-env-cred:checked')).map(cb => cb.value);
+        const notes = document.getElementById('ed-env-notes')?.value || '';
+        
+        envData = { status: envStatus, properties, linkedCreds, notes };
+        finalContent = `# Environment Notes\n${notes}`;
+    }
+
+    const tags = [...state.editorTags];
+    const username = document.getElementById('ed-username')?.value || '';
+    const password = document.getElementById('ed-password')?.value || '';
+
+    if (!title) { toast(t('titleRequired'), 'error'); document.getElementById('ed-title')?.focus(); return; }
+
+    if (state.editingDoc && state.editingDoc.id) {
+        // Update
+        const idx = documents.findIndex(d => d.id === state.editingDoc.id);
+        if (idx !== -1) {
+            DocHistory.save(documents[idx]);
+            documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
+        }
+        toast(t('docUpdated'), 'success');
+        state.editingDoc = { ...documents[idx] };
+        state.view = 'viewer';
+    } else {
+        // Create
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        documents.unshift(newDoc);
+        toast(t('docCreated'), 'success');
+        state.editingDoc = { ...newDoc };
+        state.view = 'viewer';
+        state.category = cat;
+    }
+    // Destroy editor before losing reference — orphaned instance keeps global ToastUI listeners
+    if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
+    if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
+    window.currentViewerDocId = null;
+    window.tuiEditor = null;
+    history.replaceState({}, '', '?view=' + state.editingDoc.id);
+    await persist();
+    // Give ToastUI Editor's async destroy() (mutation observers, DOM cleanup)
+    // time to fully complete before rendering the viewer. rAF ensures at least
+    // one full paint cycle after the 60ms grace period.
+    await new Promise(r => setTimeout(() => requestAnimationFrame(r), 60));
+    render();
+}
+
+async function toggleFav(id) {
+    if (state.sharedView) return;
+    const doc = documents.find(d => d.id === id);
+    if (doc) {
+        doc.favorite = !doc.favorite;
+        await persist();
+        render();
+    }
+}
+
+async function duplicateDoc(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    const dup = { ...doc, id: uid(), title: doc.title + ' (Copy)', favorite: false, createdAt: Date.now(), updatedAt: Date.now(), tags: [...doc.tags] };
+    documents.unshift(dup);
+    await persist();
+    toast(t('docDuplicated'), 'success');
+    render();
+}
+
+// ========================
+// KEYBOARD SHORTCUTS
+// ========================
+document.addEventListener('keydown', (e) => {
+    // Ctrl/Cmd + S để save khi đang ở editor
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && state.view === 'editor') {
+        e.preventDefault();
+        saveDoc();
+    }
+    // Escape để đóng modal hoặc thoát editor
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modal');
+        if (modal && !modal.classList.contains('hidden')) { closeModal(); return; }
+        const menu = document.getElementById('doc-menu');
+        if (menu) { menu.remove(); return; }
+        if (state.view === 'editor') {
+            navigate(state.editingDoc?.id ? 'viewer' : 'documents', state.category);
+        }
+    }
+    // Ctrl/Cmd + K để focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k' && (state.view === 'documents' || state.view === 'favorites')) {
+        e.preventDefault();
+        const inp = document.querySelector('.search-w input');
+        if (inp) inp.focus();
+    }
+});
+
+// Image Upload handlers for generic textareas
+document.addEventListener('paste', async (e) => {
+    const target = e.target;
+    if (target.tagName === 'TEXTAREA' && !target.closest('.toastui-editor-defaultUI')) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let index in items) {
+            const item = items[index];
+            if (item.kind === 'file') {
+                const blob = item.getAsFile();
+                if (blob && blob.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const startPos = target.selectionStart;
+                    const endPos = target.selectionEnd;
+                    const uploadingText = '![Uploading image...]()';
+                    target.value = target.value.substring(0, startPos) + uploadingText + target.value.substring(endPos);
+                    
+                    uploadImageToCloud(blob, (url) => {
+                        target.value = target.value.replace(uploadingText, `![Image](${url})`);
+                        if(target.onchange) target.onchange();
+                    });
+                }
+            }
+        }
+    }
+});
+
+document.addEventListener('drop', async (e) => {
+    const target = e.target;
+    if (target.tagName === 'TEXTAREA' && !target.closest('.toastui-editor-defaultUI')) {
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+            e.preventDefault();
+            const blob = files[0];
+            const startPos = target.selectionStart || target.value.length;
+            const uploadingText = '![Uploading image...]()\n';
+            target.value = target.value.substring(0, startPos) + uploadingText + target.value.substring(startPos);
+            
+            uploadImageToCloud(blob, (url) => {
+                target.value = target.value.replace(uploadingText, `![Image](${url})\n`);
+                if(target.onchange) target.onchange();
+            });
+        }
+    }
+});
+
+
+// Đóng menu khi scroll
+document.getElementById('content')?.addEventListener('scroll', () => {
+    const menu = document.getElementById('doc-menu');
+    if (menu) menu.remove();
+});
+
+// ========================
+// INIT
+// ========================
+async function init() {
+    await hydrate();
+    render();
+}
+
+async function startApp() {
+    const configured = await GitHubSync.isConfigured();
+    if (!configured) {
+        // Auto-bootstrap: pull token + data from public repo — no config needed
+        const d = GitHubSync.DEFAULTS;
+        const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
+        if (ok) {
+            toast('Vault synced from GitHub', 'success');
+        } else {
+            // Bootstrap failed — either no data on GitHub yet, or wrong master password
+            const hasRemoteData = await _checkRemoteExists(d.owner, d.repo, d.branch);
+            if (hasRemoteData) {
+                toast('Sync failed: wrong master password — enter the same password you used on your other device.', 'error');
+            }
+        }
+    }
+    await init();
+    handleUrlParams();
+}
+
+async function _checkRemoteExists(owner, repo, branch) {
+    try {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${GitHubSync.DATA_PATH}?ref=${branch || 'main'}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
+        return res.ok;
+    } catch(e) { return false; }
+}
+
+window._afterUnlock = startApp;
+
+// Share links load without authentication — check first
+const _shareIdOnLoad = new URLSearchParams(location.search).get('shareId');
+if (_shareIdOnLoad) {
+    // Load shared doc directly, no auth needed
+    const _shareKey = decodeURIComponent(location.hash.replace('#key=', ''));
+    loadSharedDoc(_shareIdOnLoad, _shareKey);
+} else if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
+    const ls = document.getElementById('lock-screen');
+    if (ls) {
+        ls.classList.remove('hidden');
+        if (!window.LocalAuth.isConfigured()) {
+            const hint = document.getElementById('lock-screen-hint');
+            const sub = document.getElementById('lock-screen-sub');
+            if (hint) hint.textContent = 'Enter your Master Password to sync your data from GitHub.';
+            if (sub) sub.textContent = 'Use the same password from your other device. First time? Enter any password to create your vault.';
+        }
+    }
+} else {
+    startApp();
+}
+
+// ========================
+// URL PARAMETER HANDLING
+// ========================
+function handleUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('shareId');
+    const action = params.get('action');
+    const viewId = params.get('view');
+
+    if (shareId) {
+        const key = decodeURIComponent(location.hash.replace('#key=', ''));
+        loadSharedDoc(shareId, key);
+    } else if (action === 'new') {
+        showTemplateModal();
+    } else if (viewId) {
+        const doc = documents.find(d => d.id === viewId);
+        if (doc) viewDoc(viewId);
+    }
+}
+
+// ========================
+// CSP EVENT DELEGATOR
+// ========================
+function executeAction(code, event, element) {
+    if (!code) return;
+    
+    if (code.includes('event.stopPropagation()')) {
+        event.stopPropagation();
+    }
+    
+    const calls = code.split(';').map(s => s.trim()).filter(Boolean);
+    for (const call of calls) {
+        if (call === 'event.stopPropagation()') continue;
+        
+        // Special inline code evaluations
+        if (call === "document.getElementById('import-input').click()") {
+            document.getElementById('import-input').click();
+            continue;
+        }
+        if (call.startsWith("document.getElementById('doc-menu').remove()")) {
+            const menu = document.getElementById('doc-menu');
+            if (menu) menu.remove();
+            continue;
+        }
+        if (call === "state.search=this.value") {
+            state.search = element.value;
+            continue;
+        }
+        if (call === "state.statusFilter=this.value") {
+            state.statusFilter = element.value;
+            continue;
+        }
+        if (call === "state.sortBy=this.value") {
+            state.sortBy = element.value;
+            continue;
+        }
+        if (call === "state.editorMode='edit'") {
+            state.editorMode = 'edit';
+            continue;
+        }
+        if (call === "state.editorMode='preview'") {
+            state.editorMode = 'preview';
+            continue;
+        }
+        if (call === "document.getElementById('ed-content').focus()") {
+            setTimeout(() => document.getElementById('ed-content')?.focus(), 0);
+            continue;
+        }
+        if (call === "this.style.background='var(--card)'") {
+            element.style.background = 'var(--card)';
+            continue;
+        }
+        if (call === "this.style.background='transparent'") {
+            element.style.background = 'transparent';
+            continue;
+        }
+        if (call === "this.style.background='rgba(244,63,94,0.06)'") {
+            element.style.background = 'rgba(244,63,94,0.06)';
+            continue;
+        }
+        if (call === "this.style.color='var(--tx-m)'") {
+            element.style.color = 'var(--tx-m)';
+            continue;
+        }
+        if (call === "this.style.color='var(--tx-d)'") {
+            element.style.color = 'var(--tx-d)';
+            continue;
+        }
+        
+        // Function calls
+        const match = call.match(/^([a-zA-Z0-9_]+)\((.*)\)$/);
+        if (match) {
+            const funcName = match[1];
+            const argsStr = match[2];
+            
+            let args = [];
+            if (argsStr.trim() !== '') {
+                // simple argument parsing
+                args = argsStr.split(',').map(s => {
+                    s = s.trim();
+                    if (s === 'this') return element;
+                    if (s === 'this.value') return element.value;
+                    if (s === 'event') return event;
+                    if (s === 'null') return null;
+                    if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
+                        return s.slice(1, -1);
+                    }
+                    if (!isNaN(s)) return Number(s);
+                    return s;
+                });
+            }
+            
+            if (typeof window[funcName] === 'function') {
+                window[funcName](...args);
+            }
+        }
+    }
+}
+
+document.addEventListener('click', (e) => {
+    let target = e.target.closest('[data-onclick]');
+    if (target) {
+        executeAction(target.getAttribute('data-onclick'), e, target);
+    }
+});
+
+document.addEventListener('input', (e) => {
+    let target = e.target.closest('[data-oninput]');
+    if (target) {
+        executeAction(target.getAttribute('data-oninput'), e, target);
+    }
+});
+
+document.addEventListener('change', (e) => {
+    let target = e.target.closest('[data-onchange]');
+    if (target) {
+        executeAction(target.getAttribute('data-onchange'), e, target);
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    let target = e.target.closest('[data-onkeydown]');
+    if (target) {
+        executeAction(target.getAttribute('data-onkeydown'), e, target);
+    }
+});
+
+document.addEventListener('mouseover', (e) => {
+    let target = e.target.closest('[data-onmouseenter]');
+    if (target) {
+        executeAction(target.getAttribute('data-onmouseenter'), e, target);
+    }
+});
+
+document.addEventListener('mouseout', (e) => {
+    let target = e.target.closest('[data-onmouseleave]');
+    if (target) {
+        executeAction(target.getAttribute('data-onmouseleave'), e, target);
+    }
+});
+
+// ========================
+// CREDENTIAL HELPERS
+// ========================
+
+window.credAvatarColor = function(site) {
+    const s = site || '';
+    if (!s) return 'avatar-0';
+    return `avatar-${s.charCodeAt(0) % 8}`;
+};
+
+window.guessDomain = function(site) {
+    const s = (site || '').trim().toLowerCase();
+    if (s.includes('.')) {
+        try {
+            const url = s.startsWith('http') ? s : `https://${s}`;
+            return new URL(url).hostname;
+        } catch(e) {
+            return s;
+        }
+    }
+    return s.replace(/\s+/g, '') + '.com';
+};
+
+window.copyPassword = function(id, btn) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc || !doc.password || (typeof Vault !== 'undefined' && Vault.isEncrypted(doc.password))) return;
+    _copyText(doc.password, btn);
+};
+
+window.copyUsername = function(id, btn) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc || !doc.username) return;
+    _copyText(doc.username, btn);
+};
+
+window.togglePasswordVisibility = function(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+};
+
+
+// ========================
+
+
+// ========================
+// KANBAN HELPERS & DELEGATORS
+// ========================
+
+window.handleDragStart = function(event, id, element) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+    // Add visual feedback
+    setTimeout(() => { element.classList.add('opacity-50'); }, 0);
+};
+
+window.handleDragEnd = function(event, element) {
+    element.classList.remove('opacity-50');
+};
+
+window.handleDragOver = function(event) {
+    event.preventDefault(); // Necessary to allow dropping
+    event.dataTransfer.dropEffect = 'move';
+};
+
+window.handleDrop = async function(event, newStatus) {
+    event.preventDefault();
+    const id = event.dataTransfer.getData('text/plain');
+    if (!id) return;
+    
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx !== -1 && documents[idx].status !== 'deleted') {
+        if (documents[idx].kanbanStatus !== newStatus) {
+            documents[idx].kanbanStatus = newStatus;
+            documents[idx].updatedAt = Date.now();
+            await persist();
+            renderContent();
+        }
+    }
+};
+
+document.addEventListener('dragstart', (e) => {
+    let target = e.target.closest('[data-ondragstart]');
+    if (target) {
+        const action = target.getAttribute('data-ondragstart');
+        if (action.startsWith('handleDragStart')) {
+            const id = action.match(/'([^']+)'/)[1];
+            window.handleDragStart(e, id, target);
+        }
+    }
+});
+
+document.addEventListener('dragend', (e) => {
+    let target = e.target.closest('[data-ondragend]');
+    if (target) {
+        window.handleDragEnd(e, target);
+    }
+});
+
+document.addEventListener('dragover', (e) => {
+    let target = e.target.closest('[data-ondragover]');
+    if (target) {
+        window.handleDragOver(e);
+    }
+});
+
+document.addEventListener('drop', (e) => {
+    let target = e.target.closest('[data-ondrop]');
+    if (target) {
+        const action = target.getAttribute('data-ondrop');
+        if (action.startsWith('handleDrop')) {
+            const status = action.match(/'([^']+)'/)[1];
+            window.handleDrop(e, status);
+        }
+    }
+});
+
+// ========================
+// KANBAN TOUCH DRAG
+// ========================
+let _touchDragId = null;
+let _touchGhost = null;
+let _touchCurrentCol = null;
+let _touchStartPos = null;
+let _touchDragging = false;
+
+document.addEventListener('touchstart', (e) => {
+    const card = e.target.closest('[data-ondragstart]');
+    if (!card) return;
+    const action = card.getAttribute('data-ondragstart');
+    if (!action || !action.startsWith('handleDragStart')) return;
+
+    _touchDragId = action.match(/'([^']+)'/)[1];
+    _touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY, card };
+    _touchDragging = false;
+    // No preventDefault here — lets tap-to-open still work
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    if (!_touchDragId || !_touchStartPos) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - _touchStartPos.x;
+    const dy = touch.clientY - _touchStartPos.y;
+
+    if (!_touchDragging && Math.sqrt(dx * dx + dy * dy) < 8) return;
+
+    // First time crossing drag threshold — spawn ghost
+    if (!_touchDragging) {
+        _touchDragging = true;
+        const { card } = _touchStartPos;
+        const rect = card.getBoundingClientRect();
+        _touchGhost = card.cloneNode(true);
+        Object.assign(_touchGhost.style, {
+            position: 'fixed', zIndex: 9999, pointerEvents: 'none',
+            width: rect.width + 'px', opacity: '0.9',
+            left: rect.left + 'px', top: rect.top + 'px',
+            transform: 'scale(1.03) rotate(1deg)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+            borderRadius: '8px', transition: 'none'
+        });
+        document.body.appendChild(_touchGhost);
+        card.style.opacity = '0.35';
+    }
+
+    const gw = _touchGhost.offsetWidth;
+    _touchGhost.style.left = (touch.clientX - gw / 2) + 'px';
+    _touchGhost.style.top = (touch.clientY - 40) + 'px';
+
+    _touchGhost.style.display = 'none';
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    _touchGhost.style.display = '';
+
+    const col = el && el.closest('[data-ondrop]');
+    if (_touchCurrentCol && _touchCurrentCol !== col) {
+        _touchCurrentCol.style.outline = '';
+    }
+    _touchCurrentCol = col || null;
+    if (_touchCurrentCol) _touchCurrentCol.style.outline = '2px solid var(--acc)';
+    e.preventDefault(); // suppress scroll only while dragging
+}, { passive: false });
+
+document.addEventListener('touchend', async () => {
+    if (!_touchDragId) return;
+
+    if (_touchGhost) { _touchGhost.remove(); _touchGhost = null; }
+    if (_touchCurrentCol) { _touchCurrentCol.style.outline = ''; }
+    if (_touchStartPos?.card) _touchStartPos.card.style.opacity = '';
+
+    if (_touchDragging && _touchCurrentCol) {
+        const action = _touchCurrentCol.getAttribute('data-ondrop');
+        if (action && action.startsWith('handleDrop')) {
+            const newStatus = action.match(/'([^']+)'/)[1];
+            const idx = documents.findIndex(d => d.id === _touchDragId);
+            if (idx !== -1 && documents[idx].kanbanStatus !== newStatus) {
+                documents[idx].kanbanStatus = newStatus;
+                documents[idx].updatedAt = Date.now();
+                await persist();
+                renderContent();
+            }
+        }
+    }
+
+    _touchCurrentCol = null;
+    _touchDragId = null;
+    _touchStartPos = null;
+    _touchDragging = false;
+});
+
+
+
+// ========================
+// KANBAN BOARD
+// ========================
+function renderKanbanBoard(docs, isMobileSearch) {
+    const cols = [
+        { id: 'todo', get label() { return t('todo'); }, color: '#64748b' },
+        { id: 'in-progress', get label() { return t('inProgress'); }, color: '#3b82f6' },
+        { id: 'review', get label() { return t('review'); }, color: '#f59e0b' },
+        { id: 'done', get label() { return t('done'); }, color: '#10b981' }
+    ];
+
+    const kanbanHtml = cols.map(col => {
+        const colDocs = docs.filter(d => (d.kanbanStatus || 'todo') === col.id);
+        
+        return `
+        <div class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 300px; min-width: 300px;"
+             data-ondragover="handleDragOver" 
+             data-ondrop="handleDrop('${col.id}')">
+            
+            <div class="p-4 flex items-center justify-between border-b sticky top-0" style="border-color:var(--brd); background:var(--bg2); border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; z-index: 10;">
+                <h3 class="font-heading font-semibold text-sm flex items-center gap-2" style="color:${col.color};">
+                    <i class="fa-solid fa-circle" style="font-size: 8px;"></i> ${col.label}
+                </h3>
+                <span class="text-xs font-medium py-0.5 px-2 rounded-full" style="background:var(--card); color:var(--tx-m);">${colDocs.length}</span>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto flex flex-col custom-scrollbar" style="padding: 12px; gap: 12px;">
+                ${colDocs.map(d => `
+                    <div class="doc-card flex flex-col cursor-grab active:cursor-grabbing" 
+                         draggable="true" 
+                         data-ondragstart="handleDragStart('${d.id}')"
+                         data-ondragend="handleDragEnd"
+                         data-onclick="viewDoc('${d.id}')"
+                         style="background:var(--card); padding: 14px; margin-bottom: 0px; border-radius: 8px;">
+                        
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="st-badge st-${d.status}">${d.status}</span>
+                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
+                                </button>
+                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                        
+                        <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
+                            ${d.tags.slice(0, 2).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+                            ${d.tags.length > 2 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 2}</span>` : ''}
+                            <span class="text-[10px] ml-auto" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
+                        </div>
+                    </div>
+                `).join('')}
+                
+                ${colDocs.length === 0 ? `
+                    <div class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);">
+                        <p class="text-[11px] font-medium">${t('dragTaskHere')}</p>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    return `<div class="fade-up max-w-full">
+        <!-- Mobile search -->
+        ${isMobileSearch ? `<div class="search-w sm:hidden mb-4"><i class="fa-solid fa-search"></i><input class="form-input text-sm" placeholder="${t('searchTasks')}" value="${escHtml(state.search)}" data-oninput="state.search=this.value;renderContent();"></div>` : ''}
+
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+            ${renderSelect('kb-status-filter', [
+                {value: 'all', label: t('allStatus')},
+                {value: 'published', label: 'Published'},
+                {value: 'draft', label: 'Draft'},
+                {value: 'archived', label: 'Archived'}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'state.statusFilter=this.value;renderContent();')}
+            <div class="flex-1"></div>
+            <button class="btn-p text-sm" data-onclick="createDoc('task')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newTask')}</button>
+        </div>
+
+        <!-- Kanban Board Container -->
+        <div class="overflow-x-auto pb-4 custom-scrollbar">
+            <div class="flex items-start mx-auto w-max" style="min-height: 400px; gap: 1.25rem;">
+                ${kanbanHtml}
+            </div>
+        </div>
+    </div>`;
+}
+
+
+
+const STRINGS = {
+    runbook: "Runbook",
+    onboarding: "Onboarding",
+    testcases: "Test Cases",
+    knowledge: "Knowledge",
+    task: "Task",
+    bug: "Bug Report",
+    testplan: "Test Plan",
+    api: "API Specs",
+    meeting: "Meeting Notes",
+    credential: "Credentials",
+    viewAll: "View all",
+    newest: "Newest",
+    sortAZ: "Name A-Z",
+    blankPage: "Blank Page",
+    startFromScratch: "Start from scratch",
+    template: "Template",
+    justNow: "Just now",
+    minsAgo: "{m} mins ago",
+    hoursAgo: "{h} hours ago",
+    daysAgo: "{d} days ago",
+    noContent: "No content yet.",
+    chooseTemplate: "Choose a template or start from scratch.",
+    noFavorites: "No favorites yet.",
+    enterTitle: "Enter title...",
+    egCred: "e.g. Facebook, Database Prod",
+    enterTag: "Enter tag, press Enter...",
+    writeContent: "Write content in Markdown...",
+    preview: "Preview",
+    copyPassword: "Copy Password",
+    copyUsername: "Copy Username",
+    bugEnv: "Environment",
+    bugEnvPl: "e.g. Staging, Production",
+    bugDevice: "Browser / Device",
+    bugDevicePl: "e.g. Chrome 120, iOS 17",
+    bugSeverity: "Severity",
+    bugPrecond: "Pre-conditions",
+    bugPrecondPl: "e.g. User is logged in...",
+    bugSteps: "Steps to Reproduce",
+    bugStepsPl: "1. Open page...\n2. Click button...",
+    bugExpected: "Expected Behavior",
+    bugExpectedPl: "System should...",
+    bugActual: "Actual Behavior",
+    bugActualPl: "Error occurs...",
+    tcModule: "Module / Feature",
+    tcModulePl: "e.g. Login",
+    tcPrecond: "Pre-conditions",
+    tcPrecondPl: "e.g. User has an account",
+    tcData: "Test Data",
+    tcDataPl: "e.g. user: admin, pass: 123",
+    tcSteps: "Test Steps",
+    tcAction: "Action",
+    tcActionPl: "Enter email...",
+    tcExpected: "Expected Result",
+    tcExpectedPl: "System displays...",
+    apiMethod: "Method",
+    apiEndpoint: "Endpoint / Path",
+    apiHeaders: "Headers",
+    apiParams: "Query Parameters",
+    apiBody: "Request Body (JSON)",
+    apiResponse: "Response (JSON)",
+    apiKey: "Key",
+    apiValue: "Value",
+    apiRequired: "Required",
+    dashboard: "Dashboard",
+    categories: "Categories",
+    documents: "Documents",
+    favorites: "Favorites",
+    newDoc: "New Document",
+    editDoc: "Edit Document",
+    save: "Save",
+    cancel: "Cancel",
+    back: "Back",
+    edit: "Edit",
+    duplicate: "Duplicate",
+    delete: "Delete",
+    trash: "Trash",
+    restore: "Restore",
+    deleteForever: "Delete Forever",
+    delConfirm: "Are you sure you want to move this document to Trash?",
+    delConfirmForever: "Are you sure you want to permanently delete this document? This action cannot be undone.",
+    delTitle: "Delete Document",
+    delTitleForever: "Delete Permanently",
+    delConfirmBtn: "Delete",
+    delConfirmBtnForever: "Delete Permanently",
+    emptyTrash: "Empty Trash",
+    emptyTrashTitle: "Empty Trash",
+    emptyTrashConfirm: "Are you sure you want to empty the trash? All documents will be permanently deleted and cannot be recovered.",
+    emptyTrashBtn: "Empty Trash",
+    generatingLink: "Generating Secure Link...",
+    pleaseWait: "Please wait while we encrypt your document.",
+    linkReady: "Link Ready!",
+    linkDesc: "Anyone with this link can view the document. It is encrypted with a unique key.",
+    share: "Share Link",
+    close: "Close",
+    searchDocs: "Search documents...",
+    searchTasks: "Search tasks...",
+    noDocFound: "No documents found",
+    noDocYet: "No documents yet",
+    trashEmpty: "Trash is empty",
+    tryDiffKey: "Try searching with a different keyword",
+    createFirstDoc: "Start creating your first document",
+    recentlyUpdated: "Recently Updated",
+    allStatus: "All Statuses",
+    titleRequired: "Title is required",
+    docCreated: "Document created",
+    docUpdated: "Document updated",
+    docDuplicated: "Document duplicated",
+    docDeleted: "Moved to Trash",
+    docRestored: "Document restored",
+    docDeletedForever: "Permanently deleted",
+    trashEmptied: "Trash emptied",
+    copied: "Copied to clipboard",
+    testrun: "Test Runs",
+    release: "Release",
+    untested: "Untested",
+    pass: "Pass",
+    fail: "Fail",
+    blocked: "Blocked",
+    testRunProgress: "Progress",
+    todo: "To Do",
+    inProgress: "In Progress",
+    review: "Review",
+    done: "Done",
+    dragTaskHere: "Drag tasks here",
+    newTask: "New Task",
+    allDocuments: "All Documents",
+    status: "Status",
+    tags: "Tags",
+    category: "Category",
+    usernameEmail: "Username / Email",
+    passwordField: "Password",
+    addStep: "Add Step",
+    addHeader: "Add Header",
+    addParam: "Add Param",
+    addProperty: "Add Property",
+    toggleSecret: "Toggle Secret",
+    formatJson: "Format JSON",
+    moreActions: "More actions",
+    copy: "Copy",
+    healthStatus: "Health Status",
+    properties: "Properties",
+    linkedCreds: "Linked Credentials",
+    noCredFound: "No credentials found",
+    notes: "Notes",
+    envLabelPl: "e.g. Frontend URL",
+    envValuePl: "e.g. https://app.com",
+    envNotesPl: "Add any specific notes for this environment...",
+    stepPl: "Step {idx}...",
+    statusDraft: "Draft",
+    statusPublished: "Published",
+    statusArchived: "Archived",
+    severityCritical: "Critical",
+    severityMajor: "Major",
+    severityMinor: "Minor",
+    severityTrivial: "Trivial",
+    imgUploading: "Uploading image to GitHub...",
+    imgUploadSuccess: "Image uploaded to GitHub successfully!",
+    imgUploadFail: "GitHub upload failed. Falling back to inline image.",
+    imgFallbackSize: "Fallback mode: Image should be under 800KB to fit in database.",
+    imgFallbackProcessing: "Processing image inline (Base64 fallback)...",
+    imgFallbackDone: "Image loaded inline. Connect GitHub for better sync performance!",
+    imgReadFail: "Failed to read image file.",
+    imgProcessFail: "Failed to process image. Please try again.",
+    ghSaveSuccess: "GitHub Settings saved successfully!",
+    ghCleared: "GitHub Settings cleared. Using Base64 fallback.",
+    ghFillRequired: "Please fill in Owner, Repo and Token fields.",
+    mpFillAll: "Please fill in all 3 fields.",
+    mpMismatch: "New passwords do not match.",
+    mpTooShort: "Password must be at least 4 characters.",
+    mpChanged: "Master Password changed successfully!",
+    mpChangeFail: "Failed to change password.",
+    mpIncorrect: "Incorrect password.",
+    vaultUnlocked: "Vault Unlocked",
+    searchTypeHint: "Type to start searching...",
+    searchNoResult: "No documents found.",
+    matchTitle: "Title match",
+    matchTag: "Tag match",
+    matchContent: "Content match",
+    invalidJson: "Invalid JSON format",
+    copyFail: "Failed to copy",
+    ghSyncOk: "Synced to GitHub",
+    ghSyncFail: "GitHub sync failed"
+};
+
+function t(key, params = {}) {
+    let text = STRINGS[key] || key;
+    for (let k in params) text = text.replace('{' + k + '}', params[k]);
+    return text;
+}
+
+
+window.changeEditorCat = function(cat) {
+    if (state.editingDoc) {
+        state.editingDoc.category = cat;
+        state.editingDoc.title = document.getElementById('ed-title')?.value || '';
+        state.editingDoc.subfolder = document.getElementById('ed-subfolder')?.value || '';
+        if (cat === 'bug' && !state.editingDoc.bugData) state.editingDoc.bugData = {};
+        if (cat === 'testcases' && !state.editingDoc.tcData) state.editingDoc.tcData = {};
+        if (cat === 'api' && !state.editingDoc.apiData) state.editingDoc.apiData = {};
+    } else {
+        state._newCat = cat;
+        state._newTitle = document.getElementById('ed-title')?.value || '';
+        state._newSubfolder = document.getElementById('ed-subfolder')?.value || '';
+        if (cat === 'testcases' && !state._newTcData) state._newTcData = {};
+        if (cat === 'api' && !state._newApiData) state._newApiData = {};
+    }
+    render();
+    setTimeout(() => {
+        const titleInput = document.getElementById('ed-title');
+        if (titleInput) {
+            titleInput.focus();
+            titleInput.setSelectionRange(titleInput.value.length, titleInput.value.length);
+        }
+    }, 0);
+};
+
+
+window.addBugStep = function() {
+    const container = document.getElementById('bug-steps-container');
+    if (!container) return;
+    const idx = container.querySelectorAll('.bug-step-row').length;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 bug-step-row';
+    div.innerHTML = `
+        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+        <input class="form-input flex-1 bug-step-input" placeholder="Step ${idx + 1}...">
+        <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)"><i class="fa-solid fa-trash"></i></button>
+    `;
+    container.appendChild(div);
+};
+
+window.removeBugStep = function(btn) {
+    const row = btn.closest('.bug-step-row');
+    row.remove();
+    const container = document.getElementById('bug-steps-container');
+    container.querySelectorAll('.bug-step-row').forEach((r, i) => {
+        r.querySelector('.step-idx').textContent = (i + 1) + '.';
+        r.querySelector('.bug-step-input').placeholder = 'Step ' + (i + 1) + '...';
+    });
+};
+
+window.addTcStep = function() {
+    const container = document.getElementById('tc-steps-container');
+    if (!container) return;
+    const idx = container.querySelectorAll('.tc-step-row').length;
+    const div = document.createElement('div');
+    div.className = 'flex items-start gap-2 mb-2 tc-step-row';
+    div.innerHTML = `
+        <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
+        <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}"></textarea>
+        <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}"></textarea>
+        <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)"><i class="fa-solid fa-trash"></i></button>
+    `;
+    container.appendChild(div);
+};
+
+window.removeTcStep = function(btn) {
+    const row = btn.closest('.tc-step-row');
+    const container = row.parentElement;
+    row.remove();
+    container.querySelectorAll('.tc-step-row').forEach((r, i) => {
+        r.querySelector('.step-idx').textContent = (i + 1) + '.';
+    });
+};
+
+window.addApiHeader = function() {
+    const container = document.getElementById('api-headers-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 api-header-row';
+    div.innerHTML = `
+        <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}">
+        <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
+        <div class="flex items-center gap-1">
+            <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}">
+            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiHeader(this)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    `;
+    container.appendChild(div);
+};
+window.removeApiHeader = function(btn) { btn.closest('.api-header-row').remove(); };
+
+window.addApiParam = function() {
+    const container = document.getElementById('api-params-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 api-param-row';
+    div.innerHTML = `
+        <input class="form-input flex-1 api-key text-xs font-mono" placeholder="${t('apiKey')}">
+        <input class="form-input flex-1 api-value text-xs font-mono" placeholder="${t('apiValue')}">
+        <div class="flex items-center gap-1">
+            <input type="checkbox" class="form-checkbox api-req" title="${t('apiRequired')}">
+            <button class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiParam(this)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    `;
+    container.appendChild(div);
+};
+window.removeApiParam = function(btn) { btn.closest('.api-param-row').remove(); };
+
+// Environment property helpers
+window.addEnvProp = function() {
+    const container = document.getElementById('env-props-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 mb-2 env-prop-row';
+    div.innerHTML = `
+        <input class="form-input env-prop-label text-sm" style="flex:0 0 35%;" placeholder="${t('envLabelPl')}">
+        <input class="form-input env-prop-value flex-1 text-sm font-mono" placeholder="${t('envValuePl')}">
+        <input type="checkbox" class="env-prop-secret hidden">
+        <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" title="${t('toggleSecret')}" data-onclick="toggleEnvSecret(this)">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+        <button type="button" class="btn-s shrink-0 flex items-center justify-center" style="width:34px;height:34px;color:var(--tx-m);" data-onclick="removeEnvProp(this)"><i class="fa-solid fa-trash"></i></button>
+    `;
+    container.appendChild(div);
+    div.querySelector('.env-prop-label').focus();
+};
+window.removeEnvProp = function(btn) { btn.closest('.env-prop-row').remove(); };
+window.toggleEnvSecret = function(btn) {
+    const row = btn.closest('.env-prop-row');
+    const cb = row.querySelector('.env-prop-secret');
+    cb.checked = !cb.checked;
+    const icon = btn.querySelector('i');
+    if (cb.checked) {
+        icon.className = 'fa-solid fa-eye-slash';
+        btn.style.color = 'var(--acc)';
+    } else {
+        icon.className = 'fa-solid fa-eye';
+        btn.style.color = 'var(--tx-m)';
+    }
+};
+
+// Generic custom select helpers
+window.renderSelect = function(id, options, selectedValue, customClass = '', onChangeCode = '') {
+    const selOpt = options.find(o => o.value === selectedValue) || options[0] || {label:'', value:''};
+    const optionsHtml = options.map(o => `
+        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectCustomOption('${id}', '${escHtml(o.value.replace(/'/g, "\\'"))}', '${escHtml(o.label.replace(/'/g, "\\'"))}', '${onChangeCode.replace(/'/g, "\\'")}')">${escHtml(o.label)}</div>
+    `).join('');
+
+    return `
+        <div class="custom-select-wrapper" style="position:relative;">
+            <input type="hidden" id="${id}" value="${escHtml(selOpt.value)}">
+            <input id="${id}-display" class="form-select ${customClass}" readonly style="cursor:pointer;" value="${escHtml(selOpt.label)}" data-onclick="toggleCustomSelect('${id}')">
+            <div id="${id}-dropdown" class="hidden custom-select-list" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+                ${optionsHtml}
+            </div>
+        </div>
+    `;
+};
+
+window.toggleCustomSelect = function(id) {
+    document.querySelectorAll('.custom-select-list').forEach(el => {
+        if (el.id !== id + '-dropdown') el.classList.add('hidden');
+    });
+
+    const dd = document.getElementById(id + '-dropdown');
+    if (!dd) return;
+    
+    if (!dd.classList.contains('hidden')) {
+        dd.classList.add('hidden');
+        return;
+    }
+    
+    dd.classList.remove('hidden');
+    
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!e.target.closest('#' + id + '-display')) {
+                dd.classList.add('hidden');
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
+};
+
+window.selectCustomOption = function(id, val, label, onChangeCode) {
+    const hid = document.getElementById(id);
+    const disp = document.getElementById(id + '-display');
+    const dd = document.getElementById(id + '-dropdown');
+    if (hid) hid.value = val;
+    if (disp) disp.value = label;
+    if (dd) dd.classList.add('hidden');
+    
+    if (onChangeCode) {
+        // Evaluate the string as code. We replace this.value with the selected value string.
+        eval(onChangeCode.replace(/this\.value/g, `'${val}'`));
+    }
+};
+
+// Subfolder custom dropdown helpers
+window.toggleSubfolderDropdown = function() {
+    const dd = document.getElementById('subfolder-dropdown');
+    if (!dd) return;
+    
+    if (!dd.classList.contains('hidden')) {
+        dd.classList.add('hidden');
+        return;
+    }
+    
+    dd.classList.remove('hidden');
+    // Show all options when explicitly opened
+    dd.querySelectorAll('.subfolder-option').forEach(opt => {
+        opt.style.display = '';
+    });
+    
+    // Close when clicking outside
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!e.target.closest('.subfolder-select-wrapper')) {
+                dd.classList.add('hidden');
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
+};
+
+window.filterSubfolderDropdown = function() {
+    const input = document.getElementById('ed-subfolder');
+    const dd = document.getElementById('subfolder-dropdown');
+    if (!input || !dd) return;
+    const val = input.value.toLowerCase();
+    let hasVisible = false;
+    dd.querySelectorAll('.subfolder-option').forEach(opt => {
+        const matches = opt.textContent.toLowerCase().includes(val);
+        opt.style.display = matches ? '' : 'none';
+        if (matches) hasVisible = true;
+    });
+    dd.classList.toggle('hidden', !hasVisible);
+};
+
+window.selectSubfolder = function(value) {
+    const input = document.getElementById('ed-subfolder');
+    if (input) input.value = value;
+    const dd = document.getElementById('subfolder-dropdown');
+    if (dd) dd.classList.add('hidden');
+};
+
+window.formatJson = function(id) {
+    const el = document.getElementById(id);
+    if (!el || !el.value.trim()) return;
+    try {
+        const obj = JSON.parse(el.value);
+        el.value = JSON.stringify(obj, null, 2);
+    } catch (e) {
+        toast(t('invalidJson'), 'error');
+    }
+};
+
+window.copyCodeBlock = function(btn, b64) {
+    try {
+        const text = decodeURIComponent(escape(atob(b64)));
+        _copyText(text, btn);
+    } catch (e) {
+        toast(t('copyFail'), 'error');
+    }
+};
+
+
+// ========================
+// GLOBAL SEARCH (Ctrl+K)
+// ========================
+let searchSelectedIndex = -1;
+let _allSearchResults = [];
+let currentSearchResults = [];
+let searchCategoryFilter = null;
+let _searchQuery = '';
+
+window.openSearch = function() {
+    const modal = document.getElementById('search-modal');
+    const input = document.getElementById('search-input');
+    if (!modal || !input) return;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    input.value = '';
+    searchSelectedIndex = -1;
+    _allSearchResults = [];
+    currentSearchResults = [];
+    searchCategoryFilter = null;
+    _searchQuery = '';
+    renderSearchResults('');
+    setTimeout(() => input.focus(), 50);
+};
+
+window.closeSearch = function() {
+    const modal = document.getElementById('search-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
+function renderSearchResults(query) {
+    const container = document.getElementById('search-results');
+    if (!container) return;
+    _searchQuery = query;
+
+    if (!query.trim()) {
+        searchCategoryFilter = null;
+        container.innerHTML = `<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">${t('searchTypeHint')}</div>`;
+        return;
+    }
+
+    const words = query.toLowerCase().trim().split(/\s+/);
+
+    _allSearchResults = documents
+        .filter(doc => doc.status !== 'deleted')
+        .map(doc => {
+            const titleLower = doc.title.toLowerCase();
+            let score = 0;
+            for (const w of words) {
+                if (titleLower === w) score += 5;
+                else if (titleLower.startsWith(w)) score += 3;
+                else if (titleLower.includes(w)) score += 2;
+                if (doc.tags.some(tag => tag.toLowerCase().includes(w))) score += 1.5;
+                if (doc.content && doc.content.toLowerCase().includes(w)) score += 0.5;
+            }
+            return { doc, score };
+        })
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(({ doc }) => doc);
+
+    if (_allSearchResults.length === 0) {
+        currentSearchResults = [];
+        container.innerHTML = `<div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">${t('searchNoResult')}</div>`;
+        return;
+    }
+
+    currentSearchResults = searchCategoryFilter
+        ? _allSearchResults.filter(d => d.category === searchCategoryFilter)
+        : _allSearchResults;
+
+    _renderSearchUI(container);
+}
+
+function _renderSearchUI(container) {
+    const cats = [...new Set(_allSearchResults.map(d => d.category))];
+    const filterBar = cats.length > 1 ? `
+        <div class="search-filter-bar">
+            <button class="search-filter-chip ${!searchCategoryFilter ? 'active' : ''}" data-onclick="setSearchFilter(null)">
+                All <span class="search-filter-count">${_allSearchResults.length}</span>
+            </button>
+            ${cats.map(cat => {
+                const cnt = _allSearchResults.filter(d => d.category === cat).length;
+                const m = CAT_META[cat];
+                return `<button class="search-filter-chip ${searchCategoryFilter === cat ? 'active' : ''}" data-onclick="setSearchFilter('${cat}')">
+                    <i class="fa-solid ${m?.icon || 'fa-file'}" style="font-size:9px;"></i> ${m?.label || cat}
+                    <span class="search-filter-count">${cnt}</span>
+                </button>`;
+            }).join('')}
+        </div>` : '';
+
+    const resultsHtml = currentSearchResults.map((doc, idx) => {
+        const titleLower = doc.title.toLowerCase();
+        const words = _searchQuery.toLowerCase().trim().split(/\s+/);
+        let matchHint = '';
+        if (words.some(w => titleLower.includes(w))) matchHint = t('matchTitle');
+        else if (words.some(w => doc.tags.some(tag => tag.toLowerCase().includes(w)))) matchHint = t('matchTag');
+        else matchHint = t('matchContent');
+
+        return `
+            <div class="search-item ${idx === searchSelectedIndex ? 'active' : ''}" data-idx="${idx}" data-onclick="selectSearchResult(${idx})">
+                <div class="search-item-title">${escHtml(doc.title)}</div>
+                <div class="search-item-meta">
+                    <span class="cat-badge ${CAT_META[doc.category]?.cls}">${CAT_META[doc.category]?.label}</span>
+                    <span class="search-item-match">${matchHint}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = filterBar + `<div>${resultsHtml}</div>`;
+}
+
+window.setSearchFilter = function(cat) {
+    searchCategoryFilter = cat;
+    searchSelectedIndex = -1;
+    currentSearchResults = cat
+        ? _allSearchResults.filter(d => d.category === cat)
+        : _allSearchResults;
+    const container = document.getElementById('search-results');
+    if (container) _renderSearchUI(container);
+};
+
+window.selectSearchResult = function(idx) {
+    if (idx < 0 || idx >= currentSearchResults.length) return;
+    const doc = currentSearchResults[idx];
+    closeSearch();
+    navigate('documents', doc.category);
+    setTimeout(() => viewDoc(doc.id), 50);
+};
+
+// Global Keydown Listener
+window.addEventListener('keydown', function(e) {
+    // Ctrl+K or Cmd+K
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        openSearch();
+    }
+    
+    const searchModal = document.getElementById('search-modal');
+    if (searchModal && !searchModal.classList.contains('hidden')) {
+        if (e.key === 'Escape') {
+            closeSearch();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (searchSelectedIndex < currentSearchResults.length - 1) {
+                searchSelectedIndex++;
+                renderSearchResults(document.getElementById('search-input').value);
+                const activeEl = document.querySelector('.search-item.active');
+                if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (searchSelectedIndex > 0) {
+                searchSelectedIndex--;
+                renderSearchResults(document.getElementById('search-input').value);
+                const activeEl = document.querySelector('.search-item.active');
+                if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchSelectedIndex >= 0) {
+                selectSearchResult(searchSelectedIndex);
+            } else if (currentSearchResults.length > 0) {
+                selectSearchResult(0);
+            }
+        }
+    }
+});
+
+// Search input listener
+document.addEventListener('input', function(e) {
+    if (e.target && e.target.id === 'search-input') {
+        searchSelectedIndex = -1;
+        renderSearchResults(e.target.value);
+    }
+});

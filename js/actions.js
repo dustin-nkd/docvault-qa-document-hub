@@ -913,34 +913,12 @@ window.tryApiRequest = async function(docId) {
 // SHARE DOCUMENT
 // ========================
 window.shareDoc = async function(id) {
-    // Public share-link creation is DISABLED (out of V1 scope, per migration
-    // decision 2026-07-11). Secrets can hide in apiData / Markdown / linked
-    // docs with no reliable classification flag, and a public link carries its
-    // AES key in the URL fragment — so no "clone-and-strip" sanitizer is safe.
-    // The platform migration replaces this with members-only, server-side
-    // sanitized sharing. Existing links still resolve (loadSharedDoc) and stay
-    // revocable; only creating NEW links is turned off. The former creation
-    // flow is retained below (unreachable) for reference until that rewrite.
-    toast('Public sharing is disabled — share within your team instead.', 'info');
-    return;
-
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         toast('Sharing is disabled in demo mode.', 'info');
         return;
     }
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
-
-    // Security containment (pre-migration): a share link publishes AES-GCM
-    // ciphertext to the PUBLIC assets repo with the decryption key in the URL
-    // fragment (#key=), so anyone holding the link can decrypt everything in
-    // the payload. Credential documents hold plaintext username/password and
-    // must never be shared this way. Disabled until the platform migration
-    // replaces this with a sanitized, server-side share resolver.
-    if (doc.category === 'credential') {
-        toast('Sharing is disabled for credential documents for security.', 'info');
-        return;
-    }
 
     const settings = await GitHubSync.getSettings();
     if (!settings || !settings.token) {
@@ -966,31 +944,21 @@ window.shareDoc = async function(id) {
             : doc.category === 'testplan'
             ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])]
             : [];
-        // Security containment: strip secret-flagged environment properties
-        // (and the legacy secret `dbInfo`) so they never enter a public share
-        // payload — applied to BOTH the shared document's own envData AND any
-        // environment carried inside a linked release/test-plan/environment
-        // doc, since secrets can hide on those derivative paths too.
-        const stripEnvSecrets = (ed) => ed ? {
-            ...ed,
-            properties: Array.isArray(ed.properties) ? ed.properties.filter(p => !p.secret) : ed.properties,
-            dbInfo: undefined,
-        } : ed;
         const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
             ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
                   .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
             : doc.category === 'environment' && doc.envData?.linkedCreds?.length
             ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
-                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, username: d.username, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
             : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
             ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
-                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: stripEnvSecrets(d.envData), tcData: d.tcData }))
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: d.envData, tcData: d.tcData }))
             : [];
-        const shareEnvData = stripEnvSecrets(doc.envData);
         const plain = new TextEncoder().encode(JSON.stringify({
             title: doc.title, category: doc.category, content: doc.content,
             tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
-            envData: shareEnvData,
+            username: doc.username, password: doc.password,
+            envData: doc.envData,
             runData: doc.runData,
             releaseData: doc.releaseData,
             tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
@@ -1080,7 +1048,7 @@ async function loadSharedDoc(shareId, keyBase64) {
         render();
     } catch(e) {
         console.error('[loadSharedDoc]', e);
-        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" data-onclick="goToApp()">Go to DocVault</button></div></div>`;
+        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" onclick="window.location.href=window.location.pathname">Go to DocVault</button></div></div>`;
     }
 }
 
@@ -1399,7 +1367,7 @@ async function _migrateDocImages(doc) {
 // exportBackup/triggerImportBackup needed to change.
 function _settingsTabAccount() {
     return `
-        <form data-onsubmit="changeMasterPassword()" class="flex flex-col gap-3 text-left">
+        <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3 text-left">
             <div>
                 <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
                 <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
@@ -1459,7 +1427,7 @@ function _settingsTabSync() {
                 Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
             </div>
             <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
-            <form data-onsubmit="saveGitHubSettings()" class="flex flex-col gap-3">
+            <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
                 <div>
                     <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
                     <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
@@ -1906,7 +1874,7 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
         actual: '',
         foundInRun: runId, foundInTc: tcId, foundInStep: stepIdx
     };
-    state._newContent = `> Reported from test run **${escHtml(run.title)}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
+    state._newContent = `> Reported from test run **${run.title}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
     render();
     setTimeout(() => document.getElementById('ed-bug-actual')?.focus(), 120);
 };

@@ -10,7 +10,7 @@ function renderViewer() {
         <div class="flex flex-wrap items-center gap-2.5 mb-4">
             <span class="cat-badge ${getCatMeta(doc.category).cls}">${getCatMeta(doc.category).label}</span>
             ${doc.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(doc.subfolder)}</span>` : ''}
-            <span class="st-badge st-${escHtml(doc.status)}">${escHtml(doc.status)}</span>
+            <span class="st-badge st-${doc.status}">${doc.status}</span>
             ${(doc.tags || []).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
             ${state.sharedView ? '' : `<button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${doc.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="toggleFav('${doc.id}')">
                 <i class="fa-${doc.favorite ? 'solid' : 'regular'} fa-star"></i>
@@ -100,7 +100,7 @@ function renderViewer() {
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Username / Email</p>
                 <div class="flex items-center gap-3">
                     <div class="cred-avatar ${credAvatarColor(doc.title)} shrink-0">
-                        <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${encodeURIComponent(guessDomain(doc.title))}.ico">
+                        <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${encodeURIComponent(guessDomain(doc.title))}.ico" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.style.display='none'">
                         <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
                     </div>
                     <div class="flex-1 flex items-center gap-2 min-w-0">
