@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v14'; // QA Trends B3: recorded bug status-change lifecycle events
+const SW_VERSION = 'v15'; // Traceability Matrix A: linked QA evidence across TC, run, bug, and release
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
