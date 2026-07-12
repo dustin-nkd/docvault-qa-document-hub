@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v7'; // re-apply credential/secret share containment + innerHTML escaping — js/actions.js, js/render-core.js, js/render-viewer.js changed
+const SW_VERSION = 'v8'; // feat: QA Trends section on the dashboard (B1) — js/render-core.js changed
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [

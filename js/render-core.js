@@ -664,6 +664,143 @@ function renderDashboard() {
 
             </div>
         </div>
+
+        ${_renderTrends(activeDocs, m)}
+    </div>`;
+}
+
+// ========================
+// TRENDS (B1) — quality over time, drawn client-side from data already stored
+// ========================
+window.setTrendsRange = function(days) { state.trendsRange = days; renderContent(); };
+
+// bucket a list of timestamps into n equal time-slots over [start, end]
+function _trendBuckets(timestamps, start, end, n) {
+    const counts = new Array(n).fill(0);
+    const span = Math.max(end - start, 1);
+    timestamps.forEach(ts => {
+        let i = Math.floor((ts - start) / span * n);
+        if (i < 0) i = 0; if (i >= n) i = n - 1;
+        counts[i]++;
+    });
+    return counts;
+}
+
+// minimal, theme-aware SVG line (optional area fill) + emphasized endpoint
+function _trendLine(vals, color, { yMax, fill } = {}) {
+    const w = 300, h = 92, pad = 8, top = 8, bot = h - 14;
+    const max = yMax != null ? yMax : Math.max(...vals, 1);
+    const n = vals.length;
+    const x = i => pad + (n === 1 ? (w - 2 * pad) / 2 : i * (w - 2 * pad) / (n - 1));
+    const y = v => top + (1 - v / max) * (bot - top);
+    const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const li = n - 1;
+    const area = fill ? `<polygon points="${x(0).toFixed(1)},${bot} ${pts} ${x(li).toFixed(1)},${bot}" fill="${color}" opacity="0.14"/>` : '';
+    return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" preserveAspectRatio="none">
+        <line x1="${pad}" y1="${bot}" x2="${w - pad}" y2="${bot}" stroke="var(--brd)"/>
+        ${area}
+        <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${x(li).toFixed(1)}" cy="${y(vals[li]).toFixed(1)}" r="3.6" fill="${color}"/>
+        <circle cx="${x(li).toFixed(1)}" cy="${y(vals[li]).toFixed(1)}" r="7" fill="${color}" opacity="0.18"/>
+    </svg>`;
+}
+
+function _trendBars(vals, color) {
+    const w = 300, h = 92, pad = 8, top = 10, bot = h - 14;
+    const max = Math.max(...vals, 1);
+    const n = vals.length, gap = n > 12 ? 2 : 4;
+    const bw = (w - 2 * pad - (n - 1) * gap) / n;
+    const bars = vals.map((v, i) => {
+        const bh = (v / max) * (bot - top);
+        const bx = pad + i * (bw + gap);
+        return `<rect x="${bx.toFixed(1)}" y="${(bot - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="${color}" opacity="${i === n - 1 ? '1' : '0.55'}"/>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" preserveAspectRatio="none">
+        <line x1="${pad}" y1="${bot}" x2="${w - pad}" y2="${bot}" stroke="var(--brd)"/>${bars}</svg>`;
+}
+
+function _trendCard(title, caption, chartOrEmpty) {
+    return `<div class="doc-card p-4" style="cursor:default;">
+        <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">${title}</p>
+        ${chartOrEmpty}
+        ${caption ? `<p class="text-[11px] mt-2.5" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${caption}</p>` : ''}
+    </div>`;
+}
+
+function _trendEmpty(msg) {
+    return `<div class="flex items-center justify-center text-center" style="height:82px;">
+        <p class="text-[11px]" style="color:var(--tx-d);">${msg}</p></div>`;
+}
+
+function _renderTrends(docs, m) {
+    const rangeDays = state.trendsRange != null ? state.trendsRange : 90;
+    const now = Date.now();
+    const cutoff = rangeDays === 0 ? 0 : now - rangeDays * 86400000;
+    const inRange = ts => rangeDays === 0 || (ts || 0) >= cutoff;
+    const rangeLabel = rangeDays === 0 ? 'tất cả' : rangeDays + ' ngày';
+
+    // ── 1 · pass-rate per test run ────────────────────────────────────────────
+    const runs = (m.runs || [])
+        .filter(r => r.runData?.results && inRange(r.createdAt))
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    const passPts = [];
+    runs.forEach(r => {
+        let p = 0, tot = 0;
+        Object.values(r.runData.results).forEach(tc => Object.values(tc || {}).forEach(v => {
+            if (v === 'pass' || v === 'fail' || v === 'blocked') { tot++; if (v === 'pass') p++; }
+        }));
+        if (tot > 0) passPts.push(Math.round(p / tot * 100));
+    });
+    let passChart, passCap = '';
+    if (passPts.length < 2) {
+        passChart = _trendEmpty('Cần ≥ 2 test run có kết quả<br>để thấy xu hướng');
+    } else {
+        const last = passPts[passPts.length - 1];
+        const c = last >= 80 ? '#34d399' : last >= 60 ? '#fb923c' : '#f87171';
+        passChart = _trendLine(passPts, c, { yMax: 100 });
+        const delta = last - passPts[0];
+        passCap = `${passPts.length} run · mới nhất <b style="color:${c}">${last}%</b> · ${delta >= 0 ? '▲ +' : '▼ '}${delta}% so với đầu kỳ`;
+    }
+
+    // ── 2 · bugs opened per period ────────────────────────────────────────────
+    const bugTs = (m.bugs || []).map(b => b.createdAt || 0).filter(inRange).sort((a, b) => a - b);
+    let bugChart, bugCap = '';
+    if (bugTs.length === 0) {
+        bugChart = _trendEmpty(`Chưa có bug nào<br>trong ${rangeLabel}`);
+    } else {
+        const start = rangeDays === 0 ? bugTs[0] : cutoff;
+        const n = rangeDays === 30 ? 5 : rangeDays === 90 ? 7 : 8;
+        bugChart = _trendBars(_trendBuckets(bugTs, start, now, n), '#f87171');
+        bugCap = `<b style="color:#f87171">${bugTs.length}</b> bug mở mới trong ${rangeLabel}`;
+    }
+
+    // ── 3 · documents created (cumulative growth) ─────────────────────────────
+    const docTs = docs.map(d => d.createdAt || 0).filter(inRange).sort((a, b) => a - b);
+    let docChart, docCap = '';
+    if (docTs.length < 2) {
+        docChart = _trendEmpty(`Chưa đủ tài liệu<br>trong ${rangeLabel}`);
+    } else {
+        const start = rangeDays === 0 ? docTs[0] : cutoff;
+        const buckets = _trendBuckets(docTs, start, now, 8);
+        let run = 0; const cum = buckets.map(c => (run += c));
+        docChart = _trendLine(cum, 'var(--acc)', { fill: true });
+        docCap = `<b style="color:var(--acc-l)">+${docTs.length}</b> tài liệu tạo trong ${rangeLabel}`;
+    }
+
+    const rangeBtns = [[30, '30d'], [90, '90d'], [0, 'Tất cả']].map(([d, l]) =>
+        `<button class="px-2.5 py-1 rounded-md text-[11px] font-semibold" style="${rangeDays === d ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'};transition:all .15s;" data-onclick="setTrendsRange(${d})">${l}</button>`
+    ).join('');
+
+    return `<div class="mt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-heading font-semibold text-base">Trends <span class="text-[11px] font-normal" style="color:var(--tx-d);">· xu hướng theo thời gian</span></h3>
+            <div class="flex gap-1 p-1 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);">${rangeBtns}</div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            ${_trendCard('Pass-rate theo run', passCap, passChart)}
+            ${_trendCard('Bug mở mới', bugCap, bugChart)}
+            ${_trendCard('Tài liệu tạo (cộng dồn)', docCap, docChart)}
+        </div>
     </div>`;
 }
 
