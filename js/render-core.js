@@ -737,7 +737,7 @@ function _renderTrends(docs, m) {
     const now = Date.now();
     const cutoff = rangeDays === 0 ? 0 : now - rangeDays * 86400000;
     const inRange = ts => rangeDays === 0 || (ts || 0) >= cutoff;
-    const rangeLabel = rangeDays === 0 ? 'tất cả' : rangeDays + ' ngày';
+    const rangeLabel = rangeDays === 0 ? t('trAllRange') : t('trDays', { n: rangeDays });
 
     // ── 1 · pass-rate per test run ────────────────────────────────────────────
     const runs = (m.runs || [])
@@ -753,53 +753,57 @@ function _renderTrends(docs, m) {
     });
     let passChart, passCap = '';
     if (passPts.length < 2) {
-        passChart = _trendEmpty('Cần ≥ 2 test run có kết quả<br>để thấy xu hướng');
+        passChart = _trendEmpty(t('trPassEmpty'));
     } else {
         const last = passPts[passPts.length - 1];
         const c = last >= 80 ? '#34d399' : last >= 60 ? '#fb923c' : '#f87171';
         passChart = _trendLine(passPts, c, { yMax: 100 });
         const delta = last - passPts[0];
-        passCap = `${passPts.length} run · mới nhất <b style="color:${c}">${last}%</b> · ${delta >= 0 ? '▲ +' : '▼ '}${delta}% so với đầu kỳ`;
+        passCap = t('trPassCap', {
+            runs: passPts.length,
+            pct: `<b style="color:${c}">${last}%</b>`,
+            delta: `${delta >= 0 ? '▲ +' : '▼ '}${delta}%`
+        });
     }
 
     // ── 2 · bugs opened per period ────────────────────────────────────────────
     const bugTs = (m.bugs || []).map(b => b.createdAt || 0).filter(inRange).sort((a, b) => a - b);
     let bugChart, bugCap = '';
     if (bugTs.length === 0) {
-        bugChart = _trendEmpty(`Chưa có bug nào<br>trong ${rangeLabel}`);
+        bugChart = _trendEmpty(t('trBugEmpty', { range: rangeLabel }));
     } else {
         const start = rangeDays === 0 ? bugTs[0] : cutoff;
         const n = rangeDays === 30 ? 5 : rangeDays === 90 ? 7 : 8;
         bugChart = _trendBars(_trendBuckets(bugTs, start, now, n), '#f87171');
-        bugCap = `<b style="color:#f87171">${bugTs.length}</b> bug mở mới trong ${rangeLabel}`;
+        bugCap = t('trBugCap', { n: `<b style="color:#f87171">${bugTs.length}</b>`, range: rangeLabel });
     }
 
     // ── 3 · documents created (cumulative growth) ─────────────────────────────
     const docTs = docs.map(d => d.createdAt || 0).filter(inRange).sort((a, b) => a - b);
     let docChart, docCap = '';
     if (docTs.length < 2) {
-        docChart = _trendEmpty(`Chưa đủ tài liệu<br>trong ${rangeLabel}`);
+        docChart = _trendEmpty(t('trDocEmpty', { range: rangeLabel }));
     } else {
         const start = rangeDays === 0 ? docTs[0] : cutoff;
         const buckets = _trendBuckets(docTs, start, now, 8);
         let run = 0; const cum = buckets.map(c => (run += c));
         docChart = _trendLine(cum, 'var(--acc)', { fill: true });
-        docCap = `<b style="color:var(--acc-l)">+${docTs.length}</b> tài liệu tạo trong ${rangeLabel}`;
+        docCap = t('trDocCap', { n: `<b style="color:var(--acc-l)">+${docTs.length}</b>`, range: rangeLabel });
     }
 
-    const rangeBtns = [[30, '30d'], [90, '90d'], [0, 'Tất cả']].map(([d, l]) =>
+    const rangeBtns = [[30, '30d'], [90, '90d'], [0, t('trAll')]].map(([d, l]) =>
         `<button class="px-2.5 py-1 rounded-md text-[11px] font-semibold" style="${rangeDays === d ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'};transition:all .15s;" data-onclick="setTrendsRange(${d})">${l}</button>`
     ).join('');
 
     return `<div class="mt-6">
         <div class="flex items-center justify-between mb-3">
-            <h3 class="font-heading font-semibold text-base">Trends <span class="text-[11px] font-normal" style="color:var(--tx-d);">· xu hướng theo thời gian</span></h3>
+            <h3 class="font-heading font-semibold text-base">${t('trTitle')} <span class="text-[11px] font-normal" style="color:var(--tx-d);">· ${t('trSub')}</span></h3>
             <div class="flex gap-1 p-1 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);">${rangeBtns}</div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            ${_trendCard('Pass-rate theo run', passCap, passChart)}
-            ${_trendCard('Bug mở mới', bugCap, bugChart)}
-            ${_trendCard('Tài liệu tạo (cộng dồn)', docCap, docChart)}
+            ${_trendCard(t('trPassTitle'), passCap, passChart)}
+            ${_trendCard(t('trBugTitle'), bugCap, bugChart)}
+            ${_trendCard(t('trDocTitle'), docCap, docChart)}
         </div>
     </div>`;
 }

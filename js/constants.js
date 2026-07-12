@@ -220,7 +220,16 @@ const STRINGS = {
     invalidJson: "Invalid JSON format",
     copyFail: "Failed to copy",
     ghSyncOk: "Synced to GitHub",
-    ghSyncFail: "GitHub sync failed"
+    ghSyncFail: "GitHub sync failed",
+
+    // Trends (B1)
+    trTitle: "Trends", trSub: "over time",
+    trAll: "All", trDays: "{n} days", trAllRange: "all",
+    trPassTitle: "Pass rate by run", trBugTitle: "Bugs opened", trDocTitle: "Documents created (cumulative)",
+    trPassEmpty: "Need ≥ 2 test runs<br>with results to trend",
+    trBugEmpty: "No bugs in {range}", trDocEmpty: "Not enough docs in {range}",
+    trPassCap: "{runs} runs · latest {pct} · {delta} vs start",
+    trBugCap: "{n} bugs opened in {range}", trDocCap: "{n} documents created in {range}"
 };
 
 // Vietnamese translation (Sprint 11). Category/domain nouns that Vietnamese QA
@@ -429,7 +438,16 @@ const STRINGS_VI = {
     invalidJson: "Định dạng JSON không hợp lệ",
     copyFail: "Sao chép thất bại",
     ghSyncOk: "Đã đồng bộ với GitHub",
-    ghSyncFail: "Đồng bộ GitHub thất bại"
+    ghSyncFail: "Đồng bộ GitHub thất bại",
+
+    // Trends (B1)
+    trTitle: "Xu hướng", trSub: "theo thời gian",
+    trAll: "Tất cả", trDays: "{n} ngày", trAllRange: "tất cả",
+    trPassTitle: "Pass-rate theo run", trBugTitle: "Bug mở mới", trDocTitle: "Tài liệu tạo (cộng dồn)",
+    trPassEmpty: "Cần ≥ 2 test run có kết quả<br>để thấy xu hướng",
+    trBugEmpty: "Chưa có bug nào trong {range}", trDocEmpty: "Chưa đủ tài liệu trong {range}",
+    trPassCap: "{runs} run · mới nhất {pct} · {delta} so với đầu kỳ",
+    trBugCap: "{n} bug mở mới trong {range}", trDocCap: "{n} tài liệu tạo trong {range}"
 };
 
 // Active UI language ('en' | 'vi'), persisted like the theme preference.

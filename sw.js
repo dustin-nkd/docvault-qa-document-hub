@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v9'; // demo: extra test runs + bugs so QA Trends charts render fully on guest — js/constants.js changed
+const SW_VERSION = 'v10'; // i18n: route QA Trends strings through t() (EN/VI) — js/constants.js, js/render-core.js changed
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
