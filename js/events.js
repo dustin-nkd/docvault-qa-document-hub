@@ -455,8 +455,11 @@ window.handleDrop = async function(event, newStatus) {
     if (idx !== -1 && documents[idx].status !== 'deleted') {
         const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
         if (documents[idx][field] !== newStatus) {
-            documents[idx][field] = newStatus;
-            documents[idx].updatedAt = Date.now();
+            if (field === 'bugStatus') recordBugStatusChange(documents[idx], newStatus);
+            else {
+                documents[idx][field] = newStatus;
+                documents[idx].updatedAt = Date.now();
+            }
             await persist();
             renderContent();
         }
@@ -581,8 +584,11 @@ document.addEventListener('touchend', async () => {
             if (idx !== -1) {
                 const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
                 if (documents[idx][field] !== newStatus) {
-                    documents[idx][field] = newStatus;
-                    documents[idx].updatedAt = Date.now();
+                    if (field === 'bugStatus') recordBugStatusChange(documents[idx], newStatus);
+                    else {
+                        documents[idx][field] = newStatus;
+                        documents[idx].updatedAt = Date.now();
+                    }
                     await persist();
                     renderContent();
                 }

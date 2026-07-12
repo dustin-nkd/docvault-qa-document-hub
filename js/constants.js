@@ -230,8 +230,8 @@ const STRINGS = {
     trBugEmpty: "No bugs in {range}", trDocEmpty: "Not enough docs in {range}",
     trPassCap: "{runs} runs · latest {pct} · {delta} vs start",
     trBugCap: "{n} bugs opened in {range}", trDocCap: "{n} documents created in {range}",
-    trLifeTitle: "Bug lifecycle", trLifeSub: "Estimated from current status and last update time",
-    trEstimate: "Estimated", trVelocityTitle: "Opened vs resolved", trBacklogTitle: "Open bug backlog",
+    trLifeTitle: "Bug lifecycle", trLifeSub: "Based on recorded status changes; legacy history may be estimated",
+    trEstimate: "Legacy estimate", trVelocityTitle: "Opened vs resolved", trBacklogTitle: "Open bug backlog",
     trOpened: "Opened", trResolved: "Resolved", trLifeEmpty: "Not enough bug activity in {range}",
     trVelocityCap: "{opened} opened · {resolved} resolved in {range}",
     trBacklogCap: "Backlog now {n} · {delta} vs start",
@@ -471,8 +471,8 @@ const STRINGS_VI = {
     trBugEmpty: "Chưa có bug nào trong {range}", trDocEmpty: "Chưa đủ tài liệu trong {range}",
     trPassCap: "{runs} run · mới nhất {pct} · {delta} so với đầu kỳ",
     trBugCap: "{n} bug mở mới trong {range}", trDocCap: "{n} tài liệu tạo trong {range}",
-    trLifeTitle: "Vòng đời bug", trLifeSub: "Ước lượng từ trạng thái hiện tại và thời điểm cập nhật cuối",
-    trEstimate: "Ước lượng", trVelocityTitle: "Mở mới vs resolved", trBacklogTitle: "Backlog bug đang mở",
+    trLifeTitle: "Vòng đời bug", trLifeSub: "Dựa trên lịch sử đổi trạng thái; dữ liệu cũ có thể là ước lượng",
+    trEstimate: "Ước lượng cũ", trVelocityTitle: "Mở mới vs resolved", trBacklogTitle: "Backlog bug đang mở",
     trOpened: "Mở mới", trResolved: "Resolved", trLifeEmpty: "Chưa đủ hoạt động bug trong {range}",
     trVelocityCap: "{opened} bug mở mới · {resolved} resolved trong {range}",
     trBacklogCap: "Backlog hiện tại {n} · {delta} so với đầu kỳ",
@@ -863,6 +863,7 @@ const SAMPLE_DOCS = [
 const GUEST_DEMO_DOCS = (() => {
     const now = Date.now();
     const days = n => now - 86400000 * n;
+    const statusEvent = (from, to, ts) => ({ type: 'status_changed', from, to, ts });
 
     // Mirrors the Markdown table saveDoc() generates for testcases, so the
     // document reads correctly when opened directly (the viewer has no
@@ -936,6 +937,7 @@ const GUEST_DEMO_DOCS = (() => {
     const bug1 = {
         id: 'gd_bug_1', bugNumber: 1, title: 'Giỏ hàng mất sản phẩm khi refresh trang Checkout', category: 'bug',
         tags: ['checkout', 'cart'], status: 'published', favorite: true, bugStatus: 'open',
+        bugStatusEvents: [statusEvent(null, 'new', days(6)), statusEvent('new', 'open', days(5))],
         bugData: bug1Data, content: bugContent('Giỏ hàng mất sản phẩm khi refresh trang Checkout', bug1Data),
         createdAt: days(6), updatedAt: days(1)
     };
@@ -948,6 +950,7 @@ const GUEST_DEMO_DOCS = (() => {
     const bug2 = {
         id: 'gd_bug_2', bugNumber: 2, title: 'Checkout — Payment Declined trả về lỗi 500', category: 'bug',
         tags: ['payment', 'checkout'], status: 'published', favorite: false, bugStatus: 'in-progress',
+        bugStatusEvents: [statusEvent(null, 'new', days(1)), statusEvent('new', 'in-progress', days(1))],
         bugData: bug2Data,
         content: bugContent('Checkout — Payment Declined trả về lỗi 500', bug2Data) + '\n\n> Reported from test run **Sprint 24 — Regression Run** — Checkout — Credit Card Payment, step 2.',
         createdAt: days(1), updatedAt: days(1)
@@ -959,6 +962,7 @@ const GUEST_DEMO_DOCS = (() => {
     const bug3 = {
         id: 'gd_bug_3', bugNumber: 3, title: 'Search box không debounce, gọi API liên tục khi gõ', category: 'bug',
         tags: ['search', 'performance'], status: 'archived', favorite: false, bugStatus: 'closed',
+        bugStatusEvents: [statusEvent(null, 'new', days(25)), statusEvent('new', 'resolved', days(10)), statusEvent('resolved', 'verified', days(9)), statusEvent('verified', 'closed', days(8))],
         bugData: bug3Data, content: bugContent('Search box không debounce, gọi API liên tục khi gõ', bug3Data),
         createdAt: days(25), updatedAt: days(8)
     };
@@ -1082,9 +1086,11 @@ const GUEST_DEMO_DOCS = (() => {
     // without inflating the current open-bug count (both already closed).
     const bug4Data = { env: 'Staging', browser: 'Firefox 121', severity: 'Major', priority: 'P2', assignee: 'Lan N.', precond: '', steps: ['Mở trang sản phẩm', 'Đổi số lượng lớn hơn tồn kho'], expected: 'Chặn và báo "vượt tồn kho"', actual: 'Cho phép đặt, lỗi phát sinh ở bước thanh toán', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
     const bug4 = { id: 'gd_bug_4', bugNumber: 4, title: 'Đặt vượt số lượng tồn kho không bị chặn', category: 'bug', tags: ['catalog'], status: 'archived', favorite: false, bugStatus: 'closed',
+        bugStatusEvents: [statusEvent(null, 'new', days(22)), statusEvent('new', 'resolved', days(14)), statusEvent('resolved', 'closed', days(12))],
         bugData: bug4Data, content: bugContent('Đặt vượt số lượng tồn kho không bị chặn', bug4Data), createdAt: days(22), updatedAt: days(12) };
     const bug5Data = { env: 'Staging', browser: 'Chrome 119', severity: 'Minor', priority: 'P3', assignee: 'Minh T.', precond: '', steps: ['Vào trang Login trên mobile', 'Xoay ngang màn hình'], expected: 'Layout giữ nguyên', actual: 'Nút "Sign In" bị đẩy ra khỏi màn hình', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
     const bug5 = { id: 'gd_bug_5', bugNumber: 5, title: 'Login form vỡ layout khi xoay ngang trên mobile', category: 'bug', tags: ['login', 'mobile'], status: 'archived', favorite: false, bugStatus: 'closed',
+        bugStatusEvents: [statusEvent(null, 'new', days(15)), statusEvent('new', 'resolved', days(11)), statusEvent('resolved', 'closed', days(9))],
         bugData: bug5Data, content: bugContent('Login form vỡ layout khi xoay ngang trên mobile', bug5Data), createdAt: days(15), updatedAt: days(9) };
 
     return [

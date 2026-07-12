@@ -26,6 +26,66 @@ let state = {
 let documents = [];
 
 // ========================
+// BUG STATUS TIMELINE (QA Trends B3)
+// ========================
+// Stored on each bug so lifecycle metrics travel with the document through
+// local persistence, export/import, and GitHub sync. Legacy bugs are backfilled
+// conservatively and keep estimated=true so the dashboard never presents an
+// inferred timestamp as an exact historical fact.
+const BUG_STATUS_ALIASES = { confirmed: 'open', testing: 'retest' };
+const BUG_TERMINAL_STATUSES = new Set(['resolved', 'verified', 'closed']);
+
+function normalizeBugStatusValue(status) {
+    return BUG_STATUS_ALIASES[status] || status || 'new';
+}
+
+function ensureBugStatusEvents(doc) {
+    if (!doc || doc.category !== 'bug') return [];
+    const createdAt = Number(doc.createdAt) || Number(doc.updatedAt) || Date.now();
+    const current = normalizeBugStatusValue(doc.bugStatus);
+    const raw = Array.isArray(doc.bugStatusEvents) ? doc.bugStatusEvents : [];
+    const events = raw
+        .filter(event => event && event.type === 'status_changed' && Number.isFinite(Number(event.ts)))
+        .map(event => ({
+            type: 'status_changed',
+            from: event.from == null ? null : normalizeBugStatusValue(event.from),
+            to: normalizeBugStatusValue(event.to),
+            ts: Number(event.ts),
+            ...(event.estimated ? { estimated: true } : {})
+        }))
+        .sort((a, b) => a.ts - b.ts);
+
+    if (events.length === 0) {
+        events.push({ type: 'status_changed', from: null, to: 'new', ts: createdAt, estimated: true });
+        if (current !== 'new') {
+            events.push({
+                type: 'status_changed',
+                from: 'new',
+                to: current,
+                ts: Math.max(createdAt, Number(doc.updatedAt) || createdAt),
+                estimated: true
+            });
+        }
+    }
+
+    doc.bugStatusEvents = events;
+    return events;
+}
+
+function recordBugStatusChange(doc, nextStatus, ts = Date.now()) {
+    if (!doc || doc.category !== 'bug') return false;
+    const from = normalizeBugStatusValue(doc.bugStatus);
+    const to = normalizeBugStatusValue(nextStatus);
+    if (from === to) return false;
+    const events = ensureBugStatusEvents(doc);
+    events.push({ type: 'status_changed', from, to, ts });
+    events.sort((a, b) => a.ts - b.ts);
+    doc.bugStatus = to;
+    doc.updatedAt = ts;
+    return true;
+}
+
+// ========================
 // DOCUMENT HISTORY
 // ========================
 const DocHistory = {
@@ -169,6 +229,16 @@ async function hydrate() {
         .filter(d => d.category === 'bug' && typeof d.bugNumber !== 'number')
         .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
         .forEach(d => { d.bugNumber = ++maxBugNumber; migrated = true; });
+
+    // B3: start carrying bug lifecycle events with every bug. Existing records
+    // retain estimated markers because their historic transition times were not
+    // captured before this release.
+    documents.filter(d => d.category === 'bug').forEach(d => {
+        if (!Array.isArray(d.bugStatusEvents) || d.bugStatusEvents.length === 0) {
+            ensureBugStatusEvents(d);
+            migrated = true;
+        }
+    });
 
     if (migrated) await persist();
 }

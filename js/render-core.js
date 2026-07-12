@@ -712,18 +712,42 @@ function _renderTrends(docs, m) {
         docCap = t('trDocCap', { n: `<b style="color:var(--acc-l)">+${docTs.length}</b>`, range: rangeLabel });
     }
 
-    // ── B2 · bug lifecycle (approximate until B3 records status_changed) ───────
-    const approxClosedStatuses = new Set(['resolved', 'verified', 'closed']);
+    // ── B3 · bug lifecycle from recorded status_changed events ────────────────
+    const terminalStatuses = BUG_TERMINAL_STATUSES;
     const lifecycleBugs = (m.bugs || [])
         .map(bug => {
             const openedAt = bug.createdAt || 0;
-            const status = _normBugStatus(bug.bugStatus);
-            const closedAt = approxClosedStatuses.has(status) && bug.updatedAt
-                ? Math.max(openedAt, bug.updatedAt)
-                : null;
-            return { openedAt, closedAt };
+            let events = Array.isArray(bug.bugStatusEvents)
+                ? bug.bugStatusEvents
+                    .filter(event => event?.type === 'status_changed' && Number.isFinite(Number(event.ts)))
+                    .map(event => ({
+                        from: event.from == null ? null : _normBugStatus(event.from),
+                        to: _normBugStatus(event.to),
+                        ts: Number(event.ts),
+                        estimated: !!event.estimated
+                    }))
+                    .sort((a, b) => a.ts - b.ts)
+                : [];
+            if (events.length === 0) {
+                const current = _normBugStatus(bug.bugStatus);
+                events = [{ from: null, to: 'new', ts: openedAt, estimated: true }];
+                if (current !== 'new') {
+                    events.push({ from: 'new', to: current, ts: Math.max(openedAt, bug.updatedAt || openedAt), estimated: true });
+                }
+            }
+            const resolvedAt = events
+                .filter(event => !terminalStatuses.has(event.from) && terminalStatuses.has(event.to))
+                .map(event => event.ts);
+            const statusAt = ts => {
+                let status = 'new';
+                events.forEach(event => { if (event.ts <= ts) status = event.to; });
+                return status;
+            };
+            return { openedAt, resolvedAt, statusAt, estimated: events.some(event => event.estimated) };
         })
         .filter(bug => bug.openedAt > 0);
+    const hasLegacyEstimate = lifecycleBugs.some(bug => bug.estimated);
+    const lifecycleBadge = hasLegacyEstimate ? t('trEstimate') : '';
     const lifecycleStart = lifecycleBugs.length === 0
         ? now
         : rangeDays === 0
@@ -731,7 +755,7 @@ function _renderTrends(docs, m) {
             : cutoff;
     const lifecycleBuckets = rangeDays === 30 ? 5 : rangeDays === 90 ? 7 : 8;
     const openedInRange = lifecycleBugs.map(bug => bug.openedAt).filter(ts => ts >= lifecycleStart && ts <= now);
-    const resolvedInRange = lifecycleBugs.map(bug => bug.closedAt).filter(ts => ts && ts >= lifecycleStart && ts <= now);
+    const resolvedInRange = lifecycleBugs.flatMap(bug => bug.resolvedAt).filter(ts => ts >= lifecycleStart && ts <= now);
     const openedSeries = _trendBuckets(openedInRange, lifecycleStart, now, lifecycleBuckets);
     const resolvedSeries = _trendBuckets(resolvedInRange, lifecycleStart, now, lifecycleBuckets);
 
@@ -751,7 +775,9 @@ function _renderTrends(docs, m) {
     if (lifecycleBugs.length === 0) {
         backlogChart = _trendEmpty(t('trLifeEmpty', { range: rangeLabel }));
     } else {
-        const backlogAt = ts => lifecycleBugs.filter(bug => bug.openedAt <= ts && (!bug.closedAt || bug.closedAt > ts)).length;
+        const backlogAt = ts => lifecycleBugs.filter(bug =>
+            bug.openedAt <= ts && !terminalStatuses.has(bug.statusAt(ts))
+        ).length;
         const backlogStart = backlogAt(lifecycleStart);
         const backlogSeries = [backlogStart];
         for (let i = 1; i <= lifecycleBuckets; i++) {
@@ -791,8 +817,8 @@ function _renderTrends(docs, m) {
                 <p>${t('trLifeSub')}</p>
             </div>
             <div class="trend-lifecycle-grid">
-                ${_trendCard(t('trVelocityTitle'), velocityCap, velocityChart, t('trEstimate'))}
-                ${_trendCard(t('trBacklogTitle'), backlogCap, backlogChart, t('trEstimate'))}
+                ${_trendCard(t('trVelocityTitle'), velocityCap, velocityChart, lifecycleBadge)}
+                ${_trendCard(t('trBacklogTitle'), backlogCap, backlogChart, lifecycleBadge)}
             </div>
         </div>
     </div>`;
