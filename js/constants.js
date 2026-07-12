@@ -999,16 +999,40 @@ const GUEST_DEMO_DOCS = (() => {
         createdAt: days(14), updatedAt: days(6)
     };
 
+    // Extra test runs across prior sprints so the QA Trends pass-rate line has a
+    // real trajectory on the demo (improving, then a dip from the Checkout 500).
+    const runResults = (l, c, s) => ({
+        targetIds: [tcLogin.id, tcCheckout.id, tcSearch.id],
+        environment: 'Staging',
+        snapshot: { [tcLogin.id]: tcLogin.tcData.steps, [tcCheckout.id]: tcCheckout.tcData.steps, [tcSearch.id]: tcSearch.tcData.steps },
+        results: { [tcLogin.id]: l, [tcCheckout.id]: c, [tcSearch.id]: s }
+    });
+    const runS21 = { id: 'gd_run_sprint21', title: 'Sprint 21 — Smoke Run', category: 'testrun', tags: ['smoke', 'sprint-21'], status: 'archived', favorite: false,
+        runData: runResults({ 0: 'pass', 1: 'fail' }, { 0: 'pass', 1: 'fail', 2: 'fail' }, { 0: 'fail', 1: 'untested' }), content: '', createdAt: days(30), updatedAt: days(29) };
+    const runS22 = { id: 'gd_run_sprint22', title: 'Sprint 22 — Regression Run', category: 'testrun', tags: ['regression', 'sprint-22'], status: 'archived', favorite: false,
+        runData: runResults({ 0: 'pass', 1: 'pass' }, { 0: 'pass', 1: 'fail', 2: 'blocked' }, { 0: 'fail', 1: 'untested' }), content: '', createdAt: days(18), updatedAt: days(17) };
+    const runS23 = { id: 'gd_run_sprint23', title: 'Sprint 23 — Regression Run', category: 'testrun', tags: ['regression', 'sprint-23'], status: 'published', favorite: false,
+        runData: runResults({ 0: 'pass', 1: 'pass' }, { 0: 'pass', 1: 'pass', 2: 'fail' }, { 0: 'pass', 1: 'pass' }), content: '', createdAt: days(11), updatedAt: days(10) };
+
+    // Extra resolved bugs from earlier sprints — enrich the "bugs opened" trend
+    // without inflating the current open-bug count (both already closed).
+    const bug4Data = { env: 'Staging', browser: 'Firefox 121', severity: 'Major', priority: 'P2', assignee: 'Lan N.', precond: '', steps: ['Mở trang sản phẩm', 'Đổi số lượng lớn hơn tồn kho'], expected: 'Chặn và báo "vượt tồn kho"', actual: 'Cho phép đặt, lỗi phát sinh ở bước thanh toán', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
+    const bug4 = { id: 'gd_bug_4', bugNumber: 4, title: 'Đặt vượt số lượng tồn kho không bị chặn', category: 'bug', tags: ['catalog'], status: 'archived', favorite: false, bugStatus: 'closed',
+        bugData: bug4Data, content: bugContent('Đặt vượt số lượng tồn kho không bị chặn', bug4Data), createdAt: days(22), updatedAt: days(12) };
+    const bug5Data = { env: 'Staging', browser: 'Chrome 119', severity: 'Minor', priority: 'P3', assignee: 'Minh T.', precond: '', steps: ['Vào trang Login trên mobile', 'Xoay ngang màn hình'], expected: 'Layout giữ nguyên', actual: 'Nút "Sign In" bị đẩy ra khỏi màn hình', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
+    const bug5 = { id: 'gd_bug_5', bugNumber: 5, title: 'Login form vỡ layout khi xoay ngang trên mobile', category: 'bug', tags: ['login', 'mobile'], status: 'archived', favorite: false, bugStatus: 'closed',
+        bugData: bug5Data, content: bugContent('Login form vỡ layout khi xoay ngang trên mobile', bug5Data), createdAt: days(15), updatedAt: days(9) };
+
     return [
         runbook1, knowledge1,
         tcLogin, tcCheckout, tcSearch,
         ...tasks,
-        bug1, bug2, bug3,
+        bug1, bug2, bug3, bug4, bug5,
         testplan1,
         apiUsers, apiOrders,
         credAdmin, credPayment,
         envStaging, envProd,
-        runSprint,
+        runS21, runS22, runS23, runSprint,
         release1
     ];
 })();
