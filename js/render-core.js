@@ -45,6 +45,8 @@ function updateHeader() {
                 <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>
             `;
         }
+    } else if (state.view === 'focus') {
+        title = `<h2 class="font-heading font-bold text-lg">${t('focus')}</h2>`;
     } else if (state.view === 'traceability') {
         title = `<h2 class="font-heading font-bold text-lg">${t('traceability')}</h2>`;
     } else if (state.view === 'trash') {
@@ -226,6 +228,7 @@ function renderContent() {
     const c = document.getElementById('content');
     if (state.view === 'dashboard') updateDOM(c, renderDashboard());
     else if (state.view === 'activity') updateDOM(c, renderActivityLog());
+    else if (state.view === 'focus') updateDOM(c, renderFocus());
     else if (state.view === 'traceability') updateDOM(c, renderTraceability());
     else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') updateDOM(c, renderDocList());
     else if (state.view === 'editor') {
@@ -564,6 +567,81 @@ function renderDashboard() {
         ${_renderAttentionPanel(m)}
         ${_renderInsightCards(m)}
         ${_renderTrends(activeDocs, m)}
+    </div>`;
+}
+
+// ========================
+// FOCUS / TODAY (C)
+// ========================
+function renderFocus() {
+    const activeDocs = documents.filter(doc => doc.status !== 'deleted');
+    const metrics = _getDashboardMetrics(activeDocs);
+    const now = Date.now();
+    const used = new Set();
+    const age = doc => {
+        const days = Math.max(0, Math.floor((now - (doc.createdAt || doc.updatedAt || now)) / 86400000));
+        return days > 0 ? t('dbAgeDays', { n: days }) : t('justNow');
+    };
+    const critical = metrics.criticalAging.map(doc => {
+        used.add(doc.id);
+        return { doc, icon: 'fa-triangle-exclamation', color: '#f87171', meta: `${bugRef(doc)} · ${age(doc)}` };
+    });
+    const retest = metrics.bugs
+        .filter(doc => _normBugStatus(doc.bugStatus) === 'retest' && !used.has(doc.id))
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+        .map(doc => ({ doc, icon: 'fa-rotate', color: '#c084fc', meta: `${bugRef(doc)} · ${t('focusOpen')}` }));
+    const activeWork = metrics.tasks
+        .filter(doc => ['in-progress', 'review'].includes(doc.kanbanStatus || 'todo'))
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+        .map(doc => ({
+            doc,
+            icon: doc.kanbanStatus === 'review' ? 'fa-eye' : 'fa-spinner',
+            color: doc.kanbanStatus === 'review' ? '#fb923c' : '#60a5fa',
+            meta: doc.kanbanStatus === 'review' ? t('review') : t('inProgress')
+        }));
+    const stale = metrics.stale
+        .filter(doc => !used.has(doc.id))
+        .map(doc => ({
+            doc,
+            icon: 'fa-clock-rotate-left',
+            color: '#fbbf24',
+            meta: t('focusUpdated', { n: fmtDate(doc.updatedAt) })
+        }));
+    const groups = [
+        { id: 'critical', title: t('focusDoNow'), count: t('focusCriticalCount', { n: critical.length }), items: critical, color: '#f87171' },
+        { id: 'retest', title: t('focusRetest'), count: t('focusRetestCount', { n: retest.length }), items: retest, color: '#c084fc' },
+        { id: 'work', title: t('focusWork'), count: t('focusWorkCount', { n: activeWork.length }), items: activeWork, color: '#60a5fa' },
+        { id: 'stale', title: t('focusStale'), count: t('focusStaleCount', { n: stale.length }), items: stale, color: '#fbbf24' }
+    ];
+    const activeGroups = groups.filter(group => group.items.length > 0);
+    const focusItem = item => `<button class="focus-item" data-onclick="viewDoc('${item.doc.id}')">
+        <span class="focus-item-icon" style="color:${item.color};background:${item.color}16;"><i class="fa-solid ${item.icon}"></i></span>
+        <span class="min-w-0 flex-1 text-left">
+            <strong>${escHtml(item.doc.title)}</strong>
+            <small>${item.meta}</small>
+        </span>
+        <i class="fa-solid fa-chevron-right focus-item-arrow"></i>
+    </button>`;
+
+    return `<div class="fade-up max-w-5xl mx-auto focus-page">
+        <section class="focus-hero">
+            <div>
+                <p class="dashboard-eyebrow">${t('focus')}</p>
+                <h3>${t('focusTitle')}</h3>
+                <p>${t('focusSub')}</p>
+            </div>
+            <div class="focus-total"><b>${activeGroups.reduce((total, group) => total + group.items.length, 0)}</b><span>${t('dbAttention')}</span></div>
+        </section>
+        ${activeGroups.length === 0 ? `<section class="focus-clear">
+            <i class="fa-solid fa-circle-check"></i><p>${t('focusClear')}</p>
+        </section>` : `<div class="focus-grid">${activeGroups.map(group => `<section class="focus-group">
+            <div class="focus-group-head">
+                <span class="focus-group-icon" style="color:${group.color};background:${group.color}16;"><i class="fa-solid ${group.id === 'critical' ? 'fa-fire-flame-curved' : group.id === 'retest' ? 'fa-rotate' : group.id === 'work' ? 'fa-list-check' : 'fa-clock'}"></i></span>
+                <div class="min-w-0 flex-1"><h4>${group.title}</h4><p>${group.count}</p></div>
+                <span class="focus-group-count" style="color:${group.color};">${group.items.length}</span>
+            </div>
+            <div class="focus-list">${group.items.slice(0, 6).map(focusItem).join('')}</div>
+        </section>`).join('')}</div>`}
     </div>`;
 }
 

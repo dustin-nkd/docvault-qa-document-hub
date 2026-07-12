@@ -600,6 +600,49 @@
 .trend-dual-legend span { align-items: center; color: var(--tx-d); display: inline-flex; font-size: 9px; gap: 5px; }
 .trend-dual-legend i { border-radius: 50%; height: 5px; width: 5px; }
 
+/* Focus / Today (C) */
+.focus-page { padding-bottom: 28px; }
+.focus-hero {
+    display:flex; align-items:flex-end; justify-content:space-between; gap:20px;
+    margin-bottom:20px;
+}
+.focus-hero h3 {
+    color:var(--tx); font-family:'Space Grotesk',sans-serif; font-size:21px; font-weight:650;
+    letter-spacing:-.02em; margin:2px 0 4px;
+}
+.focus-hero p { color:var(--tx-m); font-size:13px; margin:0; max-width:620px; }
+.focus-total {
+    display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0;
+    color:var(--tx-d); font-size:11px;
+}
+.focus-total b { color:var(--acc-l); font-size:27px; font-variant-numeric:tabular-nums; line-height:1; }
+.focus-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.focus-group { background:var(--card); border:1px solid var(--brd); border-radius:12px; overflow:hidden; }
+.focus-group-head { display:flex; align-items:center; gap:10px; padding:14px; border-bottom:1px solid var(--brd); }
+.focus-group-icon,.focus-item-icon {
+    align-items:center; border-radius:8px; display:inline-flex; flex-shrink:0; justify-content:center;
+}
+.focus-group-icon { width:28px; height:28px; font-size:12px; }
+.focus-group-head h4 { color:var(--tx); font-size:13px; font-weight:650; margin:0; }
+.focus-group-head p { color:var(--tx-d); font-size:10.5px; margin:1px 0 0; }
+.focus-group-count { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+.focus-list { padding:6px; }
+.focus-item {
+    align-items:center; background:transparent; border:0; border-radius:8px; color:var(--tx); cursor:pointer;
+    display:flex; gap:10px; padding:9px; text-align:left; transition:background .15s; width:100%;
+}
+.focus-item:hover { background:var(--card-h); }
+.focus-item-icon { width:27px; height:27px; font-size:11px; }
+.focus-item strong { display:block; font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.focus-item small { color:var(--tx-d); display:block; font-size:10.5px; margin-top:2px; }
+.focus-item-arrow { color:var(--tx-d); font-size:10px; }
+.focus-clear {
+    align-items:center; background:var(--card); border:1px dashed var(--brd-l); border-radius:12px;
+    color:var(--tx-m); display:flex; flex-direction:column; gap:9px; justify-content:center; min-height:200px;
+}
+.focus-clear i { color:var(--acc-l); font-size:28px; }
+.focus-clear p { font-size:13px; margin:0; }
+
 /* Traceability Matrix (A) */
 .traceability-page { padding-bottom: 28px; }
 .traceability-hero {
@@ -662,6 +705,9 @@
 @media (max-width: 800px) {
     .dashboard-attention { grid-template-columns: 1fr; gap: 11px; }
     .trend-lifecycle-grid { grid-template-columns: 1fr; }
+    .focus-hero { align-items:flex-start; flex-direction:column; }
+    .focus-total { align-items:flex-start; flex-direction:row; gap:7px; }
+    .focus-grid { grid-template-columns:1fr; }
     .traceability-hero { align-items:flex-start; flex-direction:column; }
     .trace-summary { justify-content:flex-start; }
 }

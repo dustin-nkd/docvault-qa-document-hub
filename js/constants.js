@@ -248,6 +248,17 @@ const STRINGS = {
     traceNoRun: "No test run", traceUntested: "Untested", traceNoBugs: "No linked bugs",
     traceNoRelease: "Not linked", traceEmpty: "No test cases match this filter.",
 
+    // Focus / Today (C)
+    focus: "Focus",
+    focusTitle: "Today’s focus",
+    focusSub: "A prioritized starting point for release risk, retest, active work, and stale reviews.",
+    focusDoNow: "Do now", focusRetest: "Ready for retest",
+    focusWork: "Active work", focusStale: "Review stale documents",
+    focusClear: "Nothing needs attention right now.",
+    focusCriticalCount: "{n} critical risk", focusRetestCount: "{n} waiting",
+    focusWorkCount: "{n} in progress or review", focusStaleCount: "{n} stale",
+    focusUpdated: "Updated {n}", focusOpen: "Open",
+
     // Dashboard command center
     dbEyebrow: 'Quality command center',
     dbIntro: 'Focus on release risk, execution health, and what needs action next.',
@@ -499,6 +510,17 @@ const STRINGS_VI = {
     traceEnvironment: "Môi trường / build", traceRelease: "Release",
     traceNoRun: "Chưa có test run", traceUntested: "Chưa test", traceNoBugs: "Không có bug liên kết",
     traceNoRelease: "Chưa liên kết", traceEmpty: "Không có test case phù hợp với bộ lọc.",
+
+    // Focus / Today (C)
+    focus: "Focus",
+    focusTitle: "Việc cần tập trung hôm nay",
+    focusSub: "Điểm bắt đầu ưu tiên cho rủi ro release, retest, việc đang làm và review tài liệu cũ.",
+    focusDoNow: "Làm ngay", focusRetest: "Sẵn sàng retest",
+    focusWork: "Việc đang làm", focusStale: "Review tài liệu cũ",
+    focusClear: "Hiện chưa có việc nào cần chú ý.",
+    focusCriticalCount: "{n} rủi ro critical", focusRetestCount: "{n} đang chờ",
+    focusWorkCount: "{n} đang làm hoặc review", focusStaleCount: "{n} cũ",
+    focusUpdated: "Cập nhật {n}", focusOpen: "Mở",
 
     // Dashboard command center
     dbEyebrow: 'Trung tâm điều hành chất lượng',
