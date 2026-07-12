@@ -381,14 +381,14 @@ function _renderHealthWidgets(m, inPanel) {
     if (m.openBugs.length > 0) {
         const sevTotal = m.openBugs.length;
         const sevItems = [
-            { label: 'Critical', count: m.bugSev.Critical, color: '#f87171' },
-            { label: 'Major',    count: m.bugSev.Major,    color: '#fb923c' },
-            { label: 'Minor',    count: m.bugSev.Minor,    color: '#60a5fa' },
-            { label: 'Trivial',  count: m.bugSev.Trivial,  color: 'var(--tx-d)' },
+            { label: t('severityCritical'), count: m.bugSev.Critical, color: '#f87171' },
+            { label: t('severityMajor'),    count: m.bugSev.Major,    color: '#fb923c' },
+            { label: t('severityMinor'),    count: m.bugSev.Minor,    color: '#60a5fa' },
+            { label: t('severityTrivial'),  count: m.bugSev.Trivial,  color: 'var(--tx-d)' },
         ].filter(s => s.count > 0);
         widgets.push(`
             <div class="doc-card p-4">
-                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Bug Severity</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">${t('dbBugSeverity')}</p>
                 ${sevItems.map(s => `
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-[11px] w-12 shrink-0" style="color:${s.color};">${s.label}</span>
@@ -397,16 +397,16 @@ function _renderHealthWidgets(m, inPanel) {
                         </div>
                         <span class="text-[11px] font-medium w-4 text-right" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${s.count}</span>
                     </div>`).join('')}
-                <p class="text-[10px] mt-2 mb-3" style="color:var(--tx-d);">${sevTotal} open · ${m.bugs.length - sevTotal} closed</p>
+                <p class="text-[10px] mt-2 mb-3" style="color:var(--tx-d);">${t('dbOpenClosed', { open: sevTotal, closed: m.bugs.length - sevTotal })}</p>
                 <div class="flex items-center gap-0.5 pt-2 border-t" style="border-color:var(--brd);">
                     ${[
-                        { key: 'new',         label: 'New',      color: '#94a3b8' },
-                        { key: 'open',        label: 'Open',     color: '#60a5fa' },
-                        { key: 'in-progress', label: 'In Prog',  color: '#a78bfa' },
-                        { key: 'resolved',    label: 'Resolved', color: '#38bdf8' },
-                        { key: 'retest',      label: 'Retest',   color: '#c084fc' },
-                        { key: 'verified',    label: 'Verified', color: '#4ade80' },
-                        { key: 'closed',      label: 'Closed',   color: '#34d399' },
+                        { key: 'new',         label: t('bugNew'),        color: '#94a3b8' },
+                        { key: 'open',        label: t('bugOpen'),       color: '#60a5fa' },
+                        { key: 'in-progress', label: t('bugInProgress'), color: '#a78bfa' },
+                        { key: 'resolved',    label: t('bugResolved'),   color: '#38bdf8' },
+                        { key: 'retest',      label: t('bugRetest'),     color: '#c084fc' },
+                        { key: 'verified',    label: t('bugVerified'),   color: '#4ade80' },
+                        { key: 'closed',      label: t('bugClosed'),     color: '#34d399' },
                     ].map(lc => `
                         <div class="flex-1 text-center">
                             <p class="font-heading font-bold text-sm" style="color:${m.bugLifecycle[lc.key] > 0 ? lc.color : 'var(--tx-d)'};font-variant-numeric:tabular-nums;">${m.bugLifecycle[lc.key]}</p>
@@ -422,13 +422,13 @@ function _renderHealthWidgets(m, inPanel) {
         const rateColor = passRate >= 80 ? '#34d399' : passRate >= 60 ? '#fb923c' : '#f87171';
         widgets.push(`
             <div class="doc-card p-4">
-                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Test Pass Rate</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">${t('dbTestPassRate')}</p>
                 <p class="font-heading font-bold text-2xl mb-0.5" style="color:${rateColor};font-variant-numeric:tabular-nums;">${passRate}%</p>
-                <p class="text-[11px] mb-3" style="color:var(--tx-d);">across ${m.runs.length} run${m.runs.length > 1 ? 's' : ''}</p>
+                <p class="text-[11px] mb-3" style="color:var(--tx-d);">${t('dbAcrossRuns', { n: m.runs.length })}</p>
                 <div class="flex flex-col gap-1.5">
-                    ${m.rPass > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#34d399;"></span><span class="text-[11px]" style="color:var(--tx-m);">Pass</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rPass}</span></div>` : ''}
-                    ${m.rFail > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#f87171;"></span><span class="text-[11px]" style="color:var(--tx-m);">Fail</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rFail}</span></div>` : ''}
-                    ${m.rBlocked > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#fb923c;"></span><span class="text-[11px]" style="color:var(--tx-m);">Blocked</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rBlocked}</span></div>` : ''}
+                    ${m.rPass > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#34d399;"></span><span class="text-[11px]" style="color:var(--tx-m);">${t('pass')}</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rPass}</span></div>` : ''}
+                    ${m.rFail > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#f87171;"></span><span class="text-[11px]" style="color:var(--tx-m);">${t('fail')}</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rFail}</span></div>` : ''}
+                    ${m.rBlocked > 0 ? `<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#fb923c;"></span><span class="text-[11px]" style="color:var(--tx-m);">${t('blocked')}</span><span class="text-[11px] font-medium ml-auto" style="color:var(--tx);font-variant-numeric:tabular-nums;">${m.rBlocked}</span></div>` : ''}
                 </div>
             </div>`);
     }
@@ -436,14 +436,14 @@ function _renderHealthWidgets(m, inPanel) {
     // Widget 3: Task Board
     if (m.tasks.length > 0) {
         const cols = [
-            { key: 'todo',       label: 'To Do',   color: 'var(--tx-d)' },
-            { key: 'inProgress', label: 'In Prog', color: '#60a5fa' },
-            { key: 'review',     label: 'Review',  color: '#fb923c' },
-            { key: 'done',       label: 'Done',    color: '#34d399' },
+            { key: 'todo',       label: t('todo'),       color: 'var(--tx-d)' },
+            { key: 'inProgress', label: t('inProgress'), color: '#60a5fa' },
+            { key: 'review',     label: t('review'),     color: '#fb923c' },
+            { key: 'done',       label: t('done'),       color: '#34d399' },
         ];
         widgets.push(`
             <div class="doc-card p-4">
-                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Task Board</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">${t('dbTaskBoard')}</p>
                 <div class="grid grid-cols-4 gap-1.5 mb-2">
                     ${cols.map(c => `
                         <div class="text-center">
@@ -454,49 +454,15 @@ function _renderHealthWidgets(m, inPanel) {
                 <div class="flex rounded-full overflow-hidden" style="height:4px;background:var(--brd);">
                     ${cols.map(c => m.board[c.key] > 0 ? `<div style="flex:${m.board[c.key]};background:${c.color};"></div>` : '').join('')}
                 </div>
-                <p class="text-[10px] mt-2" style="color:var(--tx-d);">${m.tasks.length} task${m.tasks.length > 1 ? 's' : ''} total</p>
+                <p class="text-[10px] mt-2" style="color:var(--tx-d);">${t('dbTasksTotal', { n: m.tasks.length })}</p>
             </div>`);
     }
 
-    // Widget 3b: Critical Bugs Aging (SLA >48h)
-    if (m.criticalAging.length > 0) {
-        const fmtAge = ms => { const h = Math.floor(ms / 3600000); return h < 48 ? `${h}h` : `${Math.floor(h / 24)}d`; };
-        widgets.push(`
-            <div class="doc-card p-4" style="border-color:#ef4444;">
-                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:#f87171;"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Critical Bugs Aging <span style="color:var(--tx-d);">&gt;48h</span></p>
-                <div class="flex flex-col gap-2">
-                    ${m.criticalAging.slice(0, 4).map(b => `
-                        <div class="flex items-center gap-2 cursor-pointer" data-onclick="viewDoc('${b.id}')">
-                            <span class="text-[10px] font-mono font-bold shrink-0" style="color:#f87171;">${bugRef(b)}</span>
-                            <span class="text-[11px] flex-1 min-w-0 truncate" style="color:var(--tx-m);">${escHtml(b.title)}</span>
-                            <span class="text-[10px] shrink-0 font-bold" style="color:#f87171;font-variant-numeric:tabular-nums;">${fmtAge(Date.now() - (b.createdAt || 0))}</span>
-                        </div>`).join('')}
-                </div>
-            </div>`);
-    }
-
-    // Widget 4: Stale Docs
-    if (m.stale.length > 0) {
-        const fmtAge = ms => { const d = Math.floor(ms / 86400000); return d >= 30 ? `${Math.floor(d/30)}mo` : `${d}d`; };
-        widgets.push(`
-            <div class="doc-card p-4">
-                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Stale Docs <span style="color:#fb923c;">&gt;30d</span></p>
-                <div class="flex flex-col gap-2">
-                    ${m.stale.map(d => `
-                        <div class="flex items-center gap-2 cursor-pointer" data-onclick="viewDoc('${d.id}')">
-                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#fb923c;"></span>
-                            <span class="text-[11px] flex-1 min-w-0 truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
-                            <span class="text-[10px] shrink-0 font-medium" style="color:var(--tx-d);font-variant-numeric:tabular-nums;">${fmtAge(Date.now() - (d.updatedAt || 0))}</span>
-                        </div>`).join('')}
-                </div>
-            </div>`);
-    }
-
-    // Widget 5: Coverage by Module
+    // Widget 4: Coverage by Module
     if (m.tcs.length > 0 && m.coverage.length > 0) {
         widgets.push(`
             <div class="doc-card p-4">
-                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">Coverage by Module</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">${t('dbCoverageModule')}</p>
                 ${m.coverage.map(c => {
                     const barColor = c.pct === 0 ? '#f87171' : c.pct < 50 ? '#fb923c' : '#34d399';
                     return `
@@ -515,7 +481,10 @@ function _renderHealthWidgets(m, inPanel) {
     if (inPanel) {
         return `
             <div>
-                <h3 class="font-heading font-semibold text-base mb-3" style="color:var(--tx);">QA Health</h3>
+                <div class="mb-4">
+                    <h3 class="font-heading font-semibold text-base" style="color:var(--tx);">${t('dbQualityHealth')}</h3>
+                    <p class="text-xs mt-1" style="color:var(--tx-d);">${t('dbQualityHealthSub')}</p>
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     ${widgets.join('')}
                 </div>
@@ -527,142 +496,149 @@ function _renderHealthWidgets(m, inPanel) {
         </div>`;
 }
 
+function _renderAttentionPanel(m) {
+    const now = Date.now();
+    const items = [];
+    const used = new Set();
+
+    const bugAge = bug => {
+        const hours = Math.max(0, Math.floor((now - (bug.createdAt || now)) / 3600000));
+        return hours < 48 ? t('dbAgeHours', { n: hours }) : t('dbAgeDays', { n: Math.floor(hours / 24) });
+    };
+
+    m.criticalAging.forEach(bug => {
+        used.add(bug.id);
+        items.push({
+            doc: bug,
+            icon: 'fa-triangle-exclamation',
+            color: '#f87171',
+            label: t('dbCriticalOverdue'),
+            meta: `${bugRef(bug)} · ${bugAge(bug)}`
+        });
+    });
+
+    m.bugs
+        .filter(bug => _normBugStatus(bug.bugStatus) === 'retest' && !used.has(bug.id))
+        .forEach(bug => {
+            used.add(bug.id);
+            items.push({
+                doc: bug,
+                icon: 'fa-rotate',
+                color: '#c084fc',
+                label: t('dbReadyRetest'),
+                meta: bugRef(bug)
+            });
+        });
+
+    m.stale
+        .filter(doc => !used.has(doc.id))
+        .forEach(doc => {
+            const days = Math.max(30, Math.floor((now - (doc.updatedAt || now)) / 86400000));
+            items.push({
+                doc,
+                icon: 'fa-clock-rotate-left',
+                color: '#fb923c',
+                label: t('dbStaleDoc'),
+                meta: t('dbStaleDays', { n: days })
+            });
+        });
+
+    const visible = items.slice(0, 6);
+    return `<aside class="dashboard-attention">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div>
+                <h3 class="font-heading font-semibold text-base">${t('dbAttention')}</h3>
+                <p class="text-xs mt-1" style="color:var(--tx-d);">${t('dbAttentionSub')}</p>
+            </div>
+            ${items.length > 0 ? `<span class="attention-count">${items.length}</span>` : ''}
+        </div>
+        ${visible.length === 0 ? `
+            <div class="attention-clear">
+                <span class="attention-clear-icon"><i class="fa-solid fa-check"></i></span>
+                <div>
+                    <p class="text-sm font-semibold">${t('dbAllClear')}</p>
+                    <p class="text-xs mt-1" style="color:var(--tx-d);">${t('dbAllClearSub')}</p>
+                </div>
+            </div>` : `
+            <div class="attention-list">
+                ${visible.map(item => `
+                    <button class="attention-item" data-onclick="viewDoc('${item.doc.id}')">
+                        <span class="attention-icon" style="color:${item.color};background:${item.color}14;"><i class="fa-solid ${item.icon}"></i></span>
+                        <span class="min-w-0 flex-1 text-left">
+                            <span class="attention-label" style="color:${item.color};">${item.label}</span>
+                            <span class="attention-title">${escHtml(item.doc.title)}</span>
+                            <span class="attention-meta">${item.meta}</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right attention-arrow"></i>
+                    </button>`).join('')}
+            </div>`}
+    </aside>`;
+}
+
 // ========================
 // DASHBOARD
 // ========================
 function renderDashboard() {
     const activeDocs = documents.filter(d => d.status !== 'deleted');
-    const total = activeDocs.length;
-    const recent = [...activeDocs].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
     const m = _getDashboardMetrics(activeDocs);
 
-    // Key metric derived values
     const passRate = m.rTotal > 0 ? Math.round(m.rPass / m.rTotal * 100) : null;
     const passColor = passRate === null ? 'var(--tx-d)' : passRate >= 80 ? '#34d399' : passRate >= 60 ? '#fb923c' : '#f87171';
     const activeTasks = (m.board.inProgress || 0) + (m.board.review || 0);
+    const coveredIds = new Set(m.runs.flatMap(run => run.runData?.targetIds || []));
+    const coveredCases = m.tcs.filter(tc => coveredIds.has(tc.id)).length;
+    const coverageRate = m.tcs.length > 0 ? Math.round(coveredCases / m.tcs.length * 100) : null;
+    const coverageColor = coverageRate === null ? 'var(--tx-d)' : coverageRate >= 80 ? '#34d399' : coverageRate >= 50 ? '#fb923c' : '#f87171';
 
-    // Category inventory — non-zero cats as clickable pills
-    const catCounts = {};
-    Object.keys(CAT_META).forEach(k => catCounts[k] = activeDocs.filter(d => d.category === k).length);
-    const nonZeroCats = Object.entries(catCounts).filter(([, v]) => v > 0);
+    const needsAction = m.bugSev.Critical > 0 || m.criticalAging.length > 0;
+    const isAtRisk = !needsAction && passRate !== null && passRate < 70;
+    const health = needsAction
+        ? { label: t('dbActionRequired'), color: '#f87171', icon: 'fa-triangle-exclamation' }
+        : isAtRisk
+            ? { label: t('dbAtRisk'), color: '#fb923c', icon: 'fa-circle-exclamation' }
+            : { label: t('dbOnTrack'), color: '#34d399', icon: 'fa-circle-check' };
 
     return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
-
-        <!-- KEY METRICS ROW -->
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-            <div class="stat-card sc-total p-4">
-                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Total Docs</p>
-                <p class="font-heading font-bold text-2xl" style="color:var(--acc);">${total}</p>
+        <section class="dashboard-hero">
+            <div>
+                <p class="dashboard-eyebrow">${t('dbEyebrow')}</p>
+                <p class="dashboard-intro">${t('dbIntro')}</p>
             </div>
-            <div class="stat-card p-4" style="${m.bugSev.Critical > 0 ? 'border-color:#f87171;' : ''}">
-                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Open Bugs</p>
-                <p class="font-heading font-bold text-2xl" style="color:${m.openBugs.length > 0 ? '#f87171' : 'var(--tx-d)'};">${m.openBugs.length}</p>
-                ${m.bugSev.Critical > 0 ? `<p class="text-[10px] mt-0.5 font-medium" style="color:#f87171;">${m.bugSev.Critical} critical</p>` : `<p class="text-[10px] mt-0.5" style="color:var(--tx-d);">open</p>`}
-            </div>
-            <div class="stat-card p-4">
-                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Pass Rate</p>
-                <p class="font-heading font-bold text-2xl" style="color:${passColor};">${passRate !== null ? passRate + '%' : '—'}</p>
-                <p class="text-[10px] mt-0.5" style="color:var(--tx-d);">${m.runs.length > 0 ? m.runs.length + ' run' + (m.runs.length > 1 ? 's' : '') : 'no runs yet'}</p>
-            </div>
-            <div class="stat-card p-4">
-                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Active Tasks</p>
-                <p class="font-heading font-bold text-2xl" style="color:${activeTasks > 0 ? '#60a5fa' : 'var(--tx-d)'};">${activeTasks}</p>
-                <p class="text-[10px] mt-0.5" style="color:var(--tx-d);">in progress + review</p>
-            </div>
-            <div class="stat-card p-4" style="${m.stale.length > 0 ? 'border-color:#fb923c;' : ''}">
-                <p class="text-[11px] font-medium mb-1" style="color:var(--tx-d);">Need Review</p>
-                <p class="font-heading font-bold text-2xl" style="color:${m.stale.length > 0 ? '#fb923c' : 'var(--tx-d)'};">${m.stale.length}</p>
-                <p class="text-[10px] mt-0.5" style="color:var(--tx-d);">stale &gt;30 days</p>
-            </div>
-        </div>
+            <span class="dashboard-health-chip" style="color:${health.color};background:${health.color}14;border-color:${health.color}35;">
+                <i class="fa-solid ${health.icon}"></i>${health.label}
+            </span>
+        </section>
 
-        <!-- MAIN 2-COLUMN LAYOUT -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section class="dashboard-metrics">
+            <button class="dashboard-metric" style="--metric-color:${passColor};" data-onclick="navigate('documents','testrun')">
+                <span class="dashboard-metric-icon"><i class="fa-solid fa-vial-circle-check"></i></span>
+                <span class="dashboard-metric-label">${t('dbPassRate')}</span>
+                <strong style="color:${passColor};">${passRate !== null ? passRate + '%' : '—'}</strong>
+                <small>${m.runs.length > 0 ? t('dbAcrossRuns', { n: m.runs.length }) : t('dbNoRuns')}</small>
+            </button>
+            <button class="dashboard-metric" style="--metric-color:${m.openBugs.length > 0 ? '#f87171' : '#34d399'};" data-onclick="navigate('documents','bug')">
+                <span class="dashboard-metric-icon"><i class="fa-solid fa-bug"></i></span>
+                <span class="dashboard-metric-label">${t('dbOpenBugs')}</span>
+                <strong style="color:${m.openBugs.length > 0 ? '#f87171' : '#34d399'};">${m.openBugs.length}</strong>
+                <small>${t('dbCritical', { n: m.bugSev.Critical })}</small>
+            </button>
+            <button class="dashboard-metric" style="--metric-color:#60a5fa;" data-onclick="navigate('documents','task')">
+                <span class="dashboard-metric-icon"><i class="fa-solid fa-list-check"></i></span>
+                <span class="dashboard-metric-label">${t('dbActiveWork')}</span>
+                <strong style="color:${activeTasks > 0 ? '#60a5fa' : 'var(--tx-d)'};">${activeTasks}</strong>
+                <small>${t('dbInProgressReview')}</small>
+            </button>
+            <button class="dashboard-metric" style="--metric-color:${coverageColor};" data-onclick="navigate('documents','testcases')">
+                <span class="dashboard-metric-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                <span class="dashboard-metric-label">${t('dbCoverage')}</span>
+                <strong style="color:${coverageColor};">${coverageRate !== null ? coverageRate + '%' : '—'}</strong>
+                <small>${t('dbCasesCovered', { covered: coveredCases, total: m.tcs.length })}</small>
+            </button>
+        </section>
 
-            <!-- LEFT: QA Health + Recently Updated -->
-            <div class="lg:col-span-2 flex flex-col gap-6">
-
-                ${_renderHealthWidgets(m, true)}
-
-                <div>
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-heading font-semibold text-base">${t('recentlyUpdated')}</h3>
-                        <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('documents','all')">${t('viewAll')} <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i></button>
-                    </div>
-                    <div class="flex flex-col gap-2.5">
-                        ${recent.length === 0 ? `<div class="text-center py-10" style="color:var(--tx-d);"><i class="fa-solid fa-inbox text-3xl mb-3 pulse-s block"></i><p class="text-sm">${t('noDocYet')}</p></div>` :
-                        recent.map(d => `
-                            <div class="doc-card p-3.5 flex items-center gap-3" data-onclick="viewDoc('${d.id}')">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:${getCatMeta(d.category).color}12;">
-                                    <i class="fa-solid ${getCatMeta(d.category).icon} text-xs" style="color:${getCatMeta(d.category).color};"></i>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(d.title)}</p>
-                                    <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                        <span class="cat-badge ${getCatMeta(d.category).cls}">${getCatMeta(d.category).label}</span>
-                                        <span class="st-badge st-${d.status}">${d.status}</span>
-                                        <span class="text-[11px]" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
-                                    </div>
-                                </div>
-                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-sm p-1 shrink-0" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
-                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT: Inventory + Quick Create + Favorites -->
-            <div class="flex flex-col gap-6">
-
-                ${nonZeroCats.length > 0 ? `
-                <div>
-                    <h3 class="font-heading font-semibold text-base mb-3">Inventory</h3>
-                    <div class="flex flex-wrap gap-2">
-                        ${nonZeroCats.map(([k, v]) => `
-                            <button class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                                style="background:${CAT_META[k].color}15;color:${CAT_META[k].color};border:1px solid ${CAT_META[k].color}25;transition:opacity .15s;"
-                                data-onclick="navigate('documents','${k}')">
-                                <i class="fa-solid ${CAT_META[k].icon} text-[10px]"></i>
-                                ${CAT_META[k].label}
-                                <span style="opacity:.7;">${v}</span>
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>` : ''}
-
-                <div>
-                    <h3 class="font-heading font-semibold text-base mb-3">Quick Create</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        ${Object.entries(CAT_META).map(([k, cm]) => `
-                            <button class="tpl-card text-center py-3" data-onclick="createDoc('${k}')">
-                                <i class="fa-solid ${cm.icon} text-base mb-1.5 block" style="color:${cm.color};"></i>
-                                <p class="text-[11px] font-semibold" style="color:var(--tx);">${cm.label}</p>
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-heading font-semibold text-base">${t('favorites')}</h3>
-                        <button class="text-xs font-medium" style="color:var(--acc);" data-onclick="navigate('favorites')">${t('viewAll')}</button>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        ${activeDocs.filter(d => d.favorite).length === 0 ? `<p class="text-xs text-center py-4" style="color:var(--tx-d);">${t('noFavorites')}</p>` :
-                        activeDocs.filter(d => d.favorite).slice(0, 5).map(d => `
-                            <div class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer" style="transition:background .15s;"
-                                data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'"
-                                data-onclick="viewDoc('${d.id}')">
-                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${getCatMeta(d.category).color};"></span>
-                                <span class="text-xs truncate" style="color:var(--tx-m);">${escHtml(d.title)}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-
-            </div>
+        <div class="dashboard-main-grid">
+            <section class="dashboard-health-section">${_renderHealthWidgets(m, true)}</section>
+            ${_renderAttentionPanel(m)}
         </div>
 
         ${_renderTrends(activeDocs, m)}
@@ -795,7 +771,7 @@ function _renderTrends(docs, m) {
         `<button class="px-2.5 py-1 rounded-md text-[11px] font-semibold" style="${rangeDays === d ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'};transition:all .15s;" data-onclick="setTrendsRange(${d})">${l}</button>`
     ).join('');
 
-    return `<div class="mt-6">
+    return `<div class="dashboard-trends">
         <div class="flex items-center justify-between mb-3">
             <h3 class="font-heading font-semibold text-base">${t('trTitle')} <span class="text-[11px] font-normal" style="color:var(--tx-d);">· ${t('trSub')}</span></h3>
             <div class="flex gap-1 p-1 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);">${rangeBtns}</div>

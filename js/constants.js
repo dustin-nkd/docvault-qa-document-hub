@@ -229,7 +229,22 @@ const STRINGS = {
     trPassEmpty: "Need ≥ 2 test runs<br>with results to trend",
     trBugEmpty: "No bugs in {range}", trDocEmpty: "Not enough docs in {range}",
     trPassCap: "{runs} runs · latest {pct} · {delta} vs start",
-    trBugCap: "{n} bugs opened in {range}", trDocCap: "{n} documents created in {range}"
+    trBugCap: "{n} bugs opened in {range}", trDocCap: "{n} documents created in {range}",
+
+    // Dashboard command center
+    dbEyebrow: 'Quality command center',
+    dbIntro: 'Focus on release risk, execution health, and what needs action next.',
+    dbActionRequired: 'Action required', dbAtRisk: 'At risk', dbOnTrack: 'On track',
+    dbPassRate: 'Pass rate', dbOpenBugs: 'Open bugs', dbActiveWork: 'Active work', dbCoverage: 'Test coverage',
+    dbAcrossRuns: 'Across {n} runs', dbNoRuns: 'No completed runs yet', dbCritical: '{n} critical',
+    dbInProgressReview: 'In progress + review', dbCasesCovered: '{covered} of {total} cases covered',
+    dbQualityHealth: 'Execution health', dbQualityHealthSub: 'Current delivery signals, without document-management noise.',
+    dbBugSeverity: 'Bug severity', dbOpenClosed: '{open} open · {closed} closed', dbTestPassRate: 'Test pass rate',
+    dbTaskBoard: 'Task board', dbTasksTotal: '{n} tasks total', dbCoverageModule: 'Coverage by module',
+    dbAttention: 'Needs attention', dbAttentionSub: 'Prioritized items that can change quality today.',
+    dbAllClear: 'No urgent items', dbAllClearSub: 'Critical SLA, retest queue, and stale reviews are clear.',
+    dbCriticalOverdue: 'Critical bug over SLA', dbReadyRetest: 'Ready for retest', dbStaleDoc: 'Review stale document',
+    dbAgeHours: 'Open for {n}h', dbAgeDays: 'Open for {n}d', dbStaleDays: 'Not updated for {n}d'
 };
 
 // Vietnamese translation (Sprint 11). Category/domain nouns that Vietnamese QA
@@ -447,7 +462,22 @@ const STRINGS_VI = {
     trPassEmpty: "Cần ≥ 2 test run có kết quả<br>để thấy xu hướng",
     trBugEmpty: "Chưa có bug nào trong {range}", trDocEmpty: "Chưa đủ tài liệu trong {range}",
     trPassCap: "{runs} run · mới nhất {pct} · {delta} so với đầu kỳ",
-    trBugCap: "{n} bug mở mới trong {range}", trDocCap: "{n} tài liệu tạo trong {range}"
+    trBugCap: "{n} bug mở mới trong {range}", trDocCap: "{n} tài liệu tạo trong {range}",
+
+    // Dashboard command center
+    dbEyebrow: 'Trung tâm điều hành chất lượng',
+    dbIntro: 'Tập trung vào rủi ro release, sức khỏe thực thi và việc cần xử lý tiếp theo.',
+    dbActionRequired: 'Cần xử lý', dbAtRisk: 'Có rủi ro', dbOnTrack: 'Đúng hướng',
+    dbPassRate: 'Pass-rate', dbOpenBugs: 'Bug đang mở', dbActiveWork: 'Việc đang chạy', dbCoverage: 'Độ phủ test',
+    dbAcrossRuns: 'Trên {n} test run', dbNoRuns: 'Chưa có run hoàn tất', dbCritical: '{n} critical',
+    dbInProgressReview: 'Đang làm + review', dbCasesCovered: 'Đã phủ {covered}/{total} test case',
+    dbQualityHealth: 'Sức khỏe thực thi', dbQualityHealthSub: 'Các tín hiệu delivery hiện tại, không lẫn tác vụ quản lý tài liệu.',
+    dbBugSeverity: 'Mức độ bug', dbOpenClosed: '{open} đang mở · {closed} đã đóng', dbTestPassRate: 'Tỷ lệ pass',
+    dbTaskBoard: 'Bảng công việc', dbTasksTotal: 'Tổng {n} task', dbCoverageModule: 'Độ phủ theo module',
+    dbAttention: 'Cần chú ý', dbAttentionSub: 'Các việc ưu tiên có thể tác động chất lượng ngay hôm nay.',
+    dbAllClear: 'Không có việc khẩn', dbAllClearSub: 'SLA critical, hàng đợi retest và review tài liệu cũ đều ổn.',
+    dbCriticalOverdue: 'Bug critical quá SLA', dbReadyRetest: 'Sẵn sàng retest', dbStaleDoc: 'Review tài liệu cũ',
+    dbAgeHours: 'Đã mở {n} giờ', dbAgeDays: 'Đã mở {n} ngày', dbStaleDays: 'Chưa cập nhật {n} ngày'
 };
 
 // Active UI language ('en' | 'vi'), persisted like the theme preference.

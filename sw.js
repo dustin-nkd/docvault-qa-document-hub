@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v10'; // i18n: route QA Trends strings through t() (EN/VI) — js/constants.js, js/render-core.js changed
+const SW_VERSION = 'v11'; // dashboard: decision-first command center layout — render, strings, and styles changed
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
