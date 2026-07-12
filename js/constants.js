@@ -230,6 +230,12 @@ const STRINGS = {
     trBugEmpty: "No bugs in {range}", trDocEmpty: "Not enough docs in {range}",
     trPassCap: "{runs} runs · latest {pct} · {delta} vs start",
     trBugCap: "{n} bugs opened in {range}", trDocCap: "{n} documents created in {range}",
+    trLifeTitle: "Bug lifecycle", trLifeSub: "Estimated from current status and last update time",
+    trEstimate: "Estimated", trVelocityTitle: "Opened vs resolved", trBacklogTitle: "Open bug backlog",
+    trOpened: "Opened", trResolved: "Resolved", trLifeEmpty: "Not enough bug activity in {range}",
+    trVelocityCap: "{opened} opened · {resolved} resolved in {range}",
+    trBacklogCap: "Backlog now {n} · {delta} vs start",
+    trDeltaUp: "▲ +{n}", trDeltaDown: "▼ {n}", trDeltaFlat: "— 0",
 
     // Dashboard command center
     dbEyebrow: 'Quality command center',
@@ -465,6 +471,12 @@ const STRINGS_VI = {
     trBugEmpty: "Chưa có bug nào trong {range}", trDocEmpty: "Chưa đủ tài liệu trong {range}",
     trPassCap: "{runs} run · mới nhất {pct} · {delta} so với đầu kỳ",
     trBugCap: "{n} bug mở mới trong {range}", trDocCap: "{n} tài liệu tạo trong {range}",
+    trLifeTitle: "Vòng đời bug", trLifeSub: "Ước lượng từ trạng thái hiện tại và thời điểm cập nhật cuối",
+    trEstimate: "Ước lượng", trVelocityTitle: "Mở mới vs resolved", trBacklogTitle: "Backlog bug đang mở",
+    trOpened: "Mở mới", trResolved: "Resolved", trLifeEmpty: "Chưa đủ hoạt động bug trong {range}",
+    trVelocityCap: "{opened} bug mở mới · {resolved} resolved trong {range}",
+    trBacklogCap: "Backlog hiện tại {n} · {delta} so với đầu kỳ",
+    trDeltaUp: "▲ +{n}", trDeltaDown: "▼ {n}", trDeltaFlat: "— 0",
 
     // Dashboard command center
     dbEyebrow: 'Trung tâm điều hành chất lượng',

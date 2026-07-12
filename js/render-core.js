@@ -565,7 +565,7 @@ function renderDashboard() {
 }
 
 // ========================
-// TRENDS (B1) — quality over time, drawn client-side from data already stored
+// TRENDS (B1 + B2) — quality over time, drawn client-side from stored data
 // ========================
 window.setTrendsRange = function(days) { state.trendsRange = days; renderContent(); };
 
@@ -600,6 +600,29 @@ function _trendLine(vals, color, { yMax, fill } = {}) {
     </svg>`;
 }
 
+function _trendDualLine(valsA, valsB, colorA, colorB) {
+    const w = 300, h = 92, pad = 8, top = 8, bot = h - 14;
+    const max = Math.max(...valsA, ...valsB, 1);
+    const n = Math.max(valsA.length, valsB.length);
+    const x = i => pad + (n === 1 ? (w - 2 * pad) / 2 : i * (w - 2 * pad) / (n - 1));
+    const y = v => top + (1 - v / max) * (bot - top);
+    const points = vals => vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const endA = valsA.length - 1, endB = valsB.length - 1;
+    return `<div>
+        <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" preserveAspectRatio="none">
+            <line x1="${pad}" y1="${bot}" x2="${w - pad}" y2="${bot}" stroke="var(--brd)"/>
+            <polyline points="${points(valsA)}" fill="none" stroke="${colorA}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+            <polyline points="${points(valsB)}" fill="none" stroke="${colorB}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="${x(endA).toFixed(1)}" cy="${y(valsA[endA]).toFixed(1)}" r="3.4" fill="${colorA}"/>
+            <circle cx="${x(endB).toFixed(1)}" cy="${y(valsB[endB]).toFixed(1)}" r="3.4" fill="${colorB}"/>
+        </svg>
+        <div class="trend-dual-legend">
+            <span><i style="background:${colorA};"></i>${t('trOpened')}</span>
+            <span><i style="background:${colorB};"></i>${t('trResolved')}</span>
+        </div>
+    </div>`;
+}
+
 function _trendBars(vals, color) {
     const w = 300, h = 92, pad = 8, top = 10, bot = h - 14;
     const max = Math.max(...vals, 1);
@@ -614,9 +637,12 @@ function _trendBars(vals, color) {
         <line x1="${pad}" y1="${bot}" x2="${w - pad}" y2="${bot}" stroke="var(--brd)"/>${bars}</svg>`;
 }
 
-function _trendCard(title, caption, chartOrEmpty) {
+function _trendCard(title, caption, chartOrEmpty, badge = '') {
     return `<div class="doc-card p-4" style="cursor:default;">
-        <p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--tx-d);">${title}</p>
+        <div class="trend-card-head">
+            <p class="text-[10px] font-bold uppercase tracking-wider" style="color:var(--tx-d);">${title}</p>
+            ${badge ? `<span class="trend-estimate">${badge}</span>` : ''}
+        </div>
         ${chartOrEmpty}
         ${caption ? `<p class="text-[11px] mt-2.5" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${caption}</p>` : ''}
     </div>`;
@@ -686,6 +712,65 @@ function _renderTrends(docs, m) {
         docCap = t('trDocCap', { n: `<b style="color:var(--acc-l)">+${docTs.length}</b>`, range: rangeLabel });
     }
 
+    // ── B2 · bug lifecycle (approximate until B3 records status_changed) ───────
+    const approxClosedStatuses = new Set(['resolved', 'verified', 'closed']);
+    const lifecycleBugs = (m.bugs || [])
+        .map(bug => {
+            const openedAt = bug.createdAt || 0;
+            const status = _normBugStatus(bug.bugStatus);
+            const closedAt = approxClosedStatuses.has(status) && bug.updatedAt
+                ? Math.max(openedAt, bug.updatedAt)
+                : null;
+            return { openedAt, closedAt };
+        })
+        .filter(bug => bug.openedAt > 0);
+    const lifecycleStart = lifecycleBugs.length === 0
+        ? now
+        : rangeDays === 0
+            ? Math.min(...lifecycleBugs.map(bug => bug.openedAt))
+            : cutoff;
+    const lifecycleBuckets = rangeDays === 30 ? 5 : rangeDays === 90 ? 7 : 8;
+    const openedInRange = lifecycleBugs.map(bug => bug.openedAt).filter(ts => ts >= lifecycleStart && ts <= now);
+    const resolvedInRange = lifecycleBugs.map(bug => bug.closedAt).filter(ts => ts && ts >= lifecycleStart && ts <= now);
+    const openedSeries = _trendBuckets(openedInRange, lifecycleStart, now, lifecycleBuckets);
+    const resolvedSeries = _trendBuckets(resolvedInRange, lifecycleStart, now, lifecycleBuckets);
+
+    let velocityChart, velocityCap = '';
+    if (openedInRange.length + resolvedInRange.length === 0) {
+        velocityChart = _trendEmpty(t('trLifeEmpty', { range: rangeLabel }));
+    } else {
+        velocityChart = _trendDualLine(openedSeries, resolvedSeries, '#f87171', '#34d399');
+        velocityCap = t('trVelocityCap', {
+            opened: `<b style="color:#f87171">${openedInRange.length}</b>`,
+            resolved: `<b style="color:#34d399">${resolvedInRange.length}</b>`,
+            range: rangeLabel
+        });
+    }
+
+    let backlogChart, backlogCap = '';
+    if (lifecycleBugs.length === 0) {
+        backlogChart = _trendEmpty(t('trLifeEmpty', { range: rangeLabel }));
+    } else {
+        const backlogAt = ts => lifecycleBugs.filter(bug => bug.openedAt <= ts && (!bug.closedAt || bug.closedAt > ts)).length;
+        const backlogStart = backlogAt(lifecycleStart);
+        const backlogSeries = [backlogStart];
+        for (let i = 1; i <= lifecycleBuckets; i++) {
+            backlogSeries.push(backlogAt(lifecycleStart + (now - lifecycleStart) * i / lifecycleBuckets));
+        }
+        const backlogNow = backlogSeries[backlogSeries.length - 1];
+        const backlogDelta = backlogNow - backlogStart;
+        const deltaText = backlogDelta > 0
+            ? t('trDeltaUp', { n: backlogDelta })
+            : backlogDelta < 0
+                ? t('trDeltaDown', { n: Math.abs(backlogDelta) })
+                : t('trDeltaFlat');
+        backlogChart = _trendLine(backlogSeries, backlogDelta > 0 ? '#f87171' : '#fbbf24', { fill: true });
+        backlogCap = t('trBacklogCap', {
+            n: `<b style="color:${backlogDelta > 0 ? '#f87171' : '#fbbf24'}">${backlogNow}</b>`,
+            delta: deltaText
+        });
+    }
+
     const rangeBtns = [[30, '30d'], [90, '90d'], [0, t('trAll')]].map(([d, l]) =>
         `<button class="px-2.5 py-1 rounded-md text-[11px] font-semibold" style="${rangeDays === d ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'};transition:all .15s;" data-onclick="setTrendsRange(${d})">${l}</button>`
     ).join('');
@@ -699,6 +784,16 @@ function _renderTrends(docs, m) {
             ${_trendCard(t('trPassTitle'), passCap, passChart)}
             ${_trendCard(t('trBugTitle'), bugCap, bugChart)}
             ${_trendCard(t('trDocTitle'), docCap, docChart)}
+        </div>
+        <div class="trend-lifecycle-block">
+            <div class="trend-lifecycle-head">
+                <h4>${t('trLifeTitle')}</h4>
+                <p>${t('trLifeSub')}</p>
+            </div>
+            <div class="trend-lifecycle-grid">
+                ${_trendCard(t('trVelocityTitle'), velocityCap, velocityChart, t('trEstimate'))}
+                ${_trendCard(t('trBacklogTitle'), backlogCap, backlogChart, t('trEstimate'))}
+            </div>
         </div>
     </div>`;
 }
