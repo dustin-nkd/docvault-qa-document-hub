@@ -237,6 +237,17 @@ const STRINGS = {
     trBacklogCap: "Backlog now {n} · {delta} vs start",
     trDeltaUp: "▲ +{n}", trDeltaDown: "▼ {n}", trDeltaFlat: "— 0",
 
+    // Traceability matrix (A)
+    traceability: "Traceability",
+    traceTitle: "Traceability matrix",
+    traceSub: "Follow each test case from execution to defect, environment, and release.",
+    traceAll: "All test cases", traceRisk: "At risk", traceMissing: "Missing coverage",
+    traceCovered: "Covered", traceAtRisk: "At risk", traceMissingShort: "Missing",
+    traceTestCase: "Test case", traceExecution: "Latest execution", traceBugs: "Linked bugs",
+    traceEnvironment: "Environment / build", traceRelease: "Release",
+    traceNoRun: "No test run", traceUntested: "Untested", traceNoBugs: "No linked bugs",
+    traceNoRelease: "Not linked", traceEmpty: "No test cases match this filter.",
+
     // Dashboard command center
     dbEyebrow: 'Quality command center',
     dbIntro: 'Focus on release risk, execution health, and what needs action next.',
@@ -477,6 +488,17 @@ const STRINGS_VI = {
     trVelocityCap: "{opened} bug mở mới · {resolved} resolved trong {range}",
     trBacklogCap: "Backlog hiện tại {n} · {delta} so với đầu kỳ",
     trDeltaUp: "▲ +{n}", trDeltaDown: "▼ {n}", trDeltaFlat: "— 0",
+
+    // Traceability matrix (A)
+    traceability: "Traceability",
+    traceTitle: "Ma trận traceability",
+    traceSub: "Theo dõi từng test case từ thực thi đến bug, môi trường và release.",
+    traceAll: "Tất cả test case", traceRisk: "Có rủi ro", traceMissing: "Thiếu coverage",
+    traceCovered: "Đã phủ", traceAtRisk: "Có rủi ro", traceMissingShort: "Thiếu",
+    traceTestCase: "Test case", traceExecution: "Lần chạy mới nhất", traceBugs: "Bug liên quan",
+    traceEnvironment: "Môi trường / build", traceRelease: "Release",
+    traceNoRun: "Chưa có test run", traceUntested: "Chưa test", traceNoBugs: "Không có bug liên kết",
+    traceNoRelease: "Chưa liên kết", traceEmpty: "Không có test case phù hợp với bộ lọc.",
 
     // Dashboard command center
     dbEyebrow: 'Trung tâm điều hành chất lượng',

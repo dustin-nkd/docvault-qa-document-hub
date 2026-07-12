@@ -20,7 +20,8 @@ let state = {
     batchMode: false,
     selectedIds: new Set(),
     lastSelectedId: null,
-    docListPage: 1 // Sprint 22: pagination for the documents grid
+    docListPage: 1, // Sprint 22: pagination for the documents grid
+    traceabilityFilter: 'all'
 };
 
 let documents = [];

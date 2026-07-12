@@ -45,6 +45,8 @@ function updateHeader() {
                 <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>
             `;
         }
+    } else if (state.view === 'traceability') {
+        title = `<h2 class="font-heading font-bold text-lg">${t('traceability')}</h2>`;
     } else if (state.view === 'trash') {
         title = `<h2 class="font-heading font-bold text-lg">${t('trash') || 'Trash'}</h2>`;
     }
@@ -224,6 +226,7 @@ function renderContent() {
     const c = document.getElementById('content');
     if (state.view === 'dashboard') updateDOM(c, renderDashboard());
     else if (state.view === 'activity') updateDOM(c, renderActivityLog());
+    else if (state.view === 'traceability') updateDOM(c, renderTraceability());
     else if (state.view === 'documents' || state.view === 'favorites' || state.view === 'trash') updateDOM(c, renderDocList());
     else if (state.view === 'editor') {
         if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
@@ -561,6 +564,121 @@ function renderDashboard() {
         ${_renderAttentionPanel(m)}
         ${_renderInsightCards(m)}
         ${_renderTrends(activeDocs, m)}
+    </div>`;
+}
+
+// ========================
+// TRACEABILITY MATRIX (A)
+// ========================
+window.setTraceabilityFilter = function(filter) {
+    state.traceabilityFilter = filter;
+    renderContent();
+};
+
+function _traceRunOutcome(run, tcId) {
+    if (!run) return 'missing';
+    const values = Object.entries(run.runData?.results?.[tcId] || {})
+        .filter(([key]) => key !== 'note')
+        .map(([, value]) => value);
+    if (values.includes('fail')) return 'fail';
+    if (values.includes('blocked')) return 'blocked';
+    if (values.length > 0 && values.every(value => value === 'pass')) return 'pass';
+    return 'untested';
+}
+
+function renderTraceability() {
+    const activeDocs = documents.filter(doc => doc.status !== 'deleted');
+    const testCases = activeDocs.filter(doc => doc.category === 'testcases')
+        .sort((a, b) => a.title.localeCompare(b.title));
+    const runs = activeDocs.filter(doc => doc.category === 'testrun')
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const bugs = activeDocs.filter(doc => doc.category === 'bug');
+    const releases = activeDocs.filter(doc => doc.category === 'release');
+
+    const rows = testCases.map(tc => {
+        const latestRun = runs.find(run => (run.runData?.targetIds || []).includes(tc.id)) || null;
+        const outcome = _traceRunOutcome(latestRun, tc.id);
+        const linkedBugs = bugs.filter(bug =>
+            bug.bugData?.foundInTc === tc.id || bug.bugData?.linkedTc === tc.id
+        );
+        const activeBug = linkedBugs.some(bug => !BUG_TERMINAL_STATUSES.has(_normBugStatus(bug.bugStatus)));
+        const relatedReleases = releases.filter(release =>
+            (latestRun && (release.releaseData?.linkedRuns || []).includes(latestRun.id)) ||
+            linkedBugs.some(bug => (release.releaseData?.linkedBugs || []).includes(bug.id))
+        );
+        const stateName = !latestRun || outcome === 'untested' ? 'missing'
+            : activeBug || outcome === 'fail' || outcome === 'blocked' ? 'risk'
+            : 'covered';
+        return { tc, latestRun, outcome, linkedBugs, relatedReleases, stateName };
+    });
+
+    const summary = {
+        covered: rows.filter(row => row.stateName === 'covered').length,
+        risk: rows.filter(row => row.stateName === 'risk').length,
+        missing: rows.filter(row => row.stateName === 'missing').length
+    };
+    const filter = state.traceabilityFilter || 'all';
+    const visibleRows = rows.filter(row => filter === 'all' || row.stateName === filter);
+    const outcomeLabels = {
+        pass: t('traceCovered'), fail: t('traceAtRisk'), blocked: t('traceAtRisk'),
+        untested: t('traceUntested'), missing: t('traceNoRun')
+    };
+    const filterButtons = [
+        ['all', t('traceAll'), rows.length],
+        ['risk', t('traceRisk'), summary.risk],
+        ['missing', t('traceMissing'), summary.missing]
+    ].map(([id, label, count]) => `
+        <button class="trace-filter ${filter === id ? 'is-active' : ''}" data-onclick="setTraceabilityFilter('${id}')">
+            ${label}<span>${count}</span>
+        </button>`).join('');
+
+    const docButton = (doc, cls = '') => doc
+        ? `<button class="trace-link ${cls}" data-onclick="viewDoc('${doc.id}')">${escHtml(doc.title)}</button>`
+        : '';
+    const outcomeClass = { pass: 'is-pass', fail: 'is-fail', blocked: 'is-blocked', untested: 'is-untested', missing: 'is-missing' };
+
+    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto traceability-page">
+        <section class="traceability-hero">
+            <div>
+                <p class="dashboard-eyebrow">${t('traceability')}</p>
+                <p class="dashboard-intro">${t('traceSub')}</p>
+            </div>
+            <div class="trace-summary" aria-label="${t('traceTitle')} summary">
+                <span class="trace-summary-item is-covered"><b>${summary.covered}</b>${t('traceCovered')}</span>
+                <span class="trace-summary-item is-risk"><b>${summary.risk}</b>${t('traceAtRisk')}</span>
+                <span class="trace-summary-item is-missing"><b>${summary.missing}</b>${t('traceMissingShort')}</span>
+            </div>
+        </section>
+        <div class="trace-filter-bar">${filterButtons}</div>
+        <div class="trace-table-wrap">
+            <table class="trace-table">
+                <thead><tr>
+                    <th>${t('traceTestCase')}</th>
+                    <th>${t('traceExecution')}</th>
+                    <th>${t('traceBugs')}</th>
+                    <th>${t('traceEnvironment')}</th>
+                    <th>${t('traceRelease')}</th>
+                </tr></thead>
+                <tbody>${visibleRows.map(row => {
+                    const execution = row.latestRun
+                        ? `<div class="trace-cell-stack">${docButton(row.latestRun)}<span class="trace-status ${outcomeClass[row.outcome]}">${outcomeLabels[row.outcome]}</span></div>`
+                        : `<span class="trace-muted">${t('traceNoRun')}</span>`;
+                    const bugCell = row.linkedBugs.length
+                        ? `<div class="trace-cell-stack">${row.linkedBugs.slice(0, 2).map(bug => docButton(bug, !BUG_TERMINAL_STATUSES.has(_normBugStatus(bug.bugStatus)) ? 'is-risk' : '')).join('')}${row.linkedBugs.length > 2 ? `<span class="trace-muted">+${row.linkedBugs.length - 2}</span>` : ''}</div>`
+                        : `<span class="trace-muted">${t('traceNoBugs')}</span>`;
+                    const releaseCell = row.relatedReleases.length
+                        ? `<div class="trace-cell-stack">${row.relatedReleases.slice(0, 2).map(release => docButton(release)).join('')}${row.relatedReleases.length > 2 ? `<span class="trace-muted">+${row.relatedReleases.length - 2}</span>` : ''}</div>`
+                        : `<span class="trace-muted">${t('traceNoRelease')}</span>`;
+                    return `<tr class="trace-row is-${row.stateName}">
+                        <td><div class="trace-tc">${docButton(row.tc)}<span>${escHtml(row.tc.tcData?.module || '')}</span></div></td>
+                        <td>${execution}</td>
+                        <td>${bugCell}</td>
+                        <td>${row.latestRun?.runData?.environment ? `<span class="trace-env">${escHtml(row.latestRun.runData.environment)}</span>` : '<span class="trace-muted">—</span>'}</td>
+                        <td>${releaseCell}</td>
+                    </tr>`;
+                }).join('') || `<tr><td colspan="5" class="trace-empty">${t('traceEmpty')}</td></tr>`}</tbody>
+            </table>
+        </div>
     </div>`;
 }
 
