@@ -1903,10 +1903,9 @@ window.resolveBug = async function(id, resolution) {
     if (idx === -1) return;
     document.getElementById('doc-menu')?.remove();
     const doc = documents[idx];
-    doc.bugStatus = 'closed';
+    recordBugStatusChange(doc, 'closed');
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.resolution = resolution;
-    doc.updatedAt = Date.now();
     await persist();
     renderContent();
     const label = { 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: 'Rejected', deferred: 'Deferred' }[resolution] || resolution;
@@ -1967,11 +1966,10 @@ window._selectDuplicateOfBug = async function(originalBugId) {
     const idx = documents.findIndex(d => d.id === id);
     if (idx === -1) return;
     const doc = documents[idx];
-    doc.bugStatus = 'closed';
+    recordBugStatusChange(doc, 'closed');
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.resolution = 'duplicate';
     doc.bugData.duplicateOf = originalBugId;
-    doc.updatedAt = Date.now();
     await persist();
     renderContent();
     toast('Marked as Duplicate', 'info');
@@ -1982,12 +1980,11 @@ window.reopenBug = async function(id) {
     if (idx === -1) return;
     document.getElementById('doc-menu')?.remove();
     const doc = documents[idx];
-    doc.bugStatus = 'open';
+    recordBugStatusChange(doc, 'open');
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.reopenCount = (doc.bugData.reopenCount || 0) + 1;
     doc.bugData.resolution = '';
     doc.bugData.duplicateOf = '';
-    doc.updatedAt = Date.now();
     await persist();
     renderContent();
     toast('Bug reopened', 'info');
@@ -2352,14 +2349,17 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         // The document being edited vanished (deleted on another device / concurrent
         // sync). Save the edits as a fresh document instead of dereferencing
         // documents[-1] (which previously produced a broken "?view=undefined" viewer).
-        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: cat === 'bug' ? (state.editingDoc.bugStatus || 'new') : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const revivedAt = Date.now();
+        const revivedBugStatus = cat === 'bug' ? normalizeBugStatusValue(state.editingDoc.bugStatus) : undefined;
+        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
         documents.unshift(revived);
         toast('Original document was removed elsewhere — saved as a new copy.', 'info');
         state.editingDoc = { ...revived };
         state.view = 'viewer';
         state.category = cat;
     } else {
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+        const createdAt = Date.now();
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt, updatedAt: createdAt };
         documents.unshift(newDoc);
         ActivityLog.record('created', newDoc);
         toast(t('docCreated'), 'success');
@@ -2416,7 +2416,16 @@ async function duplicateDoc(id) {
     dup.updatedAt = Date.now();
     // A duplicated bug is a distinct report — give it its own BUG-### (US-202),
     // otherwise the copy would collide with the original's number.
-    if (dup.category === 'bug') dup.bugNumber = _nextBugNumber();
+    if (dup.category === 'bug') {
+        dup.bugNumber = _nextBugNumber();
+        dup.bugStatus = normalizeBugStatusValue(dup.bugStatus);
+        dup.bugStatusEvents = [{
+            type: 'status_changed',
+            from: null,
+            to: dup.bugStatus,
+            ts: dup.createdAt
+        }];
+    }
     documents.unshift(dup);
     ActivityLog.record('created', dup, { note: 'duplicated' });
     await persist();
