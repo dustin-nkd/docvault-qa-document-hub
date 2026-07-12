@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v17'; // review fixes: retest+stale guest data, trace-link title attr — js/constants.js, js/render-core.js changed
+const SW_VERSION = 'v18'; // trend charts: add axis labels + tooltips (UI/UX pass) — js/render-core.js changed
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
