@@ -1137,11 +1137,32 @@ const GUEST_DEMO_DOCS = (() => {
         bugStatusEvents: [statusEvent(null, 'new', days(15)), statusEvent('new', 'resolved', days(11)), statusEvent('resolved', 'closed', days(9))],
         bugData: bug5Data, content: bugContent('Login form vỡ layout khi xoay ngang trên mobile', bug5Data), createdAt: days(15), updatedAt: days(9) };
 
+    // A retest-pending bug — dev has deployed a fix and QA needs to verify it.
+    // Exercises the Focus page's "Ready for retest" group, which no bug in the
+    // sample data reached otherwise.
+    const bug6Data = { env: 'Staging · build #483', browser: 'Chrome 121', severity: 'Major', priority: 'P2', assignee: 'Lan N.',
+        precond: 'Đã deploy fix lên Staging build #483', steps: ['Vào trang Catalog', 'Áp dụng filter Giá + Size cùng lúc', 'Kiểm tra kết quả trả về'],
+        expected: 'Kết quả lọc đúng theo cả 2 điều kiện', actual: '(Fix đã deploy — chờ QA verify lại trên Staging)',
+        resolution: '', duplicateOf: '', reopenCount: 0 };
+    const bug6 = { id: 'gd_bug_6', bugNumber: 6, title: 'Filter kết hợp Giá + Size trả về sai kết quả', category: 'bug', tags: ['search', 'catalog'], status: 'published', favorite: false, bugStatus: 'retest',
+        bugStatusEvents: [statusEvent(null, 'new', days(5)), statusEvent('new', 'open', days(5)), statusEvent('open', 'in-progress', days(3)), statusEvent('in-progress', 'retest', days(1))],
+        bugData: bug6Data, content: bugContent('Filter kết hợp Giá + Size trả về sai kết quả', bug6Data), createdAt: days(5), updatedAt: days(1) };
+
+    // A reference doc nobody has needed to touch in a while — exercises the
+    // Focus page's "Stale reviews" group (>30 days since last update), which
+    // no document in the sample data reached otherwise.
+    const knowledge2 = {
+        id: 'gd_kn_2', title: 'Checklist Regression trước khi Release', category: 'knowledge',
+        tags: ['checklist', 'release'], status: 'published', favorite: false,
+        content: '# Checklist Regression\n\n- [ ] Smoke suite pass trên Staging\n- [ ] Không còn bug Critical đang mở\n- [ ] Coverage các module chính ≥ 80%\n- [ ] Đã review Test Plan với QA Lead\n\n> Review lại checklist này mỗi quý — cập nhật nếu quy trình release thay đổi.',
+        createdAt: days(95), updatedAt: days(38)
+    };
+
     return [
-        runbook1, knowledge1,
+        runbook1, knowledge1, knowledge2,
         tcLogin, tcCheckout, tcSearch,
         ...tasks,
-        bug1, bug2, bug3, bug4, bug5,
+        bug1, bug2, bug3, bug4, bug5, bug6,
         testplan1,
         apiUsers, apiOrders,
         credAdmin, credPayment,

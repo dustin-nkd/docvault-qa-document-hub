@@ -711,7 +711,7 @@ function renderTraceability() {
         </button>`).join('');
 
     const docButton = (doc, cls = '') => doc
-        ? `<button class="trace-link ${cls}" data-onclick="viewDoc('${doc.id}')">${escHtml(doc.title)}</button>`
+        ? `<button class="trace-link ${cls}" data-onclick="viewDoc('${doc.id}')" title="${escHtml(doc.title)}">${escHtml(doc.title)}</button>`
         : '';
     const outcomeClass = { pass: 'is-pass', fail: 'is-fail', blocked: 'is-blocked', untested: 'is-untested', missing: 'is-missing' };
 
