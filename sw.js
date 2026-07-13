@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v19'; // security audit: fix stored XSS in bug kanban card + release notes/report-bug markdown — js/actions.js, js/render-core.js changed
+const SW_VERSION = 'v20'; // balance Bug lifecycle chart size to match Trends row (CSS aspect-ratio) — js/render-core.js, style.css changed
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
