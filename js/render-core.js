@@ -1407,10 +1407,10 @@ function renderDocList() {
             <div class="flex items-center gap-2 ml-auto">
                 ${!inTrash && docs.length > 0 ? `
                     ${bm ? `<span class="text-xs font-semibold" style="color:var(--acc);">${sel.size} selected</span>
-                    <button class="text-xs py-1 px-2.5 rounded-md font-medium" style="color:var(--acc);border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.06);" data-onclick="selectAllDocs()">
+                    <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md font-medium" style="color:var(--acc);border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.06);" data-onclick="selectAllDocs()">
                         ${allSelected ? 'Deselect all' : 'Select all'}
                     </button>` : ''}
-                    <button class="text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
+                    <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
                         ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
                     </button>
                 ` : ''}
@@ -1700,7 +1700,7 @@ function renderBugKanban(docs, isMobileSearch) {
             <div class="flex-1"></div>
             ${docs.length > 0 ? `
                 ${bm ? `<span class="text-xs font-semibold" style="color:var(--acc);">${sel.size} selected</span>` : ''}
-                <button class="text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
+                <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
                     ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
                 </button>
             ` : ''}
