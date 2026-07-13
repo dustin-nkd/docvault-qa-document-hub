@@ -607,9 +607,23 @@ function renderFocus() {
             color: '#fbbf24',
             meta: t('focusUpdated', { n: fmtDate(doc.updatedAt) })
         }));
+    const releaseRisks = activeDocs
+        .filter(doc => doc.category === 'release' && ['planning', 'in-progress'].includes(doc.releaseData?.status || 'planning'))
+        .map(doc => ({ doc, readiness: evaluateReleaseReadiness(doc, activeDocs) }))
+        .filter(item => item.readiness.outcome !== 'go')
+        .sort((a, b) => b.readiness.blockers.length - a.readiness.blockers.length)
+        .map(item => ({
+            doc: item.doc,
+            icon: 'fa-rocket',
+            color: item.readiness.outcome === 'no-go' ? '#f87171' : '#fbbf24',
+            meta: item.readiness.manualDecision !== 'auto'
+                ? `${item.readiness.outcome.toUpperCase().replaceAll('-', ' ')} &middot; manual decision`
+                : `${item.readiness.outcome.toUpperCase().replaceAll('-', ' ')} &middot; ${item.readiness.blockers.length} blocker${item.readiness.blockers.length === 1 ? '' : 's'}`
+        }));
     const groups = [
         { id: 'critical', title: t('focusDoNow'), count: t('focusCriticalCount', { n: critical.length }), items: critical, color: '#f87171' },
         { id: 'retest', title: t('focusRetest'), count: t('focusRetestCount', { n: retest.length }), items: retest, color: '#c084fc' },
+        { id: 'release', title: t('focusRelease'), count: t('focusReleaseCount', { n: releaseRisks.length }), items: releaseRisks, color: '#f87171' },
         { id: 'work', title: t('focusWork'), count: t('focusWorkCount', { n: activeWork.length }), items: activeWork, color: '#60a5fa' },
         { id: 'stale', title: t('focusStale'), count: t('focusStaleCount', { n: stale.length }), items: stale, color: '#fbbf24' }
     ];
@@ -636,7 +650,7 @@ function renderFocus() {
             <i class="fa-solid fa-circle-check"></i><p>${t('focusClear')}</p>
         </section>` : `<div class="focus-grid">${activeGroups.map(group => `<section class="focus-group">
             <div class="focus-group-head">
-                <span class="focus-group-icon" style="color:${group.color};background:${group.color}16;"><i class="fa-solid ${group.id === 'critical' ? 'fa-fire-flame-curved' : group.id === 'retest' ? 'fa-rotate' : group.id === 'work' ? 'fa-list-check' : 'fa-clock'}"></i></span>
+                <span class="focus-group-icon" style="color:${group.color};background:${group.color}16;"><i class="fa-solid ${group.id === 'critical' ? 'fa-fire-flame-curved' : group.id === 'retest' ? 'fa-rotate' : group.id === 'release' ? 'fa-rocket' : group.id === 'work' ? 'fa-list-check' : 'fa-clock'}"></i></span>
                 <div class="min-w-0 flex-1"><h4>${group.title}</h4><p>${group.count}</p></div>
                 <span class="focus-group-count" style="color:${group.color};">${group.items.length}</span>
             </div>

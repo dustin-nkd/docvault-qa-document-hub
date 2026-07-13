@@ -549,23 +549,12 @@ function renderViewer() {
         })()}
         ` : doc.category === 'release' ? `
         ${(() => {
-            const linkedRuns = (doc.releaseData?.linkedRuns || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
-            const linkedBugs = (doc.releaseData?.linkedBugs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
-            const linkedEnvs = (doc.releaseData?.linkedEnvs || []).map(id => documents.find(d => d.id === id && d.status !== 'deleted')).filter(Boolean);
+            const readiness = evaluateReleaseReadiness(doc, documents); const linkedRuns = readiness.linkedRuns;
+            const linkedBugs = readiness.linkedBugs;
+            const linkedEnvs = readiness.linkedEnvs;
 
-            let totalSteps = 0, passSteps = 0;
-            linkedRuns.forEach(run => {
-                const results = run.runData?.results || {};
-                (run.runData?.targetIds || []).forEach(tcId => {
-                    const tc = documents.find(d => d.id === tcId);
-                    if (!tc) return;
-                    const steps = tc.tcData?.steps || [];
-                    totalSteps += steps.length;
-                    steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') passSteps++; });
-                });
-            });
-            const passPct = totalSteps ? Math.round(passSteps / totalSteps * 100) : null;
-            const criticalBugs = linkedBugs.filter(b => b.bugData?.severity === 'Critical').length;
+            const passPct = readiness.metrics.passRate;
+            const criticalBugs = readiness.metrics.critical;
             const sevColor = s => s === 'Critical' ? '#ef4444' : s === 'Major' ? '#f97316' : s === 'Minor' ? '#f59e0b' : '#7a8ba8';
 
             const statusStyle = s => ({
@@ -577,17 +566,20 @@ function renderViewer() {
 
             const st = statusStyle(doc.releaseData?.status);
 
-            // Automatic GO/NO-GO gate (Sprint 17, 17-1). 80% is a fixed, non-configurable
-            // threshold — deliberately simple rather than a per-release setting, since
-            // this is a signal to prompt a conversation, not a hard release blocker.
-            const GO_THRESHOLD = 80;
-            const gate = (linkedRuns.length === 0 || totalSteps === 0)
-                ? { label: 'Not Enough Data', color: 'var(--tx-d)', bg: 'rgba(122,139,168,0.12)', border: 'var(--brd)', icon: 'fa-circle-question', detail: 'Link a test run with recorded results to compute release readiness.' }
-                : criticalBugs > 0
-                    ? { label: 'NO-GO', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)', icon: 'fa-circle-xmark', detail: `${criticalBugs} critical bug${criticalBugs > 1 ? 's' : ''} still open.` }
-                    : passPct < GO_THRESHOLD
-                        ? { label: 'NO-GO', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)', icon: 'fa-circle-xmark', detail: `Pass rate ${passPct}% is below the ${GO_THRESHOLD}% threshold.` }
-                        : { label: 'GO', color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)', icon: 'fa-circle-check', detail: `Pass rate ${passPct}% and 0 critical bugs.` };
+            const cockpitGate = ({
+                go: { label: 'GO', color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)', icon: 'fa-circle-check', detail: 'All required release evidence passes policy.' },
+                'go-with-risk': { label: 'GO WITH RISK', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)', icon: 'fa-triangle-exclamation', detail: 'A documented exception overrides automatic blockers.' },
+                'no-go': { label: 'NO-GO', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)', icon: 'fa-circle-xmark', detail: readiness.manualDecision === 'no-go' ? 'Release is manually held with a documented reason.' : `${readiness.blockers.length} release condition${readiness.blockers.length === 1 ? '' : 's'} need attention.` },
+                insufficient: { label: 'INSUFFICIENT EVIDENCE', color: 'var(--tx-d)', bg: 'rgba(122,139,168,0.12)', border: 'var(--brd)', icon: 'fa-circle-question', detail: 'Link and execute test evidence before making a release decision.' }
+            })[readiness.outcome];
+            const checkCopy = check => ({
+                evidence: ['Test evidence', `${check.value} linked test run${check.value === 1 ? '' : 's'}`],
+                'pass-rate': ['Pass rate threshold', check.value == null ? `No measurable result &middot; target ${check.threshold}%` : `${check.value}% &middot; target ${check.threshold}%`],
+                execution: ['Execution completeness', `${check.value}/${check.total} steps executed`],
+                defects: ['Defect policy', `${check.critical} Critical &middot; ${check.major} Major open`],
+                environments: ['Environment health', readiness.policy.requireHealthyEnvironments ? `${check.unhealthy} unhealthy of ${check.value}` : 'Not required by policy']
+            })[check.id];
+            const decisionLog = Array.isArray(doc.releaseData?.decisionLog) ? doc.releaseData.decisionLog : [];
 
             return `
             <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
@@ -603,12 +595,25 @@ function renderViewer() {
                     </div>
                     <span class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${st.bg}; color:${st.color}; border:1px solid ${st.border};">${st.label}</span>
                 </div>
-                <div class="flex items-center gap-3 mb-4 p-3 rounded-lg" style="background:${gate.bg};border:1px solid ${gate.border};">
-                    <i class="fa-solid ${gate.icon} text-lg shrink-0" style="color:${gate.color};"></i>
+                <div class="release-cockpit-outcome mb-4" style="background:${cockpitGate.bg};border-color:${cockpitGate.border};">
+                    <i class="fa-solid ${cockpitGate.icon}" style="color:${cockpitGate.color};"></i>
                     <div class="flex-1 min-w-0">
-                        <span class="font-heading font-bold text-sm" style="color:${gate.color};">${gate.label}</span>
-                        <span class="text-xs ml-2" style="color:var(--tx-m);">${gate.detail}</span>
+                        <strong style="color:${cockpitGate.color};">${cockpitGate.label}</strong>
+                        <span>${cockpitGate.detail}</span>
                     </div>
+                </div>
+                ${readiness.decisionReason ? `<div class="release-decision-reason"><i class="fa-solid fa-quote-left"></i><span>${escHtml(readiness.decisionReason)}</span></div>` : ''}
+                <div class="release-checklist mb-4">
+                    ${readiness.checks.map(check => {
+                        const copy = checkCopy(check);
+                        const icon = check.status === 'pass' ? 'fa-circle-check' : check.status === 'fail' ? 'fa-circle-xmark' : 'fa-circle-question';
+                        const sourceId = check.docIds?.[0];
+                        return `<div class="release-check is-${check.status}">
+                            <i class="fa-solid ${icon}"></i>
+                            <span class="min-w-0 flex-1"><b>${copy[0]}</b><small>${copy[1]}</small></span>
+                            ${sourceId && !state.sharedView ? `<button data-onclick="viewDoc('${sourceId}')" title="Open source evidence"><i class="fa-solid fa-arrow-up-right-from-square"></i>${check.docIds.length > 1 ? `<em>+${check.docIds.length - 1}</em>` : ''}</button>` : ''}
+                        </div>`;
+                    }).join('')}
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
@@ -617,7 +622,7 @@ function renderViewer() {
                     </div>
                     <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
                         <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Pass Rate</div>
-                        <div class="text-2xl font-bold" style="color:${passPct === null ? 'var(--tx-d)' : passPct >= 80 ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'};">${passPct !== null ? passPct + '%' : '—'}</div>
+                        <div class="text-2xl font-bold" style="color:${passPct === null ? 'var(--tx-d)' : passPct >= readiness.policy.minPassRate ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'};">${passPct !== null ? passPct + '%' : '—'}</div>
                     </div>
                     <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
                         <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Total Bugs</div>
@@ -628,6 +633,13 @@ function renderViewer() {
                         <div class="text-2xl font-bold" style="color:${criticalBugs === 0 ? '#10b981' : '#ef4444'};">${criticalBugs}</div>
                     </div>
                 </div>
+                ${decisionLog.length ? `<div class="release-decision-log">
+                    <p>Decision history</p>
+                    ${decisionLog.slice(0, 3).map(entry => `<div>
+                        <span>${entry.decision === 'go-with-risk' ? 'GO WITH RISK' : entry.decision === 'no-go' ? 'NO-GO' : 'AUTOMATIC'}</span>
+                        <small>${fmtDate(entry.ts)} &middot; ${escHtml(entry.reason || '')}</small>
+                    </div>`).join('')}
+                </div>` : ''}
             </div>
             ${linkedRuns.length ? `
             <div class="mb-4">

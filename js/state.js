@@ -87,6 +87,97 @@ function recordBugStatusChange(doc, nextStatus, ts = Date.now()) {
 }
 
 // ========================
+// RELEASE READINESS COCKPIT
+// ========================
+const DEFAULT_RELEASE_READINESS_POLICY = Object.freeze({
+    minPassRate: 80,
+    blockCritical: true,
+    blockMajor: false,
+    requireCompleteExecution: true,
+    requireHealthyEnvironments: false
+});
+
+function normalizeReleasePolicy(policy) {
+    const source = policy && typeof policy === 'object' ? policy : {};
+    const parsedRate = Number(source.minPassRate);
+    return {
+        minPassRate: Number.isFinite(parsedRate) ? Math.max(0, Math.min(100, Math.round(parsedRate))) : DEFAULT_RELEASE_READINESS_POLICY.minPassRate,
+        blockCritical: source.blockCritical !== false,
+        blockMajor: source.blockMajor === true,
+        requireCompleteExecution: source.requireCompleteExecution !== false,
+        requireHealthyEnvironments: source.requireHealthyEnvironments === true
+    };
+}
+
+function evaluateReleaseReadiness(release, docs = documents) {
+    const data = release?.releaseData || {};
+    const policy = normalizeReleasePolicy(data.readinessPolicy);
+    const active = docs.filter(doc => doc.status !== 'deleted');
+    const byId = id => active.find(doc => doc.id === id);
+    const linkedRuns = (data.linkedRuns || []).map(byId).filter(doc => doc?.category === 'testrun');
+    const linkedBugs = (data.linkedBugs || []).map(byId).filter(doc => doc?.category === 'bug');
+    const linkedEnvs = (data.linkedEnvs || []).map(byId).filter(doc => doc?.category === 'environment');
+    let totalSteps = 0, passSteps = 0, executedSteps = 0;
+
+    linkedRuns.forEach(run => {
+        const results = run.runData?.results || {};
+        (run.runData?.targetIds || []).forEach(tcId => {
+            const tc = byId(tcId);
+            const steps = run.runData?.snapshot?.[tcId] || tc?.tcData?.steps || [];
+            totalSteps += steps.length;
+            steps.forEach((_, index) => {
+                const result = results[tcId]?.[index];
+                if (result === 'pass') passSteps++;
+                if (['pass', 'fail', 'blocked'].includes(result)) executedSteps++;
+            });
+        });
+    });
+
+    const passRate = totalSteps ? Math.round(passSteps / totalSteps * 100) : null;
+    const openBugs = linkedBugs.filter(bug => !BUG_TERMINAL_STATUSES.has(normalizeBugStatusValue(bug.bugStatus)));
+    const critical = openBugs.filter(bug => bug.bugData?.severity === 'Critical');
+    const major = openBugs.filter(bug => bug.bugData?.severity === 'Major');
+    const unhealthyEnvs = linkedEnvs.filter(env => env.envData?.status !== 'healthy');
+    const checks = [
+        { id: 'evidence', status: linkedRuns.length > 0 && totalSteps > 0 ? 'pass' : 'unknown', value: linkedRuns.length, docIds: linkedRuns.map(run => run.id) },
+        { id: 'pass-rate', status: passRate == null ? 'unknown' : passRate >= policy.minPassRate ? 'pass' : 'fail', value: passRate, threshold: policy.minPassRate, docIds: linkedRuns.map(run => run.id) },
+        { id: 'execution', status: totalSteps === 0 ? 'unknown' : !policy.requireCompleteExecution || executedSteps === totalSteps ? 'pass' : 'fail', value: executedSteps, total: totalSteps, docIds: linkedRuns.map(run => run.id) },
+        {
+            id: 'defects',
+            status: (policy.blockCritical && critical.length > 0) || (policy.blockMajor && major.length > 0) ? 'fail' : 'pass',
+            value: openBugs.length,
+            critical: critical.length,
+            major: major.length,
+            docIds: [...critical, ...(policy.blockMajor ? major : [])].map(bug => bug.id)
+        },
+        {
+            id: 'environments',
+            status: !policy.requireHealthyEnvironments ? 'pass' : linkedEnvs.length === 0 ? 'unknown' : unhealthyEnvs.length === 0 ? 'pass' : 'fail',
+            value: linkedEnvs.length,
+            unhealthy: unhealthyEnvs.length,
+            docIds: unhealthyEnvs.map(env => env.id)
+        }
+    ];
+
+    let outcome = checks.some(check => check.status === 'fail')
+        ? 'no-go'
+        : checks.some(check => check.status === 'unknown')
+            ? 'insufficient'
+            : 'go';
+    const manualDecision = data.manualDecision || 'auto';
+    const decisionReason = (data.decisionReason || '').trim();
+    if (manualDecision === 'go-with-risk' && decisionReason) outcome = 'go-with-risk';
+    if (manualDecision === 'no-go' && decisionReason) outcome = 'no-go';
+
+    return {
+        outcome, policy, checks, linkedRuns, linkedBugs, linkedEnvs,
+        metrics: { totalSteps, executedSteps, passSteps, passRate, openBugs: openBugs.length, critical: critical.length, major: major.length },
+        manualDecision, decisionReason,
+        blockers: checks.filter(check => check.status !== 'pass')
+    };
+}
+
+// ========================
 // DOCUMENT HISTORY
 // ========================
 const DocHistory = {
