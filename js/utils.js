@@ -14,6 +14,52 @@ function debounce(fn, wait) {
     };
 }
 
+// Reuse normalized search text across document-list and global-search queries.
+// Entries invalidate automatically when searchable fields change, including
+// tags mutated in place by the editor/batch actions.
+const SEARCH_INDEX_CACHE = new WeakMap();
+function getSearchIndexEntry(doc) {
+    const title = String(doc?.title || '');
+    const content = String(doc?.content || '');
+    const tags = Array.isArray(doc?.tags) ? doc.tags : [];
+    const tagsKey = tags.join('\u0000');
+    const cached = doc && SEARCH_INDEX_CACHE.get(doc);
+    if (cached && cached.sourceTitle === title && cached.sourceContent === content && cached.tagsKey === tagsKey) return cached;
+
+    const entry = {
+        sourceTitle: title,
+        sourceContent: content,
+        tagsKey,
+        title: title.toLowerCase(),
+        content: content.toLowerCase(),
+        tags: tags.map(tag => String(tag).toLowerCase())
+    };
+    if (doc && typeof doc === 'object') SEARCH_INDEX_CACHE.set(doc, entry);
+    return entry;
+}
+
+function matchesSearchQuery(doc, query) {
+    const normalized = String(query || '').trim().toLowerCase();
+    if (!normalized) return true;
+    const entry = getSearchIndexEntry(doc);
+    return entry.title.includes(normalized) || entry.content.includes(normalized) || entry.tags.some(tag => tag.includes(normalized));
+}
+
+function scoreSearchDocument(doc, words) {
+    const entry = getSearchIndexEntry(doc);
+    let score = 0;
+    (words || []).forEach(word => {
+        const normalized = String(word || '').toLowerCase();
+        if (!normalized) return;
+        if (entry.title === normalized) score += 5;
+        else if (entry.title.startsWith(normalized)) score += 3;
+        else if (entry.title.includes(normalized)) score += 2;
+        if (entry.tags.some(tag => tag.includes(normalized))) score += 1.5;
+        if (entry.content.includes(normalized)) score += 0.5;
+    });
+    return score;
+}
+
 // Credential rotation-age helper (Sprint 18, 18-2). Falls back to createdAt
 // when no explicit rotatedAt is set — a credential never marked as rotated
 // is aging since it was created. Informational only: a fixed 90-day
