@@ -672,7 +672,7 @@ function renderFocus() {
         const parts = String(value || '').split('-').map(Number);
         if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return '\u2014';
         const date = new Date(parts[0], parts[1] - 1, parts[2]);
-        return date.toLocaleDateString(CURRENT_LANG === 'vi' ? 'vi-VN' : 'en-US',
+        return date.toLocaleDateString('en-US',
             { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
     const dueChip = item => {

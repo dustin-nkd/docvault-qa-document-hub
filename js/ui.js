@@ -98,25 +98,6 @@ window.toggleTheme = function() {
 };
 
 // ========================
-// LANGUAGE (Sprint 11)
-// ========================
-window.initLang = function() {
-    const label = document.getElementById('lang-label');
-    if (label) label.textContent = CURRENT_LANG === 'vi' ? 'VI' : 'EN';
-};
-window.toggleLang = function() {
-    CURRENT_LANG = CURRENT_LANG === 'vi' ? 'en' : 'vi';
-    localStorage.setItem('docvault_lang', CURRENT_LANG);
-    const label = document.getElementById('lang-label');
-    if (label) label.textContent = CURRENT_LANG === 'vi' ? 'VI' : 'EN';
-    // Static sidebar buttons (this one included) aren't touched by render(), so
-    // update the badge directly above; everything else driven by t() (nav
-    // labels, category names, form labels, toasts going forward) picks up the
-    // new language on the next render since t() re-reads CURRENT_LANG live.
-    if (typeof render === 'function') render();
-};
-
-// ========================
 // TOAST
 // ========================
 function toast(msg, type = 'success') {
