@@ -1288,6 +1288,15 @@ const ACTIVITY_META = {
     moved:    { icon: 'fa-regular fa-folder',           color: '#818cf8', label: 'Moved' }
 };
 
+function _renderUiState(icon, title, description = '', actionHtml = '', tone = 'neutral') {
+    return `<section class="ui-state ui-state-${tone}" role="status">
+        <span class="ui-state-icon"><i class="${icon}" aria-hidden="true"></i></span>
+        <h3>${title}</h3>
+        ${description ? `<p>${description}</p>` : ''}
+        ${actionHtml ? `<div class="ui-state-actions">${actionHtml}</div>` : ''}
+    </section>`;
+}
+
 function renderActivityLog() {
     const entries = (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll() : [];
     return `<div class="fade-up max-w-3xl mx-auto">
@@ -1298,13 +1307,7 @@ function renderActivityLog() {
             </div>
             ${entries.length > 0 ? `<button class="btn-s text-xs py-1.5 px-3" data-onclick="clearActivityLog()"><i class="fa-solid fa-broom mr-1.5"></i>Clear</button>` : ''}
         </div>
-        ${entries.length === 0 ? `
-            <div class="text-center py-20">
-                <i class="fa-regular fa-clock text-4xl mb-4 block" style="color:var(--tx-d);"></i>
-                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">No activity yet</p>
-                <p class="text-xs" style="color:var(--tx-d);">Create, edit, or organize a document and it'll show up here.</p>
-            </div>
-        ` : `
+        ${entries.length === 0 ? _renderUiState('fa-regular fa-clock', 'No activity yet', "Create, edit, or organize a document and it'll show up here.") : `
             <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
                 ${entries.map((e, i) => {
                     const meta = ACTIVITY_META[e.type] || { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: e.type };
@@ -1345,6 +1348,13 @@ window.clearActivityLog = function() {
 // column-based layout and are unaffected by this list-view cost.
 const DOC_LIST_PAGE_SIZE = 60;
 
+window.clearDocumentFilters = function() {
+    state.search = '';
+    state.statusFilter = 'all';
+    state.docListPage = 1;
+    renderContent();
+};
+
 function renderDocList() {
     const docs = getFiltered();
     const isMobileSearch = state.view === 'documents' || state.view === 'favorites';
@@ -1373,6 +1383,22 @@ function renderDocList() {
     // not just the current page — a page fully selected but with other
     // pages partially selected should still read as "not all selected".
     const allSelected = docs.length > 0 && docs.every(d => sel.has(d.id));
+    const hasActiveFilters = !inTrash && (Boolean((state.search || '').trim()) || state.statusFilter !== 'all');
+    const isFavoritesEmpty = state.view === 'favorites' && !hasActiveFilters;
+    const emptyTitle = hasActiveFilters ? 'No documents match these filters'
+        : isFavoritesEmpty ? t('noFavorites')
+        : inTrash ? (t('trashEmpty') || 'Trash is empty')
+        : t('noDocYet');
+    const emptyDescription = hasActiveFilters ? 'Clear the search and status filters to see the full document set.'
+        : isFavoritesEmpty ? 'Star important documents to keep them within easy reach.'
+        : inTrash ? 'Deleted documents will appear here until they are restored or permanently removed.'
+        : t('createFirstDoc');
+    const emptyIcon = hasActiveFilters ? 'fa-solid fa-filter-circle-xmark' : inTrash ? 'fa-solid fa-trash' : isFavoritesEmpty ? 'fa-regular fa-star' : 'fa-regular fa-folder-open';
+    const emptyAction = hasActiveFilters
+        ? '<button class="btn-s text-sm" data-onclick="clearDocumentFilters()"><i class="fa-solid fa-filter-circle-xmark mr-1.5"></i>Clear filters</button>'
+        : isFavoritesEmpty
+            ? '<button class="btn-s text-sm" data-onclick="navigate(\'documents\',\'all\')"><i class="fa-solid fa-folder-open mr-1.5"></i>Browse documents</button>'
+            : !inTrash ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : '';
 
     const batchCheckbox = (id) => bm ? `
         <div style="position:absolute;top:10px;right:10px;z-index:5;pointer-events:none;">
@@ -1419,14 +1445,7 @@ function renderDocList() {
         </div>
 
         <!-- Grid -->
-        ${docs.length === 0 ? `
-            <div class="text-center py-20">
-                <i class="fa-solid ${inTrash ? 'fa-trash' : 'fa-folder-open'} text-4xl mb-4 pulse-s block" style="color:var(--tx-d);"></i>
-                <p class="text-sm font-medium mb-1" style="color:var(--tx-m);">${state.search ? t('noDocFound') : (inTrash ? (t('trashEmpty') || 'Trash is empty') : t('noDocYet'))}</p>
-                <p class="text-xs mb-5" style="color:var(--tx-d);">${state.search ? t('tryDiffKey') : (inTrash ? '' : t('createFirstDoc'))}</p>
-                ${!state.search && !inTrash ? `<button class="btn-p text-sm" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus mr-1.5"></i>${t('newDoc')}</button>` : ''}
-            </div>
-        ` : `
+        ${docs.length === 0 ? _renderUiState(emptyIcon, emptyTitle, emptyDescription, emptyAction, hasActiveFilters ? 'filtered' : 'neutral') : `
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 ${pageDocs.map(d => {
                     if (d.category === 'credential') {
