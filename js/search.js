@@ -6,11 +6,13 @@ let _allSearchResults = [];
 let currentSearchResults = [];
 let searchCategoryFilter = null;
 let _searchQuery = '';
+let _searchPreviouslyFocusedEl = null;
 
 window.openSearch = function() {
     const modal = document.getElementById('search-modal');
     const input = document.getElementById('search-input');
     if (!modal || !input) return;
+    if (modal.classList.contains('hidden')) _searchPreviouslyFocusedEl = document.activeElement;
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -30,6 +32,9 @@ window.closeSearch = function() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
+    const previous = _searchPreviouslyFocusedEl;
+    _searchPreviouslyFocusedEl = null;
+    if (previous && typeof previous.focus === 'function' && document.contains(previous)) previous.focus();
 };
 
 function renderSearchResults(query) {
@@ -113,6 +118,7 @@ function _renderSearchUI(container) {
     }).join('');
 
     container.innerHTML = filterBar + `<div>${resultsHtml}</div>`;
+    if (typeof enhanceInteractionSemantics === 'function') enhanceInteractionSemantics(container);
 }
 
 window.setSearchFilter = function(cat) {
@@ -154,6 +160,14 @@ window.addEventListener('keydown', function(e) {
     if (searchModal && !searchModal.classList.contains('hidden')) {
         if (e.key === 'Escape') {
             closeSearch();
+        } else if (e.key === 'Tab') {
+            const focusable = [...searchModal.querySelectorAll('input, button, [role="button"][tabindex="0"]')].filter(el => !el.disabled && el.offsetParent !== null);
+            if (focusable.length) {
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (searchSelectedIndex < currentSearchResults.length - 1) {

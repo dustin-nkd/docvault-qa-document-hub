@@ -1153,3 +1153,23 @@
     .quality-module-row { grid-template-columns:minmax(115px,1fr) 95px repeat(2,minmax(55px,.6fr)); overflow-x:auto; }
     .quality-module-row > span:nth-last-child(-n+2) { display:none; }
 }
+
+/* Wave 2A: consistent keyboard focus and motion preferences */
+:where(button, a[href], input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+
+:where(.form-input, .form-select, .editor-ta):focus-visible {
+    border-color: var(--acc);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto !important; }
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

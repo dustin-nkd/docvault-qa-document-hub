@@ -112,6 +112,49 @@ function toast(msg, type = 'success') {
 }
 
 // ========================
+// INTERACTION ACCESSIBILITY
+// ========================
+function enhanceInteractionSemantics(root = document) {
+    const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
+    const actions = [];
+    if (scope instanceof Element && scope.matches('[data-onclick]')) actions.push(scope);
+    actions.push(...scope.querySelectorAll('[data-onclick]'));
+
+    actions.forEach(element => {
+        if (element.getAttribute('aria-hidden') === 'true') return;
+        const nativeControl = element.matches('button, a[href], input, select, textarea, summary');
+        if (!nativeControl) {
+            if (!element.hasAttribute('role')) element.setAttribute('role', 'button');
+            if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '0');
+        }
+    });
+
+    scope.querySelectorAll('button:not([type])').forEach(button => { button.type = 'button'; });
+    scope.querySelectorAll('button[title]').forEach(button => {
+        if (!button.getAttribute('aria-label') && !button.textContent.trim()) {
+            button.setAttribute('aria-label', button.title);
+        }
+    });
+    scope.querySelectorAll('.nav-item').forEach(item => {
+        if (item.classList.contains('active')) item.setAttribute('aria-current', 'page');
+        else item.removeAttribute('aria-current');
+    });
+    syncSidebarAccessibility();
+}
+
+function syncSidebarAccessibility() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    const hiddenOffCanvas = window.matchMedia('(max-width: 767px)').matches && !state.sidebarOpen;
+    sidebar.inert = hiddenOffCanvas;
+    sidebar.toggleAttribute('inert', hiddenOffCanvas);
+    if (hiddenOffCanvas) sidebar.setAttribute('aria-hidden', 'true');
+    else sidebar.removeAttribute('aria-hidden');
+}
+
+window.addEventListener('resize', syncSidebarAccessibility);
+
+// ========================
 // MODAL
 // ========================
 // Modal focus management (Sprint 19, 19-2): move focus into the modal on
@@ -141,11 +184,21 @@ function showModal(html) {
     const m = document.getElementById('modal');
     _modalPreviouslyFocusedEl = document.activeElement;
     m.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
-    m.innerHTML = `<div class="fade-up rounded-xl p-6 w-full max-w-lg mx-4" role="dialog" aria-modal="true" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto;">${html}</div>`;
+    m.innerHTML = `<div class="fade-up rounded-xl p-6 w-full max-w-lg mx-4" role="dialog" aria-modal="true" tabindex="-1" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto;">${html}</div>`;
+    const dialog = m.querySelector('[role="dialog"]');
+    const heading = dialog?.querySelector('h1, h2, h3');
+    if (heading) {
+        heading.id = heading.id || 'modal-title';
+        dialog.setAttribute('aria-labelledby', heading.id);
+    } else if (dialog) {
+        dialog.setAttribute('aria-label', 'Dialog');
+    }
+    enhanceInteractionSemantics(m);
     m.onclick = (e) => { if (e.target === m) closeModal(); };
     document.addEventListener('keydown', _modalTrapHandler);
     const f = _modalFocusables();
     if (f.length) f[0].focus();
+    else dialog?.focus();
 }
 function closeModal() {
     document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden';
@@ -304,6 +357,11 @@ function toggleSidebar() {
     sb.classList.toggle('-translate-x-full', !state.sidebarOpen);
     sb.classList.toggle('translate-x-0', state.sidebarOpen);
     ov.classList.toggle('hidden', !state.sidebarOpen);
+    document.querySelectorAll('[aria-controls="sidebar"]').forEach(control => {
+        control.setAttribute('aria-expanded', String(state.sidebarOpen));
+        control.setAttribute('aria-label', state.sidebarOpen ? 'Close navigation' : 'Open navigation');
+    });
+    syncSidebarAccessibility();
 }
 
 function updateSidebar() {
@@ -469,6 +527,7 @@ function showDocMenu(id, btn) {
     }
     menu.innerHTML = menuHtml;
     document.body.appendChild(menu);
+    enhanceInteractionSemantics(menu);
     setTimeout(() => {
         const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
         document.addEventListener('click', close);
