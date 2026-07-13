@@ -732,6 +732,65 @@
 .focus-clear i { color:var(--acc-l); font-size:28px; }
 .focus-clear p { font-size:13px; margin:0; }
 
+/* Focus Queue workflow (P1) */
+.focus-tabs {
+    align-items:center; display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px;
+}
+.focus-tab {
+    align-items:center; background:var(--card); border:1px solid var(--brd); border-radius:8px;
+    color:var(--tx-m); cursor:pointer; display:inline-flex; font-size:11px; font-weight:600; gap:7px;
+    min-height:34px; padding:6px 9px; transition:all .15s;
+}
+.focus-tab:hover { border-color:var(--brd-l); color:var(--tx); }
+.focus-tab.is-active { background:rgba(16,185,129,.1); border-color:rgba(16,185,129,.35); color:var(--acc-l); }
+.focus-tab span {
+    align-items:center; background:var(--bg); border-radius:999px; color:inherit; display:inline-flex;
+    font-size:9.5px; justify-content:center; min-width:20px; padding:2px 6px;
+}
+.focus-tab:focus-visible,.focus-item-open:focus-visible,.focus-workflow-action:focus-visible {
+    outline:2px solid var(--acc); outline-offset:2px;
+}
+.focus-item { border:0; border-bottom:1px solid var(--brd); border-radius:0; display:block; padding:0; }
+.focus-item:last-child { border-bottom:0; }
+.focus-item:hover { background:transparent; }
+.focus-item-open {
+    align-items:center; background:transparent; border:0; color:var(--tx); cursor:pointer; display:flex;
+    gap:10px; padding:10px 9px 7px; text-align:left; transition:background .15s; width:100%;
+}
+.focus-item-open:hover { background:var(--card-h); }
+.focus-workflow-row {
+    align-items:center; display:flex; gap:8px; justify-content:space-between; padding:0 9px 9px 46px;
+}
+.focus-workflow-chips,.focus-workflow-actions { align-items:center; display:flex; flex-wrap:wrap; gap:5px; }
+.focus-chip {
+    align-items:center; background:var(--bg); border:1px solid var(--brd); border-radius:999px;
+    color:var(--tx-m); display:inline-flex; font-size:9px; gap:4px; line-height:1; padding:4px 7px;
+}
+.focus-chip.is-unassigned { color:var(--tx-d); }
+.focus-chip.is-overdue { background:rgba(239,68,68,.09); border-color:rgba(239,68,68,.28); color:#f87171; }
+.focus-chip.is-today { background:rgba(245,158,11,.09); border-color:rgba(245,158,11,.28); color:#fbbf24; }
+.focus-chip.is-snoozed { background:rgba(192,132,252,.09); border-color:rgba(192,132,252,.25); color:#c084fc; }
+.focus-chip.is-done { background:rgba(16,185,129,.09); border-color:rgba(16,185,129,.25); color:#34d399; }
+.focus-workflow-action {
+    align-items:center; background:transparent; border:1px solid var(--brd); border-radius:6px; color:var(--tx-m);
+    cursor:pointer; display:inline-flex; font-size:9.5px; gap:5px; min-height:25px; padding:4px 7px;
+}
+.focus-workflow-action:hover { background:var(--card-h); color:var(--tx); }
+.focus-workflow-action.is-done { border-color:rgba(16,185,129,.28); color:#34d399; }
+.focus-clear.is-compact { min-height:140px; }
+.focus-workflow-modal-head { align-items:center; display:flex; gap:11px; margin-bottom:18px; }
+.focus-workflow-modal-head > span {
+    align-items:center; background:rgba(16,185,129,.1); border-radius:10px; color:var(--acc-l);
+    display:flex; height:38px; justify-content:center; width:38px;
+}
+.focus-workflow-modal-head p { color:var(--tx-d); font-size:9px; font-weight:700; letter-spacing:.08em; margin:0; text-transform:uppercase; }
+.focus-workflow-modal-head h3 { color:var(--tx); font-family:'Space Grotesk',sans-serif; font-size:16px; margin:1px 0 0; }
+.focus-workflow-modal > label,.focus-workflow-date-grid label {
+    color:var(--tx-m); display:block; font-size:10.5px; font-weight:600; margin:0 0 5px;
+}
+.focus-workflow-date-grid { display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-top:12px; }
+.focus-workflow-hint { color:var(--tx-d); font-size:9.5px; line-height:1.45; margin:8px 0 0; }
+
 /* Traceability Matrix (A) */
 .traceability-page { padding-bottom: 28px; }
 .traceability-hero {
@@ -796,6 +855,11 @@
     .focus-hero { align-items:flex-start; flex-direction:column; }
     .focus-total { align-items:flex-start; flex-direction:row; gap:7px; }
     .focus-grid { grid-template-columns:1fr; }
+    .focus-page { margin-left:26px !important; }
+    .focus-workflow-row { align-items:flex-start; flex-direction:column; padding-left:46px; }
+    .focus-workflow-actions { width:100%; }
+    .focus-workflow-action { justify-content:center; }
+    .focus-workflow-date-grid { grid-template-columns:1fr; }
     .traceability-hero { align-items:flex-start; flex-direction:column; }
     .trace-summary { justify-content:flex-start; }
     .release-policy-grid,.release-checklist { grid-template-columns:1fr; }

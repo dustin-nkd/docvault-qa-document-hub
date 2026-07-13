@@ -21,7 +21,8 @@ let state = {
     selectedIds: new Set(),
     lastSelectedId: null,
     docListPage: 1, // Sprint 22: pagination for the documents grid
-    traceabilityFilter: 'all'
+    traceabilityFilter: 'all',
+    focusQueueTab: 'active'
 };
 
 let documents = [];
@@ -174,6 +175,60 @@ function evaluateReleaseReadiness(release, docs = documents) {
         metrics: { totalSteps, executedSteps, passSteps, passRate, openBugs: openBugs.length, critical: critical.length, major: major.length },
         manualDecision, decisionReason,
         blockers: checks.filter(check => check.status !== 'pass')
+    };
+}
+
+// ========================
+// FOCUS QUEUE WORKFLOW
+// ========================
+const FOCUS_SIGNAL_KEYS = new Set(['critical', 'retest', 'release', 'task', 'stale']);
+
+function normalizeFocusWorkflowEntry(entry) {
+    const source = entry && typeof entry === 'object' ? entry : {};
+    const date = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
+    return {
+        owner: String(source.owner || '').trim().slice(0, 80),
+        dueDate: date(source.dueDate),
+        snoozedUntil: date(source.snoozedUntil),
+        resolvedAt: Number.isFinite(Number(source.resolvedAt)) && Number(source.resolvedAt) > 0 ? Number(source.resolvedAt) : null,
+        updatedAt: Number.isFinite(Number(source.updatedAt)) ? Number(source.updatedAt) : 0
+    };
+}
+
+function getFocusWorkflow(doc, signalKey) {
+    if (!doc || !FOCUS_SIGNAL_KEYS.has(signalKey)) return normalizeFocusWorkflowEntry();
+    return normalizeFocusWorkflowEntry(doc.focusWorkflow?.[signalKey]);
+}
+
+function setFocusWorkflow(doc, signalKey, patch) {
+    if (!doc || !FOCUS_SIGNAL_KEYS.has(signalKey)) return null;
+    const current = getFocusWorkflow(doc, signalKey);
+    const next = normalizeFocusWorkflowEntry({ ...current, ...(patch || {}), updatedAt: Date.now() });
+    doc.focusWorkflow = { ...(doc.focusWorkflow || {}), [signalKey]: next };
+    doc.focusWorkflowUpdatedAt = next.updatedAt;
+    return next;
+}
+
+function getFocusWorkflowStatus(workflow, now = Date.now()) {
+    const entry = normalizeFocusWorkflowEntry(workflow);
+    if (entry.resolvedAt) return 'done';
+    if (entry.snoozedUntil) {
+        const endOfDay = new Date(entry.snoozedUntil + 'T23:59:59').getTime();
+        if (Number.isFinite(endOfDay) && endOfDay >= now) return 'snoozed';
+    }
+    return 'active';
+}
+
+function getFocusDueState(workflow, now = new Date()) {
+    const entry = normalizeFocusWorkflowEntry(workflow);
+    if (!entry.dueDate) return { state: 'none', date: '' };
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = year + '-' + month + '-' + day;
+    return {
+        state: entry.dueDate < today ? 'overdue' : entry.dueDate === today ? 'today' : 'upcoming',
+        date: entry.dueDate
     };
 }
 

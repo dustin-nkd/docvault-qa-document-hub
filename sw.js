@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v23'; // Release Readiness Cockpit: policy, evidence checklist, Focus blockers and decision history
+const SW_VERSION = 'v24'; // Focus Queue workflow: owner, due date, snooze, done and reopen
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [

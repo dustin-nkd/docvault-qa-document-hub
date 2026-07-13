@@ -584,17 +584,17 @@ function renderFocus() {
     };
     const critical = metrics.criticalAging.map(doc => {
         used.add(doc.id);
-        return { doc, icon: 'fa-triangle-exclamation', color: '#f87171', meta: `${bugRef(doc)} · ${age(doc)}` };
+        return { doc, signalKey: 'critical', icon: 'fa-triangle-exclamation', color: '#f87171', meta: `${bugRef(doc)} &middot; ${age(doc)}` };
     });
     const retest = metrics.bugs
         .filter(doc => _normBugStatus(doc.bugStatus) === 'retest' && !used.has(doc.id))
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-        .map(doc => ({ doc, icon: 'fa-rotate', color: '#c084fc', meta: `${bugRef(doc)} · ${t('focusOpen')}` }));
+        .map(doc => ({ doc, signalKey: 'retest', icon: 'fa-rotate', color: '#c084fc', meta: `${bugRef(doc)} &middot; ${t('focusOpen')}` }));
     const activeWork = metrics.tasks
         .filter(doc => ['in-progress', 'review'].includes(doc.kanbanStatus || 'todo'))
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
         .map(doc => ({
-            doc,
+            doc, signalKey: 'task',
             icon: doc.kanbanStatus === 'review' ? 'fa-eye' : 'fa-spinner',
             color: doc.kanbanStatus === 'review' ? '#fb923c' : '#60a5fa',
             meta: doc.kanbanStatus === 'review' ? t('review') : t('inProgress')
@@ -602,7 +602,7 @@ function renderFocus() {
     const stale = metrics.stale
         .filter(doc => !used.has(doc.id))
         .map(doc => ({
-            doc,
+            doc, signalKey: 'stale',
             icon: 'fa-clock-rotate-left',
             color: '#fbbf24',
             meta: t('focusUpdated', { n: fmtDate(doc.updatedAt) })
@@ -613,51 +613,131 @@ function renderFocus() {
         .filter(item => item.readiness.outcome !== 'go')
         .sort((a, b) => b.readiness.blockers.length - a.readiness.blockers.length)
         .map(item => ({
-            doc: item.doc,
+            doc: item.doc, signalKey: 'release',
             icon: 'fa-rocket',
             color: item.readiness.outcome === 'no-go' ? '#f87171' : '#fbbf24',
             meta: item.readiness.manualDecision !== 'auto'
-                ? `${item.readiness.outcome.toUpperCase().replaceAll('-', ' ')} &middot; manual decision`
-                : `${item.readiness.outcome.toUpperCase().replaceAll('-', ' ')} &middot; ${item.readiness.blockers.length} blocker${item.readiness.blockers.length === 1 ? '' : 's'}`
+                ? `${item.readiness.outcome.toUpperCase().replaceAll('-', ' ')} &middot; ${t('focusManualDecision')}`
+                : `${item.readiness.outcome.toUpperCase().replaceAll('-', ' ')} &middot; ${t('focusBlockerCount', { n: item.readiness.blockers.length })}`
         }));
+    const decorate = item => {
+        const workflow = getFocusWorkflow(item.doc, item.signalKey);
+        return {
+            ...item, workflow,
+            workflowStatus: getFocusWorkflowStatus(workflow, now),
+            due: getFocusDueState(workflow, new Date(now))
+        };
+    };
     const groups = [
-        { id: 'critical', title: t('focusDoNow'), count: t('focusCriticalCount', { n: critical.length }), items: critical, color: '#f87171' },
-        { id: 'retest', title: t('focusRetest'), count: t('focusRetestCount', { n: retest.length }), items: retest, color: '#c084fc' },
-        { id: 'release', title: t('focusRelease'), count: t('focusReleaseCount', { n: releaseRisks.length }), items: releaseRisks, color: '#f87171' },
-        { id: 'work', title: t('focusWork'), count: t('focusWorkCount', { n: activeWork.length }), items: activeWork, color: '#60a5fa' },
-        { id: 'stale', title: t('focusStale'), count: t('focusStaleCount', { n: stale.length }), items: stale, color: '#fbbf24' }
+        { id: 'critical', title: t('focusDoNow'), countKey: 'focusCriticalCount', items: critical.map(decorate), color: '#f87171' },
+        { id: 'retest', title: t('focusRetest'), countKey: 'focusRetestCount', items: retest.map(decorate), color: '#c084fc' },
+        { id: 'release', title: t('focusRelease'), countKey: 'focusReleaseCount', items: releaseRisks.map(decorate), color: '#f87171' },
+        { id: 'work', title: t('focusWork'), countKey: 'focusWorkCount', items: activeWork.map(decorate), color: '#60a5fa' },
+        { id: 'stale', title: t('focusStale'), countKey: 'focusStaleCount', items: stale.map(decorate), color: '#fbbf24' }
     ];
-    const activeGroups = groups.filter(group => group.items.length > 0);
-    const focusItem = item => `<button class="focus-item" data-onclick="viewDoc('${item.doc.id}')">
-        <span class="focus-item-icon" style="color:${item.color};background:${item.color}16;"><i class="fa-solid ${item.icon}"></i></span>
-        <span class="min-w-0 flex-1 text-left">
-            <strong>${escHtml(item.doc.title)}</strong>
-            <small>${item.meta}</small>
-        </span>
-        <i class="fa-solid fa-chevron-right focus-item-arrow"></i>
-    </button>`;
+    const allItems = groups.flatMap(group => group.items);
+    const validTabs = new Set(['active', 'snoozed', 'done']);
+    const tab = validTabs.has(state.focusQueueTab) ? state.focusQueueTab : 'active';
+    const tabCounts = {
+        active: allItems.filter(item => item.workflowStatus === 'active').length,
+        snoozed: allItems.filter(item => item.workflowStatus === 'snoozed').length,
+        done: allItems.filter(item => item.workflowStatus === 'done').length
+    };
+    const dueWeight = item => item.due.state === 'overdue' ? 0 : item.due.state === 'today' ? 1 : item.due.state === 'upcoming' ? 2 : 3;
+    const visibleGroups = groups
+        .map(group => ({
+            ...group,
+            items: group.items
+                .filter(item => item.workflowStatus === tab)
+                .sort((a, b) => dueWeight(a) - dueWeight(b)
+                    || String(a.workflow.dueDate || '').localeCompare(String(b.workflow.dueDate || '')))
+        }))
+        .filter(group => group.items.length > 0);
+    const tabDefs = [
+        ['active', t('focusTabActive'), 'fa-bolt'],
+        ['snoozed', t('focusTabSnoozed'), 'fa-clock'],
+        ['done', t('focusTabDone'), 'fa-circle-check']
+    ];
+    const focusDate = value => {
+        const parts = String(value || '').split('-').map(Number);
+        if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return '\u2014';
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        return date.toLocaleDateString(CURRENT_LANG === 'vi' ? 'vi-VN' : 'en-US',
+            { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+    const dueChip = item => {
+        if (item.due.state === 'none') return '';
+        const label = item.due.state === 'overdue'
+            ? t('focusOverdue', { date: focusDate(item.due.date) })
+            : item.due.state === 'today'
+                ? t('focusDueToday')
+                : t('focusDueOn', { date: focusDate(item.due.date) });
+        return `<span class="focus-chip is-${item.due.state}"><i class="fa-regular fa-calendar"></i>${label}</span>`;
+    };
+    const focusItem = item => {
+        const owner = item.workflow.owner
+            ? `<span class="focus-chip"><i class="fa-regular fa-user"></i>${escHtml(item.workflow.owner)}</span>`
+            : `<span class="focus-chip is-unassigned"><i class="fa-regular fa-user"></i>${t('focusUnassigned')}</span>`;
+        const lifecycle = item.workflowStatus === 'snoozed'
+            ? `<span class="focus-chip is-snoozed"><i class="fa-regular fa-clock"></i>${t('focusSnoozedUntil', { date: focusDate(item.workflow.snoozedUntil) })}</span>`
+            : item.workflowStatus === 'done'
+                ? `<span class="focus-chip is-done"><i class="fa-solid fa-check"></i>${t('focusDoneAt', { date: fmtDate(item.workflow.resolvedAt) })}</span>`
+                : '';
+        const primaryAction = item.workflowStatus === 'active'
+            ? `<button class="focus-workflow-action is-done" data-onclick="completeFocusItem('${item.doc.id}','${item.signalKey}')" title="${t('focusMarkDone')}"><i class="fa-solid fa-check"></i><span>${t('focusDone')}</span></button>`
+            : item.workflowStatus === 'snoozed'
+                ? `<button class="focus-workflow-action" data-onclick="unsnoozeFocusItem('${item.doc.id}','${item.signalKey}')" title="${t('focusUnsnooze')}"><i class="fa-solid fa-bell"></i><span>${t('focusUnsnooze')}</span></button>`
+                : `<button class="focus-workflow-action" data-onclick="reopenFocusItem('${item.doc.id}','${item.signalKey}')" title="${t('focusReopen')}"><i class="fa-solid fa-rotate-left"></i><span>${t('focusReopen')}</span></button>`;
+        const manage = item.workflowStatus !== 'done'
+            ? `<button class="focus-workflow-action" data-onclick="showFocusWorkflowModal('${item.doc.id}','${item.signalKey}')" title="${t('focusManage')}"><i class="fa-solid fa-sliders"></i><span>${t('focusManage')}</span></button>`
+            : '';
+        return `<div class="focus-item">
+            <button class="focus-item-open" data-onclick="viewDoc('${item.doc.id}')">
+                <span class="focus-item-icon" style="color:${item.color};background:${item.color}16;"><i class="fa-solid ${item.icon}"></i></span>
+                <span class="min-w-0 flex-1 text-left">
+                    <strong>${escHtml(item.doc.title)}</strong>
+                    <small>${item.meta}</small>
+                </span>
+                <i class="fa-solid fa-chevron-right focus-item-arrow"></i>
+            </button>
+            <div class="focus-workflow-row">
+                <div class="focus-workflow-chips">${owner}${dueChip(item)}${lifecycle}</div>
+                <div class="focus-workflow-actions">${manage}${primaryAction}</div>
+            </div>
+        </div>`;
+    };
 
     return `<div class="fade-up max-w-5xl mx-auto focus-page">
         <section class="focus-hero">
             <div>
                 <p class="dashboard-eyebrow">${t('focus')}</p>
                 <h3>${t('focusTitle')}</h3>
-                <p>${t('focusSub')}</p>
+                <p>${t('focusWorkflowSub')}</p>
             </div>
-            <div class="focus-total"><b>${activeGroups.reduce((total, group) => total + group.items.length, 0)}</b><span>${t('dbAttention')}</span></div>
+            <div class="focus-total"><b>${tabCounts.active}</b><span>${t('focusActiveItems')}</span></div>
         </section>
-        ${activeGroups.length === 0 ? `<section class="focus-clear">
+        <div class="focus-tabs" role="tablist" aria-label="${t('focusQueueTabs')}">
+            ${tabDefs.map(([id, label, icon]) => `<button role="tab" aria-selected="${tab === id}" class="focus-tab ${tab === id ? 'is-active' : ''}" data-onclick="setFocusQueueTab('${id}')"><i class="fa-solid ${icon}"></i>${label}<span>${tabCounts[id]}</span></button>`).join('')}
+        </div>
+        ${allItems.length === 0 ? `<section class="focus-clear">
             <i class="fa-solid fa-circle-check"></i><p>${t('focusClear')}</p>
-        </section>` : `<div class="focus-grid">${activeGroups.map(group => `<section class="focus-group">
+        </section>` : visibleGroups.length === 0 ? `<section class="focus-clear is-compact">
+            <i class="fa-regular fa-circle-check"></i><p>${t('focusTabEmpty')}</p>
+        </section>` : `<div class="focus-grid">${visibleGroups.map(group => `<section class="focus-group">
             <div class="focus-group-head">
                 <span class="focus-group-icon" style="color:${group.color};background:${group.color}16;"><i class="fa-solid ${group.id === 'critical' ? 'fa-fire-flame-curved' : group.id === 'retest' ? 'fa-rotate' : group.id === 'release' ? 'fa-rocket' : group.id === 'work' ? 'fa-list-check' : 'fa-clock'}"></i></span>
-                <div class="min-w-0 flex-1"><h4>${group.title}</h4><p>${group.count}</p></div>
+                <div class="min-w-0 flex-1"><h4>${group.title}</h4><p>${t(group.countKey, { n: group.items.length })}</p></div>
                 <span class="focus-group-count" style="color:${group.color};">${group.items.length}</span>
             </div>
-            <div class="focus-list">${group.items.slice(0, 6).map(focusItem).join('')}</div>
+            <div class="focus-list">${group.items.map(focusItem).join('')}</div>
         </section>`).join('')}</div>`}
     </div>`;
 }
+
+window.setFocusQueueTab = function(tab) {
+    state.focusQueueTab = tab;
+    renderContent();
+};
 
 // ========================
 // TRACEABILITY MATRIX (A)
