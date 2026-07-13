@@ -591,15 +591,13 @@
     gap: 16px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-/* The Bug lifecycle row is 2 columns vs. Trends' 3, so each card is wider
-   and a same-viewBox chart would render visibly taller/bulkier than the row
-   above (reported: "widgets here look bigger, unbalanced"). Rescale via
-   aspect-ratio (continuous, live on resize — no JS/media-query staleness)
-   only once the grid is actually 2-column; the breakpoint matches Tailwind's
-   sm: (640px) used by the Trends grid so both rows switch layout together. */
-@media (min-width: 640px) {
-    .trend-lifecycle-chart, .trend-lifecycle-grid .trend-empty-box { aspect-ratio: 300 / 74; height: auto !important; }
-}
+/* Bug lifecycle chart height matching Trends' row above is done by drawing a
+   genuinely shorter SVG viewBox in JS (see _LIFECYCLE_CHART_H in
+   render-core.js), not CSS — an aspect-ratio-only rescale here stretched the
+   SVG's text content (axis dates) non-uniformly along with the chart lines,
+   since preserveAspectRatio="none" scales everything inside, not just the
+   geometry. The JS height stays in sync with live window resizes via the
+   dashboard resize listener in js/events.js. */
 .trend-dual-legend {
     display: flex;
     gap: 14px;
