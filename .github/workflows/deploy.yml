@@ -14,6 +14,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run production quality gate
+        run: npm run check
+
       - name: Build Tailwind CSS
         # Sprint 22 optimization: pre-compile Tailwind (tailwind.config.js +
         # src/input.css) into vendor/tailwind/tailwind.generated.css instead of

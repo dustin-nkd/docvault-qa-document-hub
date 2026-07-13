@@ -5,6 +5,7 @@
   "main": "background.js",
   "type": "module",
   "scripts": {
+    "check": "node scripts/quality-check.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
