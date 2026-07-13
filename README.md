@@ -139,6 +139,13 @@ Visit the deployed GitHub Pages version:
    ```
    This starts a Vite dev server for hot-reload during development.
 
+4. **Run the production quality gate before committing**:
+
+       npm run check
+       npm run build
+
+   The gate validates JavaScript syntax, local asset references, the offline app shell, and English UI string coverage.
+
 ---
 
 ## 📁 Project Structure
@@ -153,7 +160,7 @@ docvault-qa-document-hub/
 │                           #   - DocStorage (local + remote merge, import/export)
 │                           #   - LocalAuth (master password, recovery key, password hint)
 ├── js/                     # Core application logic (ES6, loaded as classic <script defer>)
-│   ├── constants.js        #   - i18n strings (EN + VI), templates, sample docs, category config
+│   ├── constants.js        #   - English UI strings, templates, sample docs, category config
 │   ├── utils.js            #   - uid, date formatting, custom Markdown renderer, credential helpers
 │   ├── state.js            #   - Global state, documents array, hydrate/persist, doc history
 │   ├── ui.js               #   - Toasts, modals, theme toggle, lock screen, sidebar
