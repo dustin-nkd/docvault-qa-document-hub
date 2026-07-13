@@ -855,7 +855,7 @@
     .focus-hero { align-items:flex-start; flex-direction:column; }
     .focus-total { align-items:flex-start; flex-direction:row; gap:7px; }
     .focus-grid { grid-template-columns:1fr; }
-    .focus-page { margin-left:26px !important; }
+    .focus-page { margin-inline:0 !important; width:100%; }
     .focus-workflow-row { align-items:flex-start; flex-direction:column; padding-left:46px; }
     .focus-workflow-actions { width:100%; }
     .focus-workflow-action { justify-content:center; }
@@ -1172,4 +1172,26 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* Wave 2B: mobile layout and touch-target hardening */
+@media (max-width: 767px) {
+    #app-header button,
+    #sidebar .nav-item,
+    .btn-p, .btn-s, .btn-d,
+    .dashboard-trends button,
+    .focus-tab, .focus-item-open, .focus-workflow-action,
+    .trace-filter, .trace-link,
+    .doc-card button, .batch-action-btn,
+    .search-filter-chip, .dp-trigger, .dp-nav-btn {
+        min-height: 44px;
+    }
+
+    .doc-card button, .dp-nav-btn, .dashboard-trends button { min-width:44px; }
+    .doc-list-select-btn { min-height:44px; }
+    .form-input, .form-select, input[type="date"] { min-height:44px; }
+    .focus-workflow-actions { gap:8px; }
+    .focus-workflow-action { padding-inline:12px; }
+    .trace-link { align-items:center; display:inline-flex; padding-block:8px; }
+    .dashboard-trends .dashboard-section-head { align-items:flex-start; gap:10px; }
 }
