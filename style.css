@@ -602,6 +602,18 @@
     gap: 16px;
     grid-template-columns: repeat(2, calc((100% - 32px) / 3));
 }
+.trend-lifecycle-grid > .doc-card {
+    display: flex;
+    flex-direction: column;
+}
+.trend-caption {
+    color: var(--tx-m);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 14px;
+    margin-top: auto;
+    padding-top: 10px;
+}
 .trend-dual-legend {
     display: flex;
     gap: 14px;
