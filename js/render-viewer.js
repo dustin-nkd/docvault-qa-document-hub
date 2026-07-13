@@ -45,6 +45,95 @@ function renderBugTriage(doc) {
     </section>`;
 }
 
+function renderReleaseQualityScorecard(release) {
+    const quality = getReleaseQuality(release, documents);
+    const previousRelease = documents
+        .filter(item => item.category === 'release' && item.status !== 'deleted' && item.id !== release.id && (item.createdAt || 0) < (release.createdAt || 0))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null;
+    const baseline = previousRelease ? getReleaseQuality(previousRelease, documents) : null;
+    const deltaScore = baseline ? quality.score - baseline.score : null;
+    const band = !quality.hasEvidence ? 'unknown' : quality.score >= 85 ? 'strong' : quality.score >= 70 ? 'watch' : 'risk';
+    const bandLabel = {
+        strong: t('scoreBandStrong'), watch: t('scoreBandWatch'),
+        risk: t('scoreBandRisk'), unknown: t('scoreBandUnknown')
+    }[band];
+    const deltaHtml = value => value == null
+        ? `<span class="score-delta is-flat">${t('scoreNoBaseline')}</span>`
+        : `<span class="score-delta ${value > 0 ? 'is-up' : value < 0 ? 'is-down' : 'is-flat'}">${value > 0 ? '+' : ''}${value}</span>`;
+    const dimensions = [
+        { key: 'passRate', label: t('scorePassRate'), value: quality.passRate, max: 100, weight: QUALITY_SCORE_WEIGHTS.passRate },
+        { key: 'execution', label: t('scoreExecution'), value: quality.execution, max: 100, weight: QUALITY_SCORE_WEIGHTS.execution },
+        { key: 'coverage', label: t('scoreCoverage'), value: quality.coverage, max: 100, weight: QUALITY_SCORE_WEIGHTS.coverage },
+        { key: 'defectPoints', label: t('scoreDefects'), value: quality.defectPoints, max: QUALITY_SCORE_WEIGHTS.defects, weight: QUALITY_SCORE_WEIGHTS.defects }
+    ];
+    const driverCandidates = baseline ? dimensions.map(item => {
+        const previous = Number(baseline[item.key]) || 0;
+        const current = Number(quality[item.key]) || 0;
+        const contribution = item.key === 'defectPoints'
+            ? current - previous
+            : (current - previous) * item.weight / 100;
+        return { ...item, previous, current, contribution };
+    }).filter(item => Math.abs(item.contribution) >= .5).sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)).slice(0, 2) : [];
+    const baselineModules = new Map((baseline?.modules || []).map(item => [_qualityModuleKey(item.name), item]));
+
+    return `<section class="quality-scorecard">
+        <div class="quality-score-head">
+            <div>
+                <h3>${t('scoreTitle')}</h3>
+                <p>${t('scoreSub')}</p>
+            </div>
+            <span class="quality-baseline">
+                <b>${t('scoreBaseline')}</b>
+                ${previousRelease ? escHtml(previousRelease.releaseData?.version || previousRelease.title) : t('scoreFirstRelease')}
+            </span>
+        </div>
+        <div class="quality-score-overview">
+            <div class="quality-score-value is-${band}">
+                <strong>${quality.score}</strong><span>/100</span>
+                <em>${bandLabel}</em>
+            </div>
+            <div class="quality-score-summary">
+                <span>${t('scoreVsBaseline')}</span>
+                <div>${deltaHtml(deltaScore)}<b>${baseline ? `${baseline.score}/100` : t('scoreNoBaseline')}</b></div>
+                <small>${quality.source === 'snapshot' && quality.capturedAt ? t('scoreFrozen', { time: fmtDate(quality.capturedAt) }) : t('scoreLive')}</small>
+            </div>
+            <div class="quality-drivers">
+                <span>${t('scoreDrivers')}</span>
+                ${driverCandidates.length ? driverCandidates.map(item => `<b class="${item.contribution > 0 ? 'is-up' : 'is-down'}">
+                    <i class="fa-solid ${item.contribution > 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+                    ${item.label} ${item.contribution > 0 ? '+' : ''}${Math.round(item.contribution)}
+                </b>`).join('') : `<small>${baseline ? t('scoreStable') : t('scoreNeedsBaseline')}</small>`}
+            </div>
+        </div>
+        <div class="quality-dimensions">
+            ${dimensions.map(item => {
+                const pct = Math.max(0, Math.min(100, item.value / item.max * 100));
+                const display = item.key === 'defectPoints' ? `${item.value}/${item.max}` : `${item.value}%`;
+                return `<div>
+                    <span>${item.label}<em>${t('scoreWeight', { value: item.weight })}</em></span>
+                    <b>${display}</b>
+                    <i><u style="width:${pct}%"></u></i>
+                </div>`;
+            }).join('')}
+        </div>
+        <div class="quality-modules">
+            <div class="quality-modules-head"><b>${t('scoreModules')}</b><span>${t('scoreModulesSub')}</span></div>
+            ${quality.modules.length ? quality.modules.map(module => {
+                const previous = baselineModules.get(_qualityModuleKey(module.name));
+                const moduleDelta = previous ? module.score - previous.score : null;
+                return `<div class="quality-module-row">
+                    <strong>${escHtml(module.name)}</strong>
+                    <span class="quality-module-score">${module.score}<small>/100</small>${deltaHtml(moduleDelta)}</span>
+                    <span><b>${module.passRate}%</b><small>${t('scorePassRate')}</small></span>
+                    <span><b>${module.execution}%</b><small>${t('scoreExecution')}</small></span>
+                    <span><b>${module.coverage}%</b><small>${t('scoreCoverage')}</small></span>
+                    <span><b>${module.openBugs}</b><small>${t('scoreOpenBugs')}</small></span>
+                </div>`;
+            }).join('') : `<div class="quality-empty">${t('scoreNoModules')}</div>`}
+        </div>
+    </section>`;
+}
+
 function renderViewer() {
     const doc = documents.find(d => d.id === state.editingDoc?.id);
     if (!doc) return `<div class="text-center py-20" style="color:var(--tx-d);">Document not found.</div>`;
@@ -693,6 +782,8 @@ function renderViewer() {
                     </div>`).join('')}
                 </div>` : ''}
             </div>
+            ${renderReleaseQualityScorecard(doc)}
+
             ${linkedRuns.length ? `
             <div class="mb-4">
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Runs (${linkedRuns.length})</p>
@@ -741,6 +832,7 @@ function renderViewer() {
                 </div>
             </div>` : ''}
             ${(() => {
+                return ''; // Superseded by the explainable release quality scorecard above.
                 const otherReleases = documents
                     .filter(d => d.category === 'release' && d.status !== 'deleted' && d.id !== doc.id)
                     .sort((a, b) => b.createdAt - a.createdAt);

@@ -2454,7 +2454,18 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
                 reason: savedDecisionReason || 'Returned to automatic policy', ts: Date.now()
             });
         }
-        releaseData = { version, releaseDate, status: relStatus, linkedRuns, linkedBugs, linkedEnvs, readinessPolicy, manualDecision, decisionReason: savedDecisionReason, decisionLog };
+        const releaseDraft = { version, releaseDate, status: relStatus, linkedRuns, linkedBugs, linkedEnvs, readinessPolicy, manualDecision, decisionReason: savedDecisionReason, decisionLog };
+        let qualitySnapshot = previousData.qualitySnapshot || null;
+        if (relStatus === 'released' && !qualitySnapshot) {
+            const measured = calculateReleaseQuality({ ...(state.editingDoc || {}), releaseData: releaseDraft }, documents);
+            qualitySnapshot = {
+                score: measured.score, passRate: measured.passRate, execution: measured.execution,
+                coverage: measured.coverage, defectPoints: measured.defectPoints, openBugs: measured.openBugs,
+                hasEvidence: measured.hasEvidence, targetedCases: measured.targetedCases, totalCases: measured.totalCases,
+                unmappedBugs: measured.unmappedBugs, modules: measured.modules, capturedAt: Date.now()
+            };
+        }
+        releaseData = { ...releaseDraft, qualitySnapshot };
     } else if (cat === 'environment') {
         const envStatus = document.getElementById('ed-env-status')?.value || 'healthy';
         const propRows = document.querySelectorAll('.env-prop-row');

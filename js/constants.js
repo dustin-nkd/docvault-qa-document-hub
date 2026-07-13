@@ -210,6 +210,15 @@ const STRINGS = {
     triageCardSub: "Move this defect from detection to an accountable decision.",
     triageDecisionFix: "Investigate / fix", triageDecisionDuplicate: "Linked to original",
     triageClassificationRequired: "Select a classification", triageOwnerRequired: "Assign an owner",
+    scoreTitle: "Release quality scorecard", scoreSub: "A stable, explainable baseline across releases and modules.",
+    scoreBaseline: "Baseline", scoreFirstRelease: "First measured release", scoreNoBaseline: "No previous release",
+    scoreBandStrong: "Strong", scoreBandWatch: "Watch", scoreBandRisk: "At risk", scoreBandUnknown: "Insufficient evidence",
+    scoreVsBaseline: "Overall change", scoreFrozen: "Frozen {time}", scoreLive: "Live from linked evidence",
+    scoreDrivers: "Main drivers", scoreStable: "No material quality change", scoreNeedsBaseline: "Add another release to establish a trend.",
+    scorePassRate: "Pass rate", scoreExecution: "Execution", scoreCoverage: "Coverage", scoreDefects: "Defect health",
+    scoreWeight: "{value}% weight", scoreModules: "Quality by module", scoreModulesSub: "Weakest modules first",
+    scoreOpenBugs: "Open bugs", scoreNoModules: "No module evidence is available for this release.",
+
 
     imgUploading: "Uploading image to GitHub...",
     imgUploadSuccess: "Image uploaded to GitHub successfully!",
@@ -527,6 +536,15 @@ const STRINGS_VI = {
     imgUploadSuccess: "Tải ảnh lên GitHub thành công!",
     imgUploadFail: "Tải lên GitHub thất bại. Chuyển sang chế độ nhúng ảnh trực tiếp.",
     imgFallbackSize: "Chế độ dự phòng: Ảnh nên dưới 800KB để phù hợp với database.",
+    scoreTitle: "B\u1ea3ng \u0111i\u1ec3m ch\u1ea5t l\u01b0\u1ee3ng release", scoreSub: "Baseline \u1ed5n \u0111\u1ecbnh, c\u00f3 th\u1ec3 gi\u1ea3i th\u00edch theo release v\u00e0 module.",
+    scoreBaseline: "Baseline", scoreFirstRelease: "Release \u0111o \u0111\u1ea7u ti\u00ean", scoreNoBaseline: "Ch\u01b0a c\u00f3 release tr\u01b0\u1edbc",
+    scoreBandStrong: "T\u1ed1t", scoreBandWatch: "C\u1ea7n theo d\u00f5i", scoreBandRisk: "C\u00f3 r\u1ee7i ro", scoreBandUnknown: "Thi\u1ebfu b\u1eb1ng ch\u1ee9ng",
+    scoreVsBaseline: "Thay \u0111\u1ed5i t\u1ed5ng th\u1ec3", scoreFrozen: "Ch\u1ed1t {time}", scoreLive: "Live t\u1eeb b\u1eb1ng ch\u1ee9ng li\u00ean k\u1ebft",
+    scoreDrivers: "Nguy\u00ean nh\u00e2n ch\u00ednh", scoreStable: "Kh\u00f4ng c\u00f3 thay \u0111\u1ed5i \u0111\u00e1ng k\u1ec3", scoreNeedsBaseline: "Th\u00eam release kh\u00e1c \u0111\u1ec3 t\u1ea1o xu h\u01b0\u1edbng.",
+    scorePassRate: "T\u1ef7 l\u1ec7 pass", scoreExecution: "Th\u1ef1c thi", scoreCoverage: "\u0110\u1ed9 ph\u1ee7", scoreDefects: "S\u1ee9c kh\u1ecfe defect",
+    scoreWeight: "Tr\u1ecdng s\u1ed1 {value}%", scoreModules: "Ch\u1ea5t l\u01b0\u1ee3ng theo module", scoreModulesSub: "Module y\u1ebfu nh\u1ea5t tr\u01b0\u1edbc",
+    scoreOpenBugs: "Bug \u0111ang m\u1edf", scoreNoModules: "Release n\u00e0y ch\u01b0a c\u00f3 b\u1eb1ng ch\u1ee9ng theo module.",
+
     imgFallbackProcessing: "Đang xử lý ảnh nhúng trực tiếp (Base64 dự phòng)...",
     imgFallbackDone: "Đã tải ảnh nhúng trực tiếp. Kết nối GitHub để đồng bộ tốt hơn!",
     imgReadFail: "Không thể đọc file ảnh.",
@@ -1260,6 +1278,25 @@ const GUEST_DEMO_DOCS = (() => {
         createdAt: days(95), updatedAt: days(38)
     };
 
+    const release0 = {
+        id: 'gd_release_0', title: 'v2.3.0 - Search Stability', category: 'release',
+        tags: ['release', 'baseline'], status: 'archived', favorite: false,
+        releaseData: {
+            version: 'v2.3.0', releaseDate: new Date(now - 8 * 86400000).toISOString().slice(0, 10), status: 'released',
+            linkedRuns: [runS23.id], linkedBugs: [bug3.id, bug4.id], linkedEnvs: [envStaging.id],
+            qualitySnapshot: {
+                score: 94, passRate: 86, execution: 100, coverage: 100, defectPoints: 20, openBugs: 0,
+                hasEvidence: true, targetedCases: 3, totalCases: 3, unmappedBugs: 0, capturedAt: days(8),
+                modules: [
+                    { name: 'Checkout', score: 85, passRate: 67, execution: 100, coverage: 100, defectPoints: 20, openBugs: 0, hasEvidence: true },
+                    { name: 'Authentication', score: 100, passRate: 100, execution: 100, coverage: 100, defectPoints: 20, openBugs: 0, hasEvidence: true },
+                    { name: 'Catalog', score: 100, passRate: 100, execution: 100, coverage: 100, defectPoints: 20, openBugs: 0, hasEvidence: true }
+                ]
+            }
+        },
+        content: '## Baseline\nStable regression baseline before the Checkout reliability work.', createdAt: days(12), updatedAt: days(8)
+    };
+
     return [
         runbook1, knowledge1, knowledge2,
         tcLogin, tcCheckout, tcSearch,
@@ -1270,6 +1307,6 @@ const GUEST_DEMO_DOCS = (() => {
         credAdmin, credPayment,
         envStaging, envProd,
         runS21, runS22, runS23, runSprint,
-        release1
+        release0, release1
     ];
 })();
