@@ -11,24 +11,6 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 
 // ========================
-// DASHBOARD RESIZE — keep Trends/Bug-lifecycle chart proportions live
-// ========================
-// The Bug lifecycle charts draw a shorter SVG viewBox (_LIFECYCLE_CHART_H in
-// render-core.js) to match the Trends row's on-screen height despite sitting
-// in a wider 2-column card — that height is a function of the live window
-// width, so without this listener it would go stale (still show the wrong
-// proportions) until the next unrelated re-render, e.g. navigating away and
-// back. Debounced since resize fires continuously while dragging.
-let _dashboardResizeTimer = null;
-window.addEventListener('resize', () => {
-    if (state.view !== 'dashboard') return;
-    clearTimeout(_dashboardResizeTimer);
-    _dashboardResizeTimer = setTimeout(() => {
-        if (state.view === 'dashboard') renderContent();
-    }, 150);
-});
-
-// ========================
 // SYNC RETRY ON RECONNECT (Sprint 13, A1)
 // ========================
 // Now that the PWA (Sprint 10) works fully offline, edits made offline had no

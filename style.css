@@ -586,18 +586,22 @@
     font-weight: 650;
 }
 .trend-lifecycle-head p { color: var(--tx-d); font-size: 10.5px; margin-top: 3px; }
+/* Two prior attempts tried to make the 2-column Lifecycle cards match the
+   3-column Trends cards' on-screen height after the fact — first by
+   stretching the outer box (CSS aspect-ratio), then by computing a shorter
+   SVG viewBox in JS. Both left small residual mismatches (the SVG's own
+   preserveAspectRatio="none" scaling and gridline-count differences between
+   the two lifecycle charts don't cancel out exactly at every width). This
+   forces byte-for-byte the same column width formula the Trends grid uses
+   (gap-4 = 16px, 3 columns), so each Lifecycle card is the exact same box as
+   a Trends card — same viewBox, same font, same gridlines, no compensation
+   needed. The row is intentionally narrower than the full container instead
+   of stretching to fill it. */
 .trend-lifecycle-grid {
     display: grid;
     gap: 16px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, calc((100% - 32px) / 3));
 }
-/* Bug lifecycle chart height matching Trends' row above is done by drawing a
-   genuinely shorter SVG viewBox in JS (see _LIFECYCLE_CHART_H in
-   render-core.js), not CSS — an aspect-ratio-only rescale here stretched the
-   SVG's text content (axis dates) non-uniformly along with the chart lines,
-   since preserveAspectRatio="none" scales everything inside, not just the
-   geometry. The JS height stays in sync with live window resizes via the
-   dashboard resize listener in js/events.js. */
 .trend-dual-legend {
     display: flex;
     gap: 14px;
