@@ -1382,9 +1382,9 @@ function renderBugKanban(docs, isMobileSearch) {
                         </div>` : ''}
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${sev.toUpperCase()}</span>
-                                ${priority ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${(PRIO_COLOR[priority] || '#94a3b8')}20; color:${PRIO_COLOR[priority] || '#94a3b8'};">${priority}</span>` : ''}
-                                ${resolution ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:${(RES_COLOR[resolution] || '#6b7280')}18; color:${RES_COLOR[resolution] || '#6b7280'};">${RES_LABEL[resolution] || resolution}</span>` : ''}
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${escHtml(sev.toUpperCase())}</span>
+                                ${priority ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${(PRIO_COLOR[priority] || '#94a3b8')}20; color:${PRIO_COLOR[priority] || '#94a3b8'};">${escHtml(priority)}</span>` : ''}
+                                ${resolution ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:${(RES_COLOR[resolution] || '#6b7280')}18; color:${RES_COLOR[resolution] || '#6b7280'};">${escHtml(RES_LABEL[resolution] || resolution)}</span>` : ''}
                                 ${reopenCount > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:#f8717118;color:#f87171;" title="Reopened ${reopenCount}x"><i class="fa-solid fa-rotate-left" style="font-size:8px;"></i> ${reopenCount}</span>` : ''}
                             </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
@@ -1400,7 +1400,7 @@ function renderBugKanban(docs, isMobileSearch) {
                         <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
 
                         ${assignee ? `<p class="text-[10px] mb-1.5 flex items-center gap-1" style="color:var(--tx-d);"><i class="fa-solid fa-user" style="font-size:8px;"></i> ${escHtml(assignee)}</p>` : ''}
-                        ${env || browser ? `<p class="text-[10px] mb-2 truncate" style="color:var(--tx-d);"><i class="fa-solid fa-bug mr-1"></i>${[env, browser].filter(Boolean).join(' · ')}</p>` : ''}
+                        ${env || browser ? `<p class="text-[10px] mb-2 truncate" style="color:var(--tx-d);"><i class="fa-solid fa-bug mr-1"></i>${escHtml([env, browser].filter(Boolean).join(' · '))}</p>` : ''}
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
                             ${ref ? `<span class="text-[10px] font-mono font-semibold" style="color:var(--tx-d);">${ref}</span>` : ''}

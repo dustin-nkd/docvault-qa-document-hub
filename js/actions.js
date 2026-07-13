@@ -1890,7 +1890,7 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
         actual: '',
         foundInRun: runId, foundInTc: tcId, foundInStep: stepIdx
     };
-    state._newContent = `> Reported from test run **${run.title}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
+    state._newContent = `> Reported from test run **${escHtml(run.title)}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
     render();
     setTimeout(() => document.getElementById('ed-bug-actual')?.focus(), 120);
 };
@@ -2142,7 +2142,7 @@ window._doGenerateReleaseNotes = function() {
         md += `\n## Fixed\n`;
         bugs.forEach(b => {
             const ref = bugRef(b);
-            md += `- ${ref ? ref + ' — ' : ''}${b.title}${b.bugData?.severity ? ` (${b.bugData.severity})` : ''}\n`;
+            md += `- ${ref ? ref + ' — ' : ''}${escHtml(b.title)}${b.bugData?.severity ? ` (${escHtml(b.bugData.severity)})` : ''}\n`;
         });
     }
 
@@ -2158,13 +2158,13 @@ window._doGenerateReleaseNotes = function() {
                 steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') pass++; });
             });
             const pct = total ? Math.round(pass / total * 100) : null;
-            md += `- ${r.title}${pct !== null ? ` (${pct}% pass)` : ' (no results recorded)'}\n`;
+            md += `- ${escHtml(r.title)}${pct !== null ? ` (${pct}% pass)` : ' (no results recorded)'}\n`;
         });
     }
 
     if (envs.length) {
         md += `\n## Environments\n`;
-        envs.forEach(e => { md += `- ${e.title}${e.envData?.status ? ` — ${e.envData.status}` : ''}\n`; });
+        envs.forEach(e => { md += `- ${escHtml(e.title)}${e.envData?.status ? ` — ${escHtml(e.envData.status)}` : ''}\n`; });
     }
 
     if (window.tuiEditor) window.tuiEditor.setMarkdown(md);
