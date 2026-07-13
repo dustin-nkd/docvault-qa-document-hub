@@ -882,7 +882,7 @@ function _trendCard(title, caption, chartOrEmpty, badge = '') {
             ${badge ? `<span class="trend-estimate">${badge}</span>` : ''}
         </div>
         ${chartOrEmpty}
-        ${caption ? `<p class="text-[11px] mt-2.5" style="color:var(--tx-m);font-variant-numeric:tabular-nums;">${caption}</p>` : ''}
+        ${caption ? `<p class="trend-caption">${caption}</p>` : ''}
     </div>`;
 }
 
