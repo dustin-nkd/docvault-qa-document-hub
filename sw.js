@@ -2,8 +2,9 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v34'; // Wave 3B durable sync recovery and quota-safe auxiliary storage
-const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
+const SW_VERSION = 'v35'; // Wave 3C atomic shell install and explicit offline fallbacks
+const CACHE_PREFIX = 'docvault-shell-';
+const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
 const APP_SHELL = [
     './',
@@ -37,16 +38,22 @@ const APP_SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-    self.skipWaiting();
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => {})
-    );
+    // Precache is atomic from the worker lifecycle's perspective: if any required
+    // shell asset fails, installation fails and the currently active worker keeps
+    // serving its known-good cache instead of activating an incomplete one.
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.addAll(APP_SHELL);
+        await self.skipWaiting();
+    })());
 });
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
-            .then((names) => Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))))
+            .then((names) => Promise.all(names
+                .filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
+                .map((name) => caches.delete(name))))
             .then(() => self.clients.claim())
     );
 });
@@ -70,11 +77,23 @@ self.addEventListener('fetch', (event) => {
         fetch(req).then((res) => {
             if (res && res.ok) {
                 const copy = res.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+                caches.open(CACHE_NAME)
+                    .then((cache) => cache.put(req, copy))
+                    .catch((error) => console.warn('[DocVault SW] Could not refresh cached resource:', req.url, error));
             }
             return res;
-        }).catch(() =>
-            caches.match(req).then((cached) => cached || caches.match('./index.html'))
-        )
+        }).catch(async () => {
+            const cached = await caches.match(req);
+            if (cached) return cached;
+            if (req.mode === 'navigate') {
+                const shell = await caches.match('./index.html');
+                if (shell) return shell;
+            }
+            return new Response('Offline — resource is not available in the app cache.', {
+                status: 503,
+                statusText: 'Offline',
+                headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-DocVault-Offline': '1' }
+            });
+        })
     );
 });

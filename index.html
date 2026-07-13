@@ -13,7 +13,9 @@
     <meta name="apple-mobile-web-app-title" content="DocVault">
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+        window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch((error) => {
+          console.warn('[DocVault] Service worker registration failed; offline mode is unavailable.', error);
+        }));
       }
     </script>
 
