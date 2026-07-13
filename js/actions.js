@@ -2355,6 +2355,8 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${mdCell(s.action)} | ${mdCell(
     } else if (cat === 'api') {
         const method = document.getElementById('ed-api-method')?.value || 'GET';
         const endpoint = document.getElementById('ed-api-endpoint')?.value || '';
+        const module = document.getElementById('ed-api-module')?.value.trim() || '';
+        const changeImpact = document.getElementById('ed-api-impact')?.value || 'none';
 
         const hRows = document.querySelectorAll('.api-header-row');
         const headers = Array.from(hRows).map(row => ({
@@ -2374,7 +2376,20 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${mdCell(s.action)} | ${mdCell(
         const statusCode = document.getElementById('ed-api-status')?.value || '200';
         const response = document.getElementById('ed-api-response')?.value || '';
 
-        apiData = { method, endpoint, headers, params, body, statusCode, response };
+        const previousApi = state.editingDoc?.apiData || {};
+        const changeFingerprint = JSON.stringify({ method, endpoint, module, headers, params, body, statusCode, response });
+        const previousFingerprint = previousApi.changeFingerprint || JSON.stringify({
+            method: previousApi.method || 'GET', endpoint: previousApi.endpoint || '', module: previousApi.module || '',
+            headers: previousApi.headers || [], params: previousApi.params || [], body: previousApi.body || '',
+            statusCode: previousApi.statusCode || '200', response: previousApi.response || ''
+        });
+        const markChanged = document.getElementById('ed-api-mark-changed')?.checked || false;
+        const tracked = ['low', 'medium', 'high'].includes(changeImpact);
+        const changedAt = tracked
+            ? (markChanged || !previousApi.changedAt || previousApi.changeImpact !== changeImpact || previousFingerprint !== changeFingerprint ? Date.now() : previousApi.changedAt)
+            : null;
+
+        apiData = { method, endpoint, module, changeImpact, changedAt, changeFingerprint, headers, params, body, statusCode, response };
 
         finalContent = `# ${title}
 

@@ -207,6 +207,12 @@ function renderViewer() {
                     <span class="font-mono text-sm flex-1 truncate" style="color:var(--tx);">${escHtml(api.endpoint || '/')}</span>
                     <span class="text-xs font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
                 </div>
+                ${(api.module || ['low', 'medium', 'high'].includes(api.changeImpact)) ? `
+                <div class="api-impact-view">
+                    ${api.module ? `<span><b>${t('impactModule')}:</b> ${escHtml(api.module)}</span>` : ''}
+                    ${['low', 'medium', 'high'].includes(api.changeImpact) ? `<span class="impact-level is-${api.changeImpact}">${t(`apiImpact${api.changeImpact[0].toUpperCase()}${api.changeImpact.slice(1)}`)}</span>` : ''}
+                    ${api.changedAt ? `<span><b>${t('impactChanged')}:</b> ${fmtDate(api.changedAt)}</span>` : ''}
+                </div>` : ''}
 
                 <!-- Try it: send a live request from the browser -->
                 <div class="flex items-center gap-2 px-4 py-3 flex-wrap" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
