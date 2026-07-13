@@ -144,7 +144,7 @@ Visit the deployed GitHub Pages version:
        npm run check
        npm run build
 
-   The gate validates JavaScript syntax, local asset references, the offline app shell, and English UI string coverage.
+   The gate validates JavaScript syntax, local asset references, the offline app shell, English UI string coverage, release calculations, lifecycle behavior, and persisted-data migrations/merges.
 
 ---
 
