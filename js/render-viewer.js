@@ -355,7 +355,7 @@ function renderViewer() {
                     <button id="api-tryit-btn" class="btn-p text-xs py-1.5 px-3 shrink-0" data-onclick="tryApiRequest('${doc.id}')" title="Send a request using this base URL + the endpoint/headers/params/body above"><i class="fa-solid fa-play mr-1.5"></i>Try it</button>
                     <p class="text-[11px] w-full" style="color:var(--tx-d);">Prefilled with a built-in mock server (no real network call) so you can try this out. Point it at a real base URL to send an actual request.</p>
                 </div>
-                <div id="api-tryit-result"></div>
+                <div id="api-tryit-result" aria-live="polite" aria-atomic="true"></div>
 
                 <div class="p-5">
                     ${(headers.length || params.length) ? `

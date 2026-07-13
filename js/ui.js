@@ -111,6 +111,25 @@ function toast(msg, type = 'success') {
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 3000);
 }
 
+function setButtonBusy(button, busy, busyLabel = 'Working...') {
+    if (!button) return;
+    if (busy) {
+        if (!button.dataset.idleHtml) button.dataset.idleHtml = button.innerHTML;
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.classList.add('is-busy');
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>' + escHtml(busyLabel) + '</span>';
+        return;
+    }
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    button.classList.remove('is-busy');
+    if (button.dataset.idleHtml) {
+        button.innerHTML = button.dataset.idleHtml;
+        delete button.dataset.idleHtml;
+    }
+}
+
 // ========================
 // INTERACTION ACCESSIBILITY
 // ========================

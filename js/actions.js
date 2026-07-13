@@ -965,8 +965,11 @@ window.tryApiRequest = async function(docId) {
         }
     }
 
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Sending...'; }
-    if (resultEl) resultEl.innerHTML = '';
+    setButtonBusy(btn, true, 'Sending request...');
+    if (resultEl) {
+        resultEl.setAttribute('aria-busy', 'true');
+        resultEl.innerHTML = '<div class="ui-state ui-state-compact" role="status"><span class="ui-state-icon"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span><h3>Sending request</h3><p>Waiting for the endpoint to respond...</p></div>';
+    }
 
     const isMock = baseUrl.toLowerCase() === API_TRYIT_MOCK_BASE.toLowerCase();
 
@@ -996,11 +999,15 @@ window.tryApiRequest = async function(docId) {
             </div>`;
     } catch(e) {
         if (resultEl) resultEl.innerHTML = `
-            <div class="px-4 pt-4">
-                <p class="text-xs py-2 px-3 rounded-lg" style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.2);"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>Request failed — likely blocked by CORS, an invalid URL, or the endpoint is unreachable. This runs directly from your browser with no server-side proxy.</p>
+            <div class="ui-state ui-state-error ui-state-compact" role="alert">
+                <span class="ui-state-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
+                <h3>Request failed</h3>
+                <p>The endpoint may be unreachable, blocked by CORS, or using an invalid URL.</p>
+                <div class="ui-state-actions"><button class="btn-s text-xs" data-onclick="tryApiRequest('${docId}')"><i class="fa-solid fa-rotate-right mr-1.5"></i>Retry request</button></div>
             </div>`;
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-play mr-1.5"></i>Try it'; }
+        setButtonBusy(btn, false);
+        if (resultEl) resultEl.removeAttribute('aria-busy');
     }
 };
 
@@ -1826,7 +1833,7 @@ window.generateRecoveryKey = async function() {
     const pwd = sessionStorage.getItem(window.LocalAuth.SESSION_PWD);
     if (!pwd) { toast('Vault must be unlocked to generate a recovery key.', 'warning'); return; }
     const btn = document.getElementById('sec-gen-recovery-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> Generating…'; }
+    setButtonBusy(btn, true, 'Generating key...');
     try {
         const code = await window.LocalAuth.generateRecovery(pwd);
         // Push immediately so the blob is available cross-device without waiting for the next doc save
@@ -1850,7 +1857,8 @@ window.generateRecoveryKey = async function() {
         `);
     } catch(e) {
         toast(e.message || 'Failed to generate recovery key.', 'error');
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-key text-[10px]"></i> Generate Recovery Key'; }
+    } finally {
+        setButtonBusy(btn, false);
     }
 };
 
@@ -1860,7 +1868,7 @@ window.recoverVault = async function() {
     const code = input.value.trim();
     if (!code) { toast('Enter your recovery code.', 'warning'); return; }
     const btn = document.getElementById('recover-submit-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Recovering…'; }
+    setButtonBusy(btn, true, 'Recovering vault...');
     try {
         const password = await window.LocalAuth.recoverWithCode(code);
         // Guard against a stale recovery blob (e.g. one generated before the master
@@ -1881,7 +1889,8 @@ window.recoverVault = async function() {
         if (window._afterUnlock) window._afterUnlock();
     } catch(e) {
         toast(e.message || 'Recovery failed.', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = 'Recover Access'; }
+    } finally {
+        setButtonBusy(btn, false);
     }
 };
 
