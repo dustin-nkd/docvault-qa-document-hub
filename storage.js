@@ -784,6 +784,7 @@ window.GitHubSync = GitHubSync;
 const DocStorage = {
     STORAGE_KEY: 'docvault_docs',
     DELETED_IDS_KEY: 'docvault_deleted_ids',
+    PENDING_SYNC_KEY: 'docvault_sync_pending',
 
     _pwd() {
         return sessionStorage.getItem('docvault_pwd') || null;
@@ -920,17 +921,34 @@ const DocStorage = {
         return merged;
     },
 
-    // Set when a push fails (e.g. offline) so a later 'online' event knows there's
-    // something to retry (Sprint 13, A1). Session-only — not persisted across
-    // reloads, which is an accepted simplification for this pass.
+    // Keep retry intent across reloads. The in-memory flag remains for backwards
+    // compatibility, while the durable marker makes reconnect recovery reliable
+    // after the tab or browser has been restarted.
     _pending: false,
+
+    hasPendingSync() {
+        if (this._pending) return true;
+        try { return localStorage.getItem(this.PENDING_SYNC_KEY) === '1'; }
+        catch (e) { return false; }
+    },
+
+    setPendingSync(pending) {
+        this._pending = !!pending;
+        try {
+            if (this._pending) localStorage.setItem(this.PENDING_SYNC_KEY, '1');
+            else localStorage.removeItem(this.PENDING_SYNC_KEY);
+        } catch (e) {
+            // A full/disabled localStorage must not hide the current-session state.
+            console.warn('Could not persist sync retry state:', e);
+        }
+        if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();
+    },
 
     async save(docs) {
         const savedLocally = await this._saveLocal(docs);
         if (await GitHubSync.isConfigured()) {
             GitHubSync.syncPush(docs).then(async (result) => {
-                this._pending = false;
-                if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();
+                this.setPendingSync(false);
                 // Sharded push hit a per-shard conflict and merged in another
                 // device's edit to a doc we didn't touch (see
                 // GitHubSync._putWithMerge) — fold that into our in-memory
@@ -949,8 +967,7 @@ const DocStorage = {
                     if (typeof render === 'function') render();
                 }
             }).catch(e => {
-                this._pending = true;
-                if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();
+                this.setPendingSync(true);
                 if (typeof toast === 'function') {
                     const msg = typeof t === 'function' ? t('ghSyncFail') : 'GitHub sync failed';
                     toast(msg + ': ' + e.message, 'error');

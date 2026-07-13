@@ -42,7 +42,7 @@ export function loadState(options = {}) {
         }
     };
     const context = vm.createContext({
-        console,
+        console: options.console || console,
         localStorage,
         sessionStorage,
         DocStorage,
@@ -55,15 +55,15 @@ export function loadState(options = {}) {
         'normalizeBugStatusValue, ensureBugStatusEvents, recordBugStatusChange,' +
         'normalizeReleasePolicy, evaluateReleaseReadiness, calculateReleaseQuality, getReleaseQuality,' +
         'normalizeFocusWorkflowEntry, getFocusWorkflowStatus, getFocusDueState, hydrate,' +
-        'ActivityLog, getDocuments: () => documents' +
+        'DocHistory, ActivityLog, getDocuments: () => documents' +
         '};';
     vm.runInContext(source, context, { filename: 'js/state.js' });
     return { api: context.__stateTest, localStorage, sessionStorage, DocStorage, calls, saves, savedDocs };
 }
 
-export function loadStorage() {
-    const localStorage = createMemoryStorage();
-    const sessionStorage = createMemoryStorage();
+export function loadStorage(options = {}) {
+    const localStorage = createMemoryStorage(options.localStorage);
+    const sessionStorage = createMemoryStorage(options.sessionStorage);
     const context = vm.createContext({
         console,
         window: {},

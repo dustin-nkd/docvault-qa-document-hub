@@ -16,20 +16,20 @@ window.addEventListener('unhandledrejection', function(e) {
 // Now that the PWA (Sprint 10) works fully offline, edits made offline had no
 // path back to GitHub other than the user happening to save something else
 // while back online. Retry the pending push as soon as connectivity returns.
-window.addEventListener('online', async () => {
+async function retryPendingSync() {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return; // guest mode never syncs
-    if (!DocStorage._pending) return;
-    if (!(await GitHubSync.isConfigured())) return;
-    toast('Back online — syncing pending changes…', 'info');
+    if (!DocStorage.hasPendingSync()) return;
     try {
+        if (!(await GitHubSync.isConfigured())) return;
+        toast('Back online — syncing pending changes…', 'info');
         await GitHubSync.syncPush(documents);
-        DocStorage._pending = false;
-        if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
+        DocStorage.setPendingSync(false);
         toast(t('ghSyncOk') || 'Synced to GitHub', 'success');
     } catch (e) {
         toast('Sync retry failed: ' + e.message, 'error');
     }
-});
+}
+window.addEventListener('online', retryPendingSync);
 window.addEventListener('offline', () => {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
     toast('You are offline — changes will sync automatically once you reconnect.', 'warning');
@@ -172,6 +172,10 @@ async function startApp() {
         sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
     }
     await init();
+    updateSyncIndicator();
+    // A previous push may have failed before this tab was closed. Retry immediately
+    // when the app reopens online instead of waiting for another connectivity event.
+    if (navigator.onLine) retryPendingSync();
     // If security metadata exists locally, push now so it is available cross-device.
     // Handles users who saved it before metadata sync was implemented.
     if ((localStorage.getItem(LocalAuth.RECOVERY_KEY) || LocalAuth.getHint()) && await GitHubSync.isConfigured()) {
