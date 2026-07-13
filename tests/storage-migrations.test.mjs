@@ -92,3 +92,26 @@ test('activity log merge deduplicates ids, keeps local collision, and sorts newe
     assert.deepEqual(merged.map((entry) => entry.id), ['remote', 'same', 'local']);
     assert.equal(merged.find((entry) => entry.id === 'same').title, 'Local collision');
 });
+test('pending sync state survives reload and clears after recovery', () => {
+    const first = loadStorage();
+    first.api.DocStorage.setPendingSync(true);
+    assert.equal(first.localStorage.getItem(first.api.DocStorage.PENDING_SYNC_KEY), '1');
+    assert.equal(first.api.DocStorage.hasPendingSync(), true);
+
+    const reloaded = loadStorage({ localStorage: first.localStorage.dump() });
+    assert.equal(reloaded.api.DocStorage._pending, false);
+    assert.equal(reloaded.api.DocStorage.hasPendingSync(), true);
+    reloaded.api.DocStorage.setPendingSync(false);
+    assert.equal(reloaded.api.DocStorage.hasPendingSync(), false);
+    assert.equal(reloaded.localStorage.getItem(reloaded.api.DocStorage.PENDING_SYNC_KEY), null);
+});
+
+test('quota errors in history and activity logging do not interrupt document workflows', () => {
+    const harness = loadState({ console: { warn() {}, error() {}, log() {} } });
+    const quotaError = Object.assign(new Error('Storage full'), { name: 'QuotaExceededError' });
+    harness.localStorage.setItem = () => { throw quotaError; };
+
+    assert.doesNotThrow(() => harness.api.DocHistory.save({ id: 'doc-1', title: 'Title', content: 'Body', tags: [] }));
+    assert.doesNotThrow(() => harness.api.ActivityLog.record('updated', { id: 'doc-1', title: 'Title', category: 'knowledge' }));
+    assert.doesNotThrow(() => harness.api.ActivityLog.mergeIncoming([{ id: 'remote-1', ts: 1 }]));
+});

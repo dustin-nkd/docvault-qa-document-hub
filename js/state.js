@@ -352,7 +352,8 @@ const DocHistory = {
         try { snaps = JSON.parse(localStorage.getItem(this._key(doc.id)) || '[]'); } catch { snaps = []; }
         if (snaps.length && snaps[0].content === (doc.content || '') && snaps[0].title === doc.title) return;
         snaps.unshift({ ts: Date.now(), title: doc.title, content: doc.content || '', tags: doc.tags || [], status: doc.status, subfolder: doc.subfolder || '' });
-        localStorage.setItem(this._key(doc.id), JSON.stringify(snaps.slice(0, this.MAX)));
+        try { localStorage.setItem(this._key(doc.id), JSON.stringify(snaps.slice(0, this.MAX))); }
+        catch (e) { console.warn('Could not save document history:', e); }
     },
     get(id) {
         try { return JSON.parse(localStorage.getItem(this._key(id)) || '[]'); } catch { return []; }
@@ -393,7 +394,8 @@ const ActivityLog = {
             category: doc.category,
             ...meta
         });
-        localStorage.setItem(this.KEY, JSON.stringify(entries.slice(0, this.MAX)));
+        try { localStorage.setItem(this.KEY, JSON.stringify(entries.slice(0, this.MAX))); }
+        catch (e) { console.warn('Could not save activity log:', e); }
     },
 
     getAll() {
@@ -419,7 +421,8 @@ const ActivityLog = {
         if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
         if (!Array.isArray(remoteEntries) || remoteEntries.length === 0) return;
         const merged = this.merge(this.getAll(), remoteEntries);
-        localStorage.setItem(this.KEY, JSON.stringify(merged));
+        try { localStorage.setItem(this.KEY, JSON.stringify(merged)); }
+        catch (e) { console.warn('Could not merge activity log:', e); }
     },
 
     clear() {

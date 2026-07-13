@@ -83,7 +83,7 @@ window.toggleLockRecovery = function(button) {
 // ========================
 window.updateSyncIndicator = function() {
     const dot = document.getElementById('sync-pending-dot');
-    if (dot) dot.classList.toggle('hidden', !DocStorage._pending);
+    if (dot) dot.classList.toggle('hidden', !DocStorage.hasPendingSync());
 };
 
 window.initTheme = function() {
