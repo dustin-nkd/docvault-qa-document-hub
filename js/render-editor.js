@@ -17,6 +17,7 @@ function renderEditor() {
     const releaseData = isEdit ? doc.releaseData : state._newReleaseData;
     const releasePolicy = normalizeReleasePolicy(releaseData?.readinessPolicy);
     const tcPlanData = isEdit ? doc.tcPlanData : state._newTcPlanData;
+    const bugDefaultSla = { Critical: 4, Major: 24, Minor: 72, Trivial: 168 }[bugData?.severity || 'Minor'] || 72;
 
     const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
     const existingFolders = [...new Set(documents.filter(d => d.subfolder).map(d => d.subfolder))];
@@ -119,6 +120,39 @@ function renderEditor() {
                 ], bugData?.priority || 'P3', 'w-full')}
             </div>
         </div>
+        <section class="bug-triage-editor mb-4">
+            <div class="bug-triage-editor-head">
+                <div><h3>${t('triageTitle')}</h3><p>${t('triageEditorSub')}</p></div>
+                <span>${t('triageDecisionTarget')}</span>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('triageClassification')}</label>
+                    ${renderSelect('ed-bug-classification', [
+                        {value: 'unclassified', label: t('triageUnclassified')},
+                        {value: 'functional', label: t('triageTypeFunctional')},
+                        {value: 'regression', label: t('triageTypeRegression')},
+                        {value: 'performance', label: t('triageTypePerformance')},
+                        {value: 'security', label: t('triageTypeSecurity')},
+                        {value: 'usability', label: t('triageTypeUsability')},
+                        {value: 'data', label: t('triageTypeData')},
+                        {value: 'compatibility', label: t('triageTypeCompatibility')}
+                    ], bugData?.classification || 'unclassified', 'w-full')}
+                </div>
+                <div>
+                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('triageSla')}</label>
+                    ${renderSelect('ed-bug-sla', [
+                        {value: '4', label: t('triageSlaHours', {count: 4})},
+                        {value: '24', label: t('triageSlaHours', {count: 24})},
+                        {value: '48', label: t('triageSlaHours', {count: 48})},
+                        {value: '72', label: t('triageSlaHours', {count: 72})},
+                        {value: '168', label: t('triageSlaHours', {count: 168})}
+                    ], String(bugData?.slaHours || bugDefaultSla), 'w-full')}
+                </div>
+            </div>
+            <p class="bug-triage-rule"><i class="fa-solid fa-circle-info"></i>${t('triageReadyRule')}</p>
+        </section>
+
 
         <div class="mb-4">
             <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Test Case <span style="color:var(--tx-d)">(Optional)</span></label>
