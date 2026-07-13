@@ -790,21 +790,6 @@ function _axisDate(ts) {
 // bottom strip for X-axis date labels, so every trend chart can be read
 // without relying solely on the prose caption below it.
 const _CHART_W = 300, _CHART_H = 118, _CHART_PAD_L = 28, _CHART_PAD_R = 8, _CHART_TOP = 10, _CHART_BOT = _CHART_H - 26;
-// The Bug lifecycle row below Trends is a 2-column grid, so each card is
-// wider than a 3-column Trends card. A first attempt compensated with CSS
-// `aspect-ratio` (rescale the outer box only) — but with
-// preserveAspectRatio="none", the SVG's *content* (including axis text)
-// scales non-uniformly whenever the outer box's aspect ratio doesn't match
-// the viewBox's, so the axis dates visibly stretched wider than the ones in
-// the Trends charts. Fixed properly instead: draw the lifecycle charts with
-// a genuinely shorter viewBox (so text/lines are natively proportioned, no
-// post-hoc stretch), computed from the actual measured width ratio between
-// a 2-column and 3-column card in this grid (measured empirically: 74 keeps
-// the two rows' rendered heights within ~3px of each other from 900px to
-// 1600px). Kept in sync with live window resizes via the dashboard resize
-// listener below (this app previously had none), instead of only updating
-// on the next navigation.
-const _LIFECYCLE_CHART_H = 74;
 
 function _chartYGrid(values, y, fmt) {
     return values.map(v => `
@@ -812,21 +797,18 @@ function _chartYGrid(values, y, fmt) {
         <text x="${_CHART_PAD_L - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="var(--tx-d)">${fmt(v)}</text>`).join('');
 }
 
-function _chartXAxis(xLabels, h = _CHART_H) {
+function _chartXAxis(xLabels) {
     if (!xLabels) return '';
     return `
-        <text x="${_CHART_PAD_L}" y="${h - 6}" text-anchor="start" font-size="8" fill="var(--tx-d)">${xLabels[0]}</text>
-        <text x="${_CHART_W - _CHART_PAD_R}" y="${h - 6}" text-anchor="end" font-size="8" fill="var(--tx-d)">${xLabels[1]}</text>`;
+        <text x="${_CHART_PAD_L}" y="${_CHART_H - 6}" text-anchor="start" font-size="8" fill="var(--tx-d)">${xLabels[0]}</text>
+        <text x="${_CHART_W - _CHART_PAD_R}" y="${_CHART_H - 6}" text-anchor="end" font-size="8" fill="var(--tx-d)">${xLabels[1]}</text>`;
 }
 
 // minimal, theme-aware SVG line (optional area fill) + emphasized endpoint.
 // yFmt formats axis/tooltip values (e.g. add "%"); xLabels are [start, end]
-// date strings shown under the chart so the time span is never a guess. `h`
-// overrides the viewBox height (see _LIFECYCLE_CHART_H) — drawn natively at
-// that shorter height so text/lines are correctly proportioned, not
-// stretched after the fact.
-function _trendLine(vals, color, { yMax, fill, yFmt, xLabels, h } = {}) {
-    const w = _CHART_W, top = _CHART_TOP, chartH = h || _CHART_H, bot = chartH - 26;
+// date strings shown under the chart so the time span is never a guess.
+function _trendLine(vals, color, { yMax, fill, yFmt, xLabels } = {}) {
+    const w = _CHART_W, top = _CHART_TOP, bot = _CHART_BOT;
     const max = yMax != null ? yMax : Math.max(...vals, 1);
     const fmt = yFmt || (v => String(Math.round(v)));
     const n = vals.length;
@@ -837,18 +819,18 @@ function _trendLine(vals, color, { yMax, fill, yFmt, xLabels, h } = {}) {
     const area = fill ? `<polygon points="${x(0).toFixed(1)},${bot} ${pts} ${x(li).toFixed(1)},${bot}" fill="${color}" opacity="0.14"/>` : '';
     const grid = _chartYGrid([max, max / 2, 0], y, fmt);
     const markers = vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${i === li ? 3.6 : 2.2}" fill="${color}" opacity="${i === li ? 1 : 0.55}"><title>${fmt(v)}</title></circle>`).join('');
-    return `<svg viewBox="0 0 ${w} ${chartH}" style="width:100%;height:auto;display:block;" preserveAspectRatio="none">
+    return `<svg viewBox="0 0 ${w} ${_CHART_H}" style="width:100%;height:auto;display:block;" preserveAspectRatio="none">
         ${grid}
         ${area}
         <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
         ${markers}
         <circle cx="${x(li).toFixed(1)}" cy="${y(vals[li]).toFixed(1)}" r="7" fill="${color}" opacity="0.18"/>
-        ${_chartXAxis(xLabels, chartH)}
+        ${_chartXAxis(xLabels)}
     </svg>`;
 }
 
-function _trendDualLine(valsA, valsB, colorA, colorB, { yFmt, xLabels, h } = {}) {
-    const w = _CHART_W, top = _CHART_TOP, chartH = h || _CHART_H, bot = chartH - 26;
+function _trendDualLine(valsA, valsB, colorA, colorB, { yFmt, xLabels } = {}) {
+    const w = _CHART_W, top = _CHART_TOP, bot = _CHART_BOT;
     const max = Math.max(...valsA, ...valsB, 1);
     const fmt = yFmt || (v => String(Math.round(v)));
     const n = Math.max(valsA.length, valsB.length);
@@ -856,15 +838,15 @@ function _trendDualLine(valsA, valsB, colorA, colorB, { yFmt, xLabels, h } = {})
     const y = v => top + (1 - v / max) * (bot - top);
     const points = vals => vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
     const markers = (vals, color) => vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${i === vals.length - 1 ? 3.4 : 2}" fill="${color}" opacity="${i === vals.length - 1 ? 1 : 0.55}"><title>${fmt(v)}</title></circle>`).join('');
-    const grid = _chartYGrid([max, 0], y, fmt);
+    const grid = _chartYGrid([max, max / 2, 0], y, fmt);
     return `<div>
-        <svg viewBox="0 0 ${w} ${chartH}" style="width:100%;height:auto;display:block;" preserveAspectRatio="none">
+        <svg viewBox="0 0 ${w} ${_CHART_H}" style="width:100%;height:auto;display:block;" preserveAspectRatio="none">
             ${grid}
             <polyline points="${points(valsA)}" fill="none" stroke="${colorA}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
             <polyline points="${points(valsB)}" fill="none" stroke="${colorB}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
             ${markers(valsA, colorA)}
             ${markers(valsB, colorB)}
-            ${_chartXAxis(xLabels, chartH)}
+            ${_chartXAxis(xLabels)}
         </svg>
         <div class="trend-dual-legend">
             <span><i style="background:${colorA};"></i>${t('trOpened')}</span>
@@ -1017,9 +999,9 @@ function _renderTrends(docs, m) {
 
     let velocityChart, velocityCap = '';
     if (openedInRange.length + resolvedInRange.length === 0) {
-        velocityChart = _trendEmpty(t('trLifeEmpty', { range: rangeLabel }), _LIFECYCLE_CHART_H);
+        velocityChart = _trendEmpty(t('trLifeEmpty', { range: rangeLabel }));
     } else {
-        velocityChart = _trendDualLine(openedSeries, resolvedSeries, '#f87171', '#34d399', { xLabels: [_axisDate(lifecycleStart), _axisDate(now)], h: _LIFECYCLE_CHART_H });
+        velocityChart = _trendDualLine(openedSeries, resolvedSeries, '#f87171', '#34d399', { xLabels: [_axisDate(lifecycleStart), _axisDate(now)] });
         velocityCap = t('trVelocityCap', {
             opened: `<b style="color:#f87171">${openedInRange.length}</b>`,
             resolved: `<b style="color:#34d399">${resolvedInRange.length}</b>`,
@@ -1029,7 +1011,7 @@ function _renderTrends(docs, m) {
 
     let backlogChart, backlogCap = '';
     if (lifecycleBugs.length === 0) {
-        backlogChart = _trendEmpty(t('trLifeEmpty', { range: rangeLabel }), _LIFECYCLE_CHART_H);
+        backlogChart = _trendEmpty(t('trLifeEmpty', { range: rangeLabel }));
     } else {
         const backlogAt = ts => lifecycleBugs.filter(bug =>
             bug.openedAt <= ts && !terminalStatuses.has(bug.statusAt(ts))
@@ -1046,7 +1028,7 @@ function _renderTrends(docs, m) {
             : backlogDelta < 0
                 ? t('trDeltaDown', { n: Math.abs(backlogDelta) })
                 : t('trDeltaFlat');
-        backlogChart = _trendLine(backlogSeries, backlogDelta > 0 ? '#f87171' : '#fbbf24', { fill: true, xLabels: [_axisDate(lifecycleStart), _axisDate(now)], h: _LIFECYCLE_CHART_H });
+        backlogChart = _trendLine(backlogSeries, backlogDelta > 0 ? '#f87171' : '#fbbf24', { fill: true, xLabels: [_axisDate(lifecycleStart), _axisDate(now)] });
         backlogCap = t('trBacklogCap', {
             n: `<b style="color:${backlogDelta > 0 ? '#f87171' : '#fbbf24'}">${backlogNow}</b>`,
             delta: deltaText
