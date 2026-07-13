@@ -591,6 +591,15 @@
     gap: 16px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+/* The Bug lifecycle row is 2 columns vs. Trends' 3, so each card is wider
+   and a same-viewBox chart would render visibly taller/bulkier than the row
+   above (reported: "widgets here look bigger, unbalanced"). Rescale via
+   aspect-ratio (continuous, live on resize — no JS/media-query staleness)
+   only once the grid is actually 2-column; the breakpoint matches Tailwind's
+   sm: (640px) used by the Trends grid so both rows switch layout together. */
+@media (min-width: 640px) {
+    .trend-lifecycle-chart, .trend-lifecycle-grid .trend-empty-box { aspect-ratio: 300 / 74; height: auto !important; }
+}
 .trend-dual-legend {
     display: flex;
     gap: 14px;
@@ -704,7 +713,6 @@
 }
 @media (max-width: 800px) {
     .dashboard-attention { grid-template-columns: 1fr; gap: 11px; }
-    .trend-lifecycle-grid { grid-template-columns: 1fr; }
     .focus-hero { align-items:flex-start; flex-direction:column; }
     .focus-total { align-items:flex-start; flex-direction:row; gap:7px; }
     .focus-grid { grid-template-columns:1fr; }
@@ -712,6 +720,11 @@
     .trace-summary { justify-content:flex-start; }
 }
 @media (max-width: 640px) {
+    /* Matches the Tailwind sm: breakpoint the Trends grid (3 cols) collapses
+       at, so Bug lifecycle (2 cols) switches to single-column at the exact
+       same width instead of a wider 800px cutoff — no awkward zone where one
+       row is multi-column and the other is still stacked. */
+    .trend-lifecycle-grid { grid-template-columns: 1fr; }
     .dashboard-hero { align-items: flex-start; flex-direction: column; }
     .dashboard-attention { margin-bottom: 20px; padding: 13px; }
     .attention-list { grid-template-columns: 1fr; }
