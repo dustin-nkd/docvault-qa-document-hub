@@ -55,7 +55,7 @@ function updateHeader() {
 
     const isSearchView = state.view === 'documents' || state.view === 'favorites';
     h.innerHTML = `
-        <button class="hidden mr-1 p-2 rounded-lg" style="color:var(--tx-m);" data-onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+        <button class="hidden mr-1 p-2 rounded-lg" style="color:var(--tx-m);" data-onclick="toggleSidebar()" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="${state.sidebarOpen}"><i class="fa-solid fa-bars"></i></button>
         ${title}
         <div class="flex-1"></div>
         ${isSearchView ? `
@@ -290,6 +290,8 @@ function renderContent() {
                             const btn = document.createElement('button');
                             btn.className = 'code-copy-btn';
                             btn.title = 'Copy';
+                            btn.type = 'button';
+                            btn.setAttribute('aria-label', 'Copy code');
                             btn.setAttribute('data-onclick', `copyCodeBlock(this, '${b64}')`);
                             btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
                             pre.style.position = 'relative';
@@ -300,6 +302,7 @@ function renderContent() {
             });
         }
     }
+    enhanceInteractionSemantics(document);
     _restoreFaviconState();
 }
 

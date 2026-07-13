@@ -44,10 +44,13 @@ document.addEventListener('keydown', (e) => {
         saveDoc();
     }
     if (e.key === 'Escape') {
+        const searchModal = document.getElementById('search-modal');
+        if (searchModal && !searchModal.classList.contains('hidden')) { closeSearch(); return; }
         const modal = document.getElementById('modal');
         if (modal && !modal.classList.contains('hidden')) { closeModal(); return; }
         const menu = document.getElementById('doc-menu');
         if (menu) { menu.remove(); return; }
+        if (state.sidebarOpen) { toggleSidebar(); return; }
         if (state.view === 'editor') {
             // Route through the same unsaved-changes guard as the Cancel button
             // (Sprint 15), instead of navigating away unconditionally.
@@ -408,7 +411,15 @@ document.addEventListener('keydown', (e) => {
     let target = e.target.closest('[data-onkeydown]');
     if (target) {
         executeAction(target.getAttribute('data-onkeydown'), e, target);
+        return;
     }
+
+    if (e.repeat || (e.key !== 'Enter' && e.key !== ' ')) return;
+    if (e.target.closest('button, a[href], input, select, textarea, summary, [contenteditable="true"]')) return;
+    target = e.target.closest('[data-onclick][role="button"]');
+    if (!target) return;
+    e.preventDefault();
+    executeAction(target.getAttribute('data-onclick'), e, target);
 });
 
 document.addEventListener('mouseover', (e) => {

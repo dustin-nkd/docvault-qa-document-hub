@@ -340,15 +340,15 @@
 <body class="bg-[var(--bg)] text-[var(--tx)] h-screen w-screen overflow-hidden font-sans">
     <div id="debug-err" style="position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:99999;font-size:12px;padding:5px;display:none;"></div>
     <!-- Toasts -->
-    <div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2" style="pointer-events:none;"></div>
+    <div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2" style="pointer-events:none;" aria-live="polite" aria-relevant="additions"></div>
 
     <!-- Modal -->
     <div id="modal" class="fixed inset-0 z-[90] hidden"></div>
 
     <!-- Search Modal -->
     <div id="search-modal" class="fixed inset-0 z-[95] hidden items-start justify-center pt-[10vh]">
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" data-onclick="closeSearch()"></div>
-        <div class="relative w-full max-w-2xl bg-[var(--card)] border border-[var(--brd)] rounded-xl shadow-2xl overflow-hidden flex flex-col fade-up">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" data-onclick="closeSearch()" aria-hidden="true"></div>
+        <div class="relative w-full max-w-2xl bg-[var(--card)] border border-[var(--brd)] rounded-xl shadow-2xl overflow-hidden flex flex-col fade-up" role="dialog" aria-modal="true" aria-label="Global search">
             <div class="flex items-center px-4 py-3 border-b border-[var(--brd)]">
                 <i class="fa-solid fa-magnifying-glass text-[var(--tx-d)] mr-3"></i>
                 <input type="text" id="search-input" class="w-full bg-transparent border-none outline-none text-[var(--tx)] placeholder-[var(--tx-d)] font-sans text-lg" placeholder="Search documents... (Ctrl+K)" autocomplete="off">
@@ -362,14 +362,14 @@
     </div>
 
     <!-- Mobile overlay -->
-    <div id="mob-overlay" class="fixed inset-0 z-[45] bg-black/50 hidden md:hidden" data-onclick="toggleSidebar()"></div>
+    <div id="mob-overlay" class="fixed inset-0 z-[45] bg-black/50 hidden md:hidden" data-onclick="toggleSidebar()" aria-hidden="true"></div>
 
     <!-- Mobile Bottom Navigation (Sprint 27) — reuses the same .nav-item /
          data-view attributes as the sidebar's Main Nav so updateSidebar()'s
          existing active-state highlighting (js/ui.js) applies here for free,
          no new JS needed to keep it in sync. z-40, below the sidebar (z-50)
          and its overlay (z-[45]) so opening the sidebar correctly covers it. -->
-    <nav id="bottom-nav" class="md:hidden fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t" style="height:60px;background:var(--bg2);border-color:var(--brd);">
+    <nav id="bottom-nav" class="md:hidden fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t" style="height:60px;background:var(--bg2);border-color:var(--brd);" aria-label="Primary mobile navigation">
         <div class="flex-1 flex flex-col items-center justify-center gap-1 nav-item" style="color:var(--tx-m);" data-view="dashboard" data-onclick="navigate('dashboard')">
             <i class="fa-solid fa-chart-pie" style="font-size:15px;"></i>
             <span style="font-size:10px;">Dashboard</span>
@@ -383,7 +383,7 @@
             <i class="fa-solid fa-star" style="font-size:15px;"></i>
             <span style="font-size:10px;">Favorites</span>
         </div>
-        <div class="flex-1 flex flex-col items-center justify-center gap-1" style="color:var(--tx-m);cursor:pointer;" data-onclick="toggleSidebar()">
+        <div class="flex-1 flex flex-col items-center justify-center gap-1" style="color:var(--tx-m);cursor:pointer;" data-onclick="toggleSidebar()" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
             <i class="fa-solid fa-bars" style="font-size:15px;"></i>
             <span style="font-size:10px;">Menu</span>
         </div>
@@ -436,7 +436,7 @@
 
     <div class="flex h-screen w-full">
         <!-- Sidebar -->
-        <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300 w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);">
+        <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300 w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);" aria-label="Primary navigation">
             <div class="sidebar-line h-[2px] w-full shrink-0"></div>
             <!-- Logo -->
             <div class="px-5 py-5 flex items-center gap-3 shrink-0">
