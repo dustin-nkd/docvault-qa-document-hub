@@ -88,10 +88,7 @@ function getFiltered() {
             if (state.subfolder) docs = docs.filter(d => d.subfolder === state.subfolder);
         }
     }
-    if (state.search) {
-        const q = state.search.toLowerCase();
-        docs = docs.filter(d => d.title.toLowerCase().includes(q) || (d.content && d.content.toLowerCase().includes(q)) || d.tags.some(t => t.toLowerCase().includes(q)));
-    }
+    if (state.search) docs = docs.filter(doc => matchesSearchQuery(doc, state.search));
     if (state.statusFilter !== 'all') docs = docs.filter(d => d.status === state.statusFilter);
     docs.sort((a, b) => {
         if (state.sortBy === 'updated') return b.updatedAt - a.updatedAt;

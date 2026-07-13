@@ -52,18 +52,7 @@ function renderSearchResults(query) {
 
     _allSearchResults = documents
         .filter(doc => doc.status !== 'deleted')
-        .map(doc => {
-            const titleLower = doc.title.toLowerCase();
-            let score = 0;
-            for (const w of words) {
-                if (titleLower === w) score += 5;
-                else if (titleLower.startsWith(w)) score += 3;
-                else if (titleLower.includes(w)) score += 2;
-                if (doc.tags.some(tag => tag.toLowerCase().includes(w))) score += 1.5;
-                if (doc.content && doc.content.toLowerCase().includes(w)) score += 0.5;
-            }
-            return { doc, score };
-        })
+        .map(doc => ({ doc, score: scoreSearchDocument(doc, words) }))
         .filter(({ score }) => score > 0)
         .sort((a, b) => b.score - a.score)
         .map(({ doc }) => doc);

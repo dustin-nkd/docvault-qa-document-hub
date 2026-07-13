@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v32'; // Wave 2C loading, empty, error, and disabled-state hardening
+const SW_VERSION = 'v33'; // Wave 3A cached search normalization and regression coverage
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
