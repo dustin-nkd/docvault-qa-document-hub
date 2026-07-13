@@ -161,6 +161,100 @@ window.deleteSavedView = function(id) {
 };
 
 // ========================
+// FOCUS QUEUE WORKFLOW
+// ========================
+function _focusWorkflowTarget(docId, signalKey) {
+    if (!FOCUS_SIGNAL_KEYS.has(signalKey)) return null;
+    const doc = documents.find(item => item.id === docId && item.status !== 'deleted');
+    return doc ? { doc, workflow: getFocusWorkflow(doc, signalKey) } : null;
+}
+
+function _focusTomorrowDate() {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return date.getFullYear() + '-' + month + '-' + day;
+}
+
+window.showFocusWorkflowModal = function(docId, signalKey) {
+    const target = _focusWorkflowTarget(docId, signalKey);
+    if (!target) return;
+    const { doc, workflow } = target;
+    const snoozeValue = getFocusWorkflowStatus(workflow) === 'snoozed' ? workflow.snoozedUntil : '';
+    showModal(`
+        <div class="focus-workflow-modal">
+            <div class="focus-workflow-modal-head">
+                <span><i class="fa-solid fa-bullseye"></i></span>
+                <div><p>${t('focusWorkflow')}</p><h3>${escHtml(doc.title)}</h3></div>
+            </div>
+            <label>${t('focusOwner')}</label>
+            <input id="focus-owner" class="form-input w-full" maxlength="80" value="${escHtml(workflow.owner)}" placeholder="${escHtml(t('focusOwnerPlaceholder'))}">
+            <div class="focus-workflow-date-grid">
+                <div>
+                    <label>${t('focusDueDate')}</label>
+                    <input id="focus-due-date" type="date" class="form-input w-full" value="${escHtml(workflow.dueDate)}">
+                </div>
+                <div>
+                    <label>${t('focusSnoozeUntil')}</label>
+                    <input id="focus-snooze-until" type="date" class="form-input w-full" min="${_focusTomorrowDate()}" value="${escHtml(snoozeValue)}">
+                </div>
+            </div>
+            <p class="focus-workflow-hint">${t('focusWorkflowHint')}</p>
+            <div class="flex justify-end gap-2 mt-5">
+                <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
+                <button class="btn-p" data-onclick="saveFocusWorkflow('${doc.id}','${signalKey}')">${t('save')}</button>
+            </div>
+        </div>`);
+};
+
+window.saveFocusWorkflow = async function(docId, signalKey) {
+    const target = _focusWorkflowTarget(docId, signalKey);
+    if (!target) return;
+    const owner = (document.getElementById('focus-owner')?.value || '').trim().slice(0, 80);
+    const dueDate = document.getElementById('focus-due-date')?.value || '';
+    const snoozedUntil = document.getElementById('focus-snooze-until')?.value || '';
+    if (snoozedUntil) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(snoozedUntil) || snoozedUntil < _focusTomorrowDate()) {
+            toast(t('focusSnoozeFuture'), 'warning');
+            return;
+        }
+    }
+    setFocusWorkflow(target.doc, signalKey, { owner, dueDate, snoozedUntil });
+    await persist();
+    closeModal();
+    renderContent();
+    toast(t('focusWorkflowSaved'), 'success');
+};
+
+window.completeFocusItem = async function(docId, signalKey) {
+    const target = _focusWorkflowTarget(docId, signalKey);
+    if (!target) return;
+    setFocusWorkflow(target.doc, signalKey, { resolvedAt: Date.now(), snoozedUntil: '' });
+    await persist();
+    renderContent();
+    toast(t('focusMarkedDone'), 'success');
+};
+
+window.unsnoozeFocusItem = async function(docId, signalKey) {
+    const target = _focusWorkflowTarget(docId, signalKey);
+    if (!target) return;
+    setFocusWorkflow(target.doc, signalKey, { snoozedUntil: '' });
+    await persist();
+    renderContent();
+    toast(t('focusUnsnoozed'), 'success');
+};
+
+window.reopenFocusItem = async function(docId, signalKey) {
+    const target = _focusWorkflowTarget(docId, signalKey);
+    if (!target) return;
+    setFocusWorkflow(target.doc, signalKey, { resolvedAt: null, snoozedUntil: '' });
+    await persist();
+    renderContent();
+    toast(t('focusReopened'), 'success');
+};
+
+// ========================
 // BATCH OPERATIONS
 // ========================
 window.toggleBatchMode = function() {

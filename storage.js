@@ -427,7 +427,7 @@ const GitHubSync = {
     // fingerprint the ciphertext — AES-GCM's random IV means identical
     // plaintext never produces identical ciphertext twice.
     _shardFingerprint(shardDocs) {
-        return shardDocs.map(d => `${d.id}:${d.updatedAt}`).sort().join('|');
+        return shardDocs.map(d => `${d.id}:${Math.max(Number(d.updatedAt) || 0, Number(d.focusWorkflowUpdatedAt) || 0)}`).sort().join('|');
     },
 
     // Same prep _encode() does (30-day trash TTL auto-purge + credential
@@ -832,7 +832,9 @@ const DocStorage = {
         (remote || []).forEach(r => {
             if (deletedIds.has(r.id)) return;
             const l = map.get(r.id);
-            if (!l || r.updatedAt > l.updatedAt) map.set(r.id, r);
+            const remoteVersion = Math.max(Number(r.updatedAt) || 0, Number(r.focusWorkflowUpdatedAt) || 0);
+            const localVersion = Math.max(Number(l?.updatedAt) || 0, Number(l?.focusWorkflowUpdatedAt) || 0);
+            if (!l || remoteVersion > localVersion) map.set(r.id, r);
         });
         return Array.from(map.values());
     },
@@ -938,7 +940,9 @@ const DocStorage = {
                     const byId = new Map(documents.map(d => [d.id, d]));
                     result.mergedDocs.forEach(d => {
                         const existing = byId.get(d.id);
-                        if (!existing || d.updatedAt > existing.updatedAt) byId.set(d.id, d);
+                        const incomingVersion = Math.max(Number(d.updatedAt) || 0, Number(d.focusWorkflowUpdatedAt) || 0);
+                        const existingVersion = Math.max(Number(existing?.updatedAt) || 0, Number(existing?.focusWorkflowUpdatedAt) || 0);
+                        if (!existing || incomingVersion > existingVersion) byId.set(d.id, d);
                     });
                     documents = [...byId.values()];
                     await this._saveLocal(documents);
