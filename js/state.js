@@ -179,6 +179,112 @@ function evaluateReleaseReadiness(release, docs = documents) {
 }
 
 // ========================
+// RELEASE QUALITY SCORECARD
+// ========================
+const QUALITY_SCORE_WEIGHTS = Object.freeze({ passRate: 45, execution: 20, coverage: 15, defects: 20 });
+
+function _qualityModuleKey(value) {
+    return String(value || '').trim().toLocaleLowerCase();
+}
+
+function _qualityDefectPoints(bugs) {
+    const penalty = bugs.reduce((sum, bug) => {
+        const weight = { Critical: 12, Major: 6, Minor: 3, Trivial: 1 }[bug.bugData?.severity] || 2;
+        return sum + weight;
+    }, 0);
+    return Math.max(0, QUALITY_SCORE_WEIGHTS.defects - penalty);
+}
+
+function calculateReleaseQuality(release, docs = documents) {
+    const active = docs.filter(item => item.status !== 'deleted');
+    const readiness = evaluateReleaseReadiness(release, active);
+    const testCases = active.filter(item => item.category === 'testcases');
+    const tcById = new Map(testCases.map(tc => [tc.id, tc]));
+    const moduleNames = new Map();
+    testCases.forEach(tc => {
+        const name = String(tc.tcData?.module || '').trim();
+        if (name) moduleNames.set(_qualityModuleKey(name), name);
+    });
+
+    const targetedIds = new Set();
+    const totals = { steps: 0, pass: 0, executed: 0 };
+    const moduleStats = new Map([...moduleNames].map(([key, name]) => [key, { key, name, steps: 0, pass: 0, executed: 0, targetedIds: new Set(), bugs: [] }]));
+    readiness.linkedRuns.forEach(run => {
+        const results = run.runData?.results || {};
+        (run.runData?.targetIds || []).forEach(tcId => {
+            const tc = tcById.get(tcId);
+            if (!tc) return;
+            targetedIds.add(tcId);
+            const moduleKey = _qualityModuleKey(tc.tcData?.module);
+            const stat = moduleStats.get(moduleKey);
+            if (stat) stat.targetedIds.add(tcId);
+            const steps = run.runData?.snapshot?.[tcId] || tc.tcData?.steps || [];
+            steps.forEach((_, index) => {
+                const result = results[tcId]?.[index];
+                totals.steps++;
+                if (stat) stat.steps++;
+                if (result === 'pass') {
+                    totals.pass++;
+                    if (stat) stat.pass++;
+                }
+                if (['pass', 'fail', 'blocked'].includes(result)) {
+                    totals.executed++;
+                    if (stat) stat.executed++;
+                }
+            });
+        });
+    });
+
+    const openBugs = readiness.linkedBugs.filter(bug => !BUG_TERMINAL_STATUSES.has(normalizeBugStatusValue(bug.bugStatus)));
+    let unmappedBugs = 0;
+    openBugs.forEach(bug => {
+        const linkedTc = tcById.get(bug.bugData?.foundInTc || bug.bugData?.linkedTc);
+        let key = _qualityModuleKey(linkedTc?.tcData?.module);
+        if (!key) key = [...moduleNames.keys()].find(moduleKey => (bug.tags || []).some(tag => _qualityModuleKey(tag) === moduleKey)) || '';
+        if (key && moduleStats.has(key)) moduleStats.get(key).bugs.push(bug);
+        else unmappedBugs++;
+    });
+
+    const percentage = (part, total) => total > 0 ? Math.round(part / total * 100) : 0;
+    const passRate = percentage(totals.pass, totals.steps);
+    const execution = percentage(totals.executed, totals.steps);
+    const coverage = percentage(targetedIds.size, testCases.length);
+    const defectPoints = _qualityDefectPoints(openBugs);
+    const scoreFor = (pass, executed, covered, defect) => Math.round(
+        pass * QUALITY_SCORE_WEIGHTS.passRate / 100 +
+        executed * QUALITY_SCORE_WEIGHTS.execution / 100 +
+        covered * QUALITY_SCORE_WEIGHTS.coverage / 100 +
+        defect
+    );
+    const modules = [...moduleStats.values()].map(stat => {
+        const moduleTotal = testCases.filter(tc => _qualityModuleKey(tc.tcData?.module) === stat.key).length;
+        const modulePass = percentage(stat.pass, stat.steps);
+        const moduleExecution = percentage(stat.executed, stat.steps);
+        const moduleCoverage = percentage(stat.targetedIds.size, moduleTotal);
+        const moduleDefects = _qualityDefectPoints(stat.bugs);
+        return {
+            name: stat.name, score: scoreFor(modulePass, moduleExecution, moduleCoverage, moduleDefects),
+            passRate: modulePass, execution: moduleExecution, coverage: moduleCoverage,
+            defectPoints: moduleDefects, openBugs: stat.bugs.length, hasEvidence: stat.steps > 0
+        };
+    }).sort((a, b) => a.score - b.score || a.name.localeCompare(b.name));
+
+    return {
+        score: scoreFor(passRate, execution, coverage, defectPoints),
+        passRate, execution, coverage, defectPoints, openBugs: openBugs.length,
+        hasEvidence: totals.steps > 0, targetedCases: targetedIds.size, totalCases: testCases.length,
+        unmappedBugs, modules, source: 'live'
+    };
+}
+
+function getReleaseQuality(release, docs = documents) {
+    const snapshot = release?.releaseData?.qualitySnapshot;
+    return snapshot && Number.isFinite(Number(snapshot.score)) && Array.isArray(snapshot.modules)
+        ? { ...snapshot, source: 'snapshot' }
+        : calculateReleaseQuality(release, docs);
+}
+
+// ========================
 // FOCUS QUEUE WORKFLOW
 // ========================
 const FOCUS_SIGNAL_KEYS = new Set(['critical', 'retest', 'release', 'task', 'stale']);

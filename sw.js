@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v26'; // Defect triage: classification, ownership, decision SLA and duplicate handling
+const SW_VERSION = 'v27'; // Release quality scorecard: stable baseline, drivers and module trends
 const CACHE_NAME = `docvault-shell-${SW_VERSION}`;
 
 const APP_SHELL = [
