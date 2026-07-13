@@ -97,7 +97,7 @@ Organize documents across specialized categories, each with its own dedicated fo
 - **Sort & filter**: Sort by Updated, Created, or Title (A-Z). Filter by status.
 - **Subfolder organization**: Group documents within categories using subfolders.
 - **Copy code blocks**: One-click copy button on all rendered code blocks.
-- **Bilingual i18n**: Full English and Vietnamese translation support (currently locked to English UI).
+- **English-only UI**: A single language surface keeps navigation, forms, and QA workflows consistent.
 - **Responsive design**: Mobile sidebar with hamburger menu, touch-friendly layout.
 - **Export/Import**: Backup all documents as JSON, import with merge or replace mode.
 - **Toast notifications**: Non-intrusive feedback for all user actions.

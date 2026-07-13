@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi" class="scroll-smooth" data-theme="dark">
+<html lang="en" class="scroll-smooth" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,8 +17,8 @@
       }
     </script>
 
-    <link href="vendor/fonts/space-grotesk/index.css" rel="stylesheet">
-    <link href="vendor/fonts/dm-sans/index.css" rel="stylesheet">
+    <link href="vendor/fonts/space-grotesk/latin.css" rel="stylesheet">
+    <link href="vendor/fonts/dm-sans/latin.css" rel="stylesheet">
     <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
     <link rel="stylesheet" href="vendor/toastui/toastui-editor.min.css" />
@@ -534,7 +534,7 @@
 
             <!-- Bottom -->
             <div class="shrink-0 border-t" style="border-color:var(--brd);">
-                <div class="px-3 py-3 grid grid-cols-4">
+                <div class="px-3 py-3 grid grid-cols-3">
                     <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--tx)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="lockVault()" title="Lock vault">
                         <i class="fa-solid fa-lock-open" style="font-size:14px;"></i>
                         <span style="font-size:10px;font-weight:500;letter-spacing:0.02em;">Lock</span>
@@ -543,10 +543,6 @@
                         <i class="fa-solid fa-moon theme-icon-dark" style="font-size:14px;"></i>
                         <i class="fa-solid fa-sun theme-icon-light" style="font-size:14px;"></i>
                         <span style="font-size:10px;font-weight:500;letter-spacing:0.02em;">Theme</span>
-                    </button>
-                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--acc)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="toggleLang()" title="Switch language / Đổi ngôn ngữ">
-                        <i class="fa-solid fa-language" style="font-size:14px;"></i>
-                        <span id="lang-label" style="font-size:10px;font-weight:500;letter-spacing:0.02em;">EN</span>
                     </button>
                     <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--acc)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="showGitHubSettingsModal()" title="GitHub Settings">
                         <span style="position:relative;display:inline-block;line-height:0;">
