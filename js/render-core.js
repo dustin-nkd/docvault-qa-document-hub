@@ -121,12 +121,17 @@ window.syncEditorState = function() {
     let tcData = null;
     let apiData = null;
     if (cat === 'bug') {
+        const previousBug = state.editingDoc?.bugData || state._newBugData || {};
         bugData = {
+            ...previousBug,
             env: document.getElementById('ed-bug-env')?.value || '',
             browser: document.getElementById('ed-bug-browser')?.value || '',
             severity: document.getElementById('ed-bug-severity')?.value || 'Minor',
             priority: document.getElementById('ed-bug-priority')?.value || 'P3',
             assignee: document.getElementById('ed-bug-assignee')?.value || '',
+            classification: document.getElementById('ed-bug-classification')?.value || 'unclassified',
+            slaHours: Number(document.getElementById('ed-bug-sla')?.value) || ({ Critical: 4, Major: 24, Minor: 72, Trivial: 168 }[document.getElementById('ed-bug-severity')?.value] || 72),
+            triagedAt: previousBug.triagedAt || null,
             precond: document.getElementById('ed-bug-precond')?.value || '',
             steps: Array.from(document.querySelectorAll('.bug-step-input')).map(inp => inp.value),
             expected: document.getElementById('ed-bug-expected')?.value || '',
@@ -1527,6 +1532,46 @@ const RES_LABEL = { 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: '
 const RES_COLOR = { 'wont-fix': '#6b7280', duplicate: '#94a3b8', rejected: '#f87171', deferred: '#fb923c', fixed: '#34d399' };
 const PRIO_COLOR = { P1: '#ef4444', P2: '#f97316', P3: '#3b82f6', P4: '#94a3b8' };
 
+const TRIAGE_CLASS_KEYS = {
+    unclassified: 'triageUnclassified', functional: 'triageTypeFunctional',
+    regression: 'triageTypeRegression', performance: 'triageTypePerformance',
+    security: 'triageTypeSecurity', usability: 'triageTypeUsability',
+    data: 'triageTypeData', compatibility: 'triageTypeCompatibility'
+};
+
+function bugTriageDuration(ms) {
+    const hours = Math.max(1, Math.ceil(Math.abs(ms) / 3600000));
+    return hours >= 24 ? t('triageDaysShort', { count: Math.ceil(hours / 24) }) : t('triageHoursShort', { count: hours });
+}
+
+function bugTriageInfo(doc) {
+    const data = doc.bugData || {};
+    const classification = data.classification || 'unclassified';
+    const slaHours = Number(data.slaHours) || ({ Critical: 4, Major: 24, Minor: 72, Trivial: 168 }[data.severity] || 72);
+    const startedAt = Number(doc.createdAt) || Date.now();
+    const dueAt = startedAt + slaHours * 3600000;
+    const triagedAt = Number(data.triagedAt) || (data.resolution ? Number(doc.updatedAt) || null : null);
+    const duplicate = data.resolution === 'duplicate' && !!data.duplicateOf;
+    const clockAt = triagedAt || Date.now();
+    const outsideSla = clockAt > dueAt;
+    const remaining = dueAt - Date.now();
+    const soon = !triagedAt && !duplicate && remaining > 0 && remaining <= Math.min(4 * 3600000, slaHours * 3600000 * .25);
+    const stateName = duplicate ? 'duplicate'
+        : triagedAt ? (outsideSla ? 'missed' : 'done')
+        : remaining <= 0 ? 'breached'
+        : soon ? 'soon'
+        : 'pending';
+    const missing = [];
+    if (!triagedAt && !duplicate) {
+        if (classification === 'unclassified') missing.push(t('triageClassificationRequired'));
+        if (!String(data.assignee || '').trim()) missing.push(t('triageOwnerRequired'));
+    }
+    return {
+        classification, classificationLabel: t(TRIAGE_CLASS_KEYS[classification] || 'triageUnclassified'),
+        slaHours, dueAt, triagedAt, duplicate, outsideSla, remaining, stateName, missing
+    };
+}
+
 function renderBugKanban(docs, isMobileSearch) {
     const SEV_COLOR = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
     const showClosed = window._bugShowClosed !== false; // default show all
@@ -1572,6 +1617,9 @@ function renderBugKanban(docs, isMobileSearch) {
                     const reopenCount = d.bugData?.reopenCount || 0;
                     const priority = d.bugData?.priority || '';
                     const ref = bugRef(d);
+                    const triage = bugTriageInfo(d);
+                    const triageLabel = { pending: t('triageStatusPending'), soon: t('triageStatusSoon'), breached: t('triageStatusBreached'),
+                        done: t('triageStatusDone'), missed: t('triageStatusMissed'), duplicate: t('triageStatusDuplicate') }[triage.stateName];
                     return `
                     <div class="doc-card flex flex-col ${!bm ? 'cursor-grab active:cursor-grabbing' : ''}${bm && sel.has(d.id) ? ' batch-selected' : ''}"
                          draggable="${!bm}"
@@ -1591,6 +1639,7 @@ function renderBugKanban(docs, isMobileSearch) {
                                 ${priority ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${(PRIO_COLOR[priority] || '#94a3b8')}20; color:${PRIO_COLOR[priority] || '#94a3b8'};">${escHtml(priority)}</span>` : ''}
                                 ${resolution ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:${(RES_COLOR[resolution] || '#6b7280')}18; color:${RES_COLOR[resolution] || '#6b7280'};">${escHtml(RES_LABEL[resolution] || resolution)}</span>` : ''}
                                 ${reopenCount > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:#f8717118;color:#f87171;" title="Reopened ${reopenCount}x"><i class="fa-solid fa-rotate-left" style="font-size:8px;"></i> ${reopenCount}</span>` : ''}
+                                <span class="triage-mini is-${triage.stateName}">${triageLabel}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
@@ -1605,6 +1654,9 @@ function renderBugKanban(docs, isMobileSearch) {
                         <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
 
                         ${assignee ? `<p class="text-[10px] mb-1.5 flex items-center gap-1" style="color:var(--tx-d);"><i class="fa-solid fa-user" style="font-size:8px;"></i> ${escHtml(assignee)}</p>` : ''}
+                        <p class="bug-card-triage">
+                            <span>${escHtml(triage.classificationLabel)}</span><span>${triage.slaHours}h SLA</span>
+                        </p>
                         ${env || browser ? `<p class="text-[10px] mb-2 truncate" style="color:var(--tx-d);"><i class="fa-solid fa-bug mr-1"></i>${escHtml([env, browser].filter(Boolean).join(' · '))}</p>` : ''}
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">

@@ -194,6 +194,23 @@ const STRINGS = {
     severityMajor: "Major",
     severityMinor: "Minor",
     severityTrivial: "Trivial",
+    triageTitle: "Defect triage", triageEditorSub: "Classify the defect and set who must make the decision before the SLA expires.",
+    triageDecisionTarget: "Detection ? decision", triagePriority: "Priority", triageClassification: "Classification",
+    triageUnclassified: "Unclassified", triageTypeFunctional: "Functional", triageTypeRegression: "Regression",
+    triageTypePerformance: "Performance", triageTypeSecurity: "Security", triageTypeUsability: "Usability",
+    triageTypeData: "Data integrity", triageTypeCompatibility: "Compatibility",
+    triageSla: "Decision SLA", triageSlaHours: "{count} hours",
+    triageReadyRule: "The decision is recorded when classification and owner are set. A duplicate can be decided directly from the bug view.",
+    triageStatusPending: "Needs decision", triageStatusSoon: "SLA due soon", triageStatusBreached: "SLA breached",
+    triageStatusDone: "Decision made", triageStatusMissed: "Decision made late", triageStatusDuplicate: "Duplicate",
+    triageOwner: "Owner", triageDeadline: "SLA deadline", triageDecision: "Decision",
+    triageNoOwner: "Unassigned", triageEdit: "Edit triage", triageMarkDuplicate: "Mark duplicate",
+    triageDueIn: "{time} left", triageOverdueBy: "{time} overdue", triageDecidedAt: "Decided {time}",
+    triageMetSla: "Within SLA", triageMissedSla: "Outside SLA", triageHoursShort: "{count}h", triageDaysShort: "{count}d",
+    triageCardSub: "Move this defect from detection to an accountable decision.",
+    triageDecisionFix: "Investigate / fix", triageDecisionDuplicate: "Linked to original",
+    triageClassificationRequired: "Select a classification", triageOwnerRequired: "Assign an owner",
+
     imgUploading: "Uploading image to GitHub...",
     imgUploadSuccess: "Image uploaded to GitHub successfully!",
     imgUploadFail: "GitHub upload failed. Falling back to inline image.",
@@ -490,6 +507,23 @@ const STRINGS_VI = {
     severityMinor: "Thấp",
     severityTrivial: "Không đáng kể",
     imgUploading: "Đang tải ảnh lên GitHub...",
+    triageTitle: "Ph\u00e2n lo\u1ea1i defect", triageEditorSub: "Ph\u00e2n lo\u1ea1i l\u1ed7i v\u00e0 ch\u1ec9 \u0111\u1ecbnh ng\u01b0\u1eddi ph\u1ea3i ra quy\u1ebft \u0111\u1ecbnh tr\u01b0\u1edbc khi h\u1ebft SLA.",
+    triageDecisionTarget: "Ph\u00e1t hi\u1ec7n \u2192 quy\u1ebft \u0111\u1ecbnh", triagePriority: "\u01afu ti\u00ean", triageClassification: "Ph\u00e2n lo\u1ea1i",
+    triageUnclassified: "Ch\u01b0a ph\u00e2n lo\u1ea1i", triageTypeFunctional: "Ch\u1ee9c n\u0103ng", triageTypeRegression: "Regression",
+    triageTypePerformance: "Hi\u1ec7u n\u0103ng", triageTypeSecurity: "B\u1ea3o m\u1eadt", triageTypeUsability: "Kh\u1ea3 d\u1ee5ng",
+    triageTypeData: "To\u00e0n v\u1eb9n d\u1eef li\u1ec7u", triageTypeCompatibility: "T\u01b0\u01a1ng th\u00edch",
+    triageSla: "SLA quy\u1ebft \u0111\u1ecbnh", triageSlaHours: "{count} gi\u1edd",
+    triageReadyRule: "Quy\u1ebft \u0111\u1ecbnh \u0111\u01b0\u1ee3c ghi nh\u1eadn khi \u0111\u00e3 c\u00f3 ph\u00e2n lo\u1ea1i v\u00e0 owner. Duplicate c\u00f3 th\u1ec3 \u0111\u01b0\u1ee3c quy\u1ebft \u0111\u1ecbnh tr\u1ef1c ti\u1ebfp t\u1eeb m\u00e0n h\u00ecnh bug.",
+    triageStatusPending: "C\u1ea7n quy\u1ebft \u0111\u1ecbnh", triageStatusSoon: "S\u1eafp h\u1ebft SLA", triageStatusBreached: "Qu\u00e1 SLA",
+    triageStatusDone: "\u0110\u00e3 quy\u1ebft \u0111\u1ecbnh", triageStatusMissed: "Quy\u1ebft \u0111\u1ecbnh tr\u1ec5", triageStatusDuplicate: "Tr\u00f9ng l\u1eb7p",
+    triageOwner: "Owner", triageDeadline: "H\u1ea1n SLA", triageDecision: "Quy\u1ebft \u0111\u1ecbnh",
+    triageNoOwner: "Ch\u01b0a ph\u00e2n c\u00f4ng", triageEdit: "S\u1eeda triage", triageMarkDuplicate: "\u0110\u00e1nh d\u1ea5u tr\u00f9ng",
+    triageDueIn: "C\u00f2n {time}", triageOverdueBy: "Qu\u00e1 {time}", triageDecidedAt: "Quy\u1ebft \u0111\u1ecbnh {time}",
+    triageMetSla: "Trong SLA", triageMissedSla: "Ngo\u00e0i SLA", triageHoursShort: "{count}g", triageDaysShort: "{count}n",
+    triageCardSub: "\u0110\u01b0a defect t\u1eeb l\u00fac ph\u00e1t hi\u1ec7n t\u1edbi m\u1ed9t quy\u1ebft \u0111\u1ecbnh c\u00f3 ng\u01b0\u1eddi ch\u1ecbu tr\u00e1ch nhi\u1ec7m.",
+    triageDecisionFix: "\u0110i\u1ec1u tra / s\u1eeda", triageDecisionDuplicate: "\u0110\u00e3 li\u00ean k\u1ebft bug g\u1ed1c",
+    triageClassificationRequired: "Ch\u1ecdn ph\u00e2n lo\u1ea1i", triageOwnerRequired: "Ch\u1ec9 \u0111\u1ecbnh owner",
+
     imgUploadSuccess: "Tải ảnh lên GitHub thành công!",
     imgUploadFail: "Tải lên GitHub thất bại. Chuyển sang chế độ nhúng ảnh trực tiếp.",
     imgFallbackSize: "Chế độ dự phòng: Ảnh nên dưới 800KB để phù hợp với database.",
@@ -1039,6 +1073,7 @@ const GUEST_DEMO_DOCS = (() => {
     const bugContent = (title, b) => `# ${title}\n\n## Environment\n- **Environment:** ${b.env || '-'}\n- **Device/Browser:** ${b.browser || '-'}\n- **Severity:** ${b.severity}\n\n${b.precond ? `## Pre-conditions\n${b.precond}\n\n` : ''}## Steps to Reproduce\n${b.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n## Expected Behavior\n${b.expected || '-'}\n\n## Actual Behavior\n${b.actual || '-'}`;
 
     const bug1Data = { env: 'Staging', browser: 'Chrome 120', severity: 'Critical', priority: 'P1', assignee: 'Minh T.',
+        classification: 'unclassified', slaHours: 4, triagedAt: null,
         precond: 'Giỏ hàng có 2+ sản phẩm', steps: ['Thêm 2 sản phẩm vào giỏ', 'Vào trang Checkout', 'Nhấn F5 để refresh'],
         expected: 'Giỏ hàng giữ nguyên sản phẩm', actual: 'Giỏ hàng trống, phải thêm lại từ đầu',
         resolution: '', duplicateOf: '', reopenCount: 0 };
@@ -1050,6 +1085,7 @@ const GUEST_DEMO_DOCS = (() => {
         createdAt: days(6), updatedAt: days(1)
     };
     const bug2Data = { env: 'Staging · build #482', browser: 'Chrome 120', severity: 'Major', priority: 'P2', assignee: 'Lan N.',
+        classification: 'functional', slaHours: 24, triagedAt: now - 22 * 3600000,
         precond: 'Đang ở bước thanh toán', steps: ['Thêm sản phẩm vào giỏ, vào trang Checkout', 'Nhập thông tin thẻ hợp lệ, click "Pay Now"', 'Thử thanh toán với thẻ bị từ chối (4000 0000 0000 0002)'],
         expected: 'Hiển thị "Payment declined", order status = Pending, cho phép retry',
         actual: 'Server trả về HTTP 500, không có thông báo cho user, order kẹt ở trạng thái Processing',
@@ -1064,6 +1100,7 @@ const GUEST_DEMO_DOCS = (() => {
         createdAt: days(1), updatedAt: days(1)
     };
     const bug3Data = { env: 'Staging', browser: 'Safari 17', severity: 'Minor', priority: 'P3', assignee: 'Minh T.',
+        classification: 'performance', slaHours: 72, triagedAt: days(24),
         precond: '', steps: ['Vào trang Catalog', 'Gõ nhanh 5-6 ký tự liên tiếp vào ô search'],
         expected: 'Chỉ gọi API 1 lần sau khi ngừng gõ 300ms', actual: 'Gọi API mỗi lần gõ 1 ký tự',
         resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
@@ -1205,6 +1242,7 @@ const GUEST_DEMO_DOCS = (() => {
     // Exercises the Focus page's "Ready for retest" group, which no bug in the
     // sample data reached otherwise.
     const bug6Data = { env: 'Staging · build #483', browser: 'Chrome 121', severity: 'Major', priority: 'P2', assignee: 'Lan N.',
+        classification: 'functional', slaHours: 24, triagedAt: days(5) + 2 * 3600000,
         precond: 'Đã deploy fix lên Staging build #483', steps: ['Vào trang Catalog', 'Áp dụng filter Giá + Size cùng lúc', 'Kiểm tra kết quả trả về'],
         expected: 'Kết quả lọc đúng theo cả 2 điều kiện', actual: '(Fix đã deploy — chờ QA verify lại trên Staging)',
         resolution: '', duplicateOf: '', reopenCount: 0 };

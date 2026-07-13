@@ -708,15 +708,16 @@ window.revokeShare = async function(shareId) {
 window.exportBugsCsv = function() {
     const bugs = documents.filter(d => d.category === 'bug' && d.status !== 'deleted');
     if (!bugs.length) { toast('No bugs to export.', 'info'); return; }
-    const header = ['ID', 'Title', 'Severity', 'Priority', 'Status', 'Assignee', 'Environment', 'Browser', 'Created', 'Updated'];
+    const header = ['ID', 'Title', 'Severity', 'Priority', 'Status', 'Classification', 'Assignee', 'Decision SLA (h)', 'Triaged', 'Duplicate Of', 'Environment', 'Browser', 'Created', 'Updated'];
     const norm = (typeof _normBugStatus === 'function') ? _normBugStatus : (s => s || 'new');
     const iso = ts => ts ? new Date(ts).toISOString().slice(0, 10) : '';
     const rows = [header];
     bugs.sort((a, b) => (a.bugNumber || 0) - (b.bugNumber || 0)).forEach(b => {
         rows.push([
             bugRef(b), b.title || '', b.bugData?.severity || '', b.bugData?.priority || '',
-            norm(b.bugStatus), b.bugData?.assignee || '', b.bugData?.env || '', b.bugData?.browser || '',
-            iso(b.createdAt), iso(b.updatedAt)
+            norm(b.bugStatus), b.bugData?.classification || 'unclassified', b.bugData?.assignee || '',
+            b.bugData?.slaHours || '', iso(b.bugData?.triagedAt), b.bugData?.duplicateOf || '',
+            b.bugData?.env || '', b.bugData?.browser || '', iso(b.createdAt), iso(b.updatedAt)
         ]);
     });
     downloadFile(`docvault-bugs-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows), 'text/csv;charset=utf-8');
@@ -2001,6 +2002,7 @@ window.resolveBug = async function(id, resolution) {
     recordBugStatusChange(doc, 'closed');
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.resolution = resolution;
+    doc.bugData.triagedAt = doc.bugData.triagedAt || Date.now();
     await persist();
     renderContent();
     const label = { 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: 'Rejected', deferred: 'Deferred' }[resolution] || resolution;
@@ -2065,6 +2067,7 @@ window._selectDuplicateOfBug = async function(originalBugId) {
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.resolution = 'duplicate';
     doc.bugData.duplicateOf = originalBugId;
+    doc.bugData.triagedAt = doc.bugData.triagedAt || Date.now();
     await persist();
     renderContent();
     toast('Marked as Duplicate', 'info');
@@ -2300,14 +2303,20 @@ async function saveDoc() {
         const steps = Array.from(stepInputs).map(inp => inp.value.trim()).filter(v => v);
         const assignee = document.getElementById('ed-bug-assignee')?.value || '';
         const priority = document.getElementById('ed-bug-priority')?.value || 'P3';
+        const classification = document.getElementById('ed-bug-classification')?.value || 'unclassified';
+        const slaHours = Number(document.getElementById('ed-bug-sla')?.value) || ({ Critical: 4, Major: 24, Minor: 72, Trivial: 168 }[severity] || 72);
         const linkedTc = document.getElementById('ed-bug-linked-tc')?.value || '';
         const expected = document.getElementById('ed-bug-expected')?.value || '';
         const actual = document.getElementById('ed-bug-actual')?.value || '';
         // For a new bug prefilled from a failed test step (B1), the link fields live
         // on state._newBugData; for an edit they live on the existing doc.
         const existing = state.editingDoc?.bugData || state._newBugData || {};
+        const triagedAt = existing.resolution
+            ? (existing.triagedAt || Date.now())
+            : (classification !== 'unclassified' && assignee.trim()
+                ? (existing.triagedAt || Date.now()) : null);
 
-        bugData = { env, browser, severity, priority, assignee, precond, steps, expected, actual, linkedTc,
+        bugData = { env, browser, severity, priority, assignee, classification, slaHours, triagedAt, precond, steps, expected, actual, linkedTc,
             resolution: existing.resolution || '',
             duplicateOf: existing.duplicateOf || '',
             reopenCount: existing.reopenCount || 0,

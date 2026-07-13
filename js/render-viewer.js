@@ -1,6 +1,50 @@
 // ========================
 // RENDER VIEWER
 // ========================
+function renderBugTriage(doc) {
+    const info = bugTriageInfo(doc);
+    const data = doc.bugData || {};
+    const statusLabel = {
+        pending: t('triageStatusPending'), soon: t('triageStatusSoon'), breached: t('triageStatusBreached'),
+        done: t('triageStatusDone'), missed: t('triageStatusMissed'), duplicate: t('triageStatusDuplicate')
+    }[info.stateName];
+    const slaDetail = info.triagedAt
+        ? `${t('triageDecidedAt', { time: fmtDate(info.triagedAt) })} &middot; ${info.outsideSla ? t('triageMissedSla') : t('triageMetSla')}`
+        : info.remaining <= 0
+            ? t('triageOverdueBy', { time: bugTriageDuration(info.remaining) })
+            : t('triageDueIn', { time: bugTriageDuration(info.remaining) });
+    const original = info.duplicate
+        ? documents.find(candidate => candidate.id === data.duplicateOf && candidate.status !== 'deleted')
+        : null;
+    const decision = info.duplicate ? t('triageDecisionDuplicate')
+        : info.triagedAt ? t('triageDecisionFix')
+        : statusLabel;
+
+    return `<section class="bug-triage-card is-${info.stateName}">
+        <div class="bug-triage-head">
+            <div><h3>${t('triageTitle')}</h3><p>${t('triageCardSub')}</p></div>
+            <span class="bug-triage-status is-${info.stateName}">${statusLabel}</span>
+        </div>
+        <div class="bug-triage-grid">
+            <div><span>${t('triageClassification')}</span><b>${escHtml(info.classificationLabel)}</b></div>
+            <div><span>${t('triageOwner')}</span><b>${escHtml(data.assignee || t('triageNoOwner'))}</b></div>
+            <div><span>${t('triageDeadline')}</span><b>${info.slaHours}h &middot; ${slaDetail}</b></div>
+            <div><span>${t('triageDecision')}</span><b>${decision}</b></div>
+        </div>
+        ${info.missing.length && !info.duplicate ? `<div class="bug-triage-missing">${info.missing.map(item => `<span><i class="fa-solid fa-circle-exclamation"></i>${item}</span>`).join('')}</div>` : ''}
+        ${info.duplicate ? `<div class="bug-triage-original">
+            <i class="fa-solid fa-copy"></i>
+            ${original && !state.sharedView
+                ? `<button data-onclick="viewDoc('${original.id}')">${bugRef(original)} &middot; ${escHtml(original.title)}</button>`
+                : `<span>${original ? `${bugRef(original)} &middot; ${escHtml(original.title)}` : t('triageDecisionDuplicate')}</span>`}
+        </div>` : ''}
+        ${state.sharedView ? '' : `<div class="bug-triage-actions">
+            <button class="btn-s text-xs" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-user-check"></i>${t('triageEdit')}</button>
+            ${info.duplicate ? '' : `<button class="btn-s text-xs" data-onclick="promptDuplicateBug('${doc.id}')"><i class="fa-solid fa-copy"></i>${t('triageMarkDuplicate')}</button>`}
+        </div>`}
+    </section>`;
+}
+
 function renderViewer() {
     const doc = documents.find(d => d.id === state.editingDoc?.id);
     if (!doc) return `<div class="text-center py-20" style="color:var(--tx-d);">Document not found.</div>`;
@@ -82,6 +126,8 @@ function renderViewer() {
             })()}
         </div>`;
         })() : ''}
+
+        ${doc.category === 'bug' ? renderBugTriage(doc) : ''}
 
         ${doc.category === 'credential' ? `
         <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
