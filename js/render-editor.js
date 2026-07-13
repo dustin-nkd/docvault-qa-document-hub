@@ -15,6 +15,7 @@ function renderEditor() {
     const runData = isEdit ? doc.runData : state._newRunData;
     const envData = isEdit ? doc.envData : state._newEnvData;
     const releaseData = isEdit ? doc.releaseData : state._newReleaseData;
+    const releasePolicy = normalizeReleasePolicy(releaseData?.readinessPolicy);
     const tcPlanData = isEdit ? doc.tcPlanData : state._newTcPlanData;
 
     const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
@@ -441,6 +442,51 @@ function renderEditor() {
                         </div>
                         <input type="hidden" id="ed-rel-date" value="${escHtml(releaseData?.releaseDate || '')}">
                         <div class="dp-panel hidden" id="dp-panel"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="release-policy-card mb-4">
+                <div class="release-policy-head">
+                    <div>
+                        <strong>Release readiness policy</strong>
+                        <p>Define the evidence required before this release can move forward.</p>
+                    </div>
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="release-policy-grid">
+                    <label class="release-policy-rate">
+                        <span>Minimum pass rate</span>
+                        <span class="release-rate-input"><input type="number" id="ed-rel-min-pass" min="0" max="100" value="${releasePolicy.minPassRate}"><b>%</b></span>
+                    </label>
+                    <label class="release-policy-toggle">
+                        <input type="checkbox" id="ed-rel-block-critical" ${releasePolicy.blockCritical ? 'checked' : ''}>
+                        <span><b>Block Critical defects</b><small>Open Critical bugs prevent release.</small></span>
+                    </label>
+                    <label class="release-policy-toggle">
+                        <input type="checkbox" id="ed-rel-block-major" ${releasePolicy.blockMajor ? 'checked' : ''}>
+                        <span><b>Block Major defects</b><small>Open Major bugs also prevent release.</small></span>
+                    </label>
+                    <label class="release-policy-toggle">
+                        <input type="checkbox" id="ed-rel-complete-execution" ${releasePolicy.requireCompleteExecution ? 'checked' : ''}>
+                        <span><b>Require complete execution</b><small>Every linked run step needs a result.</small></span>
+                    </label>
+                    <label class="release-policy-toggle">
+                        <input type="checkbox" id="ed-rel-healthy-env" ${releasePolicy.requireHealthyEnvironments ? 'checked' : ''}>
+                        <span><b>Require healthy environments</b><small>At least one linked environment; all healthy.</small></span>
+                    </label>
+                </div>
+                <div class="release-decision-editor">
+                    <div>
+                        <label>Decision override</label>
+                        ${renderSelect('ed-rel-decision', [
+                            { value: 'auto', label: 'Automatic \u00b7 follow policy' },
+                            { value: 'go-with-risk', label: 'GO WITH RISK \u00b7 accepted exception' },
+                            { value: 'no-go', label: 'NO-GO \u00b7 manual hold' }
+                        ], releaseData?.manualDecision || 'auto', 'w-full text-sm')}
+                    </div>
+                    <div>
+                        <label>Reason <span>(required for override)</span></label>
+                        <textarea id="ed-rel-decision-reason" class="form-input" rows="2" maxlength="500" placeholder="State the accepted risk or reason for holding the release...">${escHtml(releaseData?.decisionReason || '')}</textarea>
                     </div>
                 </div>
             </div>

@@ -1829,6 +1829,7 @@ function createDoc(cat) {
     state._newApiData = null;
     state._newRunData = null;
     state._newTcPlanData = null;
+    state._newReleaseData = null;
     state._newContent = cat && TEMPLATES[cat] ? TEMPLATES[cat] : '# New Document\n\nStart writing here...';
     render();
     state._editorSnapshot = _captureEditorFormState();
@@ -2310,7 +2311,32 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         const linkedRuns = Array.from(document.querySelectorAll('.ed-rel-run:checked')).map(cb => cb.value);
         const linkedBugs = Array.from(document.querySelectorAll('.ed-rel-bug:checked')).map(cb => cb.value);
         const linkedEnvs = Array.from(document.querySelectorAll('.ed-rel-env:checked')).map(cb => cb.value);
-        releaseData = { version, releaseDate, status: relStatus, linkedRuns, linkedBugs, linkedEnvs };
+        const readinessPolicy = normalizeReleasePolicy({
+            minPassRate: document.getElementById('ed-rel-min-pass')?.value,
+            blockCritical: document.getElementById('ed-rel-block-critical')?.checked,
+            blockMajor: document.getElementById('ed-rel-block-major')?.checked,
+            requireCompleteExecution: document.getElementById('ed-rel-complete-execution')?.checked,
+            requireHealthyEnvironments: document.getElementById('ed-rel-healthy-env')?.checked
+        });
+        const manualDecision = document.getElementById('ed-rel-decision')?.value || 'auto';
+        const decisionReason = (document.getElementById('ed-rel-decision-reason')?.value || '').trim().slice(0, 500);
+        if (manualDecision !== 'auto' && !decisionReason) {
+            toast('Add a reason before overriding the automatic release decision.', 'warning');
+            document.getElementById('ed-rel-decision-reason')?.focus();
+            return;
+        }
+        const savedDecisionReason = manualDecision === 'auto' ? '' : decisionReason;
+        const previousData = state.editingDoc?.releaseData || {};
+        const decisionLog = Array.isArray(previousData.decisionLog) ? previousData.decisionLog.slice(0, 49) : [];
+        const decisionChanged = manualDecision !== (previousData.manualDecision || 'auto')
+            || savedDecisionReason !== (previousData.decisionReason || '');
+        if (decisionChanged) {
+            decisionLog.unshift({
+                id: uid(), decision: manualDecision,
+                reason: savedDecisionReason || 'Returned to automatic policy', ts: Date.now()
+            });
+        }
+        releaseData = { version, releaseDate, status: relStatus, linkedRuns, linkedBugs, linkedEnvs, readinessPolicy, manualDecision, decisionReason: savedDecisionReason, decisionLog };
     } else if (cat === 'environment') {
         const envStatus = document.getElementById('ed-env-status')?.value || 'healthy';
         const propRows = document.querySelectorAll('.env-prop-row');
