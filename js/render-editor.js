@@ -263,6 +263,28 @@ function renderEditor() {
             </div>
 
             <div class="p-5">
+                <div class="api-impact-editor mb-6">
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiModule')}</label>
+                            <input id="ed-api-module" class="form-input w-full" placeholder="${t('apiModulePlaceholder')}" value="${escHtml(apiData?.module || '')}">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiChangeImpact')}</label>
+                            ${renderSelect('ed-api-impact', [
+                                {value: 'none', label: t('apiImpactNone')},
+                                {value: 'low', label: t('apiImpactLow')},
+                                {value: 'medium', label: t('apiImpactMedium')},
+                                {value: 'high', label: t('apiImpactHigh')}
+                            ], apiData?.changeImpact || 'none', 'w-full')}
+                        </div>
+                    </div>
+                    <label class="api-impact-check mt-3">
+                        <input id="ed-api-mark-changed" type="checkbox" class="form-checkbox">
+                        <span>${t('apiMarkChanged')}</span>
+                    </label>
+                    <p class="api-impact-hint">${t('apiImpactHint')}</p>
+                </div>
                 <!-- REQUEST section -->
                 <div class="flex items-center gap-3 mb-4">
                     <span class="text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Request</span>

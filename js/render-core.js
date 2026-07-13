@@ -143,9 +143,14 @@ window.syncEditorState = function() {
             }))
         };
     } else if (cat === 'api') {
+        const previousApi = state.editingDoc?.apiData || state._newApiData || {};
         apiData = {
             method: document.getElementById('ed-api-method')?.value || 'GET',
             endpoint: document.getElementById('ed-api-endpoint')?.value || '',
+            module: document.getElementById('ed-api-module')?.value || '',
+            changeImpact: document.getElementById('ed-api-impact')?.value || 'none',
+            changedAt: previousApi.changedAt || null,
+            changeFingerprint: previousApi.changeFingerprint || '',
             headers: Array.from(document.querySelectorAll('.api-header-row')).map(row => ({
                 key: row.querySelector('.api-key')?.value || '',
                 value: row.querySelector('.api-value')?.value || '',
@@ -757,6 +762,108 @@ function _traceRunOutcome(run, tcId) {
     if (values.length > 0 && values.every(value => value === 'pass')) return 'pass';
     return 'untested';
 }
+function _normImpactModule(value) {
+    return String(value || '').trim().toLocaleLowerCase();
+}
+
+function _isRegressionRun(run) {
+    const haystack = `${run.title || ''} ${(run.tags || []).join(' ')}`.toLocaleLowerCase();
+    return haystack.includes('regression');
+}
+
+function _buildApiImpacts(apis, testCases, runs) {
+    const stateRank = { missing: 0, due: 1, risk: 2, covered: 3 };
+    const priorityRank = { P0: 0, P1: 1, P2: 2 };
+
+    return apis.filter(api =>
+        ['low', 'medium', 'high'].includes(api.apiData?.changeImpact) &&
+        Number(api.apiData?.changedAt) > 0
+    ).map(api => {
+        const moduleKey = _normImpactModule(api.apiData?.module);
+        const matchedTests = moduleKey
+            ? testCases.filter(tc => _normImpactModule(tc.tcData?.module) === moduleKey)
+            : [];
+        const executions = matchedTests.map(tc => {
+            const run = runs.find(candidate =>
+                _isRegressionRun(candidate) &&
+                (candidate.runData?.targetIds || []).includes(tc.id) &&
+                Math.max(candidate.createdAt || 0, candidate.updatedAt || 0) >= api.apiData.changedAt
+            ) || null;
+            return { tc, run, outcome: _traceRunOutcome(run, tc.id) };
+        });
+        const notRun = executions.filter(item => !item.run);
+        const risky = executions.filter(item => item.run && item.outcome !== 'pass');
+        const stateName = matchedTests.length === 0 ? 'missing'
+            : notRun.length > 0 ? 'due'
+            : risky.length > 0 ? 'risk'
+            : 'covered';
+        const impact = api.apiData.changeImpact;
+        const priority = stateName === 'covered' ? 'P2'
+            : impact === 'high' ? 'P0'
+            : impact === 'medium' ? 'P1'
+            : 'P2';
+        return { api, matchedTests, executions, notRun, risky, stateName, impact, priority };
+    }).sort((a, b) =>
+        stateRank[a.stateName] - stateRank[b.stateName] ||
+        priorityRank[a.priority] - priorityRank[b.priority] ||
+        b.api.apiData.changedAt - a.api.apiData.changedAt
+    );
+}
+
+function _renderImpactPanel(items, docButton) {
+    const summary = {
+        missing: items.filter(item => item.stateName === 'missing').length,
+        due: items.filter(item => item.stateName === 'due').length,
+        risk: items.filter(item => item.stateName === 'risk').length,
+        covered: items.filter(item => item.stateName === 'covered').length
+    };
+    const statusLabels = {
+        missing: t('impactStatusMissing'), due: t('impactStatusDue'),
+        risk: t('impactStatusRisk'), covered: t('impactStatusCovered')
+    };
+    const actions = {
+        missing: t('impactMissingTestsAction'), due: t('impactRegressionAction'),
+        risk: t('impactRiskAction'), covered: t('impactCoveredAction')
+    };
+
+    return `<section class="impact-section">
+        <div class="impact-head">
+            <div><h3>${t('impactTitle')}</h3><p>${t('impactSub')}</p></div>
+            <span class="impact-total"><b>${items.length}</b>${t('impactTracked')}</span>
+        </div>
+        <div class="impact-summary" aria-label="${t('impactTitle')} summary">
+            <span class="is-missing"><b>${summary.missing}</b>${t('impactMissingTests')}</span>
+            <span class="is-due"><b>${summary.due}</b>${t('impactRegressionDue')}</span>
+            <span class="is-risk"><b>${summary.risk}</b>${t('impactRisk')}</span>
+            <span class="is-covered"><b>${summary.covered}</b>${t('impactCovered')}</span>
+        </div>
+        ${items.length ? `<div class="impact-list">${items.map(item => {
+            const api = item.api;
+            const tests = item.stateName === 'due' ? item.notRun.map(entry => entry.tc)
+                : item.stateName === 'risk' ? item.risky.map(entry => entry.tc)
+                : item.matchedTests;
+            const impactKey = `apiImpact${item.impact[0].toUpperCase()}${item.impact.slice(1)}`;
+            return `<article class="impact-row is-${item.stateName}">
+                <div class="impact-priority">${item.priority}</div>
+                <div class="impact-api">
+                    <div class="impact-api-title"><span class="impact-method">${escHtml(api.apiData?.method || 'API')}</span>${docButton(api)}</div>
+                    <div class="impact-meta">
+                        <span><b>${t('impactModule')}:</b> ${escHtml(api.apiData?.module || t('impactNoModule'))}</span>
+                        <span><b>${t('impactChanged')}:</b> ${fmtDate(api.apiData.changedAt)}</span>
+                        <span class="impact-level is-${item.impact}">${t(impactKey)}</span>
+                    </div>
+                </div>
+                <div class="impact-evidence">
+                    <span class="impact-state is-${item.stateName}">${statusLabels[item.stateName]}</span>
+                    <p>${actions[item.stateName]}</p>
+                    <div class="impact-tests"><b>${t('impactTests')}:</b>${tests.length
+                        ? tests.map(tc => docButton(tc)).join('')
+                        : `<span>${t('impactNoTests')}</span>`}</div>
+                </div>
+            </article>`;
+        }).join('')}</div>` : `<div class="impact-empty"><i class="fa-regular fa-circle-check"></i><span>${t('impactEmpty')}</span></div>`}
+    </section>`;
+}
 
 function renderTraceability() {
     const activeDocs = documents.filter(doc => doc.status !== 'deleted');
@@ -766,6 +873,8 @@ function renderTraceability() {
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     const bugs = activeDocs.filter(doc => doc.category === 'bug');
     const releases = activeDocs.filter(doc => doc.category === 'release');
+    const apis = activeDocs.filter(doc => doc.category === 'api');
+    const trackedImpacts = _buildApiImpacts(apis, testCases, runs);
 
     const rows = testCases.map(tc => {
         const latestRun = runs.find(run => (run.runData?.targetIds || []).includes(tc.id)) || null;
@@ -808,6 +917,7 @@ function renderTraceability() {
         ? `<button class="trace-link ${cls}" data-onclick="viewDoc('${doc.id}')" title="${escHtml(doc.title)}">${escHtml(doc.title)}</button>`
         : '';
     const outcomeClass = { pass: 'is-pass', fail: 'is-fail', blocked: 'is-blocked', untested: 'is-untested', missing: 'is-missing' };
+    const impactPanel = _renderImpactPanel(trackedImpacts, docButton);
 
     return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto traceability-page">
         <section class="traceability-hero">
@@ -821,6 +931,7 @@ function renderTraceability() {
                 <span class="trace-summary-item is-missing"><b>${summary.missing}</b>${t('traceMissingShort')}</span>
             </div>
         </section>
+        ${impactPanel}
         <div class="trace-filter-bar">${filterButtons}</div>
         <div class="trace-table-wrap">
             <table class="trace-table">
