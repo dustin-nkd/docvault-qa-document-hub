@@ -553,6 +553,11 @@
 .insight-empty { color: var(--tx-d); font-size: 10px; padding-top: 8px; }
 .dashboard-trends { margin-top: 30px; }
 .dashboard-trends .doc-card:hover { background: var(--card); border-color: var(--brd); box-shadow: none; transform: none; }
+.trend-card {
+    contain: layout paint style;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 205px;
+}
 .trend-card-head {
     align-items: center;
     display: flex;

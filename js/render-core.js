@@ -562,11 +562,29 @@ function _renderAttentionPanel(m) {
 // ========================
 // DASHBOARD
 // ========================
+const DASHBOARD_CACHE_TTL_MS = 60000;
+let _dashboardRenderCache = { key: '', html: '' };
+
+function _dashboardCacheKey(docs, now = Date.now()) {
+    let latestRevision = 0;
+    docs.forEach(doc => {
+        latestRevision = Math.max(
+            latestRevision,
+            Number(doc.updatedAt) || 0,
+            Number(doc.createdAt) || 0
+        );
+    });
+    const range = state.trendsRange != null ? state.trendsRange : 90;
+    return [docs.length, latestRevision, range, Math.floor(now / DASHBOARD_CACHE_TTL_MS)].join(':');
+}
+
 function renderDashboard() {
     const activeDocs = documents.filter(d => d.status !== 'deleted');
-    const m = _getDashboardMetrics(activeDocs);
+    const cacheKey = _dashboardCacheKey(activeDocs);
+    if (_dashboardRenderCache.key === cacheKey) return _dashboardRenderCache.html;
 
-    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
+    const m = _getDashboardMetrics(activeDocs);
+    const html = `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
         <section class="dashboard-hero">
             <div>
                 <p class="dashboard-eyebrow">${t('dbEyebrow')}</p>
@@ -578,6 +596,8 @@ function renderDashboard() {
         ${_renderInsightCards(m)}
         ${_renderTrends(activeDocs, m)}
     </div>`;
+    _dashboardRenderCache = { key: cacheKey, html };
+    return html;
 }
 
 // ========================
@@ -1086,7 +1106,7 @@ function _trendBars(vals, color, { yFmt, xLabels } = {}) {
 }
 
 function _trendCard(title, caption, chartOrEmpty, badge = '') {
-    return `<div class="doc-card p-4" style="cursor:default;">
+    return `<div class="doc-card trend-card p-4" style="cursor:default;">
         <div class="trend-card-head">
             <p class="text-[10px] font-bold uppercase tracking-wider" style="color:var(--tx-d);">${title}</p>
             ${badge ? `<span class="trend-estimate">${badge}</span>` : ''}
