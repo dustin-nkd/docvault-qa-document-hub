@@ -361,7 +361,7 @@ function executeAction(code, event, element) {
                     if (s === 'event') return event;
                     if (s === 'null') return null;
                     if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
-                        return s.slice(1, -1).replace(/\\(['"])/g, '$1');
+                        return decodeActionArgument(s);
                     }
                     if (!isNaN(s)) return Number(s);
                     return s;

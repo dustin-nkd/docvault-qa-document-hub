@@ -114,6 +114,42 @@ function escHtml(s) {
         .replace(/'/g, '&#39;');
 }
 
+// Builds delegated action attributes without mixing untrusted values into
+// executable-looking strings. Arguments are JSON literals, then the complete
+// action is HTML-escaped before it enters a data-* attribute.
+function actionCode(name, ...args) {
+    const functionName = String(name || '');
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(functionName)) {
+        throw new Error('Invalid delegated action name: ' + functionName);
+    }
+    const serialized = args.map(value => value === undefined ? 'null' : JSON.stringify(value));
+    return functionName + '(' + serialized.join(',') + ')';
+}
+
+function actionAttr(name, ...args) {
+    return escHtml(actionCode(name, ...args));
+}
+
+function decodeActionArgument(serialized) {
+    const value = String(serialized || '').trim();
+    if (value.startsWith('"') && value.endsWith('"')) {
+        try { return JSON.parse(value); } catch (e) { return value.slice(1, -1); }
+    }
+    if (value.startsWith("'") && value.endsWith("'")) {
+        return value.slice(1, -1).replace(/\\(['"\\])/g, '$1');
+    }
+    return value;
+}
+
+function renderActionButton({ className = '', action, args = [], label = '', icon = '', title = '' }) {
+    const titleAttr = title ? ' title="' + escHtml(title) + '"' : '';
+    const content = icon
+        ? '<i class="' + escHtml(icon) + '"></i><span>' + escHtml(label) + '</span>'
+        : escHtml(label);
+    return '<button type="button" class="' + escHtml(className) + '" data-onclick="' +
+        actionAttr(action, ...args) + '"' + titleAttr + '>' + content + '</button>';
+}
+
 // Escapes a value for use inside a GitHub-flavored Markdown table cell: pipes
 // would otherwise start a new column, and raw newlines would break the row.
 function mdCell(v) {
