@@ -1745,7 +1745,7 @@ function _captureEditorFormState() {
         parts.push(el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value);
     });
     parts.push('tags:' + (state.editorTags || []).join(','));
-    parts.push('content:' + (window.tuiEditor ? window.tuiEditor.getMarkdown() : ''));
+    parts.push('content:' + getEditorMarkdown());
     return parts.join('|');
 }
 
@@ -2045,7 +2045,7 @@ window.generateReleaseNotes = function() {
     // blank (it starts from the "# New Document..." placeholder), so checking
     // this first would show "Replace existing notes?" even when nothing has
     // been linked yet to generate from.
-    const currentMd = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    const currentMd = getEditorMarkdown();
     if (currentMd.trim()) {
         showModal(`
             <div class="text-center">
@@ -2106,7 +2106,7 @@ window._doGenerateReleaseNotes = function() {
         envs.forEach(e => { md += `- ${escHtml(e.title)}${e.envData?.status ? ` — ${escHtml(e.envData.status)}` : ''}\n`; });
     }
 
-    if (window.tuiEditor) window.tuiEditor.setMarkdown(md);
+    setEditorMarkdown(md);
     toast('Release notes generated — review before saving.', 'success');
 };
 
@@ -2125,7 +2125,7 @@ async function saveDoc() {
     const cat = document.getElementById('ed-cat')?.value;
     const status = document.getElementById('ed-status')?.value;
 
-    let content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    let content = getEditorMarkdown();
     let finalContent = content;
     let bugData = null;
     let tcData = null;

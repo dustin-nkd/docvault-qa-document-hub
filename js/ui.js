@@ -133,7 +133,7 @@ function setButtonBusy(button, busy, busyLabel = 'Working...') {
 // ========================
 // INTERACTION ACCESSIBILITY
 // ========================
-function enhanceInteractionSemantics(root = document) {
+function enhanceInteractionSemantics(root = document, syncLayout = true) {
     const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
     const actions = [];
     if (scope instanceof Element && scope.matches('[data-onclick]')) actions.push(scope);
@@ -158,7 +158,7 @@ function enhanceInteractionSemantics(root = document) {
         if (item.classList.contains('active')) item.setAttribute('aria-current', 'page');
         else item.removeAttribute('aria-current');
     });
-    syncSidebarAccessibility();
+    if (syncLayout) syncSidebarAccessibility();
 }
 
 function syncSidebarAccessibility() {

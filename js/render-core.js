@@ -112,7 +112,7 @@ window.syncEditorState = function() {
     const cat = document.getElementById('ed-cat')?.value || 'runbook';
     const subfolder = document.getElementById('ed-subfolder')?.value || '';
     const status = document.getElementById('ed-status')?.value || 'draft';
-    const content = window.tuiEditor ? window.tuiEditor.getMarkdown() : '';
+    const content = getEditorMarkdown();
 
     let bugData = null;
     let tcData = null;
@@ -224,6 +224,80 @@ function updateDOM(el, htmlStr) {
 // assign explicitly or data-oninput="debouncedRenderContent()" would no-op.
 window.debouncedRenderContent = debounce(() => renderContent(), 180);
 
+function _setMarkdownRuntimeLoading(container) {
+    container.setAttribute('aria-busy', 'true');
+    container.innerHTML = '<div class="ui-state ui-state-compact" role="status"><span class="ui-state-icon"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span><h3>Loading markdown</h3><p>Preparing the content workspace...</p></div>';
+}
+
+function _showMarkdownRuntimeError(container, error) {
+    console.error('[DocVault] Markdown runtime failed to load', error);
+    container.removeAttribute('aria-busy');
+    container.innerHTML = '<div class="ui-state ui-state-error ui-state-compact" role="alert"><span class="ui-state-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span><h3>Editor unavailable</h3><p>The markdown runtime could not be loaded.</p><button class="btn-s text-xs mt-3" data-onclick="retryMarkdownRuntime()">Retry</button></div>';
+}
+
+function _enhanceViewerCodeBlocks(container) {
+    container.querySelectorAll('pre code').forEach(codeEl => {
+        const pre = codeEl.parentElement;
+        if (pre.querySelector('.code-copy-btn')) return;
+        const b64 = btoa(unescape(encodeURIComponent(codeEl.textContent)));
+        const btn = document.createElement('button');
+        btn.className = 'code-copy-btn';
+        btn.title = 'Copy';
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'Copy code');
+        btn.setAttribute('data-onclick', `copyCodeBlock(this, '${b64}')`);
+        btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+        pre.style.position = 'relative';
+        pre.insertBefore(btn, pre.firstChild);
+    });
+}
+
+function _initializeMarkdownEditor(container, initialValue) {
+    _setMarkdownRuntimeLoading(container);
+    ensureToastUI().then(runtime => {
+        if (state.view !== 'editor' || document.getElementById('editor-container') !== container) return;
+        window.tuiEditor = new runtime.Editor({
+            el: container,
+            height: 'calc(100vh - 300px)',
+            initialEditType: 'markdown',
+            previewStyle: 'vertical',
+            initialValue,
+            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined,
+            hooks: { addImageBlobHook: uploadImageToCloud }
+        });
+        container.removeAttribute('aria-busy');
+    }).catch(error => {
+        if (state.view === 'editor' && document.getElementById('editor-container') === container) {
+            _showMarkdownRuntimeError(container, error);
+        }
+    });
+}
+
+function _initializeMarkdownViewer(container, initialValue, docId) {
+    _setMarkdownRuntimeLoading(container);
+    ensureToastUI().then(runtime => {
+        if (state.view !== 'viewer' || state.editingDoc?.id !== docId || document.getElementById('viewer-container') !== container) return;
+        window.tuiViewer = runtime.Editor.factory({
+            el: container,
+            viewer: true,
+            initialValue,
+            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined
+        });
+        container.removeAttribute('aria-busy');
+        requestAnimationFrame(() => _enhanceViewerCodeBlocks(container));
+    }).catch(error => {
+        if (state.view === 'viewer' && state.editingDoc?.id === docId && document.getElementById('viewer-container') === container) {
+            window.currentViewerDocId = null;
+            _showMarkdownRuntimeError(container, error);
+        }
+    });
+}
+
+window.retryMarkdownRuntime = function() {
+    window.currentViewerDocId = null;
+    renderContent();
+};
+
 function renderContent() {
     if (state.view === 'editor') syncEditorState();
 
@@ -245,72 +319,41 @@ function renderContent() {
         const container = document.getElementById('editor-container');
         if (container) {
             const hiddenTa = document.getElementById('ed-content-hidden');
-            const initialVal = hiddenTa ? hiddenTa.value : '';
-            window.tuiEditor = new toastui.Editor({
-                el: container,
-                height: 'calc(100vh - 300px)',
-                initialEditType: 'markdown',
-                previewStyle: 'vertical',
-                initialValue: initialVal,
-                theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined,
-                hooks: {
-                    addImageBlobHook: uploadImageToCloud
-                }
-            });
+            _initializeMarkdownEditor(container, hiddenTa ? hiddenTa.value : '');
         }
     }
     else if (state.view === 'viewer') {
-        const isSameDoc = window.currentViewerDocId === state.editingDoc?.id;
+        const docId = state.editingDoc?.id;
+        const isSameDoc = window.currentViewerDocId === docId;
         if (isSameDoc) {
             updateDOM(c, renderViewer());
         } else {
             if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
             if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
             c.innerHTML = renderViewer();
-            window.currentViewerDocId = state.editingDoc?.id;
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    const container = document.getElementById('viewer-container');
-                    if (!container) return;
-                    const hiddenTa = document.getElementById('vw-content-hidden');
-                    window.tuiViewer = toastui.Editor.factory({
-                        el: container,
-                        viewer: true,
-                        initialValue: hiddenTa ? hiddenTa.value : '',
-                        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined
-                    });
-                    setTimeout(() => {
-                        container.querySelectorAll('pre code').forEach(codeEl => {
-                            const pre = codeEl.parentElement;
-                            if (pre.querySelector('.code-copy-btn')) return;
-                            const b64 = btoa(unescape(encodeURIComponent(codeEl.textContent)));
-                            const btn = document.createElement('button');
-                            btn.className = 'code-copy-btn';
-                            btn.title = 'Copy';
-                            btn.type = 'button';
-                            btn.setAttribute('aria-label', 'Copy code');
-                            btn.setAttribute('data-onclick', `copyCodeBlock(this, '${b64}')`);
-                            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
-                            pre.style.position = 'relative';
-                            pre.insertBefore(btn, pre.firstChild);
-                        });
-                    }, 100);
-                }, 50);
-            });
+            window.currentViewerDocId = docId;
+            const container = document.getElementById('viewer-container');
+            if (container) {
+                const hiddenTa = document.getElementById('vw-content-hidden');
+                _initializeMarkdownViewer(container, hiddenTa ? hiddenTa.value : '', docId);
+            }
         }
     }
-    enhanceInteractionSemantics(document);
-    _restoreFaviconState();
+    enhanceInteractionSemantics(c, false);
+    _restoreFaviconState(c);
 }
-
 function render() {
     updateSidebar();
     updateHeader();
+    enhanceInteractionSemantics(document.getElementById('sidebar'), false);
+    enhanceInteractionSemantics(document.getElementById('app-header'), false);
+    enhanceInteractionSemantics(document.getElementById('bottom-nav'), false);
     renderContent();
+    syncSidebarAccessibility();
 }
 
-function _restoreFaviconState() {
-    document.querySelectorAll('.cred-favicon').forEach(img => {
+function _restoreFaviconState(root = document) {
+    root.querySelectorAll('.cred-favicon').forEach(img => {
         if (img.complete && img.naturalWidth > 0) {
             img.classList.add('loaded');
             const span = img.nextElementSibling;

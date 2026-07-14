@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the interaction shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v39'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v40'/);
 });
 
 test('deployment blocks on the locked browser regression suite', () => {

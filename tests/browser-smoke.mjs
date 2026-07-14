@@ -54,10 +54,13 @@ async function run() {
         const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
         const page = await context.newPage();
         const runtimeErrors = trackRuntimeErrors(page);
+        const requestedAssets = [];
+        page.on('request', request => requestedAssets.push(new URL(request.url()).pathname));
 
         await page.goto(baseUrl + '/?guest=1', { waitUntil: 'networkidle' });
         await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor();
         assert.equal(await page.locator('.trend-card svg').count(), 5, 'Dashboard must render all five trend charts');
+        assert.equal(requestedAssets.some(pathname => pathname.includes('/vendor/toastui/')), false, 'Dashboard must not load the editor runtime');
 
         await page.getByRole('button', { name: 'All', exact: true }).click();
         await page.getByText('6 bugs opened in all', { exact: true }).waitFor();
@@ -72,6 +75,8 @@ async function run() {
         await page.getByRole('button', { name: 'New Document', exact: true }).click();
         await page.locator('button[data-onclick="createDoc(null)"]').click();
         await page.locator('#app-header').getByRole('heading', { name: 'New Document', exact: true }).waitFor();
+        await page.locator('#editor-container .toastui-editor-defaultUI').waitFor();
+        assert.equal(new Set(requestedAssets.filter(pathname => pathname.includes('/vendor/toastui/'))).size, 3, 'Editor runtime assets must load once on demand');
         await page.locator('#ed-title').fill('Wave 5A browser regression');
         await page.locator('#app-header').getByRole('button', { name: 'Save', exact: true }).click();
         await page.getByRole('heading', { name: 'Wave 5A browser regression', exact: true, level: 1 }).waitFor();
