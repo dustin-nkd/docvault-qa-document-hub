@@ -82,7 +82,7 @@ export function loadStorage(options = {}) {
         confirm: () => false
     });
     const source = fs.readFileSync(path.join(root, 'storage.js'), 'utf8') +
-        '\n;globalThis.__storageTest = { DocStorage, Vault };';
+        '\n;globalThis.__storageTest = { DocStorage, GitHubSync, Vault };';
     vm.runInContext(source, context, { filename: 'storage.js' });
     return { api: context.__storageTest, localStorage, sessionStorage };
 }

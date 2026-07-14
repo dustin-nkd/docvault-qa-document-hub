@@ -95,15 +95,20 @@ const GitHubSync = {
     },
 
     async saveSettings(settings) {
+        const previous = await this.getSettings();
         const pwd = this._pwd();
         const value = pwd
             ? await Vault.encrypt(settings, pwd)
             : JSON.stringify(settings);
         localStorage.setItem(this.SETTINGS_KEY, value);
+        const next = { ...this.DEFAULTS, ...(settings || {}) };
+        const targetChanged = ['owner', 'repo', 'branch'].some(key => previous?.[key] !== next[key]);
+        if (targetChanged) this._resetRemoteCaches();
     },
 
     clearSettings() {
         localStorage.removeItem(this.SETTINGS_KEY);
+        this._resetRemoteCaches();
     },
 
     // Only needs a token — owner/repo are hardcoded defaults
@@ -406,6 +411,8 @@ const GitHubSync = {
     SHARD_SHA_PREFIX: 'github_shard_sha_',
     SHARD_FP_PREFIX: 'github_shard_fp_',
     META_SHA_KEY: 'github_meta_sha',
+    META_FP_KEY: 'github_meta_fp',
+    _remoteSharded: false,
 
     _shardIndex(id) {
         let h = 0;
@@ -428,6 +435,26 @@ const GitHubSync = {
     // plaintext never produces identical ciphertext twice.
     _shardFingerprint(shardDocs) {
         return shardDocs.map(d => `${d.id}:${Math.max(Number(d.updatedAt) || 0, Number(d.focusWorkflowUpdatedAt) || 0)}`).sort().join('|');
+    },
+
+    async _metaFingerprint(meta) {
+        const bytes = new TextEncoder().encode(JSON.stringify(meta));
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    },
+
+    _cacheMetaFingerprint(fingerprint) {
+        try { localStorage.setItem(this.META_FP_KEY, fingerprint); }
+        catch (e) { console.warn('Could not cache sync metadata fingerprint:', e); }
+    },
+
+    _resetRemoteCaches() {
+        this._remoteSharded = false;
+        [this.SHA_KEY, this.META_SHA_KEY, this.META_FP_KEY].forEach(key => localStorage.removeItem(key));
+        for (let i = 0; i < this.SHARD_COUNT; i++) {
+            localStorage.removeItem(this.SHARD_SHA_PREFIX + i);
+            localStorage.removeItem(this.SHARD_FP_PREFIX + i);
+        }
     },
 
     // Same prep _encode() does (30-day trash TTL auto-purge + credential
@@ -556,9 +583,15 @@ const GitHubSync = {
             cfg: settings,
             rb: meta.recoveryBlob || null,
             hint: meta.passwordHint || null,
-            deletedIds: [...deletedIds],
+            deletedIds: [...deletedIds].sort(),
             activityLog: (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll() : []
         };
+        const metaFingerprint = await this._metaFingerprint(metaPayload);
+        if (metaFingerprint === localStorage.getItem(this.META_FP_KEY)) {
+            if (securityMeta) this._applySecurityMeta(securityMeta);
+            this._remoteSharded = true;
+            return { mergedDocs };
+        }
         const metaResult = await this._putWithMerge(this.META_PATH, settings, this.META_SHA_KEY, pwd, metaPayload, (local, remote) => ({
             cfg: local.cfg || remote.cfg,
             rb: local.rb !== undefined ? local.rb : remote.rb,
@@ -574,7 +607,9 @@ const GitHubSync = {
         if (metaResult.merged && typeof ActivityLog !== 'undefined') {
             ActivityLog.mergeIncoming(metaResult.payload.activityLog);
         }
+        this._cacheMetaFingerprint(await this._metaFingerprint(metaResult.payload));
         if (securityMeta) this._applySecurityMeta(securityMeta);
+        this._remoteSharded = true;
 
         return { mergedDocs };
     },
@@ -604,6 +639,7 @@ const GitHubSync = {
         if (!tree) return null; // tree API unreachable — caller falls back to legacy pull()
         const metaSha = tree[this.META_PATH];
         if (!metaSha) return null; // vault not migrated to sharded mode yet
+        this._remoteSharded = true;
 
         let meta;
         if (metaSha === localStorage.getItem(this.META_SHA_KEY)) {
@@ -622,6 +658,7 @@ const GitHubSync = {
             localStorage.setItem(this.META_SHA_KEY, metaFile.sha);
             const metaRaw = this._b64decode(metaFile.content);
             meta = await this._decodePayload(metaRaw, pwd);
+            this._cacheMetaFingerprint(await this._metaFingerprint(meta));
         }
 
         // "Unchanged shard" only means "skip re-fetching it" if we actually
@@ -691,11 +728,15 @@ const GitHubSync = {
     // cheap tree listing rather than fetching the full meta file content
     // just to check it exists.
     async isRemoteSharded() {
+        if (this._remoteSharded) return true;
         const settings = await this.getSettings();
         if (!settings) return false;
         const tree = await this._getTree(settings);
-        if (tree) return !!tree[this.META_PATH];
-        return !!(await this._getFile(this.META_PATH, settings)); // tree API unreachable — fall back
+        const isSharded = tree
+            ? !!tree[this.META_PATH]
+            : !!(await this._getFile(this.META_PATH, settings)); // tree API unreachable — fall back
+        if (isSharded) this._remoteSharded = true;
+        return isSharded;
     },
 
     // One-time, ADDITIVE migration: reads the existing single-file vault via
@@ -925,6 +966,8 @@ const DocStorage = {
     // compatibility, while the durable marker makes reconnect recovery reliable
     // after the tab or browser has been restarted.
     _pending: false,
+    _syncInFlight: null,
+    _queuedSyncDocs: null,
 
     hasPendingSync() {
         if (this._pending) return true;
@@ -944,36 +987,67 @@ const DocStorage = {
         if (typeof window.updateSyncIndicator === 'function') window.updateSyncIndicator();
     },
 
+    async _applySyncResult(result) {
+        // A sharded conflict may merge another device's newer edit into the
+        // pushed shard. Fold it into this tab immediately instead of waiting
+        // for the next full pull.
+        if (!result || !Array.isArray(result.mergedDocs) || result.mergedDocs.length === 0 || typeof documents === 'undefined' || !Array.isArray(documents)) return;
+        const byId = new Map(documents.map(d => [d.id, d]));
+        result.mergedDocs.forEach(d => {
+            const existing = byId.get(d.id);
+            const incomingVersion = Math.max(Number(d.updatedAt) || 0, Number(d.focusWorkflowUpdatedAt) || 0);
+            const existingVersion = Math.max(Number(existing?.updatedAt) || 0, Number(existing?.focusWorkflowUpdatedAt) || 0);
+            if (!existing || incomingVersion > existingVersion) byId.set(d.id, d);
+        });
+        documents = [...byId.values()];
+        await this._saveLocal(documents);
+        if (typeof render === 'function') render();
+    },
+
+    queueSync(docs, options = {}, feedback = {}) {
+        // Keep at most the running snapshot and the newest queued snapshot.
+        // Rapid edits cannot create overlapping GitHub writes, while obsolete
+        // intermediate states are safely superseded by the latest state.
+        this._queuedSyncDocs = { docs, options, feedback };
+        if (this._syncInFlight) return this._syncInFlight;
+
+        let flight;
+        flight = (async () => {
+            try {
+                while (this._queuedSyncDocs) {
+                    const next = this._queuedSyncDocs;
+                    this._queuedSyncDocs = null;
+                    try {
+                        const result = await GitHubSync.syncPush(next.docs, next.options);
+                        this.setPendingSync(false);
+                        await this._applySyncResult(result);
+                    } catch (e) {
+                        // Preserve one durable retry intent but drop the queued
+                        // burst. Reconnect will send the latest in-memory state.
+                        this._queuedSyncDocs = null;
+                        this.setPendingSync(true);
+                        if (!next.feedback.silent && typeof toast === 'function') {
+                            const msg = next.feedback.failurePrefix || (typeof t === 'function' ? t('ghSyncFail') : 'GitHub sync failed');
+                            toast(msg + ': ' + e.message, 'error');
+                        }
+                        return false;
+                    }
+                }
+                return true;
+            } finally {
+                // Clear the flight before its promise settles. This closes the
+                // microtask boundary where a new save could otherwise attach
+                // itself to an already-finished drain and remain unprocessed.
+                if (this._syncInFlight === flight) this._syncInFlight = null;
+            }
+        })();
+        this._syncInFlight = flight;
+        return flight;
+    },
+
     async save(docs) {
         const savedLocally = await this._saveLocal(docs);
-        if (await GitHubSync.isConfigured()) {
-            GitHubSync.syncPush(docs).then(async (result) => {
-                this.setPendingSync(false);
-                // Sharded push hit a per-shard conflict and merged in another
-                // device's edit to a doc we didn't touch (see
-                // GitHubSync._putWithMerge) — fold that into our in-memory
-                // state now, otherwise this device wouldn't see it until its
-                // next full pull.
-                if (result && Array.isArray(result.mergedDocs) && result.mergedDocs.length > 0 && typeof documents !== 'undefined' && Array.isArray(documents)) {
-                    const byId = new Map(documents.map(d => [d.id, d]));
-                    result.mergedDocs.forEach(d => {
-                        const existing = byId.get(d.id);
-                        const incomingVersion = Math.max(Number(d.updatedAt) || 0, Number(d.focusWorkflowUpdatedAt) || 0);
-                        const existingVersion = Math.max(Number(existing?.updatedAt) || 0, Number(existing?.focusWorkflowUpdatedAt) || 0);
-                        if (!existing || incomingVersion > existingVersion) byId.set(d.id, d);
-                    });
-                    documents = [...byId.values()];
-                    await this._saveLocal(documents);
-                    if (typeof render === 'function') render();
-                }
-            }).catch(e => {
-                this.setPendingSync(true);
-                if (typeof toast === 'function') {
-                    const msg = typeof t === 'function' ? t('ghSyncFail') : 'GitHub sync failed';
-                    toast(msg + ': ' + e.message, 'error');
-                }
-            });
-        }
+        if (await GitHubSync.isConfigured()) this.queueSync(docs);
         return savedLocally;
     },
 
