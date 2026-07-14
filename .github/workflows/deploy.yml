@@ -31,9 +31,12 @@ jobs:
         # leaves no local node_modules for the deploy step to pick up.
         run: npx --yes tailwindcss@3.4.19 -i ./src/input.css -o ./vendor/tailwind/tailwind.generated.css --minify
 
+      - name: Build production artifact
+        run: npm run build:pages
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+          publish_dir: ./_site
           publish_branch: gh-pages

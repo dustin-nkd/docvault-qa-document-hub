@@ -29,6 +29,10 @@ const mainImport = mainSource.match(/^import\s+["'](.+?)["'];?\s*$/m);
 assert(mainImport, 'main.js must contain a static stylesheet import');
 assert(fs.existsSync(path.join(root, mainImport[1])), 'main.js imports a missing asset: ' + mainImport[1]);
 
+const workflow = read('.github/workflows/deploy.yml');
+assert(/publish_dir:\s*\.\/_site/.test(workflow), 'Production deploy must publish only the generated _site artifact');
+assert(!/publish_dir:\s*\.\/\s*$/m.test(workflow), 'Production deploy must not publish the repository root');
+
 const html = read('index.html');
 assert(/<html\s+lang=["']en["']/.test(html), 'index.html must declare lang="en"');
 
