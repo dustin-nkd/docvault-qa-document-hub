@@ -172,7 +172,7 @@ function renderViewer() {
                 <div class="space-y-2">
                     ${linkedBugs.map(b => {
                         const sev = b.bugData?.severity;
-                        return `<div class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${b.id}')" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${b.id}')">
                             <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0" style="background:var(--card);color:var(--c-bug);">${bugRef(b)}</span>
                             <span class="text-sm font-medium flex-1 truncate" style="color:var(--tx);">${escHtml(b.title)}</span>
                             ${sev ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style="background:${(SEV[sev] || '#94a3b8')}22;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
@@ -256,7 +256,7 @@ function renderViewer() {
                 <div class="flex items-center gap-2">
                     <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
                         <input type="password" id="view-pw" value="${escHtml(doc.password || '')}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider" style="color:var(--tx);" readonly>
-                        <button id="view-pw-btn" class="text-xs p-1" style="color:var(--tx-m);transition:color .2s;" data-onmouseenter="this.style.color='var(--tx)'" data-onmouseleave="this.style.color='var(--tx-m)'" data-onclick="togglePasswordVisibility('view-pw')"><i class="fa-solid fa-eye"></i></button>
+                        <button id="view-pw-btn" class="text-xs p-1 ui-hover-text" style="color:var(--tx-m);transition:color .2s;" data-onclick="togglePasswordVisibility('view-pw')"><i class="fa-solid fa-eye"></i></button>
                     </div>
                     <button class="btn-p py-2 px-4" data-onclick="copyPassword('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>Copy</button>
                 </div>`}
@@ -313,7 +313,7 @@ function renderViewer() {
                         const cred = documents.find(d => d.id === id && d.status !== 'deleted');
                         if (!cred) return '';
                         return `
-                        <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'" data-onclick="viewDoc('${cred.id}')">
+                        <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${cred.id}')">
                             <i class="fa-solid fa-key text-xs" style="color:var(--c-cred);"></i>
                             <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(cred.title)}</span>
                         </div>`;
@@ -657,7 +657,7 @@ function renderViewer() {
                 <div class="space-y-2">
                     ${linkedTCs.map(tc => {
                         const isCovered = coveredTCIds.has(tc.id);
-                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${tc.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${tc.id}')"`}>
                             <i class="fa-solid fa-flask-vial text-xs shrink-0" style="color:var(--c-tc);"></i>
                             <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(tc.title)}</span>
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="background:${isCovered ? '#10b98120' : 'rgba(122,139,168,0.1)'}; color:${isCovered ? '#10b981' : 'var(--tx-d)'};">${isCovered ? 'Covered' : 'Not run'}</span>
@@ -678,7 +678,7 @@ function renderViewer() {
                             steps.forEach((_, i) => { if (results[tc.id]?.[i] === 'pass') rPass++; });
                         });
                         const pct = rTotal ? Math.round(rPass / rTotal * 100) : null;
-                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`}>
                             <i class="fa-solid fa-play-circle text-sm shrink-0" style="color:var(--c-testrun);"></i>
                             <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
                             <span class="text-xs font-mono font-semibold" style="color:${pct === null ? 'var(--tx-d)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444'};">${pct !== null ? pct + '%' : '—'}</span>
@@ -799,7 +799,7 @@ function renderViewer() {
                             steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') rPass++; });
                         });
                         const pct = rTotal ? Math.round(rPass / rTotal * 100) : null;
-                        return `<div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                        return `<div class="flex items-center gap-3 p-3 rounded-lg border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${run.id}')"`}>
                             <i class="fa-solid fa-play-circle text-sm shrink-0" style="color:var(--c-testrun);"></i>
                             <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
                             <span class="text-xs font-mono font-semibold" style="color:${pct === null ? 'var(--tx-d)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444'};">${pct !== null ? pct + '%' : '—'}</span>
@@ -812,7 +812,7 @@ function renderViewer() {
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Bug Reports (${linkedBugs.length})</p>
                 <div class="space-y-2">
                     ${linkedBugs.map(bug => `
-                    <div class="flex items-center gap-3 p-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${bug.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                    <div class="flex items-center gap-3 p-3 rounded-lg border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${bug.id}')"`}>
                         <i class="fa-solid fa-bug text-sm shrink-0" style="color:var(--c-bug);"></i>
                         <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(bug.title)}</span>
                         ${bug.bugData?.severity ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:${sevColor(bug.bugData.severity)}22; color:${sevColor(bug.bugData.severity)};">${escHtml(bug.bugData.severity)}</span>` : ''}
@@ -824,7 +824,7 @@ function renderViewer() {
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Environments (${linkedEnvs.length})</p>
                 <div class="flex flex-wrap gap-2">
                     ${linkedEnvs.map(env => `
-                    <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg border" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${env.id}')"`} data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='var(--bg)'">
+                    <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${env.id}')"`}>
                         <i class="fa-solid fa-network-wired text-xs" style="color:var(--c-env);"></i>
                         <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(env.title)}</span>
                         ${env.envData?.status ? `<span class="w-1.5 h-1.5 rounded-full shrink-0 ml-1" style="background:${env.envData.status === 'healthy' ? '#10b981' : env.envData.status === 'down' ? '#ef4444' : '#f59e0b'};"></span>` : ''}

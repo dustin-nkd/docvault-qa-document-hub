@@ -35,7 +35,7 @@ function updateHeader() {
         if (state.sharedView) {
             actions = state.history?.length > 0
                 ? `<button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>`
-                : `<button class="btn-p text-sm" onclick="window.location.href=window.location.pathname">Open DocVault</button>`;
+                : `<button class="btn-p text-sm" data-onclick="openAppHome()">Open DocVault</button>`;
         } else {
             actions = `
                 ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="shareDoc('${doc.id}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>` : ''}
@@ -1194,7 +1194,7 @@ function renderDocList() {
                                     <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                         <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                     </button>
-                                    <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                    <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
                                 </div>
@@ -1205,8 +1205,8 @@ function renderDocList() {
                                     ${credRotationInfo(d).stale ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.15);color:#f59e0b;" title="Not rotated in ${credRotationInfo(d).ageDays} days"><i class="fa-solid fa-rotate" style="font-size:9px;"></i> ${credRotationInfo(d).ageDays}d</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-1" style="${bm ? 'visibility:hidden;' : ''}">
-                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
-                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5" style="color:var(--tx-m);transition:all .15s;" data-onmouseenter="this.style.color='var(--tx)';this.style.background='var(--card-h)'" data-onmouseleave="this.style.color='var(--tx-m)';this.style.background='transparent'" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
+                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:all .15s;" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
+                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:all .15s;" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
                                 </div>
                             </div>
                         </div>`;
@@ -1224,7 +1224,7 @@ function renderDocList() {
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
-                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
                             </div>
@@ -1392,7 +1392,7 @@ function renderBugKanban(docs, isMobileSearch) {
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
-                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)">
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
                             </div>
@@ -1515,7 +1515,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
-                                <button class="text-xs p-1 rounded" style="color:var(--tx-d);transition:color .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
                             </div>

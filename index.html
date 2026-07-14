@@ -409,7 +409,7 @@
                 <button type="submit" id="lock-submit-btn" class="btn-p w-full py-3">Unlock Vault</button>
             </form>
 
-            <button type="button" onclick="window.location.href = window.location.pathname + '?guest=1'" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
+            <button type="button" data-onclick="enterGuestMode()" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
                 🎭 View Demo <span style="opacity:.85;font-weight:500;">— no password needed</span>
             </button>
 
@@ -422,7 +422,7 @@
                 <p id="lock-screen-sub" class="text-xs" style="color:var(--tx-d);">First time? The password you enter will become your Master Password.</p>
                 <!-- Recovery toggle (shown when hint or recovery metadata exists) -->
                 <div id="lock-recovery-toggle" class="hidden mt-3">
-                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" onclick="toggleLockRecovery(this)">Forgot password?</button>
+                    <button type="button" class="text-xs underline" style="color:var(--tx-d);" data-onclick="toggleLockRecovery(this)">Forgot password?</button>
                 </div>
                 <!-- Recovery panel -->
                 <div id="lock-recovery-panel" class="hidden mt-4">
@@ -537,16 +537,16 @@
             <!-- Bottom -->
             <div class="shrink-0 border-t" style="border-color:var(--brd);">
                 <div class="px-3 py-3 grid grid-cols-3">
-                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--tx)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="lockVault()" title="Lock vault">
+                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors ui-hover-card-h ui-hover-text" style="color:var(--tx-d);cursor:pointer;" data-onclick="lockVault()" title="Lock vault">
                         <i class="fa-solid fa-lock-open" style="font-size:14px;"></i>
                         <span style="font-size:10px;font-weight:500;letter-spacing:0.02em;">Lock</span>
                     </button>
-                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--acc)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="toggleTheme()" title="Toggle light/dark theme">
+                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors ui-hover-card-h ui-hover-accent" style="color:var(--tx-d);cursor:pointer;" data-onclick="toggleTheme()" title="Toggle light/dark theme">
                         <i class="fa-solid fa-moon theme-icon-dark" style="font-size:14px;"></i>
                         <i class="fa-solid fa-sun theme-icon-light" style="font-size:14px;"></i>
                         <span style="font-size:10px;font-weight:500;letter-spacing:0.02em;">Theme</span>
                     </button>
-                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors" style="color:var(--tx-d);cursor:pointer;" data-onmouseenter="this.style.background='var(--card-h)';this.style.color='var(--acc)'" data-onmouseleave="this.style.background='transparent';this.style.color='var(--tx-d)'" data-onclick="showGitHubSettingsModal()" title="GitHub Settings">
+                    <button class="flex flex-col items-center gap-1.5 py-2 rounded-lg transition-colors ui-hover-card-h ui-hover-accent" style="color:var(--tx-d);cursor:pointer;" data-onclick="showGitHubSettingsModal()" title="GitHub Settings">
                         <span style="position:relative;display:inline-block;line-height:0;">
                             <i class="fa-solid fa-gear" style="font-size:14px;"></i>
                             <span id="sync-pending-dot" class="hidden" title="Changes pending sync" style="position:absolute;top:-3px;right:-6px;width:7px;height:7px;border-radius:50%;background:#f59e0b;box-shadow:0 0 0 2px var(--bg2);"></span>

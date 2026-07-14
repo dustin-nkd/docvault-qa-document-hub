@@ -318,10 +318,6 @@ function executeAction(code, event, element) {
             setTimeout(() => document.getElementById('ed-content')?.focus(), 0);
             continue;
         }
-        if (applyDelegatedStyleAction(call, element)) {
-            continue;
-        }
-
         const match = call.match(/^([a-zA-Z0-9_]+)\((.*)\)$/);
         if (match) {
             const funcName = match[1];
@@ -399,22 +395,6 @@ document.addEventListener('keydown', (e) => {
     if (!target) return;
     e.preventDefault();
     executeAction(target.getAttribute('data-onclick'), e, target);
-});
-
-document.addEventListener('mouseover', (e) => {
-    if (!(e.target instanceof Element)) return;
-    let target = e.target.closest('[data-onmouseenter]');
-    if (target && isExternalHoverTransition(target, e.relatedTarget)) {
-        executeAction(target.getAttribute('data-onmouseenter'), e, target);
-    }
-});
-
-document.addEventListener('mouseout', (e) => {
-    if (!(e.target instanceof Element)) return;
-    let target = e.target.closest('[data-onmouseleave]');
-    if (target && isExternalHoverTransition(target, e.relatedTarget)) {
-        executeAction(target.getAttribute('data-onmouseleave'), e, target);
-    }
 });
 
 // ========================

@@ -948,7 +948,7 @@ window.shareDoc = async function(id) {
                 <p class="text-sm mb-4" style="color:var(--tx-m);">Anyone with this link can view the document. The content is end-to-end encrypted.</p>
                 <div class="flex items-center gap-2 p-3 rounded-lg border mb-5 text-left" style="background:var(--bg);border-color:var(--brd);">
                     <input type="text" readonly id="share-url-input" value="${escHtml(shareUrl)}" class="flex-1 bg-transparent text-xs outline-none font-mono" style="color:var(--tx);">
-                    <button class="shrink-0 btn-s px-3 py-1.5 text-xs" onclick="window._shareCopyFeedback(this,document.getElementById('share-url-input').value)">
+                    <button class="shrink-0 btn-s px-3 py-1.5 text-xs" data-onclick="copyShareUrl(this)">
                         <i class="fa-regular fa-copy mr-1"></i>Copy
                     </button>
                 </div>
@@ -998,7 +998,7 @@ async function loadSharedDoc(shareId, keyBase64) {
         render();
     } catch(e) {
         console.error('[loadSharedDoc]', e);
-        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" onclick="window.location.href=window.location.pathname">Go to DocVault</button></div></div>`;
+        document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" data-onclick="openAppHome()">Go to DocVault</button></div></div>`;
     }
 }
 
@@ -1870,7 +1870,7 @@ window.promptDuplicateBug = function(id) {
             <input type="text" id="dup-bug-search" class="form-input w-full mb-3 text-sm" placeholder="Search bugs by title..." data-oninput="_filterDuplicateBugList(this.value)" autocomplete="off">
             <div id="dup-bug-list" style="max-height:280px;overflow-y:auto;">
                 ${otherBugs.map(b => `
-                    <div class="dup-bug-row flex items-center gap-3 p-2.5 rounded-lg cursor-pointer" data-filter-key="${escHtml(b.title.toLowerCase())}" style="border:1px solid var(--brd);margin-bottom:6px;transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="_selectDuplicateOfBug('${b.id}')">
+                    <div class="dup-bug-row flex items-center gap-3 p-2.5 rounded-lg cursor-pointer ui-hover-card-h" data-filter-key="${escHtml(b.title.toLowerCase())}" style="border:1px solid var(--brd);margin-bottom:6px;transition:background .15s;" data-onclick="_selectDuplicateOfBug('${b.id}')">
                         <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0" style="background:var(--card);color:var(--c-bug);">${bugRef(b)}</span>
                         <span class="text-sm flex-1 truncate" style="color:var(--tx);">${escHtml(b.title)}</span>
                         <span class="st-badge st-${b.status} shrink-0">${b.status}</span>

@@ -35,7 +35,7 @@ function renderEditor() {
                     <div class="subfolder-select-wrapper" style="position:relative;">
                         <input id="ed-subfolder" class="form-select w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onclick="toggleSubfolderDropdown()" data-oninput="filterSubfolderDropdown()">
                         <div id="subfolder-dropdown" class="hidden" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
-                            ${existingFolders.map(f => `<div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectSubfolder('${escHtml(f.replace(/'/g, "\\'"))}')">${escHtml(f)}</div>`).join('')}
+                            ${existingFolders.map(f => `<div class="subfolder-option px-3 py-2 text-sm cursor-pointer ui-hover-card-h" style="color:var(--tx-m);transition:background .15s;" data-onclick="${actionAttr('selectSubfolder', f)}">${escHtml(f)}</div>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -421,7 +421,7 @@ function renderEditor() {
                         const isChecked = targetIds.includes(tc.id);
                         const filterKey = `${tc.title} ${tc.tcData?.module || ''}`.toLowerCase();
                         return `
-                        <label class="testrun-tc-row flex items-center gap-3 p-2 rounded cursor-pointer transition-colors" data-filter-key="${escHtml(filterKey)}" style="border-bottom: 1px solid var(--brd); transition: background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'">
+                        <label class="testrun-tc-row flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ui-hover-card" data-filter-key="${escHtml(filterKey)}" style="border-bottom: 1px solid var(--brd); transition: background .15s;">
                             <input type="checkbox" class="form-checkbox testrun-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''} data-onchange="_updateTestRunTcCount()">
                             <div class="flex-1">
                                 <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
@@ -443,7 +443,7 @@ function renderEditor() {
                         ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test cases available.</div>`
                         : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
                             const isChecked = (tcPlanData?.linkedTCs || []).includes(tc.id);
-                            return `<label class="flex items-center gap-3 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'">
+                            return `<label class="flex items-center gap-3 p-2 rounded cursor-pointer ui-hover-bg2" style="border-bottom:1px solid var(--brd); transition:background .15s;">
                                 <input type="checkbox" class="form-checkbox tp-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
                                 <div class="flex-1">
                                     <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
@@ -460,7 +460,7 @@ function renderEditor() {
                         ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test runs found.</div>`
                         : documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => {
                             const isChecked = (tcPlanData?.linkedRuns || []).includes(run.id);
-                            return `<label class="flex items-center gap-2 p-2 rounded cursor-pointer" style="border-bottom:1px solid var(--brd); transition:background .15s;" data-onmouseenter="this.style.background='var(--bg2)'" data-onmouseleave="this.style.background='transparent'">
+                            return `<label class="flex items-center gap-2 p-2 rounded cursor-pointer ui-hover-bg2" style="border-bottom:1px solid var(--brd); transition:background .15s;">
                                 <input type="checkbox" class="form-checkbox tp-run-cb" value="${run.id}" ${isChecked ? 'checked' : ''}>
                                 <i class="fa-solid fa-play-circle text-xs" style="color:var(--c-testrun);"></i>
                                 <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(run.title)}</span>
@@ -795,7 +795,7 @@ window.renderSelect = function(id, options, selectedValue, customClass, onChange
     onChangeCode = onChangeCode || '';
     const selOpt = options.find(o => o.value === selectedValue) || options[0] || {label:'', value:''};
     const optionsHtml = options.map(o => `
-        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card-h)'" data-onmouseleave="this.style.background='transparent'" data-onclick="selectCustomOption('${id}', '${escHtml(o.value.replace(/'/g, "\\'"))}', '${escHtml(o.label.replace(/'/g, "\\'"))}', '${onChangeCode.replace(/'/g, "\\'")}')">${escHtml(o.label)}</div>
+        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer ui-hover-card-h" style="color:var(--tx-m);transition:background .15s;" data-onclick="${actionAttr('selectCustomOption', id, o.value, o.label, onChangeCode)}">${escHtml(o.label)}</div>
     `).join('');
 
     return `
