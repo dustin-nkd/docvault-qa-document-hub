@@ -510,22 +510,22 @@ function showDocMenu(id, btn) {
     let menuHtml = '';
     if (state.view === 'trash') {
         menuHtml = `
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--acc);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();restoreDoc('${id}')">
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--acc);transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();restoreDoc('${id}')">
                 <i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('restore') || 'Restore'} </button>
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}', true)">
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-danger" style="color:#f43f5e;transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}', true)">
                 <i class="fa-solid fa-trash w-4 text-center"></i> ${t('deleteForever') || 'Delete Forever'} </button>
         `;
     } else {
         menuHtml = `
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--c-run);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();shareDoc('${id}')">
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--c-run);transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();shareDoc('${id}')">
                 <i class="fa-solid fa-share-nodes w-4 text-center"></i> ${t('share') || 'Share Link'} </button>
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--tx-m);transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();editDoc('${id}')">
                 <i class="fa-solid fa-pen w-4 text-center"></i> ${t('edit')} </button>
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--tx-m);transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();duplicateDoc('${id}')">
                 <i class="fa-solid fa-copy w-4 text-center"></i> ${t('duplicate')} </button>
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:var(--tx-m);transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();exportDoc('${id}')">
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--tx-m);transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();exportDoc('${id}')">
                 <i class="fa-solid fa-file-arrow-down w-4 text-center"></i> Export Markdown </button>
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#f43f5e;transition:background .15s;" data-onmouseenter="this.style.background='rgba(244,63,94,0.06)'" data-onmouseleave="this.style.background='transparent'" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
+            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-danger" style="color:#f43f5e;transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();showDeleteModal('${id}')">
                 <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
         `;
         const bugDoc = documents.find(d => d.id === id);
@@ -534,13 +534,13 @@ function showDocMenu(id, btn) {
             const isClosed = bs === 'closed';
             menuHtml += `<div style="height:1px;background:var(--brd);margin:4px 0;"></div>`;
             if (isClosed) {
-                menuHtml += `<button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#fb923c;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="reopenBug('${id}')"><i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('bugReopen')}</button>`;
+                menuHtml += `<button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#fb923c;transition:background .15s;" data-onclick="reopenBug('${id}')"><i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('bugReopen')}</button>`;
             } else {
                 menuHtml += `
-                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#94a3b8;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="resolveBug('${id}','wont-fix')"><i class="fa-solid fa-ban w-4 text-center"></i> ${t('bugWontFix')}</button>
-                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#94a3b8;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="promptDuplicateBug('${id}')"><i class="fa-solid fa-copy w-4 text-center"></i> ${t('bugDuplicate')}</button>
-                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#94a3b8;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="resolveBug('${id}','rejected')"><i class="fa-solid fa-circle-xmark w-4 text-center"></i> ${t('bugRejected')}</button>
-                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2" style="color:#fb923c;transition:background .15s;" data-onmouseenter="this.style.background='var(--card)'" data-onmouseleave="this.style.background='transparent'" data-onclick="resolveBug('${id}','deferred')"><i class="fa-solid fa-clock w-4 text-center"></i> ${t('bugDeferred')}</button>`;
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="resolveBug('${id}','wont-fix')"><i class="fa-solid fa-ban w-4 text-center"></i> ${t('bugWontFix')}</button>
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="promptDuplicateBug('${id}')"><i class="fa-solid fa-copy w-4 text-center"></i> ${t('bugDuplicate')}</button>
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="resolveBug('${id}','rejected')"><i class="fa-solid fa-circle-xmark w-4 text-center"></i> ${t('bugRejected')}</button>
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#fb923c;transition:background .15s;" data-onclick="resolveBug('${id}','deferred')"><i class="fa-solid fa-clock w-4 text-center"></i> ${t('bugDeferred')}</button>`;
             }
         }
     }
@@ -579,3 +579,16 @@ function _copyText(text, btn) {
 window._shareCopyFeedback = function(btn, url) { _copyText(url, btn); };
 window._copyProp = function(btn) { _copyText(btn.dataset.copyValue || '', btn); };
 window._copyPre = function(preId, btn) { _copyText(document.getElementById(preId)?.textContent || '', btn); };
+window.openAppHome = function() {
+    window.location.href = window.location.pathname;
+};
+
+window.enterGuestMode = function() {
+    window.location.href = window.location.pathname + '?guest=1';
+};
+
+window.copyShareUrl = function(button) {
+    const input = document.getElementById('share-url-input');
+    if (!input) return;
+    window._shareCopyFeedback(button, input.value);
+};

@@ -246,26 +246,3 @@ function uint8ToBase64(bytes) {
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     return btoa(binary);
 }
-
-const DELEGATED_STYLE_VALUES = Object.freeze({
-    background: new Set(['var(--card-h)', 'var(--card)', 'var(--bg2)', 'var(--bg)', 'transparent', 'rgba(244,63,94,0.06)']),
-    color: new Set(['var(--tx)', 'var(--tx-m)', 'var(--tx-d)', 'var(--acc)'])
-});
-
-function applyDelegatedStyleAction(call, element) {
-    const match = call.match(/^this\.style\.(background|color)='([^']+)'$/);
-    if (!match) return false;
-    const [, property, value] = match;
-    if (!DELEGATED_STYLE_VALUES[property].has(value)) return false;
-    element.style[property] = value;
-    return true;
-}
-
-function isExternalHoverTransition(target, relatedTarget) {
-    if (!relatedTarget) return true;
-    try {
-        return !target.contains(relatedTarget);
-    } catch (e) {
-        return true;
-    }
-}

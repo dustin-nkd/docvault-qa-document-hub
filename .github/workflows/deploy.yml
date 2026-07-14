@@ -18,21 +18,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
 
       - name: Run production quality gate
         run: npm run check
 
       - name: Build Tailwind CSS
-        # Sprint 22 optimization: pre-compile Tailwind (tailwind.config.js +
-        # src/input.css) into vendor/tailwind/tailwind.generated.css instead of
-        # shipping the ~450KB CDN JIT compiler that recompiled on every page
-        # load. Pinned version + `npx --yes` — no package.json install step,
-        # so this doesn't touch (or depend on) the repo's unrelated deps and
-        # leaves no local node_modules for the deploy step to pick up.
-        run: npx --yes tailwindcss@3.4.19 -i ./src/input.css -o ./vendor/tailwind/tailwind.generated.css --minify
+        run: npm run build:css
 
       - name: Build production artifact
         run: npm run build:pages
+
+      - name: Install Chromium for browser regression tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser regression suite
+        run: npm run test:e2e
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

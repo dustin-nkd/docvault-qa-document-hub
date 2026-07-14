@@ -1243,3 +1243,26 @@
 }
 button.is-busy { align-items:center; display:inline-flex; gap:7px; justify-content:center; }
 button[aria-busy="true"] { cursor:progress !important; }
+
+/* Shared pointer-only hover states. Keeping these in CSS avoids sticky inline
+   styles and prevents touch devices from inheriting mouse-only feedback. */
+@media (hover: hover) and (pointer: fine) {
+  .ui-hover-card:hover {
+    background: var(--card) !important;
+  }
+  .ui-hover-card-h:hover {
+    background: var(--card-h) !important;
+  }
+  .ui-hover-bg2:hover {
+    background: var(--bg2) !important;
+  }
+  .ui-hover-danger:hover {
+    background: rgba(244, 63, 94, 0.06) !important;
+  }
+  .ui-hover-text:hover {
+    color: var(--tx) !important;
+  }
+  .ui-hover-accent:hover {
+    color: var(--acc) !important;
+  }
+}
