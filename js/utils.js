@@ -14,6 +14,78 @@ function debounce(fn, wait) {
     };
 }
 
+// Toast UI is the largest runtime dependency. Keep it out of the dashboard
+// critical path and load it once, only when an editor or markdown viewer opens.
+const TOAST_UI_ASSETS = Object.freeze({
+    styles: [
+        'vendor/toastui/toastui-editor.min.css',
+        'vendor/toastui/toastui-editor-dark.min.css'
+    ],
+    script: 'vendor/toastui/toastui-editor-all.min.js'
+});
+let _toastUiLoadPromise = null;
+
+function _loadRuntimeAsset(type, url) {
+    const existing = document.querySelector(`[data-runtime-asset="${url}"]`);
+    if (existing?.dataset.loaded === 'true') return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+        const asset = existing || document.createElement(type === 'style' ? 'link' : 'script');
+        const onLoad = () => {
+            asset.dataset.loaded = 'true';
+            resolve();
+        };
+        const onError = () => {
+            asset.remove();
+            reject(new Error(`Unable to load runtime asset: ${url}`));
+        };
+        asset.addEventListener('load', onLoad, { once: true });
+        asset.addEventListener('error', onError, { once: true });
+        if (existing) return;
+
+        asset.dataset.runtimeAsset = url;
+        if (type === 'style') {
+            asset.rel = 'stylesheet';
+            asset.href = url;
+        } else {
+            asset.src = url;
+            asset.async = true;
+        }
+        document.head.appendChild(asset);
+    });
+}
+
+function getEditorMarkdown() {
+    if (window.tuiEditor) return window.tuiEditor.getMarkdown();
+    return document.getElementById('ed-content-hidden')?.value || '';
+}
+
+function setEditorMarkdown(value) {
+    if (window.tuiEditor) {
+        window.tuiEditor.setMarkdown(value);
+        return;
+    }
+    const hidden = document.getElementById('ed-content-hidden');
+    if (hidden) hidden.value = value;
+}
+
+function ensureToastUI() {
+    if (window.toastui?.Editor) return Promise.resolve(window.toastui);
+    if (!_toastUiLoadPromise) {
+        _toastUiLoadPromise = Promise.all([
+            ...TOAST_UI_ASSETS.styles.map(url => _loadRuntimeAsset('style', url)),
+            _loadRuntimeAsset('script', TOAST_UI_ASSETS.script)
+        ]).then(() => {
+            if (!window.toastui?.Editor) throw new Error('Toast UI loaded without its Editor API');
+            return window.toastui;
+        }).catch(error => {
+            _toastUiLoadPromise = null;
+            throw error;
+        });
+    }
+    return _toastUiLoadPromise;
+}
+
 // Reuse normalized search text across document-list and global-search queries.
 // Entries invalidate automatically when searchable fields change, including
 // tags mutated in place by the editor/batch actions.
