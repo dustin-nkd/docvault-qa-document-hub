@@ -33,6 +33,7 @@ window.lockVault = function() {
     if (!LocalAuth.isConfigured()) { toast('No master password set — nothing to lock.', 'info'); return; }
     sessionStorage.removeItem(LocalAuth.SESSION_KEY);
     sessionStorage.removeItem(LocalAuth.SESSION_PWD);
+    if (window.Vault?.clearKeyCache) window.Vault.clearKeyCache();
 
     // Reset lock screen to clean state before showing
     resetLockFormState();
