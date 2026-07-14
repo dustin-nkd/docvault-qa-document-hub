@@ -318,32 +318,7 @@ function executeAction(code, event, element) {
             setTimeout(() => document.getElementById('ed-content')?.focus(), 0);
             continue;
         }
-        if (call === "this.style.background='var(--card-h)'") {
-            element.style.background = 'var(--card-h)';
-            continue;
-        }
-        if (call === "this.style.background='var(--card)'") {
-            element.style.background = 'var(--card)';
-            continue;
-        }
-        if (call === "this.style.background='var(--bg2)'") {
-            element.style.background = 'var(--bg2)';
-            continue;
-        }
-        if (call === "this.style.background='transparent'") {
-            element.style.background = 'transparent';
-            continue;
-        }
-        if (call === "this.style.background='rgba(244,63,94,0.06)'") {
-            element.style.background = 'rgba(244,63,94,0.06)';
-            continue;
-        }
-        if (call === "this.style.color='var(--tx-m)'") {
-            element.style.color = 'var(--tx-m)';
-            continue;
-        }
-        if (call === "this.style.color='var(--tx-d)'") {
-            element.style.color = 'var(--tx-d)';
+        if (applyDelegatedStyleAction(call, element)) {
             continue;
         }
 
@@ -429,7 +404,7 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('mouseover', (e) => {
     if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-onmouseenter]');
-    if (target) {
+    if (target && isExternalHoverTransition(target, e.relatedTarget)) {
         executeAction(target.getAttribute('data-onmouseenter'), e, target);
     }
 });
@@ -437,7 +412,7 @@ document.addEventListener('mouseover', (e) => {
 document.addEventListener('mouseout', (e) => {
     if (!(e.target instanceof Element)) return;
     let target = e.target.closest('[data-onmouseleave]');
-    if (target) {
+    if (target && isExternalHoverTransition(target, e.relatedTarget)) {
         executeAction(target.getAttribute('data-onmouseleave'), e, target);
     }
 });
