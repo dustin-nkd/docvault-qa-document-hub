@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v41'; // Sync wave: bounded writes and metadata fingerprinting
+const SW_VERSION = 'v42'; // Cleanup wave: modular actions and category renderers
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -18,9 +18,15 @@ const APP_SHELL = [
     './js/ui.js',
     './js/render-core.js',
     './js/render-trends.js',
+    './js/render-editor-categories.js',
     './js/render-editor.js',
+    './js/render-viewer-categories.js',
     './js/render-viewer.js',
-    './js/actions.js',
+    './js/actions-batch-history.js',
+    './js/actions-sharing.js',
+    './js/actions-imports.js',
+    './js/actions-settings.js',
+    './js/actions-documents.js',
     './js/actions-focus.js',
     './js/search.js',
     './js/events.js',
