@@ -171,7 +171,6 @@ docvault-qa-document-hub/
 │   ├── search.js           #   - Global search (Ctrl+K)
 │   └── events.js           #   - App entry point/bootstrap, keyboard shortcuts, drag & drop,
 │                           #     CSP-safe event delegation (data-onclick → executeAction)
-├── docvault.js             # Legacy monolith (pre-refactor); NOT loaded by index.html, kept for reference
 ├── style.css               # Additional styles & component classes
 ├── main.js                 # Vite entry point (CSS import)
 ├── tailwind.config.js      # Tailwind CSS configuration

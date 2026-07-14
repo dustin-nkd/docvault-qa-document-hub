@@ -9,6 +9,8 @@ const assert = (condition, message) => {
     if (!condition) throw new Error(message);
 };
 
+assert(!fs.existsSync(path.join(root, 'docvault.js')), 'Legacy docvault.js must not be restored or deployed');
+
 const jsFiles = [
     'storage.js',
     'sw.js',
