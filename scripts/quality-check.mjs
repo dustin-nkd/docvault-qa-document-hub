@@ -24,6 +24,17 @@ const jsFiles = [
 for (const relativePath of jsFiles.filter((value) => value !== 'main.js')) {
     new vm.Script(read(relativePath), { filename: relativePath });
 }
+
+const maintainabilityBudgets = {
+    'js/actions.js': 2500,
+    'js/render-core.js': 1700,
+    'js/actions-focus.js': 220,
+    'js/render-trends.js': 380
+};
+for (const [relativePath, maxLines] of Object.entries(maintainabilityBudgets)) {
+    const lineCount = read(relativePath).split(/\r?\n/).length;
+    assert(lineCount <= maxLines, relativePath + ' exceeds its maintainability budget: ' + lineCount + ' > ' + maxLines);
+}
 const mainSource = read('main.js');
 const mainImport = mainSource.match(/^import\s+["'](.+?)["'];?\s*$/m);
 assert(mainImport, 'main.js must contain a static stylesheet import');

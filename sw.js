@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v36'; // Performance wave: runtime-only fonts and cached dashboard rendering
+const SW_VERSION = 'v37'; // Maintainability wave: split focus actions and trend rendering modules
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -17,9 +17,11 @@ const APP_SHELL = [
     './js/state.js',
     './js/ui.js',
     './js/render-core.js',
+    './js/render-trends.js',
     './js/render-editor.js',
     './js/render-viewer.js',
     './js/actions.js',
+    './js/actions-focus.js',
     './js/search.js',
     './js/events.js',
     './vendor/tailwind/tailwind.generated.css',

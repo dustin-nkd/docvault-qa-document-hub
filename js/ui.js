@@ -403,10 +403,10 @@ function updateSidebar() {
             const isActive = state.view === 'documents' && state.category === (v.category || 'all') && state.statusFilter === (v.statusFilter || 'all') && state.search === (v.search || '') && state.sortBy === (v.sortBy || 'updated');
             const cls = isActive ? 'nav-item active flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm' : 'nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm';
             return `
-                <div class="${cls}" style="color:var(--tx-m);cursor:pointer;" data-onclick="applySavedView('${v.id}')">
+                <div class="${cls}" style="color:var(--tx-m);cursor:pointer;" data-onclick="${actionAttr('applySavedView', v.id)}">
                     <i class="fa-regular fa-bookmark w-4 text-center text-xs"></i>
                     <span class="truncate">${escHtml(v.name)}</span>
-                    <button class="text-xs shrink-0 ml-auto" style="color:var(--tx-d);" title="Remove view" data-onclick="event.stopPropagation();deleteSavedView('${v.id}')"><i class="fa-solid fa-xmark"></i></button>
+                    <button class="text-xs shrink-0 ml-auto" style="color:var(--tx-d);" title="Remove view" data-onclick="event.stopPropagation();${actionAttr('deleteSavedView', v.id)}"><i class="fa-solid fa-xmark"></i></button>
                 </div>`;
         }).join('');
         if (typeof morphdom !== 'undefined') {

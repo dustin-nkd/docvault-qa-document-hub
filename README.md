@@ -165,9 +165,11 @@ docvault-qa-document-hub/
 │   ├── state.js            #   - Global state, documents array, hydrate/persist, doc history
 │   ├── ui.js               #   - Toasts, modals, theme toggle, lock screen, sidebar
 │   ├── render-core.js      #   - Main render loop (morphdom diffing), Dashboard, DocList, Kanban board
+│   ├── render-trends.js    #   - Trend calculations, SVG chart primitives, trend cards
 │   ├── render-editor.js    #   - Editor view: dynamic per-category forms, date picker
 │   ├── render-viewer.js    #   - Viewer view, Test Run execution
 │   ├── actions.js          #   - CRUD, E2E sharing, image upload to GitHub CDN, batch ops, history/diff
+│   ├── actions-focus.js    #   - Saved views and Focus Queue workflow actions
 │   ├── search.js           #   - Global search (Ctrl+K)
 │   └── events.js           #   - App entry point/bootstrap, keyboard shortcuts, drag & drop,
 │                           #     CSP-safe event delegation (data-onclick → executeAction)
