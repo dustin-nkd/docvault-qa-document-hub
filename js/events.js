@@ -22,9 +22,8 @@ async function retryPendingSync() {
     try {
         if (!(await GitHubSync.isConfigured())) return;
         toast('Back online — syncing pending changes…', 'info');
-        await GitHubSync.syncPush(documents);
-        DocStorage.setPendingSync(false);
-        toast(t('ghSyncOk') || 'Synced to GitHub', 'success');
+        const synced = await DocStorage.queueSync(documents, {}, { failurePrefix: 'Sync retry failed' });
+        if (synced) toast(t('ghSyncOk') || 'Synced to GitHub', 'success');
     } catch (e) {
         toast('Sync retry failed: ' + e.message, 'error');
     }
@@ -179,7 +178,7 @@ async function startApp() {
     // If security metadata exists locally, push now so it is available cross-device.
     // Handles users who saved it before metadata sync was implemented.
     if ((localStorage.getItem(LocalAuth.RECOVERY_KEY) || LocalAuth.getHint()) && await GitHubSync.isConfigured()) {
-        GitHubSync.syncPush(documents, { securityMeta: GitHubSync._getLocalSecurityMeta() }).catch(() => {});
+        DocStorage.queueSync(documents, { securityMeta: GitHubSync._getLocalSecurityMeta() }, { silent: true });
     }
     handleUrlParams();
 }

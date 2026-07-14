@@ -1626,7 +1626,7 @@ window.changeMasterPassword = async function() {
         // the next document save, and the stale recovery blob lingers remotely.
         if (await window.GitHubSync.isConfigured()) {
             try {
-                await window.GitHubSync.syncPush(documents, { securityMeta: window.GitHubSync._getLocalSecurityMeta() });
+                await window.DocStorage.queueSync(documents, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }, { failurePrefix: 'Password changed locally, but GitHub sync failed' });
             } catch (e) {
                 toast('Password changed locally, but GitHub sync failed: ' + e.message, "error");
             }
@@ -1654,9 +1654,11 @@ window.savePasswordHint = async function() {
     // Push either way: when sync is off this clears the public copy from GitHub
     // (the meta builder sends an empty hint), when on it publishes the new hint.
     if (await window.GitHubSync.isConfigured()) {
-        window.GitHubSync.syncPush(documents, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }).catch(e => {
-            toast('Password hint saved locally, but sync failed: ' + e.message, 'error');
-        });
+        window.DocStorage.queueSync(
+            documents,
+            { securityMeta: window.GitHubSync._getLocalSecurityMeta() },
+            { failurePrefix: 'Password hint saved locally, but sync failed' }
+        );
     }
     toast(!text ? 'Password hint cleared.' : (syncOn ? 'Password hint saved & synced (public).' : 'Password hint saved on this device only.'), 'success');
 };
@@ -1670,7 +1672,7 @@ window.generateRecoveryKey = async function() {
         const code = await window.LocalAuth.generateRecovery(pwd);
         // Push immediately so the blob is available cross-device without waiting for the next doc save
         if (await window.GitHubSync.isConfigured()) {
-            window.GitHubSync.syncPush(documents, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }).catch(() => {});
+            window.DocStorage.queueSync(documents, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }, { silent: true });
         }
         showModal(`
             <div class="text-center">
