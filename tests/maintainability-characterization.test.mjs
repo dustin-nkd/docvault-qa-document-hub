@@ -38,7 +38,7 @@ function loadActionSeam(options = {}) {
         state: {},
         location: { pathname: '/' }
     });
-    const sources = ['js/utils.js', 'js/actions.js', 'js/actions-focus.js']
+    const sources = ['js/utils.js', 'js/actions-batch-history.js', 'js/actions-sharing.js', 'js/actions-imports.js', 'js/actions-settings.js', 'js/actions-documents.js', 'js/actions-focus.js']
         .filter(relativePath => fs.existsSync(path.join(root, relativePath)))
         .map(relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8'))
         .join('\n');

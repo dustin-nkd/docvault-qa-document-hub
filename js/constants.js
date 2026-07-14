@@ -13,7 +13,7 @@ const GUEST_MODE = new URLSearchParams(location.search).get('guest') === '1';
 // A real fetch() to a made-up base URL would just fail on CORS or DNS, so the
 // "Try it" feature (Sprint 20) would look broken for anyone testing it without
 // a real backend of their own. This sentinel base URL is recognized by
-// tryApiRequest() (js/actions.js) and short-circuited into a fully local,
+// tryApiRequest() (js/actions-imports.js) and short-circuited into a fully local,
 // in-browser mock response built from the doc's own saved apiData — no
 // network call happens at all. Works in guest demo AND the real vault, so
 // anyone can see "Try it" actually round-trip without standing up a server.
@@ -376,164 +376,126 @@ const TEMPLATES = {
     runbook: `# [Title]
 
 ## Purpose
-Mô tả mục đích của runbook này.
+Describe what this runbook accomplishes and when to use it.
 
 ## Prerequisites
-- Điều kiện tiên quyết 1
-- Điều kiện tiên quyết 2
+- Required access or environment
+- Required data or tools
 
 ## Steps
 
-### Bước 1: [Tên bước]
-1. Hành động cụ thể
-2. Kiểm tra kết quả
+### Step 1: [Step name]
+1. Perform the action
+2. Verify the result
 
-### Bước 2: [Tên bước]
-1. Hành động cụ thể
-2. Kiểm tra kết quả
+### Step 2: [Step name]
+1. Perform the action
+2. Verify the result
 
 ## Expected Results
-Mô tả kết quả mong đợi.
+Describe the successful outcome.
 
 ## Troubleshooting
-| Vấn đề | Nguyên nhân | Giải pháp |
-|--------|-------------|-----------|
-| Lỗi X  | Y           | Z         |
+| Issue | Cause | Resolution |
+|---|---|---|
+| Example issue | Example cause | Example resolution |
 
 ## References
-- [Link tài liệu tham khảo](#)`,
+- [Reference document](#)`,
     onboarding: `# [Title]
 
 ## Welcome
-Giới thiệu tổng quan cho thành viên mới.
+Provide an overview for new team members.
 
-## Week 1: Setup & Orientation
-- [ ] Cài đặt môi trường development
-- [ ] Access các hệ thống cần thiết
-- [ ] Review coding standards
-- [ ] Setup testing tools
+## Week 1: Setup and Orientation
+- [ ] Install the development toolchain
+- [ ] Request access to required systems
+- [ ] Review engineering and QA standards
+- [ ] Configure testing tools
 
-## Week 2: Learning & Practice
+## Week 2: Learning and Practice
 - [ ] Study architecture documents
-- [ ] Pair testing với team member
-- [ ] Thực hiện test cases mẫu
-- [ ] Join daily standup
+- [ ] Pair with a team member
+- [ ] Execute sample test cases
+- [ ] Join team ceremonies
 
 ## Week 3: Hands-on
-- [ ] Tự viết test cases
-- [ ] Execute test suite
-- [ ] Report bugs theo standard
-- [ ] Review session với mentor
-
-## Key Contacts
-| Role | Name | Contact |
-|------|------|---------|
-| QA Lead | - | - |
-
-## Resources
-- Wiki nội bộ
-- Training materials`,
+- [ ] Write new test cases
+- [ ] Execute a test suite
+- [ ] Report defects using the team standard
+- [ ] Review progress with a mentor`,
     testcases: `# [Title]
 
 ## Module Information
-- **Module**: Tên module
+- **Module**: [Module name]
 - **Version**: x.x.x
 - **Last Updated**: YYYY-MM-DD
 
 ## Test Environment
-- OS, Browser, Device info
+- OS, browser, and device
 - Test data requirements
 
-## Test Cases
-
-### TC-001: [Tên test case]
+### TC-001: [Test case name]
 - **Priority**: High / Medium / Low
 - **Type**: Functional / Regression / Smoke
-- **Pre-condition**: Mô tả điều kiện trước test
+- **Pre-condition**: Describe the required starting state
 
 **Steps:**
-1. Bước 1
-2. Bước 2
-3. Bước 3
+1. Step one
+2. Step two
+3. Step three
 
-**Expected Result:** Mô tả kết quả mong đợi
+**Expected Result:** Describe the expected result.
 
-**Actual Result:** (Điền khi execute)
+**Actual Result:** Complete during execution.
 
-**Status:** Pass / Fail / Blocked / Not Run
-
----
-
-### TC-002: [Tên test case]
-- **Priority**: Medium
-- **Type**: Functional
-- **Pre-condition**: ...
-
-**Steps:**
-1. ...
-2. ...
-
-**Expected Result:** ...
-
-## Notes
-Ghi chú thêm nếu có.`,
+**Status:** Pass / Fail / Blocked / Not Run`,
     knowledge: `# [Title]
 
 ## Context
-Mô tả bối cảnh / vấn đề cần lưu trữ kiến thức.
+Describe the context and why this knowledge matters.
 
 ## Problem
-Mô tả chi tiết vấn đề đã gặp phải.
+Describe the observed problem.
 
 ## Solution
-Giải pháp đã áp dụng:
-
-1. Bước giải quyết
-2. Chi tiết implement
-3. Cấu hình cần thiết
-
-\`\`\`
-// Code example nếu cần
-\`\`\`
+1. Resolution step
+2. Implementation detail
+3. Required configuration
 
 ## Key Learnings
-- Điểm học được 1
-- Điểm học được 2
-
-## Best Practices
-- Practice 1
-- Practice 2
+- Learning one
+- Learning two
 
 ## References
-- [Tài liệu tham khảo](#)
-- Related documents`,
+- [Reference document](#)`,
     task: `# [Task Title]
 
 ## Description
-Mô tả chi tiết công việc cần làm.
+Describe the work and its desired outcome.
 
 ## Sub-tasks
-- [ ] Việc 1
-- [ ] Việc 2
-- [ ] Việc 3
+- [ ] Work item one
+- [ ] Work item two
+- [ ] Work item three
 
 ## Notes
-Ghi chú thêm trong quá trình làm việc.`,
+Add implementation notes and decisions here.`,
     bug: `# [Bug Title]
 
 ## Pre-conditions
-Điều kiện trước khi test.
+Describe the required starting state.
 
 ## Steps to Reproduce
-1. Bước 1
-2. Bước 2
-3. Bước 3
+1. Step one
+2. Step two
+3. Step three
 
 ## Expected Behavior
-Mô tả kết quả mong đợi.
+Describe the expected behavior.
 
 ## Actual Behavior
-Mô tả kết quả thực tế (lỗi).
+Describe the observed behavior.
 
 ## Logs / Payload / Data
 \`\`\`json
@@ -544,35 +506,34 @@ Mô tả kết quả thực tế (lỗi).
     testplan: `# [Release / Feature] Test Plan
 
 ## Scope
-Phạm vi test trong release/feature này.
+Describe what is in and out of scope.
 
 ## Test Strategy
-Chiến lược test (Manual, Automation, Performance...).
+Describe the manual, automated, performance, and security approach.
 
 ## Environments
-Môi trường cần test.
+List the required test environments.
 
-## Devices & Browsers
-- Chrome/Edge
-- iOS/Android
+## Devices and Browsers
+- Chrome / Edge / Safari
+- iOS / Android
 
 ## Timeline
-Thời gian dự kiến.`,
+Document milestones and sign-off dates.`,
     meeting: `# [Meeting Topic]
 
 ## Date: YYYY-MM-DD
-## Attendees:
+## Attendees
 -
 -
 
 ## Discussion Points
-- Vấn đề 1
-- Vấn đề 2
+- Topic one
+- Topic two
 
 ## Action Items
-- [ ] Action 1 (@nguoi_thuc_hien)
-- [ ] Action 2 (@nguoi_thuc_hien)`,
-
+- [ ] Action one (@owner)
+- [ ] Action two (@owner)`,
     credential: `# [System / Tool Name]
 
 ## Environment Info
@@ -580,24 +541,10 @@ Thời gian dự kiến.`,
 - **Type**: Staging / Production / Internal
 
 ## Accounts
-**Account 1 (Admin)**
-- Username: \`admin\`
-- Password: \`password123\`
+Store account metadata in the protected credential fields above. Never place real secrets in document content.`,
+    api: `# [API Operation]
 
-**Account 2 (Test User)**
-- Username: \`test_user\`
-- Password: \`password123\`
-
-## Database Access
-- Host:
-- User:
-- Pass:
-
-## Notes
-- Ghi chú về cách đổi pass, VPN cần thiết...`,
-    api: `# [API Endpoint]
-
-## Method & URL
+## Endpoint
 \`GET /api/v1/resource\`
 
 ## Headers
@@ -611,82 +558,165 @@ Thời gian dự kiến.`,
 }
 \`\`\`
 
-## Response (200 OK)
+## Response
 \`\`\`json
 {
   "status": "success"
 }
 \`\`\``,
+    environment: `# [Environment Name]
+
+## Purpose
+Describe how this environment is used.
+
+## Access
+Document safe access instructions. Store secrets only in linked credentials.
+
+## Operational Notes
+- Reset schedule
+- Deployment cadence
+- Known limitations`,
+    release: `# [Release Version]
+
+## Highlights
+- Highlight one
+- Highlight two
+
+## Risks
+Describe open risks and accepted exceptions.
+
+## Rollback
+Describe the rollback trigger and owner.`,
     testrun: ``
 };
 
-// ========================
+// ========================// ========================
 // SAMPLE DOCS
 // ========================
 const SAMPLE_DOCS = [
     {
         id: 'doc_001', title: 'Regression Test Execution Runbook', category: 'runbook',
         tags: ['regression', 'sprint', 'automation'], status: 'published', favorite: true,
-        content: `# Regression Test Execution Runbook\n\n## Purpose\nHướng dẫn chi tiết quy trình thực hiện regression test cho mỗi sprint cycle.\n\n## Prerequisites\n- Test environment đã được deploy bản build mới\n- Test data đã được chuẩn bị sẵn trong database\n- Automation test suite đã được update latest code\n\n## Steps\n\n### Bước 1: Verify Test Environment\n1. Kiểm tra version của build trên Staging\n2. Xác nhận database migration đã chạy thành công\n3. Verify các third-party services đang hoạt động\n\n### Bước 2: Execute Automated Regression\n1. Mở terminal và chạy lệnh:\n\`\`\`bash\nnpm run test:regression -- --env=staging\n\`\`\`\n2. Monitor test execution trên Dashboard\n3. Chờ kết quả và kiểm tra report\n\n### Bước 3: Manual Regression for Critical Paths\n1. Login flow (SSO + Local)\n2. Payment checkout flow\n3. Admin panel key functions\n\n## Expected Results\n- Tất cả automated tests PASS\n- Không có critical/high bugs mới\n- Test report được gửi đến Slack channel\n\n## Troubleshooting\n| Vấn đề | Nguyên nhân | Giải pháp |\n|--------|-------------|-----------|\n| Flaky tests | Timing issue | Re-run với retry |\n| DB connection fail | Migration lỗi | Rollback và re-deploy |`,
+        content: `# Regression Test Execution Runbook
+
+## Purpose
+Provide a repeatable regression workflow for every sprint.
+
+## Prerequisites
+- The target build is deployed to Staging
+- Test data is prepared
+- The automation suite is current
+
+## Steps
+1. Verify the build, database migration, and third-party services.
+2. Run \`npm run test:regression -- --env=staging\`.
+3. Execute manual checks for authentication, checkout, and administration.
+4. Publish the report and escalate new Critical or Major defects.
+
+## Expected Results
+All required checks complete with no unaccepted release blocker.`,
         createdAt: Date.now() - 86400000 * 15, updatedAt: Date.now() - 86400000 * 2
     },
     {
         id: 'doc_002', title: 'CI/CD Pipeline Troubleshooting Guide', category: 'runbook',
-        tags: ['ci-cd', 'jenkins', 'troubleshooting'], status: 'published', favorite: false,
-        content: `# CI/CD Pipeline Troubleshooting Guide\n\n## Purpose\nCung cấp các bước xử lý khi CI/CD pipeline bị lỗi.\n\n## Common Issues\n\n### Build Failed\n1. Kiểm tra Jenkins console output\n2. Xác nhận không có merge conflict\n3. Verify dependencies version\n\n### Test Stage Failed\n1. Download test report artifact\n2. Phân tích failed test cases\n3. Kiểm tra test data / environment\n\n### Deploy Failed\n1. Kiểm tra Kubernetes pod logs\n2. Verify health check endpoint\n3. Rollback nếu cần thiết\n\n## Escalation\n- Level 1: QA Engineer tự xử lý (15 phút)\n- Level 2: Escalate đến DevOps (30 phút)\n- Level 3: Escalate đến Tech Lead (1 giờ)`,
+        tags: ['ci-cd', 'troubleshooting'], status: 'published', favorite: false,
+        content: `# CI/CD Pipeline Troubleshooting Guide
+
+## Build Failure
+1. Review the build log.
+2. Confirm the branch has no unresolved conflicts.
+3. Verify locked dependency versions.
+
+## Test Failure
+1. Download test artifacts.
+2. Identify the first failing test.
+3. Validate test data and environment health.
+
+## Deploy Failure
+Inspect deployment logs, verify health checks, and roll back when the release criteria require it.`,
         createdAt: Date.now() - 86400000 * 30, updatedAt: Date.now() - 86400000 * 5
     },
     {
         id: 'doc_003', title: 'QA Team Onboarding Guide', category: 'onboarding',
-        tags: ['onboarding', 'team', 'setup'], status: 'published', favorite: true,
-        content: `# QA Team Onboarding Guide\n\n## Welcome to QA Team!\nChào mừng bạn gia nhập đội ngũ QA. Document này sẽ giúp bạn nhanh chóng hòa nhập.\n\n## Week 1: Setup\n- [ ] Cài đặt JDK 17, Node.js 18, Python 3.11\n- [ ] Setup IDE (IntelliJ / VS Code với extensions)\n- [ ] Cài đặt Docker Desktop\n- [ ] Request access: Jira, Confluence, GitHub, Slack, Figma\n- [ ] Clone repo test-automation và chạy được sample test\n\n## Week 2: Learning\n- [ ] Đọc Architecture Overview document\n- [ ] Study Testing Strategy document\n- [ ] Join 2 pairing sessions với senior QA\n- [ ] Thực hiện 5 test cases trên Staging\n\n## Week 3: Hands-on\n- [ ] Viết 10 test cases mới cho module được assign\n- [ ] Execute full test suite cho 1 feature\n- [ ] Log 3 bugs Jira theo format chuẩn\n- [ ] Present test result trong team meeting\n\n## Key Contacts\n| Role | Name | Slack |\n|------|------|-------|\n| QA Lead | Lan N. | @lan.n |\n| Senior QA | Minh T. | @minh.t |`,
+        tags: ['onboarding', 'team'], status: 'published', favorite: true,
+        content: `# QA Team Onboarding Guide
+
+## Week 1
+Install the toolchain, request access, clone the automation repository, and run the smoke suite.
+
+## Week 2
+Review architecture and testing strategy, then pair with a senior QA engineer.
+
+## Week 3
+Write test cases, execute a feature suite, report defects, and present the results.`,
         createdAt: Date.now() - 86400000 * 60, updatedAt: Date.now() - 86400000 * 10
     },
     {
         id: 'doc_004', title: 'Testing Tools Setup Manual', category: 'onboarding',
-        tags: ['tools', 'setup', 'installation'], status: 'draft', favorite: false,
-        content: `# Testing Tools Setup Manual\n\n## Selenium WebDriver\n\`\`\`bash\nnpm install selenium-webdriver\nnpm install @wdio/cli --save-dev\n\`\`\`\n\n## Playwright\n\`\`\`bash\nnpm init playwright@latest\n\`\`\`\n\n## Postman\n1. Download từ postman.com\n2. Import collection từ shared workspace\n3. Setup environment variables\n\n## JMeter\n1. Download từ jmeter.apache.org\n2. Cài đặt JDK 11+\n3. Configure JVM args cho performance testing`,
+        tags: ['tools', 'setup'], status: 'draft', favorite: false,
+        content: `# Testing Tools Setup Manual
+
+Install the supported Node.js and JDK versions, configure Playwright, import the shared API collection, and verify the local test command before requesting review.`,
         createdAt: Date.now() - 86400000 * 20, updatedAt: Date.now() - 86400000 * 8
     },
     {
         id: 'doc_005', title: 'Login Module Test Cases', category: 'testcases',
         tags: ['login', 'auth', 'smoke'], status: 'published', favorite: false,
-        content: `# Login Module Test Cases\n\n## Module: Authentication\n**Version**: 2.4.0 | **Updated**: 2024-01-15\n\n### TC-L001: Login with valid credentials\n- **Priority**: High | **Type**: Smoke\n- **Pre-condition**: User account đã tồn tại và active\n\n**Steps:**\n1. Navigate đến /login\n2. Nhập valid email vào trường Email\n3. Nhập valid password vào trường Password\n4. Click button "Sign In"\n\n**Expected Result:** User đăng nhập thành công, redirect đến dashboard, hiển thị user avatar.\n\n---\n\n### TC-L002: Login with invalid password\n- **Priority**: High | **Type**: Functional\n- **Pre-condition**: User account đã tồn tại\n\n**Steps:**\n1. Navigate đến /login\n2. Nhập valid email\n3. Nhập sai password 3 lần\n\n**Expected Result:** Hiển thị lỗi "Invalid credentials", sau 3 lần hiển thị CAPTCHA.\n\n---\n\n### TC-L003: Login with empty fields\n- **Priority**: Medium | **Type**: Validation\n\n**Steps:**\n1. Navigate đến /login\n2. Để trống cả 2 trường\n3. Click "Sign In"\n\n**Expected Result:** Hiển thị validation error cho cả 2 trường.`,
+        content: `# Login Module Test Cases
+
+### Valid credentials
+Enter an active account and verify the dashboard and avatar appear.
+
+### Invalid password
+Enter an incorrect password three times and verify the CAPTCHA challenge appears.
+
+### Empty fields
+Submit an empty form and verify both required-field messages.`,
         createdAt: Date.now() - 86400000 * 45, updatedAt: Date.now() - 86400000 * 3
     },
     {
         id: 'doc_006', title: 'Payment Gateway Integration Tests', category: 'testcases',
-        tags: ['payment', 'integration', 'critical'], status: 'draft', favorite: true,
-        content: `# Payment Gateway Integration Tests\n\n## Module: Payment\n**Priority**: Critical\n\n### TC-P001: Successful card payment\n1. Add item to cart\n2. Proceed to checkout\n3. Select Credit Card payment\n4. Enter valid card details (test card: 4242 4242 4242 4242)\n5. Click "Pay Now"\n\n**Expected:** Payment success, order status = Confirmed, receipt email sent.\n\n### TC-P002: Payment decline handling\n1. Same flow với declined card (4000 0000 0000 0002)\n\n**Expected:** Hiển thị "Payment declined", order status = Pending, user có thể retry.\n\n### TC-P003: Payment timeout\n1. Simulate network timeout trong payment processing\n\n**Expected:** Hiển thị timeout message, order không bị duplicate khi retry.`,
-        createdAt: Date.now() - 86400000 * 12, updatedAt: Date.now() - 86400000 * 1
+        tags: ['payment', 'integration'], status: 'draft', favorite: true,
+        content: `# Payment Gateway Integration Tests
+
+Validate successful card payment, declined-card handling, timeout recovery, idempotency, and receipt delivery using sandbox data only.`,
+        createdAt: Date.now() - 86400000 * 12, updatedAt: Date.now() - 86400000
     },
     {
         id: 'doc_007', title: 'API Testing Best Practices', category: 'knowledge',
-        tags: ['api', 'best-practices', 'postman'], status: 'published', favorite: false,
-        content: `# API Testing Best Practices\n\n## Context\nTổng hợp các best practices khi thực hiện API testing trong project.\n\n## Core Principles\n\n### 1. Test Independence\nMỗi test case phải độc lập, không phụ thuộc vào kết quả của test khác.\n\n### 2. Use Environment Variables\n\`\`\`json\n{\n  "base_url": "{{\$env.BASE_URL}}",\n  "auth_token": "{{\$env.AUTH_TOKEN}}"\n}\n\`\`\`\n\n### 3. Verify Status Code, Headers, and Body\n\`\`\`javascript\npm.test("Status is 200", () => pm.response.to.have.status(200));\npm.test("Content-Type is JSON", () => {\n  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');\n});\npm.test("Response has id", () => {\n  pm.expect(pm.response.json()).to.have.property('id');\n});\n\`\`\`\n\n### 4. Negative Testing\n- Gửi invalid data types\n- Test missing required fields\n- Verify proper error messages\n- Check rate limiting behavior\n\n### 5. Use Assertions Effectively\n- Kiểm tra exact match cho status codes\n- Use contains/matches cho dynamic data\n- Validate schema cho response body`,
+        tags: ['api', 'best-practices'], status: 'published', favorite: false,
+        content: `# API Testing Best Practices
+
+Keep tests independent, use environment variables, validate status, headers, schema and body, cover negative cases, and assert rate-limit behavior.`,
         createdAt: Date.now() - 86400000 * 90, updatedAt: Date.now() - 86400000 * 7
     },
     {
         id: 'doc_008', title: 'Performance Testing Metrics', category: 'knowledge',
-        tags: ['performance', 'metrics', 'jmeter'], status: 'published', favorite: false,
-        content: `# Performance Testing Metrics & Thresholds\n\n## Key Metrics\n\n| Metric | Threshold | Tool |\n|--------|-----------|------|\n| Response Time (p95) | < 2000ms | JMeter |\n| Throughput | > 100 req/s | JMeter |\n| Error Rate | < 1% | JMeter |\n| CPU Usage | < 80% | Grafana |\n| Memory Usage | < 85% | Grafana |\n| DB Connection Pool | < 80% max | APM |\n\n## Test Scenarios\n\n### Baseline Test\n- 10 concurrent users, 5 minutes\n- Mục đích: lấy baseline metrics\n\n### Load Test\n- 100 concurrent users, ramp-up 10 phút, steady 20 phút\n- Mục đích: verify system under normal load\n\n### Stress Test\n- Ramp lên 500 users cho đến khi hệ thống fail\n- Mục đích: tìm điểm break\n\n## Reporting\nTemplate report gồm: Executive Summary, Metrics Dashboard, Bottleneck Analysis, Recommendations.`,
+        tags: ['performance', 'metrics'], status: 'published', favorite: false,
+        content: `# Performance Testing Metrics
+
+Track response-time percentiles, throughput, error rate, saturation, database pool usage, and the first breached threshold for baseline, load, and stress scenarios.`,
         createdAt: Date.now() - 86400000 * 50, updatedAt: Date.now() - 86400000 * 15
     },
     {
-        id: 'doc_009', title: 'Bug Report Template & Standards', category: 'knowledge',
-        tags: ['bug-report', 'jira', 'standards'], status: 'published', favorite: true,
-        content: `# Bug Report Template & Standards\n\n## Bug Report Format (Jira)\n\n### Title Format\n\`[Module] Brief description of the bug\`\n\nExample: \`[Login] Unable to login with special characters in password\`\n\n### Description Template\n\`\`\`\n**Environment:** Staging / Production\n**Browser:** Chrome 120 / Safari 17\n**Device:** Desktop / Mobile (iOS 17 / Android 14)\n\n**Steps to Reproduce:**\n1. Go to [URL]\n2. Click on [element]\n3. Enter [data]\n4. Observe [behavior]\n\n**Expected Result:**\nMô tả kết quả mong đợi.\n\n**Actual Result:**\nMô tả kết quả thực tế.\n\n**Attachments:**\n- Screenshot / Video\n- Console logs\n- Network har file (nếu cần)\n\`\`\`\n\n## Severity & Priority\n| Severity | Definition | Example |\n|----------|------------|--------|\n| Critical | System crash, data loss | Payment double-charge |\n| Major | Feature broken, no workaround | Cannot submit form |\n| Minor | Feature partially broken | UI misalignment |\n| Trivial | Cosmetic issue | Typos |`,
+        id: 'doc_009', title: 'Bug Report Template and Standards', category: 'knowledge',
+        tags: ['bug-report', 'standards'], status: 'published', favorite: true,
+        content: `# Bug Report Standard
+
+Include environment, browser, device, reproducible steps, expected and actual behavior, severity evidence, logs, screenshots, and the affected build.`,
         createdAt: Date.now() - 86400000 * 70, updatedAt: Date.now() - 86400000 * 20
     },
     {
         id: 'doc_010', title: 'Database Migration Verification', category: 'runbook',
-        tags: ['database', 'migration', 'verify'], status: 'draft', favorite: false,
-        content: `# Database Migration Verification Runbook\n\n## Purpose\nĐảm bảo mỗi database migration được verify trước và sau khi apply trên Staging/Production.\n\n## Pre-Migration Checks\n1. Backup database hiện tại\n2. Review migration SQL script\n3. Estimate execution time trên staging\n4. Verify rollback script sẵn sàng\n\n## Post-Migration Verification\n1. Kiểm tra table structure: \`\\d table_name\`\n2. Verify data integrity: compare row counts\n3. Check indexes đã được tạo\n4. Verify foreign key constraints\n5. Run smoke tests trên affected modules\n\n## Rollback Procedure\n1. Stop application\n2. Apply rollback migration\n3. Verify data integrity\n4. Restart application\n5. Run smoke tests`,
-        createdAt: Date.now() - 86400000 * 5, updatedAt: Date.now() - 86400000 * 1
+        tags: ['database', 'migration'], status: 'draft', favorite: false,
+        content: `# Database Migration Verification
+
+Back up the database, review forward and rollback scripts, validate row counts and constraints after migration, then run smoke tests for affected modules.`,
+        createdAt: Date.now() - 86400000 * 5, updatedAt: Date.now() - 86400000
     }
 ];
 
-// ========================
+// ========================// ========================
 // GUEST DEMO DATA — fully isolated sample set covering all 11 categories,
 // cross-linked (bug found in a failed test-run step, environment linked to
 // credentials, test plan linked to test cases + runs, release linked to
@@ -703,10 +733,10 @@ const GUEST_DEMO_DOCS = (() => {
     // dedicated testcases block — it renders doc.content as Markdown).
     const tcContent = (title, tcData) => `# ${title}\n\n${tcData.module ? `**Module:** ${tcData.module}` : ''}\n\n${tcData.precond ? `## Pre-conditions\n${tcData.precond}\n` : ''}${tcData.data ? `## Test Data\n${tcData.data}\n` : ''}\n## Test Steps\n| Step | Action | Expected Result |\n|---|---|---|\n${tcData.steps.map((s, i) => `| ${i + 1} | ${s.action} | ${s.expected} |`).join('\n')}\n`;
 
-    const tcLoginData = { module: 'Authentication', precond: 'User account đã tồn tại và active', data: 'user: demo@shop.test / pass: Demo@1234',
+    const tcLoginData = { module: 'Authentication', precond: 'An active user account exists', data: 'user: demo@shop.test / pass: Demo@1234',
         steps: [
-            { action: 'Điều hướng đến /login, nhập email + password hợp lệ, click "Sign In"', expected: 'Đăng nhập thành công, redirect tới /dashboard' },
-            { action: 'Đăng xuất, nhập sai password 3 lần liên tiếp', expected: 'Hiển thị lỗi "Invalid credentials", sau lần thứ 3 hiện CAPTCHA' }
+            { action: 'Open /login, enter a valid email and password, then click "Sign In"', expected: 'Login succeeds and redirects to /dashboard' },
+            { action: 'Sign out and enter an incorrect password three times', expected: 'Show "Invalid credentials" and display CAPTCHA after the third attempt' }
         ] };
     const tcLogin = {
         id: 'gd_tc_login', title: 'Login — Valid & Invalid Credentials', category: 'testcases',
@@ -714,11 +744,11 @@ const GUEST_DEMO_DOCS = (() => {
         tcData: tcLoginData, content: tcContent('Login — Valid & Invalid Credentials', tcLoginData),
         createdAt: days(20), updatedAt: days(2)
     };
-    const tcCheckoutData = { module: 'Checkout', precond: 'Giỏ hàng có ít nhất 1 sản phẩm', data: 'card: 4242 4242 4242 4242',
+    const tcCheckoutData = { module: 'Checkout', precond: 'The cart contains at least one product', data: 'card: 4242 4242 4242 4242',
         steps: [
-            { action: 'Thêm sản phẩm vào giỏ, vào trang Checkout', expected: 'Hiển thị đúng tổng tiền, phí ship, thuế' },
-            { action: 'Nhập thông tin thẻ hợp lệ, click "Pay Now"', expected: 'Thanh toán thành công, order status = Confirmed' },
-            { action: 'Thử thanh toán với thẻ bị từ chối (4000 0000 0000 0002)', expected: 'Hiển thị "Payment declined", order status = Pending, cho phép retry' }
+            { action: 'Add a product to the cart and open Checkout', expected: 'Display the correct subtotal, shipping fee, and tax' },
+            { action: 'Enter valid card details and click "Pay Now"', expected: 'Payment succeeds and order status is Confirmed' },
+            { action: 'Attempt payment with the declined test card (4000 0000 0000 0002)', expected: 'Show "Payment declined", keep the order Pending, and allow retry' }
         ] };
     const tcCheckout = {
         id: 'gd_tc_checkout', title: 'Checkout — Credit Card Payment', category: 'testcases',
@@ -726,10 +756,10 @@ const GUEST_DEMO_DOCS = (() => {
         tcData: tcCheckoutData, content: tcContent('Checkout — Credit Card Payment', tcCheckoutData),
         createdAt: days(18), updatedAt: days(1)
     };
-    const tcSearchData = { module: 'Catalog', precond: 'Catalog có tối thiểu 50 sản phẩm', data: '',
+    const tcSearchData = { module: 'Catalog', precond: 'The catalog contains at least 50 products', data: '',
         steps: [
-            { action: 'Nhập từ khóa "áo thun" vào ô search', expected: 'Trả về kết quả liên quan trong < 1s' },
-            { action: 'Áp dụng filter Giá: 100k-300k + Size: M', expected: 'Danh sách được lọc đúng theo điều kiện' }
+            { action: 'Enter "t-shirt" in the search field', expected: 'Return relevant results in under one second' },
+            { action: 'Apply Price: 100-300 and Size: M filters', expected: 'Filter the list using both selected conditions' }
         ] };
     const tcSearch = {
         id: 'gd_tc_search', title: 'Product Search & Filter', category: 'testcases',
@@ -750,8 +780,8 @@ const GUEST_DEMO_DOCS = (() => {
                 [tcSearch.id]: tcSearch.tcData.steps
             },
             results: {
-                [tcLogin.id]: { 0: 'pass', 1: 'pass', note: 'CAPTCHA hoạt động đúng sau 3 lần sai.' },
-                [tcCheckout.id]: { 0: 'pass', 1: 'fail', 2: 'blocked', note: 'Payment declined case trả về lỗi 500 thay vì thông báo thân thiện.' },
+                [tcLogin.id]: { 0: 'pass', 1: 'pass', note: 'CAPTCHA appears correctly after three failed attempts.' },
+                [tcCheckout.id]: { 0: 'pass', 1: 'fail', 2: 'blocked', note: 'The declined-payment case returns HTTP 500 instead of a clear message.' },
                 [tcSearch.id]: { 0: 'pass', 1: 'untested' }
             }
         },
@@ -765,41 +795,41 @@ const GUEST_DEMO_DOCS = (() => {
 
     const bug1Data = { env: 'Staging', browser: 'Chrome 120', severity: 'Critical', priority: 'P1', assignee: 'Minh T.',
         classification: 'unclassified', slaHours: 4, triagedAt: null,
-        precond: 'Giỏ hàng có 2+ sản phẩm', steps: ['Thêm 2 sản phẩm vào giỏ', 'Vào trang Checkout', 'Nhấn F5 để refresh'],
-        expected: 'Giỏ hàng giữ nguyên sản phẩm', actual: 'Giỏ hàng trống, phải thêm lại từ đầu',
+        precond: 'The cart contains at least two products', steps: ['Add two products to the cart', 'Open the Checkout page', 'Press F5 to refresh the page'],
+        expected: 'The cart retains all products', actual: 'The cart becomes empty and must be rebuilt',
         resolution: '', duplicateOf: '', reopenCount: 0 };
     const bug1 = {
-        id: 'gd_bug_1', bugNumber: 1, title: 'Giỏ hàng mất sản phẩm khi refresh trang Checkout', category: 'bug',
+        id: 'gd_bug_1', bugNumber: 1, title: 'Cart loses products after refreshing Checkout', category: 'bug',
         tags: ['checkout', 'cart'], status: 'published', favorite: true, bugStatus: 'open',
         bugStatusEvents: [statusEvent(null, 'new', days(6)), statusEvent('new', 'open', days(5))],
-        bugData: bug1Data, content: bugContent('Giỏ hàng mất sản phẩm khi refresh trang Checkout', bug1Data),
+        bugData: bug1Data, content: bugContent('Cart loses products after refreshing Checkout', bug1Data),
         createdAt: days(6), updatedAt: days(1)
     };
     const bug2Data = { env: 'Staging · build #482', browser: 'Chrome 120', severity: 'Major', priority: 'P2', assignee: 'Lan N.',
         classification: 'functional', slaHours: 24, triagedAt: now - 22 * 3600000,
-        precond: 'Đang ở bước thanh toán', steps: ['Thêm sản phẩm vào giỏ, vào trang Checkout', 'Nhập thông tin thẻ hợp lệ, click "Pay Now"', 'Thử thanh toán với thẻ bị từ chối (4000 0000 0000 0002)'],
-        expected: 'Hiển thị "Payment declined", order status = Pending, cho phép retry',
-        actual: 'Server trả về HTTP 500, không có thông báo cho user, order kẹt ở trạng thái Processing',
+        precond: 'The user is at the payment step', steps: ['Add a product to the cart and open Checkout', 'Enter valid card details and click "Pay Now"', 'Attempt payment with the declined test card (4000 0000 0000 0002)'],
+        expected: 'Show "Payment declined", keep the order Pending, and allow retry',
+        actual: 'The server returns HTTP 500 without a user message and leaves the order in Processing',
         resolution: '', duplicateOf: '', reopenCount: 0,
         foundInRun: runSprint.id, foundInTc: tcCheckout.id, foundInStep: 1 };
     const bug2 = {
-        id: 'gd_bug_2', bugNumber: 2, title: 'Checkout — Payment Declined trả về lỗi 500', category: 'bug',
+        id: 'gd_bug_2', bugNumber: 2, title: 'Checkout — Declined payment returns HTTP 500', category: 'bug',
         tags: ['payment', 'checkout'], status: 'published', favorite: false, bugStatus: 'in-progress',
         bugStatusEvents: [statusEvent(null, 'new', days(1)), statusEvent('new', 'in-progress', days(1))],
         bugData: bug2Data,
-        content: bugContent('Checkout — Payment Declined trả về lỗi 500', bug2Data) + '\n\n> Reported from test run **Sprint 24 — Regression Run** — Checkout — Credit Card Payment, step 2.',
+        content: bugContent('Checkout — Declined payment returns HTTP 500', bug2Data) + '\n\n> Reported from test run **Sprint 24 — Regression Run** — Checkout — Credit Card Payment, step 2.',
         createdAt: days(1), updatedAt: days(1)
     };
     const bug3Data = { env: 'Staging', browser: 'Safari 17', severity: 'Minor', priority: 'P3', assignee: 'Minh T.',
         classification: 'performance', slaHours: 72, triagedAt: days(24),
-        precond: '', steps: ['Vào trang Catalog', 'Gõ nhanh 5-6 ký tự liên tiếp vào ô search'],
-        expected: 'Chỉ gọi API 1 lần sau khi ngừng gõ 300ms', actual: 'Gọi API mỗi lần gõ 1 ký tự',
+        precond: '', steps: ['Open the Catalog page', 'Type five or six characters quickly in the search field'],
+        expected: 'Call the API once after typing stops for 300 ms', actual: 'Call the API after every character',
         resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
     const bug3 = {
-        id: 'gd_bug_3', bugNumber: 3, title: 'Search box không debounce, gọi API liên tục khi gõ', category: 'bug',
+        id: 'gd_bug_3', bugNumber: 3, title: 'Search field sends requests without debounce', category: 'bug',
         tags: ['search', 'performance'], status: 'archived', favorite: false, bugStatus: 'closed',
         bugStatusEvents: [statusEvent(null, 'new', days(25)), statusEvent('new', 'resolved', days(10)), statusEvent('resolved', 'verified', days(9)), statusEvent('verified', 'closed', days(8))],
-        bugData: bug3Data, content: bugContent('Search box không debounce, gọi API liên tục khi gõ', bug3Data),
+        bugData: bug3Data, content: bugContent('Search field sends requests without debounce', bug3Data),
         createdAt: days(25), updatedAt: days(8)
     };
 
@@ -807,7 +837,7 @@ const GUEST_DEMO_DOCS = (() => {
         id: 'gd_testplan_1', title: 'Release v2.4.0 Test Plan', category: 'testplan',
         tags: ['release', 'v2.4.0'], status: 'published', favorite: true,
         tcPlanData: { linkedTCs: [tcLogin.id, tcCheckout.id, tcSearch.id], linkedRuns: [runSprint.id] },
-        content: '## Scope\nRegression đầy đủ cho Auth, Checkout, Catalog trước khi release v2.4.0.\n\n## Strategy\nAutomated smoke suite + manual exploratory cho Checkout (module rủi ro cao nhất).\n\n## Timeline\n- Code freeze: T-3\n- Full regression: T-2\n- Sign-off: T-1',
+        content: '## Scope\nRun full regression for Authentication, Checkout, and Catalog before v2.4.0.\n\n## Strategy\nUse the automated smoke suite plus manual exploratory testing for high-risk Checkout paths.\n\n## Timeline\n- Code freeze: T-3\n- Full regression: T-2\n- Sign-off: T-1',
         createdAt: days(7), updatedAt: days(1)
     };
 
@@ -855,7 +885,7 @@ const GUEST_DEMO_DOCS = (() => {
                 { label: 'Backend API URL', value: 'https://api-staging.shop.test', secret: false },
                 { label: 'Database Connection', value: 'postgres://staging-db.internal:5432/shop', secret: true }
             ],
-            linkedCreds: [credAdmin.id], notes: 'Reset dữ liệu mỗi đêm 2h sáng. Dùng để chạy regression suite hàng ngày.' },
+            linkedCreds: [credAdmin.id], notes: 'Reset data every night at 02:00. Use this environment for the daily regression suite.' },
         content: '', createdAt: days(60), updatedAt: days(3)
     };
     const envProd = {
@@ -866,7 +896,7 @@ const GUEST_DEMO_DOCS = (() => {
                 { label: 'Frontend URL', value: 'https://shop.test', secret: false },
                 { label: 'Backend API URL', value: 'https://api.shop.test', secret: false }
             ],
-            linkedCreds: [credPayment.id], notes: 'Đang theo dõi tăng error rate trên payment service sau bản deploy sáng nay.' },
+            linkedCreds: [credPayment.id], notes: 'Monitor the elevated payment-service error rate after the latest deployment.' },
         content: '', createdAt: days(90), updatedAt: days(1)
     };
 
@@ -875,31 +905,31 @@ const GUEST_DEMO_DOCS = (() => {
         tags: ['release'], status: 'published', favorite: true,
         releaseData: { version: 'v2.4.0', releaseDate: new Date(now + 86400000 * 3).toISOString().slice(0, 10), status: 'in-progress',
             linkedRuns: [runSprint.id], linkedBugs: [bug1.id, bug2.id, bug3.id], linkedEnvs: [envStaging.id, envProd.id] },
-        content: '## Highlights\n- Cải thiện độ ổn định luồng Checkout\n- Debounce cho Search\n\n## Risk\nCòn 1 bug Critical (giỏ hàng mất khi refresh) chưa fix — chặn release cho tới khi resolve.',
+        content: '## Highlights\n- Improve Checkout flow reliability\n- Add debounce to Search\n\n## Risk\nOne Critical cart-refresh defect remains open and blocks the release until resolved.',
         createdAt: days(3), updatedAt: days(1)
     };
 
     const tasks = [
-        { id: 'gd_task_1', title: 'Viết test case cho Checkout Retry Flow', category: 'task', kanbanStatus: 'todo',
+        { id: 'gd_task_1', title: 'Write test cases for the Checkout retry flow', category: 'task', kanbanStatus: 'todo',
             tags: ['checkout'], status: 'draft', favorite: false, content: '', createdAt: days(2), updatedAt: days(2) },
-        { id: 'gd_task_2', title: 'Điều tra BUG-002 payment declined 500', category: 'task', kanbanStatus: 'in-progress',
+        { id: 'gd_task_2', title: 'Investigate BUG-002 declined-payment HTTP 500', category: 'task', kanbanStatus: 'in-progress',
             tags: ['bug', 'payment'], status: 'draft', favorite: true, content: '', createdAt: days(1), updatedAt: days(1) },
-        { id: 'gd_task_3', title: 'Review Test Plan v2.4.0 với QA Lead', category: 'task', kanbanStatus: 'review',
+        { id: 'gd_task_3', title: 'Review the v2.4.0 Test Plan with the QA Lead', category: 'task', kanbanStatus: 'review',
             tags: ['release'], status: 'draft', favorite: false, content: '', createdAt: days(3), updatedAt: days(1) },
-        { id: 'gd_task_4', title: 'Setup automation cho Search debounce regression', category: 'task', kanbanStatus: 'done',
+        { id: 'gd_task_4', title: 'Add automation for Search debounce regression', category: 'task', kanbanStatus: 'done',
             tags: ['automation'], status: 'draft', favorite: false, content: '', createdAt: days(10), updatedAt: days(4) }
     ];
 
     const runbook1 = {
         id: 'gd_rb_1', title: 'Daily Regression Kickoff Runbook', category: 'runbook',
         tags: ['regression', 'daily'], status: 'published', favorite: false,
-        content: '# Daily Regression Kickoff\n\n1. Verify Staging đã deploy build mới nhất\n2. Chạy automated smoke suite\n3. Nếu smoke pass, trigger full regression run\n4. Log kết quả vào Test Run tương ứng\n5. Báo cáo trên kênh #qa-daily nếu có Critical/Major bug mới',
+        content: '# Daily Regression Kickoff\n\n1. Verify Staging has the latest build\n2. Run the automated smoke suite\n3. If smoke passes, trigger the full regression run\n4. Record results in the corresponding Test Run\n5. Report new Critical or Major defects in #qa-daily',
         createdAt: days(30), updatedAt: days(5)
     };
     const knowledge1 = {
-        id: 'gd_kn_1', title: 'Khi nào nên Block vs Fail một bước test', category: 'knowledge',
+        id: 'gd_kn_1', title: 'When to mark a test step Blocked or Failed', category: 'knowledge',
         tags: ['best-practices'], status: 'published', favorite: false,
-        content: '# Block vs Fail\n\n**Fail**: bước thực thi được nhưng kết quả sai với expected — luôn kèm bug report.\n\n**Blocked**: không thể thực thi bước vì một điều kiện tiên quyết khác đang lỗi (vd bug ở bước trước). Không tự tạo bug mới cho bước Blocked — link về bug đang chặn.',
+        content: '# Block vs Fail\n\n**Fail**: the step runs but the result differs from the expectation; always link a defect.\n\n**Blocked**: the step cannot run because a prerequisite is unavailable. Link the existing blocker instead of creating a duplicate defect.',
         createdAt: days(14), updatedAt: days(6)
     };
 
@@ -920,34 +950,34 @@ const GUEST_DEMO_DOCS = (() => {
 
     // Extra resolved bugs from earlier sprints — enrich the "bugs opened" trend
     // without inflating the current open-bug count (both already closed).
-    const bug4Data = { env: 'Staging', browser: 'Firefox 121', severity: 'Major', priority: 'P2', assignee: 'Lan N.', precond: '', steps: ['Mở trang sản phẩm', 'Đổi số lượng lớn hơn tồn kho'], expected: 'Chặn và báo "vượt tồn kho"', actual: 'Cho phép đặt, lỗi phát sinh ở bước thanh toán', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
-    const bug4 = { id: 'gd_bug_4', bugNumber: 4, title: 'Đặt vượt số lượng tồn kho không bị chặn', category: 'bug', tags: ['catalog'], status: 'archived', favorite: false, bugStatus: 'closed',
+    const bug4Data = { env: 'Staging', browser: 'Firefox 121', severity: 'Major', priority: 'P2', assignee: 'Lan N.', precond: '', steps: ['Open the product page', 'Set quantity above available inventory'], expected: 'Block the action and show "exceeds inventory"', actual: 'Allow the order and fail later during payment', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
+    const bug4 = { id: 'gd_bug_4', bugNumber: 4, title: 'Order quantity above inventory is not blocked', category: 'bug', tags: ['catalog'], status: 'archived', favorite: false, bugStatus: 'closed',
         bugStatusEvents: [statusEvent(null, 'new', days(22)), statusEvent('new', 'resolved', days(14)), statusEvent('resolved', 'closed', days(12))],
-        bugData: bug4Data, content: bugContent('Đặt vượt số lượng tồn kho không bị chặn', bug4Data), createdAt: days(22), updatedAt: days(12) };
-    const bug5Data = { env: 'Staging', browser: 'Chrome 119', severity: 'Minor', priority: 'P3', assignee: 'Minh T.', precond: '', steps: ['Vào trang Login trên mobile', 'Xoay ngang màn hình'], expected: 'Layout giữ nguyên', actual: 'Nút "Sign In" bị đẩy ra khỏi màn hình', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
-    const bug5 = { id: 'gd_bug_5', bugNumber: 5, title: 'Login form vỡ layout khi xoay ngang trên mobile', category: 'bug', tags: ['login', 'mobile'], status: 'archived', favorite: false, bugStatus: 'closed',
+        bugData: bug4Data, content: bugContent('Order quantity above inventory is not blocked', bug4Data), createdAt: days(22), updatedAt: days(12) };
+    const bug5Data = { env: 'Staging', browser: 'Chrome 119', severity: 'Minor', priority: 'P3', assignee: 'Minh T.', precond: '', steps: ['Open Login on a mobile viewport', 'Rotate the device to landscape'], expected: 'The layout remains usable', actual: 'The "Sign In" button moves outside the viewport', resolution: 'fixed', duplicateOf: '', reopenCount: 0 };
+    const bug5 = { id: 'gd_bug_5', bugNumber: 5, title: 'Login layout breaks in mobile landscape', category: 'bug', tags: ['login', 'mobile'], status: 'archived', favorite: false, bugStatus: 'closed',
         bugStatusEvents: [statusEvent(null, 'new', days(15)), statusEvent('new', 'resolved', days(11)), statusEvent('resolved', 'closed', days(9))],
-        bugData: bug5Data, content: bugContent('Login form vỡ layout khi xoay ngang trên mobile', bug5Data), createdAt: days(15), updatedAt: days(9) };
+        bugData: bug5Data, content: bugContent('Login layout breaks in mobile landscape', bug5Data), createdAt: days(15), updatedAt: days(9) };
 
     // A retest-pending bug — dev has deployed a fix and QA needs to verify it.
     // Exercises the Focus page's "Ready for retest" group, which no bug in the
     // sample data reached otherwise.
     const bug6Data = { env: 'Staging · build #483', browser: 'Chrome 121', severity: 'Major', priority: 'P2', assignee: 'Lan N.',
         classification: 'functional', slaHours: 24, triagedAt: days(5) + 2 * 3600000,
-        precond: 'Đã deploy fix lên Staging build #483', steps: ['Vào trang Catalog', 'Áp dụng filter Giá + Size cùng lúc', 'Kiểm tra kết quả trả về'],
-        expected: 'Kết quả lọc đúng theo cả 2 điều kiện', actual: '(Fix đã deploy — chờ QA verify lại trên Staging)',
+        precond: 'The fix is deployed to Staging build #483', steps: ['Open the Catalog page', 'Apply Price and Size filters together', 'Check the returned results'],
+        expected: 'Results match both filter conditions', actual: 'The fix is deployed and waiting for QA verification on Staging',
         resolution: '', duplicateOf: '', reopenCount: 0 };
-    const bug6 = { id: 'gd_bug_6', bugNumber: 6, title: 'Filter kết hợp Giá + Size trả về sai kết quả', category: 'bug', tags: ['search', 'catalog'], status: 'published', favorite: false, bugStatus: 'retest',
+    const bug6 = { id: 'gd_bug_6', bugNumber: 6, title: 'Combined Price and Size filters return incorrect results', category: 'bug', tags: ['search', 'catalog'], status: 'published', favorite: false, bugStatus: 'retest',
         bugStatusEvents: [statusEvent(null, 'new', days(5)), statusEvent('new', 'open', days(5)), statusEvent('open', 'in-progress', days(3)), statusEvent('in-progress', 'retest', days(1))],
-        bugData: bug6Data, content: bugContent('Filter kết hợp Giá + Size trả về sai kết quả', bug6Data), createdAt: days(5), updatedAt: days(1) };
+        bugData: bug6Data, content: bugContent('Combined Price and Size filters return incorrect results', bug6Data), createdAt: days(5), updatedAt: days(1) };
 
     // A reference doc nobody has needed to touch in a while — exercises the
     // Focus page's "Stale reviews" group (>30 days since last update), which
     // no document in the sample data reached otherwise.
     const knowledge2 = {
-        id: 'gd_kn_2', title: 'Checklist Regression trước khi Release', category: 'knowledge',
+        id: 'gd_kn_2', title: 'Pre-release Regression Checklist', category: 'knowledge',
         tags: ['checklist', 'release'], status: 'published', favorite: false,
-        content: '# Checklist Regression\n\n- [ ] Smoke suite pass trên Staging\n- [ ] Không còn bug Critical đang mở\n- [ ] Coverage các module chính ≥ 80%\n- [ ] Đã review Test Plan với QA Lead\n\n> Review lại checklist này mỗi quý — cập nhật nếu quy trình release thay đổi.',
+        content: '# Checklist Regression\n\n- [ ] Smoke suite passes on Staging\n- [ ] No Critical defects remain open\n- [ ] Core module coverage is at least 80%\n- [ ] The Test Plan is reviewed with the QA Lead\n\n> Review this checklist quarterly and update it whenever the release process changes.',
         createdAt: days(95), updatedAt: days(38)
     };
 

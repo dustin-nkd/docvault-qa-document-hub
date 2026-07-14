@@ -10,6 +10,27 @@ const assert = (condition, message) => {
 };
 
 assert(!fs.existsSync(path.join(root, 'docvault.js')), 'Legacy docvault.js must not be restored or deployed');
+assert(!fs.existsSync(path.join(root, 'js/actions.js')), 'The actions monolith must not be restored');
+for (const relativePath of [
+    'js/actions-batch-history.js', 'js/actions-sharing.js', 'js/actions-imports.js',
+    'js/actions-settings.js', 'js/actions-documents.js',
+    'js/render-editor-categories.js', 'js/render-viewer-categories.js'
+]) {
+    assert(fs.existsSync(path.join(root, relativePath)), 'Missing modular runtime file: ' + relativePath);
+}
+
+const packageJson = JSON.parse(read('package.json'));
+const directPackages = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
+for (const packageName of ['canvas', 'jsdom', 'puppeteer']) {
+    assert(!(packageName in directPackages), 'Unused dependency must not be restored: ' + packageName);
+}
+assert('playwright' in directPackages, 'Playwright must remain available for the browser regression suite');
+assert(fs.existsSync(path.join(root, 'package-lock.json')), 'A committed npm lockfile is required');
+assert('tailwindcss' in directPackages, 'Tailwind must be installed locally for deterministic CSS builds');
+const packageLock = read('package-lock.json');
+for (const packageName of ['canvas', 'jsdom', 'puppeteer']) {
+    assert(!packageLock.includes('node_modules/' + packageName + '"'), 'Unused package remains in npm lockfile: ' + packageName);
+}
 
 const jsFiles = [
     'storage.js',
@@ -26,8 +47,16 @@ for (const relativePath of jsFiles.filter((value) => value !== 'main.js')) {
 }
 
 const maintainabilityBudgets = {
-    'js/actions.js': 2500,
+    'js/actions-batch-history.js': 500,
+    'js/actions-sharing.js': 260,
+    'js/actions-imports.js': 650,
+    'js/actions-settings.js': 460,
+    'js/actions-documents.js': 750,
     'js/render-core.js': 1700,
+    'js/render-editor.js': 420,
+    'js/render-editor-categories.js': 720,
+    'js/render-viewer.js': 150,
+    'js/render-viewer-categories.js': 850,
     'js/actions-focus.js': 220,
     'js/render-trends.js': 380
 };
@@ -43,6 +72,9 @@ assert(fs.existsSync(path.join(root, mainImport[1])), 'main.js imports a missing
 const workflow = read('.github/workflows/deploy.yml');
 assert(/publish_dir:\s*\.\/_site/.test(workflow), 'Production deploy must publish only the generated _site artifact');
 assert(!/publish_dir:\s*\.\/\s*$/m.test(workflow), 'Production deploy must not publish the repository root');
+assert(/run:\s*npm ci/.test(workflow), 'Production must install the committed lockfile with npm ci');
+assert(/run:\s*npm run build:css/.test(workflow), 'Production must use the local Tailwind build script');
+assert(!/npx\s+tailwind/i.test(workflow), 'Production must not download Tailwind through npx');
 
 const html = read('index.html');
 assert(/<html\s+lang=["']en["']/.test(html), 'index.html must declare lang="en"');
@@ -81,6 +113,11 @@ for (const legacyToken of ['STRINGS_VI', 'CURRENT_LANG', 'toggleLang', 'docvault
 }
 
 const constants = read('js/constants.js');
+const viewerCategorySource = read('js/render-viewer-categories.js');
+assert(!viewerCategorySource.includes('Superseded by the explainable release quality scorecard above.'), 'Obsolete release scorecard branch must not be restored');
+
+const vietnameseSpecific = /[\u0102\u0103\u0110\u0111\u0128\u0129\u0168\u0169\u01A0\u01A1\u01AF\u01B0\u1EA0-\u1EF9]/u;
+assert(!vietnameseSpecific.test(constants), 'Demo fixtures and document templates must remain English-only');
 const dictMatch = constants.match(/const STRINGS = \{([\s\S]*?)\r?\n\};\r?\n\r?\nfunction t/);
 assert(dictMatch, 'Unable to read the English STRINGS dictionary');
 const dictionary = vm.runInNewContext('({' + dictMatch[1] + '\n})');

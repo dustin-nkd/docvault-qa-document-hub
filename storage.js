@@ -403,7 +403,7 @@ const GitHubSync = {
     // Deliberately additive and NOT wired into DocStorage.save()/getAll()
     // yet — DATA_PATH (the old single file) is never read, written, or
     // deleted by any method below. migrateToSharded() / verifyShardedMigration()
-    // are meant to be run manually (see js/actions.js window.testShardedSync)
+    // are meant to be run manually (see js/actions-settings.js window.testShardedSync)
     // to prove correctness against a real vault before anything switches over.
     SHARD_COUNT: 16,
     SHARDS_DIR: 'database/shards',

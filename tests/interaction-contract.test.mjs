@@ -38,7 +38,7 @@ test('runtime markup contains no native inline click handlers', () => {
 });
 
 test('user-controlled editor actions use the shared safe action serializer', () => {
-    const editor = read('js/render-editor.js');
+    const editor = [read('js/render-editor-categories.js'), read('js/render-editor.js')].join('\\n');
     assert.match(editor, /actionAttr\('selectSubfolder', f\)/);
     assert.match(editor, /actionAttr\('selectCustomOption', id, o\.value, o\.label, onChangeCode\)/);
     assert.doesNotMatch(editor, /selectSubfolder\('\$\{escHtml/);
@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the interaction shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v41'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v42'/);
 });
 
 test('deployment blocks on the locked browser regression suite', () => {

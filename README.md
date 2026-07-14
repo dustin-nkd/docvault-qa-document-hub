@@ -166,9 +166,15 @@ docvault-qa-document-hub/
 │   ├── ui.js               #   - Toasts, modals, theme toggle, lock screen, sidebar
 │   ├── render-core.js      #   - Main render loop (morphdom diffing), Dashboard, DocList, Kanban board
 │   ├── render-trends.js    #   - Trend calculations, SVG chart primitives, trend cards
-│   ├── render-editor.js    #   - Editor view: dynamic per-category forms, date picker
-│   ├── render-viewer.js    #   - Viewer view, Test Run execution
-│   ├── actions.js          #   - CRUD, E2E sharing, image upload to GitHub CDN, batch ops, history/diff
+│   ├── render-editor-categories.js # Category-specific editor forms and controls
+│   ├── render-editor.js    #   - Shared editor shell, selectors, and date picker
+│   ├── render-viewer-categories.js # Category-specific viewer content
+│   ├── render-viewer.js    #   - Shared viewer shell and Test Run updates
+│   ├── actions-batch-history.js    # Navigation, batch operations, and history/diff
+│   ├── actions-sharing.js #   - Share registry and encrypted document sharing
+│   ├── actions-imports.js #   - CSV/API/backup import-export and image assets
+│   ├── actions-settings.js #  - GitHub, security, and application settings
+│   ├── actions-documents.js # - Document CRUD and category workflows
 │   ├── actions-focus.js    #   - Saved views and Focus Queue workflow actions
 │   ├── search.js           #   - Global search (Ctrl+K)
 │   └── events.js           #   - App entry point/bootstrap, keyboard shortcuts, drag & drop,

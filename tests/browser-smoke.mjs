@@ -40,7 +40,12 @@ function startServer() {
 function trackRuntimeErrors(page) {
     const errors = [];
     page.on('console', message => {
-        if (message.type() === 'error') errors.push('console: ' + message.text());
+        if (message.type() === 'error') {
+            const location = message.location();
+            // Credential favicons are best-effort third-party decoration; a missing icon uses the local fallback.
+            if (location.url?.startsWith('https://icons.duckduckgo.com/')) return;
+            errors.push('console: ' + message.text() + (location.url ? ' @ ' + location.url : ''));
+        }
     });
     page.on('pageerror', error => errors.push('page: ' + error.message));
     return errors;
@@ -95,6 +100,34 @@ async function run() {
         assert.equal(backgroundAfter, backgroundBefore, 'Release linked row must restore its base background after hover');
         assert.ok(await page.locator('.ui-hover-card').count() >= 6, 'Release linked evidence must use the shared CSS hover state');
 
+        const categoryDocuments = [
+            ['gd_rb_1', 'Daily Regression Kickoff Runbook'],
+            ['gd_kn_1', 'When to mark a test step Blocked or Failed'],
+            ['gd_tc_login', 'Login — Valid & Invalid Credentials'],
+            ['gd_task_1', 'Write test cases for the Checkout retry flow'],
+            ['gd_bug_1', 'Cart loses products after refreshing Checkout'],
+            ['gd_testplan_1', 'Release v2.4.0 Test Plan'],
+            ['gd_api_users', 'GET /api/v1/users/{id}'],
+            ['gd_cred_admin', 'staging-admin.shop.test'],
+            ['gd_env_staging', 'Staging'],
+            ['gd_run_sprint24', 'Sprint 24 — Regression Run'],
+            ['gd_release_1', 'v2.4.0 — Checkout Reliability']
+        ];
+        for (const [id, title] of categoryDocuments) {
+            await page.goto(baseUrl + `/?view=${id}&guest=1`, { waitUntil: 'networkidle' });
+            const viewerTitle = page.locator('#content > .fade-up > h1').first();
+            await viewerTitle.waitFor();
+            assert.equal((await viewerTitle.textContent()).trim(), title, `Viewer must render ${id}`);
+            await page.evaluate(documentId => {
+                const source = documents.find(doc => doc.id === documentId);
+                state.editingDoc = JSON.parse(JSON.stringify(source));
+                state.view = 'editor';
+                render();
+            }, id);
+            await page.locator('#ed-title').waitFor();
+            assert.equal(await page.locator('#ed-title').inputValue(), title, `Editor must render ${id}`);
+        }
+
         await page.goto(baseUrl + '/?guest=1', { waitUntil: 'networkidle' });
         await page.getByRole('button', { name: 'Focus', exact: true }).click();
         const manageButtons = page.getByRole('button', { name: 'Manage', exact: true });
@@ -112,7 +145,7 @@ async function run() {
 
         assert.deepEqual(runtimeErrors, [], 'Browser smoke tests must not emit runtime errors');
         await context.close();
-        process.stdout.write('Browser regression suite passed: dashboard, editor, release hover, focus, mobile, semantics\n');
+        process.stdout.write('Browser regression suite passed: dashboard, all category renderers, release hover, focus, mobile, semantics\n');
     } finally {
         await browser.close();
         await new Promise(resolve => server.close(resolve));

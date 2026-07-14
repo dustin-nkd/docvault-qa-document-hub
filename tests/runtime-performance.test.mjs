@@ -39,7 +39,7 @@ test('editor runtime remains offline-capable and is loaded through one shared la
 
 test('editor actions preserve markdown while the lazy runtime is still loading', () => {
     const utils = read('js/utils.js');
-    const actions = read('js/actions.js');
+    const actions = ['js/actions-imports.js', 'js/actions-documents.js'].map(read).join('\\n');
     assert.match(utils, /function getEditorMarkdown\(\)/);
     assert.match(utils, /function setEditorMarkdown\(value\)/);
     assert.match(actions, /setEditorMarkdown\(md\)/);
