@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v42'; // Cleanup wave: modular actions and category renderers
+const SW_VERSION = 'v43'; // Vault V2: versioned encryption and migration-safe storage
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 

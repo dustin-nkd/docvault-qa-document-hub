@@ -402,8 +402,7 @@ window.recoverVault = async function() {
         // hash, otherwise unlocking would decrypt nothing and look like data loss.
         const storedHash = localStorage.getItem(window.LocalAuth.HASH_KEY);
         if (storedHash) {
-            const recoveredHash = await window.LocalAuth._hash(password);
-            if (recoveredHash !== storedHash) {
+            if (!(await window.LocalAuth.verifyPassword(password, storedHash))) {
                 throw new Error('This recovery key is outdated — the master password was changed after it was created. Use the current password, or reset the vault.');
             }
         }

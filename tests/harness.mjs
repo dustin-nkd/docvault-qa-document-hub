@@ -65,7 +65,8 @@ export function loadStorage(options = {}) {
     const localStorage = createMemoryStorage(options.localStorage);
     const sessionStorage = createMemoryStorage(options.sessionStorage);
     const context = vm.createContext({
-        console,
+        console: options.console || console,
+        document: options.document,
         window: {},
         localStorage,
         sessionStorage,
@@ -82,7 +83,7 @@ export function loadStorage(options = {}) {
         confirm: () => false
     });
     const source = fs.readFileSync(path.join(root, 'storage.js'), 'utf8') +
-        '\n;globalThis.__storageTest = { DocStorage, GitHubSync, Vault };';
+        '\n;globalThis.__storageTest = { DocStorage, GitHubSync, LocalAuth, Vault };';
     vm.runInContext(source, context, { filename: 'storage.js' });
     return { api: context.__storageTest, localStorage, sessionStorage };
 }

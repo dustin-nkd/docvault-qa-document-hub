@@ -9,7 +9,7 @@ function uint8ToBase64(bytes) {
 // VAULT — AES-256-GCM + PBKDF2 encryption
 // Fixed salt enables same password → same key across devices (required for GitHub sync)
 // ========================
-const Vault = {
+const LegacyVault = {
     PREFIX: 'ENC:',
     SALT: new TextEncoder().encode('docvault-kdf-v1'),
 
@@ -59,6 +59,218 @@ const Vault = {
     }
 };
 
+// V2 envelopes are self-describing: PBKDF2 work factor, per-vault salt,
+// fresh AES-GCM IV, and authenticated ciphertext travel together.
+const Vault = {
+    LEGACY_PREFIX: 'ENC:',
+    PREFIX: 'DV2:',
+    SALT_KEY: 'docvault_kdf_salt_v2',
+    ITERATIONS: 600000,
+    MAX_ITERATIONS: 2000000,
+    SALT_BYTES: 16,
+    IV_BYTES: 12,
+    _keyCache: null,
+
+    _bytesToBase64(bytes) {
+        return uint8ToBase64(bytes);
+    },
+
+    _base64ToBytes(value) {
+        if (typeof value !== 'string' || !value.trim()) throw new Error('Invalid encrypted envelope');
+        let decoded;
+        try { decoded = atob(value.trim()); }
+        catch { throw new Error('Invalid encrypted envelope'); }
+        return Uint8Array.from(decoded, char => char.charCodeAt(0));
+    },
+
+    _parsePlain(bytes) {
+        const decoded = new TextDecoder().decode(bytes);
+        try {
+            const parsed = JSON.parse(decoded);
+            if (typeof parsed !== 'string') return parsed;
+            try {
+                const nested = JSON.parse(parsed);
+                return nested && typeof nested === 'object' ? nested : parsed;
+            } catch { return parsed; }
+        } catch { return decoded; }
+    },
+
+    _sameValue(left, right) {
+        return JSON.stringify(left) === JSON.stringify(right);
+    },
+
+    _storedSalt() {
+        try {
+            const encoded = localStorage.getItem(this.SALT_KEY);
+            if (!encoded) return null;
+            const salt = this._base64ToBytes(encoded);
+            return salt.length === this.SALT_BYTES ? salt : null;
+        } catch { return null; }
+    },
+
+    _rememberSalt(salt) {
+        if (!(salt instanceof Uint8Array) || salt.length !== this.SALT_BYTES) return;
+        try {
+            const encoded = this._bytesToBase64(salt);
+            if (localStorage.getItem(this.SALT_KEY) !== encoded) localStorage.setItem(this.SALT_KEY, encoded);
+        } catch { /* The envelope still carries the salt if storage is unavailable. */ }
+    },
+
+    _getOrCreateSalt() {
+        const stored = this._storedSalt();
+        if (stored) return stored;
+        const salt = crypto.getRandomValues(new Uint8Array(this.SALT_BYTES));
+        this._rememberSalt(salt);
+        return salt;
+    },
+
+    clearKeyCache() {
+        this._keyCache = null;
+    },
+
+    async _deriveKey(password, salt, iterations) {
+        const saltId = this._bytesToBase64(salt);
+        const cached = this._keyCache;
+        if (cached && cached.password === password && cached.saltId === saltId && cached.iterations === iterations) {
+            return cached.key;
+        }
+        const material = await crypto.subtle.importKey(
+            'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+        );
+        const key = await crypto.subtle.deriveKey(
+            { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+            material,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        this._keyCache = { password, saltId, iterations, key };
+        return key;
+    },
+
+    getVersion(value) {
+        if (typeof value !== 'string') return 0;
+        if (value.startsWith(this.PREFIX)) return 2;
+        if (value.startsWith(this.LEGACY_PREFIX)) return 1;
+        return 0;
+    },
+
+    isEncrypted(value) {
+        return this.getVersion(value) > 0;
+    },
+
+    _parseV2(value) {
+        if (this.getVersion(value) !== 2) throw new Error('Not a V2 encrypted envelope');
+        const bytes = this._base64ToBytes(value.slice(this.PREFIX.length));
+        const headerLength = 4 + this.SALT_BYTES;
+        const minimumLength = headerLength + this.IV_BYTES + 16;
+        if (bytes.length < minimumLength) throw new Error('Invalid V2 encrypted envelope');
+        const iterations = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, false);
+        if (iterations < this.ITERATIONS || iterations > this.MAX_ITERATIONS) {
+            throw new Error('Unsupported V2 KDF work factor');
+        }
+        return {
+            iterations,
+            header: bytes.slice(0, headerLength),
+            saltBytes: bytes.slice(4, headerLength),
+            ivBytes: bytes.slice(headerLength, headerLength + this.IV_BYTES),
+            cipherBytes: bytes.slice(headerLength + this.IV_BYTES)
+        };
+    },
+
+    getInfo(value) {
+        const version = this.getVersion(value);
+        if (version === 1) {
+            const bytes = this._base64ToBytes(value.slice(this.LEGACY_PREFIX.length));
+            if (bytes.length < this.IV_BYTES + 16) throw new Error('Invalid V1 encrypted envelope');
+            return {
+                version: 1,
+                iterations: 100000,
+                salt: this._bytesToBase64(LegacyVault.SALT),
+                iv: this._bytesToBase64(bytes.slice(0, this.IV_BYTES))
+            };
+        }
+        if (version === 2) {
+            const parsed = this._parseV2(value);
+            return {
+                version: 2,
+                iterations: parsed.iterations,
+                salt: this._bytesToBase64(parsed.saltBytes),
+                iv: this._bytesToBase64(parsed.ivBytes)
+            };
+        }
+        throw new Error('Not encrypted');
+    },
+
+    async encrypt(data, password) {
+        const salt = this._getOrCreateSalt();
+        const iv = crypto.getRandomValues(new Uint8Array(this.IV_BYTES));
+        const header = new Uint8Array(4 + this.SALT_BYTES);
+        new DataView(header.buffer).setUint32(0, this.ITERATIONS, false);
+        header.set(salt, 4);
+        const key = await this._deriveKey(password, salt, this.ITERATIONS);
+        const plain = new TextEncoder().encode(JSON.stringify(data));
+        const cipher = new Uint8Array(await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv, additionalData: header }, key, plain
+        ));
+        const envelope = new Uint8Array(header.length + iv.length + cipher.length);
+        envelope.set(header);
+        envelope.set(iv, header.length);
+        envelope.set(cipher, header.length + iv.length);
+        return this.PREFIX + this._bytesToBase64(envelope);
+    },
+
+    async decrypt(encrypted, password) {
+        const version = this.getVersion(encrypted);
+        if (version === 1) {
+            const bytes = this._base64ToBytes(encrypted.slice(this.LEGACY_PREFIX.length));
+            if (bytes.length < this.IV_BYTES + 16) throw new Error('Invalid V1 encrypted envelope');
+            const key = await LegacyVault._key(password);
+            const plain = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: bytes.slice(0, this.IV_BYTES) },
+                key,
+                bytes.slice(this.IV_BYTES)
+            );
+            const decoded = new TextDecoder().decode(plain);
+            try {
+                const parsed = JSON.parse(decoded);
+                if (typeof parsed !== 'string') return parsed;
+                try {
+                    const nested = JSON.parse(parsed);
+                    return nested && typeof nested === 'object' ? nested : parsed;
+                } catch { return parsed; }
+            } catch { return decoded; }
+        }
+        if (version === 2) {
+            const parsed = this._parseV2(encrypted);
+            const key = await this._deriveKey(password, parsed.saltBytes, parsed.iterations);
+            const plain = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: parsed.ivBytes, additionalData: parsed.header },
+                key,
+                parsed.cipherBytes
+            );
+            this._rememberSalt(parsed.saltBytes);
+            return this._parsePlain(new Uint8Array(plain));
+        }
+        throw new Error('Not encrypted');
+    },
+
+    async encryptVerified(data, password) {
+        const ciphertext = await this.encrypt(data, password);
+        const verified = await this.decrypt(ciphertext, password);
+        if (!this._sameValue(data, verified)) throw new Error('Vault V2 verification failed');
+        return ciphertext;
+    },
+
+    async migrate(encrypted, password) {
+        const version = this.getVersion(encrypted);
+        if (!version) throw new Error('Not encrypted');
+        const data = await this.decrypt(encrypted, password);
+        if (version === 2) return { data, ciphertext: encrypted, migrated: false, version: 2 };
+        const ciphertext = await this.encryptVerified(data, password);
+        return { data, ciphertext, migrated: true, version: 2 };
+    }
+};
 window.Vault = Vault;
 
 // ========================
@@ -85,6 +297,14 @@ const GitHubSync = {
                 if (Vault.isEncrypted(raw)) {
                     const pwd = this._pwd();
                     stored = pwd ? await Vault.decrypt(raw, pwd) : null;
+                    if (pwd && Vault.getVersion(raw) === 1) {
+                        try {
+                            const upgraded = await Vault.encryptVerified(stored, pwd);
+                            localStorage.setItem(this.SETTINGS_KEY, upgraded);
+                        } catch (migrationError) {
+                            console.warn('GitHub settings remain on Vault V1; migration will retry.', migrationError);
+                        }
+                    }
                 } else {
                     stored = JSON.parse(raw);
                 }
@@ -834,7 +1054,12 @@ const DocStorage = {
     async _encryptCredPasswords(docs, pwd) {
         if (!pwd || !Array.isArray(docs)) return docs;
         return Promise.all(docs.map(async doc => {
-            if (doc.category !== 'credential' || !doc.password || Vault.isEncrypted(doc.password)) return doc;
+            if (doc.category !== 'credential' || !doc.password) return doc;
+            if (Vault.isEncrypted(doc.password)) {
+                if (Vault.getVersion(doc.password) === 2) return doc;
+                const migrated = await Vault.migrate(doc.password, pwd);
+                return { ...doc, password: migrated.ciphertext };
+            }
             const encPwd = await Vault.encrypt(doc.password, pwd);
             return { ...doc, password: encPwd };
         }));
@@ -895,14 +1120,30 @@ const DocStorage = {
         if (!raw) return null;
         try {
             let parsed;
+            let sourceVersion = 0;
+            const pwd = this._pwd();
             if (Vault.isEncrypted(raw)) {
-                const pwd = this._pwd();
                 if (!pwd) return null;
+                sourceVersion = Vault.getVersion(raw);
                 parsed = await Vault.decrypt(raw, pwd);
             } else {
                 parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
             }
-            return await this._decryptCredPasswords(parsed, this._pwd());
+            const decryptedDocs = await this._decryptCredPasswords(parsed, pwd);
+            if (sourceVersion === 1 && pwd) {
+                try {
+                    const safeDocs = await this._encryptCredPasswords(decryptedDocs, pwd);
+                    const upgraded = await Vault.encryptVerified(safeDocs, pwd);
+                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                        await new Promise(resolve => chrome.storage.local.set({ [key]: upgraded }, resolve));
+                    } else {
+                        localStorage.setItem(key, upgraded);
+                    }
+                } catch (migrationError) {
+                    console.warn('Local documents remain on Vault V1; migration will retry.', migrationError);
+                }
+            }
+            return decryptedDocs;
         } catch(e) { return null; }
     },
 
@@ -914,7 +1155,11 @@ const DocStorage = {
             const docsToStore = await this._encryptCredPasswords(docs, pwd);
             toStore = pwd ? await Vault.encrypt(docsToStore, pwd) : JSON.stringify(docsToStore);
         } catch(e) {
-            toStore = JSON.stringify(docs);
+            console.error('Error encrypting docs locally:', e);
+            if (typeof toast === 'function') {
+                toast('Could not encrypt your changes; the existing vault was left untouched.', 'error');
+            }
+            return false;
         }
         try {
             if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -1131,6 +1376,23 @@ const LocalAuth = {
         return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
     },
 
+    async _createVerifier(password) {
+        return Vault.encryptVerified({ type: 'docvault-auth', version: 2 }, password);
+    },
+
+    async verifyPassword(password, stored = localStorage.getItem(this.HASH_KEY)) {
+        if (!stored) return false;
+        if (Vault.isEncrypted(stored)) {
+            try {
+                const marker = await Vault.decrypt(stored, password);
+                return marker?.type === 'docvault-auth' && marker?.version === 2;
+            } catch { return false; }
+        }
+        // Legacy installations stored a fast, unsalted SHA-256 verifier. Read it
+        // once for compatibility; unlock() replaces it with the V2 verifier.
+        return (await this._hash(password)) === stored;
+    },
+
     isConfigured() {
         return !!localStorage.getItem(this.HASH_KEY);
     },
@@ -1160,7 +1422,7 @@ const LocalAuth = {
             const d = GitHubSync.DEFAULTS;
             const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
             if (!ok) return false;
-            localStorage.setItem(this.HASH_KEY, await this._hash(password));
+            localStorage.setItem(this.HASH_KEY, await this._createVerifier(password));
             return true;
         } catch(e) {
             console.error(e);
@@ -1177,7 +1439,6 @@ const LocalAuth = {
         const btn = document.getElementById('lock-submit-btn');
         if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
         try {
-            const hash = await this._hash(password);
             const stored = localStorage.getItem(this.HASH_KEY);
 
             if (!stored) {
@@ -1189,9 +1450,9 @@ const LocalAuth = {
                     if (typeof toast === 'function') toast(`Master password must be at least ${this.MIN_PASSWORD_LENGTH} characters.`, 'error');
                     return;
                 }
-                localStorage.setItem(this.HASH_KEY, hash);
+                localStorage.setItem(this.HASH_KEY, await this._createVerifier(password));
                 sessionStorage.setItem(this.PROVISIONAL_KEY, '1');
-            } else if (hash !== stored) {
+            } else if (!(await this.verifyPassword(password, stored))) {
                 // The local hash can go stale when the master password is changed on
                 // a different device (changePassword() only updates the device it
                 // runs on — HASH_KEY is never synced). Before rejecting, check
@@ -1207,6 +1468,12 @@ const LocalAuth = {
                     return;
                 }
                 if (typeof toast === 'function') toast('Master password was changed on another device — this device is now in sync.', 'success');
+            } else if (!Vault.isEncrypted(stored)) {
+                try {
+                    localStorage.setItem(this.HASH_KEY, await this._createVerifier(password));
+                } catch (migrationError) {
+                    console.warn('Legacy password verifier migration will retry.', migrationError);
+                }
             }
 
             sessionStorage.setItem(this.SESSION_PWD, password);
@@ -1222,24 +1489,63 @@ const LocalAuth = {
     },
 
     async changePassword(oldPassword, newPassword) {
-        const oldHash = await this._hash(oldPassword);
         const stored = localStorage.getItem(this.HASH_KEY);
-        if (stored && oldHash !== stored) throw new Error('Current password is incorrect.');
+        if (stored && !(await this.verifyPassword(oldPassword, stored))) throw new Error('Current password is incorrect.');
 
+        const replacements = [];
         const rawDocs = localStorage.getItem(DocStorage.STORAGE_KEY);
-        if (rawDocs && Vault.isEncrypted(rawDocs)) {
-            const dec = await Vault.decrypt(rawDocs, oldPassword);
-            localStorage.setItem(DocStorage.STORAGE_KEY, await Vault.encrypt(dec, newPassword));
+        if (rawDocs) {
+            const decryptedDocs = Vault.isEncrypted(rawDocs)
+                ? await Vault.decrypt(rawDocs, oldPassword)
+                : JSON.parse(rawDocs);
+            const plainDocs = await DocStorage._decryptCredPasswords(decryptedDocs, oldPassword);
+            const safeDocs = await DocStorage._encryptCredPasswords(plainDocs, newPassword);
+            replacements.push({
+                key: DocStorage.STORAGE_KEY,
+                previous: rawDocs,
+                next: await Vault.encryptVerified(safeDocs, newPassword)
+            });
         }
 
         const rawGh = localStorage.getItem(GitHubSync.SETTINGS_KEY);
-        if (rawGh && Vault.isEncrypted(rawGh)) {
-            const dec = await Vault.decrypt(rawGh, oldPassword);
-            localStorage.setItem(GitHubSync.SETTINGS_KEY, await Vault.encrypt(dec, newPassword));
+        if (rawGh) {
+            const settings = Vault.isEncrypted(rawGh)
+                ? await Vault.decrypt(rawGh, oldPassword)
+                : JSON.parse(rawGh);
+            replacements.push({
+                key: GitHubSync.SETTINGS_KEY,
+                previous: rawGh,
+                next: await Vault.encryptVerified(settings, newPassword)
+            });
         }
 
-        localStorage.setItem(this.HASH_KEY, await this._hash(newPassword));
-        sessionStorage.setItem(this.SESSION_PWD, newPassword);
+        const nextHash = await this._createVerifier(newPassword);
+        const previousSessionPassword = sessionStorage.getItem(this.SESSION_PWD);
+        const applied = [];
+        try {
+            for (const replacement of replacements) {
+                localStorage.setItem(replacement.key, replacement.next);
+                applied.push(replacement);
+            }
+            localStorage.setItem(this.HASH_KEY, nextHash);
+            sessionStorage.setItem(this.SESSION_PWD, newPassword);
+        } catch (error) {
+            for (const replacement of applied.reverse()) {
+                try { localStorage.setItem(replacement.key, replacement.previous); }
+                catch (rollbackError) { console.error('Vault password rollback failed:', rollbackError); }
+            }
+            try {
+                if (stored) localStorage.setItem(this.HASH_KEY, stored);
+                else localStorage.removeItem(this.HASH_KEY);
+                if (previousSessionPassword) sessionStorage.setItem(this.SESSION_PWD, previousSessionPassword);
+                else sessionStorage.removeItem(this.SESSION_PWD);
+            } catch (rollbackError) {
+                console.error('Vault password metadata rollback failed:', rollbackError);
+            }
+            Vault.clearKeyCache();
+            throw error;
+        }
+        Vault.clearKeyCache();
 
         // The recovery blob encrypts the OLD password (keyed by the recovery code,
         // which we don't have here), so it cannot be re-wrapped for the new password
@@ -1267,6 +1573,14 @@ const LocalAuth = {
         if (clean.length !== 20) throw new Error('Invalid code format — should be 20 characters (dashes optional).');
         try {
             const result = await Vault.decrypt(blob, clean);
+            if (Vault.getVersion(blob) === 1) {
+                try {
+                    const upgraded = await Vault.encryptVerified(result, clean);
+                    localStorage.setItem(this.RECOVERY_KEY, upgraded);
+                } catch (migrationError) {
+                    console.warn('Recovery blob remains on Vault V1; migration will retry.', migrationError);
+                }
+            }
             return (result && typeof result === 'object' && result.pwd) ? result.pwd : result;
         } catch {
             throw new Error('Incorrect recovery code.');
@@ -1302,8 +1616,10 @@ const LocalAuth = {
             localStorage.removeItem(this.HINT_KEY);
             localStorage.removeItem(DocStorage.STORAGE_KEY);
             localStorage.removeItem(GitHubSync.SETTINGS_KEY);
+            localStorage.removeItem(Vault.SALT_KEY);
             sessionStorage.removeItem(this.SESSION_KEY);
             sessionStorage.removeItem(this.SESSION_PWD);
+            Vault.clearKeyCache();
             window.location.reload();
         }
     }

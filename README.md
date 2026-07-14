@@ -74,7 +74,7 @@ Organize documents across specialized categories, each with its own dedicated fo
 
 ### 🔒 Security & Encryption
 - **Master Password**: Optional vault-level encryption with a lock screen on app load.
-- **AES-256-GCM + PBKDF2**: All local data and GitHub-synced data are encrypted with a 100,000-iteration PBKDF2-derived key.
+- **Versioned AES-256-GCM + PBKDF2**: Vault V2 uses PBKDF2-SHA256 with 600,000 iterations, a random per-vault salt, and a fresh authenticated IV; legacy V1 ciphertext remains readable for verified migration.
 - **End-to-end encrypted sharing**: Share individual documents via a URL with a one-time AES-GCM key embedded in the hash fragment (never sent to server).
 - **Session-based unlock**: Master password stays in `sessionStorage` — closing the tab locks the vault.
 - **Change/Reset password**: Settings panel allows changing the master password with automatic re-encryption of all stored data.

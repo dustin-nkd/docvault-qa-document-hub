@@ -154,6 +154,7 @@ async function startApp() {
                 localStorage.removeItem(LocalAuth.HASH_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_PWD);
+                if (window.Vault?.clearKeyCache) window.Vault.clearKeyCache();
                 sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
                 toast('Wrong master password — enter the same password you used on your other device.', 'error');
                 const ls = document.getElementById('lock-screen');
