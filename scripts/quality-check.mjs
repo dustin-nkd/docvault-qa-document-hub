@@ -51,9 +51,18 @@ const missingShellRefs = shellRefs.filter((value) => {
     return !fs.existsSync(path.join(root, value.slice(2)));
 });
 assert(missingShellRefs.length === 0, 'Missing service-worker app-shell assets: ' + missingShellRefs.join(', '));
-assert(shellRefs.includes('./vendor/fonts/space-grotesk/latin.css'), 'APP_SHELL must cache the Latin Space Grotesk stylesheet');
-assert(shellRefs.includes('./vendor/fonts/dm-sans/latin.css'), 'APP_SHELL must cache the Latin DM Sans stylesheet');
-assert(!shellRefs.some((value) => /vendor\/fonts\/[^/]+\/index\.css$/.test(value)), 'APP_SHELL still references an all-language font stylesheet');
+assert(shellRefs.includes('./vendor/fonts/space-grotesk/runtime.css'), 'APP_SHELL must cache the runtime Space Grotesk stylesheet');
+assert(shellRefs.includes('./vendor/fonts/dm-sans/runtime.css'), 'APP_SHELL must cache the runtime DM Sans stylesheet');
+assert(!shellRefs.some((value) => /vendor\/fonts\/[^/]+\/(?:index|latin)\.css$/.test(value)), 'APP_SHELL still references a full font stylesheet');
+
+const fontWeights = relativePath => [...read(relativePath).matchAll(/font-weight:\s*(\d+)/g)]
+    .map(match => Number(match[1]));
+const dmWeights = fontWeights('vendor/fonts/dm-sans/runtime.css');
+const headingWeights = fontWeights('vendor/fonts/space-grotesk/runtime.css');
+assert(JSON.stringify(dmWeights) === JSON.stringify([400, 500, 600, 700]), 'DM Sans runtime weights changed unexpectedly');
+assert(JSON.stringify(headingWeights) === JSON.stringify([400, 600, 700]), 'Space Grotesk runtime weights changed unexpectedly');
+assert(!read('vendor/fonts/dm-sans/runtime.css').includes('.woff)'), 'DM Sans runtime must ship WOFF2 only');
+assert(!read('vendor/fonts/space-grotesk/runtime.css').includes('.woff)'), 'Space Grotesk runtime must ship WOFF2 only');
 
 const runtimeSource = [html, ...jsFiles.map(read)].join('\n');
 for (const legacyToken of ['STRINGS_VI', 'CURRENT_LANG', 'toggleLang', 'docvault_lang', 'vi-VN']) {

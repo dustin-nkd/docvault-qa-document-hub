@@ -115,5 +115,5 @@ test('activation only removes stale DocVault caches on a shared origin', async (
     harness.listeners.activate({ waitUntil(value) { activationPromise = Promise.resolve(value); } });
     await activationPromise;
 
-    assert.deepEqual(harness.deletedCacheNames, ['docvault-shell-v34']);
+    assert.deepEqual(harness.deletedCacheNames, ['docvault-shell-v34', 'docvault-shell-v35']);
 });

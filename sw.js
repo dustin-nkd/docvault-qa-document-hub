@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v35'; // Wave 3C atomic shell install and explicit offline fallbacks
+const SW_VERSION = 'v36'; // Performance wave: runtime-only fonts and cached dashboard rendering
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -27,8 +27,8 @@ const APP_SHELL = [
     './vendor/toastui/toastui-editor-dark.min.css',
     './vendor/toastui/toastui-editor-all.min.js',
     './vendor/morphdom/morphdom-umd.min.js',
-    './vendor/fonts/space-grotesk/latin.css',
-    './vendor/fonts/dm-sans/latin.css',
+    './vendor/fonts/space-grotesk/runtime.css',
+    './vendor/fonts/dm-sans/runtime.css',
     './vendor/fontawesome/css/all.min.css',
     './icons/icon16.png',
     './icons/icon48.png',
