@@ -354,12 +354,20 @@ function render() {
 
 function _restoreFaviconState(root = document) {
     root.querySelectorAll('.cred-favicon').forEach(img => {
-        if (img.complete && img.naturalWidth > 0) {
+        const markLoaded = () => {
             img.classList.add('loaded');
             const span = img.nextElementSibling;
             if (span && span.tagName === 'SPAN') span.style.display = 'none';
             img.parentElement.classList.add('has-favicon');
+        };
+        const markFailed = () => { img.style.display = 'none'; };
+        if (!img.dataset.faviconBound) {
+            img.addEventListener('load', markLoaded, { once: true });
+            img.addEventListener('error', markFailed, { once: true });
+            img.dataset.faviconBound = 'true';
         }
+        if (img.complete && img.naturalWidth > 0) markLoaded();
+        else if (img.complete) markFailed();
     });
 }
 
@@ -1225,7 +1233,7 @@ function renderDocList() {
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-3">
                                     <div class="cred-avatar ${credAvatarColor(d.title)}">
-                                        <img class="cred-favicon" src="${favUrl}" alt="" onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none'; this.parentElement.classList.add('has-favicon');" onerror="this.style.display='none'">
+                                        <img class="cred-favicon" src="${favUrl}" alt="">
                                         <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
                                     </div>
                                     <div class="min-w-0">

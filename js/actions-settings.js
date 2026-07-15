@@ -9,7 +9,7 @@
 // exportBackup/triggerImportBackup needed to change.
 function _settingsTabAccount() {
     return `
-        <form onsubmit="event.preventDefault(); changeMasterPassword();" class="flex flex-col gap-3 text-left">
+        <form data-onsubmit="changeMasterPassword()" class="flex flex-col gap-3 text-left">
             <div>
                 <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
                 <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
@@ -69,7 +69,7 @@ function _settingsTabSync() {
                 Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
             </div>
             <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
-            <form onsubmit="event.preventDefault(); saveGitHubSettings();" class="flex flex-col gap-3">
+            <form data-onsubmit="saveGitHubSettings()" class="flex flex-col gap-3">
                 <div>
                     <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
                     <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
