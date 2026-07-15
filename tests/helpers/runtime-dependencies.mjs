@@ -1,20 +1,26 @@
 /** @typedef {import('../../functions/_lib/runtime-dependencies.mjs').RuntimeDependencies} RuntimeDependencies */
+/** @typedef {{ now?: number, uuidSequence?: number, byteSeed?: number, failAt?: string[] }} DeterministicOptions */
+/** @typedef {{ code: string, redirectUri: string, pkceVerifier: string }} OAuthExchangeInput */
 
 /** @param {Uint8Array} bytes */
 function toBase64Url(bytes) {
-    return Buffer.from(bytes).toString('base64url');
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
+/** @param {DeterministicOptions} options */
 export function createDeterministicRuntimeDependencies(options = {}) {
     let currentTime = options.now ?? Date.parse('2026-07-15T00:00:00.000Z');
     let uuidSequence = options.uuidSequence ?? 1;
     const byteSeed = options.byteSeed ?? 17;
     const failAt = new Set(options.failAt || []);
-    const calls = {
+    const calls = /** @type {{ checkpoints: string[], oauthExchanges: OAuthExchangeInput[], oauthIdentityTokens: string[] }} */ ({
         checkpoints: [],
         oauthExchanges: [],
         oauthIdentityTokens: []
-    };
+    });
+    /** @param {number} length */
     const deterministicBytes = length => Uint8Array.from(
         { length }, (_, index) => (byteSeed + index) % 256
     );
@@ -60,6 +66,7 @@ export function createDeterministicRuntimeDependencies(options = {}) {
     return {
         dependencies,
         calls,
+        /** @param {number} milliseconds */
         advance(milliseconds) { currentTime += milliseconds; }
     };
 }

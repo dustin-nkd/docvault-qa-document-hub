@@ -17,6 +17,7 @@
     "cf:types:check": "node scripts/cloudflare-command.mjs types-check",
     "cf:pages:dev": "node scripts/cloudflare-command.mjs pages-dev",
     "cf:test": "node scripts/cloudflare-command.mjs test",
+    "test:collab:integration": "npm run cf:test",
     "cf:functions:build": "node scripts/cloudflare-command.mjs functions-build",
     "cf:pages:dry-run": "node scripts/cloudflare-command.mjs pages-dry-run",
     "test": "node tests/run.mjs",

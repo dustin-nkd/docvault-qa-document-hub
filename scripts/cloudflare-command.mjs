@@ -9,6 +9,7 @@ import { validateCompiledWorkerArtifact, validateProductionSourceGraph } from '.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const state = collectCloudflareToolchainState(root);
 const wranglerBin = path.join(root, 'node_modules/wrangler/bin/wrangler.js');
+const typescriptBin = path.join(root, 'node_modules/typescript/bin/tsc');
 const vitestBin = path.join(root, 'node_modules/vitest/vitest.mjs');
 const configPath = path.join(root, 'wrangler.jsonc');
 const functionsPath = path.join(root, 'functions');
@@ -67,6 +68,7 @@ if (command === 'toolchain-check') {
     runNodeTool(wranglerBin, ['pages', 'dev', '_site', '--persist-to', '.wrangler/state']);
 } else if (command === 'test') {
     if (!fs.existsSync(path.join(root, 'vitest.config.mts'))) throw new Error('Workers Vitest configuration is not available until CF-P1-007');
+    runNodeTool(typescriptBin, ['--project', 'tsconfig.workers-tests.json']);
     runNodeTool(vitestBin, ['run', '--config', 'vitest.config.mts']);
 } else if (command === 'functions-build' || command === 'pages-dry-run') {
     requireFoundationFiles();

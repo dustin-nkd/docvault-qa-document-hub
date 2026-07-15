@@ -16,3 +16,4 @@ import './cloudflare-wrangler-policy.test.mjs';
 import './api-shell.test.mjs';
 import './runtime-dependencies.test.mjs';
 import './cloudflare-production-policy.test.mjs';
+import './cloudflare-test-harness-policy.test.mjs';

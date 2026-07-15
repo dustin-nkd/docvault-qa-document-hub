@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "lib": [
+      "ES2023"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2023",
+    "types": [
+      "@cloudflare/vitest-pool-workers/types",
+      "node"
+    ]
+  },
+  "include": [
+    "worker-configuration.d.ts",
+    "functions/_lib/**/*.mjs",
+    "tests/helpers/runtime-dependencies.mjs",
+    "tests/cloudflare/**/*.ts",
+    "vitest.config.mts"
+  ]
+}
