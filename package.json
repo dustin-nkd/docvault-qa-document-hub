@@ -8,7 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "check": "node scripts/quality-check.mjs && npm test",
+    "check": "node scripts/quality-check.mjs && npm run check:functions && npm test",
+    "check:functions": "tsc --project tsconfig.functions.json",
     "check:cloudflare-config": "node scripts/check-cloudflare-config.mjs",
     "cf:toolchain:check": "node scripts/cloudflare-command.mjs toolchain-check",
     "cf:config:check": "node scripts/cloudflare-command.mjs config-check",

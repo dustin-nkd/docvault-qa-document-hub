@@ -93,6 +93,31 @@ validateDashboardToWranglerDiff(
     JSON.parse(read('config/cloudflare/pages-wrangler-diff.json'))
 );
 
+for (const relativePath of [
+    'functions/_lib/api-shell.mjs',
+    'functions/api/v1/[[path]].ts',
+    '_routes.json',
+    'tsconfig.functions.json'
+]) {
+    assert(fs.existsSync(path.join(root, relativePath)), 'Missing CF-P1-004 runtime boundary: ' + relativePath);
+}
+const pagesRoutes = JSON.parse(read('_routes.json'));
+assert(JSON.stringify(pagesRoutes) === JSON.stringify({ version: 1, include: ['/api/v1/*'], exclude: [] }),
+    'Pages Functions must execute only for /api/v1/*');
+const functionSource = read('functions/_lib/api-shell.mjs') + '\n' + read('functions/api/v1/[[path]].ts');
+for (const forbiddenPattern of [
+    /passThroughOnException/,
+    /\bcontext\.next\s*\(/,
+    /\bMath\.random\s*\(/,
+    /api\.cloudflare\.com/,
+    /\bconsole\.(?:log|info|warn|error)\s*\(/
+]) {
+    assert(!forbiddenPattern.test(functionSource), 'Forbidden Pages Function runtime pattern: ' + forbiddenPattern);
+}
+assert(/crypto\.randomUUID\s*\(/.test(functionSource), 'API request IDs must use Web Crypto');
+assert(/COLLABORATION_UNAVAILABLE/.test(functionSource), 'Disabled API shell error is missing');
+assert(!/\b(?:DB|COLLAB_DB|OAuth|SESSION_SECRET)\b/.test(functionSource), 'CF-P1-004 must not access a future binding or secret');
+
 const html = read('index.html');
 assert(/<html\s+lang=["']en["']/.test(html), 'index.html must declare lang="en"');
 

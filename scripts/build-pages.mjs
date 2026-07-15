@@ -29,6 +29,7 @@ function include(relativePath) {
 include('index.html');
 include('sw.js');
 include('_headers');
+include('_routes.json');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const match of html.matchAll(/\b(?:src|href)=["']([^"'#]+)["']/g)) include(match[1]);
@@ -67,7 +68,7 @@ fs.writeFileSync(path.join(output, '.nojekyll'), '');
 const forbidden = [
     'docvault.js', 'package.json', 'README.md', 'tests', 'scripts', 'src',
     '.github', '.agents', '.claude', 'wrangler.jsonc', 'worker-configuration.d.ts',
-    'config'
+    'config', 'functions', 'tsconfig.functions.json'
 ];
 for (const relativePath of forbidden) {
     if (fs.existsSync(path.join(output, relativePath))) {

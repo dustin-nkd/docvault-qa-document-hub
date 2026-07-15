@@ -13,3 +13,4 @@ import './runtime-performance.test.mjs';
 import './cloudflare-config-policy.test.mjs';
 import './cloudflare-toolchain-policy.test.mjs';
 import './cloudflare-wrangler-policy.test.mjs';
+import './api-shell.test.mjs';
