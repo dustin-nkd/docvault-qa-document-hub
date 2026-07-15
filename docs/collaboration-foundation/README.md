@@ -1,6 +1,6 @@
 # Collaboration Foundation
 
-Status: Day 2 domain behavior and threat modeling in progress
+Status: Day 3 architecture decisions in progress
 
 Sprint: Phase 0 — Specification and Threat Model
 
@@ -31,14 +31,19 @@ This directory is the source of truth for the Collaboration Foundation discovery
 - [Threat model](threat-model.md)
 - [Requirement-risk-test traceability](traceability-matrix.md)
 - [Day 2 cross-functional review](day-2-review.md)
+- [Day 3 architecture decision set](adr/README.md)
+- [Day 3 cross-functional review](day-3-review.md)
 
 Gate G0 was approved by the Product Owner on 2026-07-15.
+
+Gate G1 was approved by the Product Owner on 2026-07-15.
 
 ## Planned Phase 0 artifacts
 
 - `api-contract.md`
 - `risk-register.md`
-- `adr/001-runtime-and-storage.md` through `adr/012-migrations-and-rollback.md`
+- `schema-contract.md`
+- `operational-runbook.md`
 
 ## Review ownership
 

@@ -175,4 +175,4 @@ Gate G1 permits continued Phase 0 specification/ADR work only. It does not autho
 - [ ] Configure and verify isolated preview/production D1, OAuth, secrets, session namespaces, origins, logging, backup/restore, migration ordering, rollback, and canary policy.
 - [ ] Link executable evidence for all P0/P1 threats; no skipped/quarantined P0/P1 case counts as passed.
 
-**Gate G1 decision: `GO WITH RECORDED CONDITIONS` for continued Phase 0 work; `NO-GO` for Phase 1 runtime implementation.** Gate G1 may be marked Passed only when all blocking conditions are closed, every Critical/Restricted asset has measurable verification, and the Security Reviewer and Senior QA confirm that no P0/P1 threat is unmitigated or unevidenced.
+**Gate G1 decision: `PASSED` for continued Phase 0 work; `NO-GO` for Phase 1 runtime implementation.** The Product Owner approved the role policy on 2026-07-15. The implementation-readiness conditions above remain mandatory inputs to Gate G2, later Phase 0 contracts, or the Phase 0 exit gate; Gate G1 does not waive them.

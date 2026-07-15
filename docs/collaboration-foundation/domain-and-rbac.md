@@ -7,7 +7,7 @@
 | Document ID | CF-DOM-001 |
 | Phase | Phase 0 — Specification and Threat Model |
 | Sprint checkpoint | Day 2 — Domain, RBAC, and Gate G1 |
-| Status | Proposed baseline; implementation not authorized |
+| Status | Product Owner Gate G1 approved; conditional baseline; implementation not authorized |
 | Language | English |
 | Required approval | Product Owner, Technical Lead, Security Reviewer, Senior QA |
 
@@ -190,7 +190,7 @@ For every journey, tests verify response and side effects across own-workspace, 
 
 | Decision | Owner(s) | Blocking effect |
 | --- | --- | --- |
-| Invitation addressing, delivery, privacy response, expiry, and Admin revocation scope | Product Owner, Security Reviewer | Final invitation/API contract |
+| Invitation delivery channel, duplicate-pending behavior, privacy UX, and retention | Product Owner, Security Reviewer, UX Lead | Final invitation/API contract; identity binding, 72-hour expiry, token lifecycle, and role ceilings are accepted in ADR-009 |
 | Session lifetime, renewal, security revocation, re-authentication, and CSRF | Security Reviewer, Product Owner | Identity and all mutations |
 | Device-key algorithm, private-key protection, canonical fingerprint, recovery artifact | Security Reviewer, Product Owner | Device/envelope implementation |
 | Key rotation triggers, completion, historical revision access, and offline-device treatment | Security Reviewer, Product Owner, UX Lead | Revocation and key-version states |
@@ -202,7 +202,7 @@ For every journey, tests verify response and side effects across own-workspace, 
 
 ## 9. Gate G1 — Domain and authorization readiness
 
-Current assessment: **GO WITH RECORDED CONDITIONS for continued Phase 0 work; NO-GO for runtime implementation.**
+Current assessment: **Product Owner APPROVED Gate G1 with recorded conditions for continued Phase 0 work; NO-GO for runtime implementation.** Security, technical, UX, operational, and evidence conditions remain open.
 
 Gate G1 passes only when:
 
@@ -211,7 +211,8 @@ Gate G1 passes only when:
 - [x] Owner, Admin, Editor, Viewer, removed, Guest, and unauthenticated authorization states are parameterized.
 - [x] Last-Owner, pending-key, invitation replay, envelope substitution, stale write, idempotent replay, and queued-authority failures are explicit.
 - [x] J1–J9 have measurable acceptance contracts.
-- [ ] Product Owner and Security Reviewer approve the role matrix and Admin ceilings.
+- [x] Product Owner approves the role matrix and Admin ceilings in ADR-003.
+- [ ] Security Reviewer validates the authorization and non-enumeration contract.
 - [ ] Footnoted export/deletion permissions and every open lifecycle/security decision are resolved in the owning ADR/specification.
 - [ ] Device-key, envelope, recovery, rotation, encrypted metadata, session, and CSRF contracts are approved.
 - [ ] Deterministic test seams, local Functions/D1 runner, preview/production isolation, migration/restore, and outbox contracts are ready.

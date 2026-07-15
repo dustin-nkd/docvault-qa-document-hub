@@ -1,6 +1,6 @@
 # Day 2 Cross-Functional Review
 
-Status: Gate G1 awaiting Product Owner role-policy confirmation
+Status: Gate G1 passed
 
 Date: 2026-07-15
 
@@ -37,7 +37,7 @@ Determine whether Collaboration Foundation has sufficiently explicit domain stat
 - Editor performs eligible document create/update/delete and explicit personal-document copy.
 - Viewer reads eligible encrypted documents and revisions only.
 - Removed, revoked, Guest, unauthenticated, and `pending_key` principals have no protected-content or document-mutation authority.
-- Key-envelope provisioning currently requires an Owner/Admin role plus a key-ready acting device. Whether any key-ready member should be allowed to provision remains a Day 3 key-management decision.
+- Key-envelope provisioning provisionally required an Owner/Admin role plus a key-ready acting device; ADR-003/004 preserve that ceiling in the Day 3 proposal.
 
 ### Threat model
 
@@ -92,13 +92,13 @@ Determine whether Collaboration Foundation has sufficiently explicit domain stat
 | Threats map to requirements and abuse cases | Pass |
 | P0/P1 requirements have planned verification levels | Pass |
 | Security Reviewer and Senior QA review | Pass for continued Phase 0 |
-| Product Owner approves role matrix and Admin ceilings | Pending |
+| Product Owner approves role matrix and Admin ceilings | Pass |
 
 ## 7. Gate decision
 
-Internal squad recommendation: **GO WITH ONE RECORDED CONDITION** for Day 3; **NO-GO** for Phase 1 implementation.
+Product Owner decision: **GO** for Day 3; **NO-GO** for Phase 1 implementation.
 
-Condition: the Product Owner must approve the role matrix and Admin ceilings below. Open Day 3 ADR decisions remain expected and do not prevent specification work.
+The Product Owner approved the role matrix and Admin ceilings below on 2026-07-15. Open Day 3 ADR decisions remain expected and do not prevent specification work.
 
 ## 8. Product Owner confirmation
 
@@ -106,5 +106,5 @@ The Product Owner is asked to approve this policy:
 
 > Owner controls ownership, Admin-role changes, workspace export/deletion, and other highest-risk lifecycle actions. Admin manages Editor/Viewer invitations, Editor/Viewer role changes and removals, their devices, and audit review. Editor creates and modifies eligible shared documents. Viewer is read-only. Removed, revoked, unauthenticated, Guest, and pending-key principals cannot access protected content or mutate documents. Key-envelope provisioning is provisionally limited to key-ready Owner/Admin devices and will be finalized in the Day 3 key-management ADR.
 
-- [ ] Product Owner approves the role policy above.
-- [ ] Gate G1 is marked Passed after approval.
+- [x] Product Owner approves the role policy above.
+- [x] Gate G1 is marked Passed after approval.

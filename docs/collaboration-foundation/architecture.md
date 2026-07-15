@@ -1,6 +1,6 @@
 # Collaboration Foundation Architecture Discovery
 
-Status: Gate G0 approved; Day 2 baseline
+Status: Gates G0 and G1 approved; Day 3 ADR baseline
 
 Owner: Senior Developer / Architect
 

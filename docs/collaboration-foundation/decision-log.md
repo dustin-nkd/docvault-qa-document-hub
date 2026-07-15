@@ -31,21 +31,23 @@ This log records approved decisions, working assumptions, and blocking decisions
 | DL-007 | 2026-07-15 | Shared updates use server-authoritative revisions and idempotency; client timestamp last-write-wins is prohibited for collaboration. | Approved | Product Owner + Architect + QA | Finalize compare-and-set and conflict semantics in ADR-006. |
 | DL-008 | 2026-07-15 | Server-side authorization is required for every workspace resource; UI visibility is not an authorization control. | Approved | Security | Day 2 must produce a complete role/action matrix and cross-workspace abuse cases. |
 | DL-009 | 2026-07-15 | Invitation acceptance and cryptographic readiness are separate states. A server that never receives the plaintext workspace key cannot create a new member's key envelope. | Working assumption | Security + Architect | Day 2 domain and threat models must define `pending_key`, authorized envelope provisioning, substitution protection, timeout, and recovery. |
+| DL-010 | 2026-07-15 | Gate G1 role policy is approved: Owner retains ownership and highest-risk lifecycle controls; Admin manages Editor/Viewer membership and devices; Editor mutates eligible shared documents; Viewer is read-only; removed, revoked, unauthenticated, Guest, and pending-key principals are deny-closed. | Approved | Product Owner | Day 3 ADRs must preserve these ceilings and finalize key-envelope provisioning. |
+| DL-011 | 2026-07-15 | The twelve-ADR Day 3 package provides a proposed disposition for every blocking architecture decision while preserving Gates G0/G1. | Proposed for Gate G2 | Architecture + Security + Product + QA | Product Owner approval of Gate G2 is required before Day 4; Phase 1 remains blocked. |
 
 ## Blocking decisions for Day 3
 
 | ID | Decision | Accountable owner | Required evidence | Status |
 |---|---|---|---|---|
-| BD-001 | GitHub OAuth identity, account relinking, username change, and invitation targeting | Product + Security | Auth ADR and negative scenarios | Open |
-| BD-002 | Session lifetime, renewal, revocation, fixation defense, and CSRF contract | Security | Session ADR and QA contract | Open |
-| BD-003 | Device key algorithm, private-key protection, and browser support | Security + Architect | Crypto ADR, compatibility analysis, test vectors | Open |
-| BD-004 | Workspace envelope schema, AAD bindings, key versioning, and authorized provisioning actors | Security | Key-management ADR and threat traceability | Open |
-| BD-005 | Recovery kit and all-devices-lost behavior | Product + Security | User-impact decision and recovery ADR | Open |
-| BD-006 | Member/device revocation and key-rotation triggers | Product + Security | Lifecycle rules, residual-risk statement, tests | Open |
-| BD-007 | Exact encrypted versus server-visible metadata | Product + Security | Data-minimization decision and search impact | Open |
-| BD-008 | Invitation, membership, and key-readiness state transitions | Product + Security + QA | Domain model and invalid-transition tests | Open |
-| BD-009 | D1 consistency/transaction boundary for revision compare-and-set and invitation acceptance | Architect + QA | Storage ADR and integration-test plan | Open |
-| BD-010 | Offline outbox storage, ordering, quarantine, expiry, and account-switch behavior | Product + Architect + QA | Sync ADR and recovery UX | Open |
+| BD-001 | GitHub OAuth identity, account relinking, username change, and invitation targeting | Product + Security | Auth ADR and negative scenarios | Proposed in ADR-002/009 |
+| BD-002 | Session lifetime, renewal, revocation, fixation defense, and CSRF contract | Security | Session ADR and QA contract | Proposed in ADR-002/011 |
+| BD-003 | Device key algorithm, private-key protection, and browser support | Security + Architect | Crypto ADR, compatibility analysis, test vectors | Proposed in ADR-004 |
+| BD-004 | Workspace envelope schema, AAD bindings, key versioning, and authorized provisioning actors | Security | Key-management ADR and threat traceability | Proposed in ADR-004 |
+| BD-005 | Recovery kit and all-devices-lost behavior | Product + Security | User-impact decision and recovery ADR | Proposed in ADR-010 |
+| BD-006 | Member/device revocation and key-rotation triggers | Product + Security | Lifecycle rules, residual-risk statement, tests | Proposed in ADR-010 |
+| BD-007 | Exact encrypted versus server-visible metadata | Product + Security | Data-minimization decision and search impact | Proposed in ADR-005/008 |
+| BD-008 | Invitation, membership, and key-readiness state transitions | Product + Security + QA | Domain model and invalid-transition tests | Proposed in ADR-003/009 |
+| BD-009 | D1 consistency/transaction boundary for revision compare-and-set and invitation acceptance | Architect + QA | Storage ADR and integration-test plan | Proposed in ADR-001/006/009 |
+| BD-010 | Offline outbox storage, ordering, quarantine, expiry, and account-switch behavior | Product + Architect + QA | Sync ADR and recovery UX | Proposed in ADR-006/007 |
 
 ## Change control
 

@@ -1,6 +1,6 @@
 # Collaboration Foundation: Data Classification and Trust-Boundary Inventory
 
-Status: Gate G0 approved; Day 2 security baseline
+Status: Gates G0 and G1 approved; Day 3 security baseline
 
 Scope: current personal vault and the proposed Cloudflare collaboration foundation
 

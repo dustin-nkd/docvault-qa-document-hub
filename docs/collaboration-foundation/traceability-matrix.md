@@ -6,7 +6,7 @@
 
 **Sprint checkpoint:** Day 2 — Traceability and Gate G1 testability review
 
-**Status:** Draft for cross-functional review
+**Status:** Gate G1 passed; Day 3 traceability baseline
 
 **Owner:** Senior QA
 
@@ -105,7 +105,7 @@ The canonical threat identifiers are `T01` through `T23` in `threat-model.md`. T
 | CF-WS-003 | A workspace must always have at least one valid Owner | Removal or role change leaves data ungoverned | Last-Owner downgrade/removal/delete is rejected atomically; ownership transfer follows approved strong confirmation | U: policy; I/A: last-owner and concurrent transfer; E/S: direct API and race attempts | Product Owner, Senior QA, Security Reviewer | 4 | Blocked by PD-13 |
 | CF-WS-004 | Workspace deletion, export, and retention behavior is explicit before general availability | Irreversible loss, privacy violation, or unaudited exfiltration | Approved role, confirmation, retention/tombstone, export encryption, audit, and recovery contracts | U/I/A/E/O according to approved contract | Product Owner, Technical Lead, Senior QA, Security Reviewer | 4, 8, 9 | Open product decision |
 | CF-RBAC-001 | Every workspace resource is scoped by authenticated membership | IDOR reveals or mutates another workspace | Deny-by-default centralized authorization; queries bind resource and membership to the same workspace; non-disclosing denial | U: policy matrix; I/A: cross-workspace IDs on every route; S: IDOR fuzz set | Developer, Senior QA, Security Reviewer | 4–8 | Draft |
-| CF-RBAC-002 | Owner/Admin/Editor/Viewer capabilities follow the approved role/action matrix | Privilege escalation or inconsistent endpoint policy | One server policy source; UI state derives from but does not replace server authorization | U: parameterized matrix; A: direct calls for every role/action; E: visible states; S: role tampering | Product Owner, Senior QA, Security Reviewer | 4–8 | Blocked by PD-03 |
+| CF-RBAC-002 | Owner/Admin/Editor/Viewer capabilities follow the approved role/action matrix | Privilege escalation or inconsistent endpoint policy | One server policy source; UI state derives from but does not replace server authorization | U: parameterized matrix; A: direct calls for every role/action; E: visible states; S: role tampering | Product Owner, Senior QA, Security Reviewer | 4–8 | Approved at Gate G1 |
 | CF-RBAC-003 | J7: Role change/removal is effective on the next request and auditable | Cached role or queued request retains authority | Live membership check; pending operations re-authorize; role/removal audit event uses server actor/time | I/A: change then immediate request; E/S: active/offline tabs, queued writes, stale UI | Senior QA, Security Reviewer | 4, 6 | Blocked by TD-06 |
 | CF-RBAC-004 | Client-supplied actor, role, membership, owner, and timestamps are ignored | Forged request attributes create privilege or false audit attribution | Server derives actor/role/workspace authorization and authoritative timestamps | U: normalization; I/A/S: submit forged fields and verify stored/audited values | Developer, Senior QA, Security Reviewer | 4 | Draft |
 | CF-INV-001 | J3: Owner or authorized Admin creates a role-bound, expiring, revocable invitation | Unauthorized inviter, excessive role, or indefinite bearer access | Authorization at creation; approved role ceiling; hashed unpredictable token; server expiry; creation audit | U: policy/expiry; I/A: role and persistence; S: raw-token scan and unauthorized inviter | Developer, Senior QA, Security Reviewer | 4 | Blocked by PD-02/PD-03 |
@@ -311,13 +311,13 @@ Gate G1 determines whether Phase 0 requirements are sufficiently traceable to co
 - [x] Every requirement has planned verification levels and an evidence owner.
 - [x] Existing regression suites remain mandatory evidence.
 - [x] Negative abuse cases cover authentication, authorization, invitations, keys, documents, sync, caching, environments, and deployment.
-- [ ] Product Owner confirms the Day 1 scope statement and success/failure boundary.
+- [x] Product Owner confirms the Day 1 scope statement and success/failure boundary at Gate G0.
 
 ### 9.2 Authorization testability
 
 - [x] Role/action parameterization includes Owner, Admin, Editor, Viewer, removed/revoked, unauthenticated, and Guest states.
 - [x] Cross-workspace, nonexistent, deleted, malformed, and forged-actor variants are required.
-- [ ] Product Owner approves the proposed role policy and Admin ceilings; the later RBAC ADR preserves that approved policy.
+- [x] Product Owner approves the proposed role policy and Admin ceilings; the later RBAC ADR preserves that approved policy.
 - [ ] Ownership transfer, last-Owner, Admin limits, audit access, export, and key-distribution policies are approved.
 
 ### 9.3 Security and cryptographic testability
@@ -354,13 +354,13 @@ Gate G1 determines whether Phase 0 requirements are sufficiently traceable to co
 
 ### 9.6 Gate decision
 
-**Current Day 2 assessment: `GO WITH RECORDED CONDITIONS` for continued Phase 0 specification work; `NO-GO` for Phase 1 implementation.**
+**Gate G1 decision: `PASSED` for continued Phase 0 specification work; `NO-GO` for Phase 1 implementation.**
 
 Conditions:
 
-1. Product Owner confirmation required by Gate G0 remains pending.
-2. The Product Owner must approve the proposed role matrix and Admin ceilings.
+1. Product Owner confirmed Gate G0 scope on 2026-07-15.
+2. Product Owner approved the role matrix and Admin ceilings at Gate G1 on 2026-07-15.
 3. Blocking decisions listed in GAP-02 through GAP-12 must be resolved before their dependent implementation is marked Ready.
 4. Each approved ADR or specification decision must update this matrix with its final contract, status, and planned evidence reference.
 
-Senior QA may mark Gate G1 Passed only when all blocking checklist items above are checked and no P0/P1 requirement lacks measurable verification.
+Senior QA marks Gate G1 Passed for Day 3 specification work. Unchecked implementation-readiness items remain mandatory for Gate G2, later Phase 0 contracts, or the Phase 0 exit gate as assigned; Gate G1 does not waive them.
