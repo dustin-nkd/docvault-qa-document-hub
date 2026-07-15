@@ -61,6 +61,10 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Implementation and release evidence plan](evidence-plan.md)
 - [Day 5 Phase 0 exit review](day-5-review.md)
 
+## Phase 1 sprint planning
+
+- [Cloudflare foundation sprint](phase-1-sprint.md) — ready for Product Owner approval; implementation has not started
+
 ## Review ownership
 
 | Concern | Accountable reviewer |
