@@ -3,18 +3,30 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { validateRollbackRehearsal } from './cloudflare-rollback-policy.mjs';
+import {
+    rollbackTargetSourcesAvailable,
+    validateRollbackRehearsal
+} from './cloudflare-rollback-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const plan = JSON.parse(fs.readFileSync(path.join(root, 'config/cloudflare/rollback-rehearsal.json'), 'utf8'));
 const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 const digest = source => crypto.createHash('sha256').update(source).digest('hex');
-
-const commitAvailable = spawnSync('git', ['cat-file', '-e', `${plan.previous_compatible_commit}^{commit}`], {
+const targetPaths = ['wrangler.jsonc', '_routes.json', 'package-lock.json'];
+const gitObjectAvailable = object => spawnSync('git', ['cat-file', '-e', object], {
     cwd: root,
     stdio: 'ignore'
 }).status === 0;
-if (commitAvailable) {
+
+// Managed Pages clones can retain the boundary commit while omitting older
+// path objects. Treat the target as locally inspectable only when the commit
+// and every reviewed source path are available.
+const targetSourcesAvailable = rollbackTargetSourcesAvailable(
+    gitObjectAvailable,
+    plan.previous_compatible_commit,
+    targetPaths
+);
+if (targetSourcesAvailable) {
     const ancestor = spawnSync('git', ['merge-base', '--is-ancestor', plan.previous_compatible_commit, 'HEAD'], {
         cwd: root,
         stdio: 'ignore'
@@ -54,6 +66,6 @@ console.log('Cloudflare rollback rehearsal passed');
 console.log('  Mode: read-only');
 console.log('  Previous compatible commit:', plan.previous_compatible_commit);
 console.log('  Previous successful deployment:', plan.previous_cloudflare_deployment_id);
-console.log('  Previous Git object:', commitAvailable ? 'verified' : 'shallow-clone fingerprints verified');
+console.log('  Previous Git source:', targetSourcesAvailable ? 'verified' : 'managed-clone fingerprints verified');
 console.log('  Collaboration after rollback: disabled');
 console.log('  Working tree and production deployment: unchanged');

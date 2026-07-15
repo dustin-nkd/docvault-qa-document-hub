@@ -4,6 +4,13 @@ const assert = (condition, message) => {
     if (!condition) throw new Error(message);
 };
 
+export function rollbackTargetSourcesAvailable(probe, commit, paths) {
+    assert(typeof probe === 'function', 'Rollback source probe is required');
+    assert(/^[0-9a-f]{40}$/.test(commit), 'Rollback source commit must be a full SHA');
+    assert(Array.isArray(paths) && paths.length > 0, 'Rollback source paths are required');
+    return probe(`${commit}^{commit}`) && paths.every(relativePath => probe(`${commit}:${relativePath}`));
+}
+
 export function validateRollbackRehearsal(plan, previousWranglerSource, previousRoutesSource, previousPackageLockSource) {
     assert(plan?.schema_version === 1, 'Unsupported rollback rehearsal schema');
     assert(plan.story === 'CF-P1-008', 'Rollback rehearsal story drifted');

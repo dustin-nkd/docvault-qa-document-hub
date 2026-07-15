@@ -3,14 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
     validateDeploymentArtifact,
     validatePagesRoutesDocument
 } from '../scripts/cloudflare-deployment-boundary-policy.mjs';
 import { validateCloudflareCiBoundary } from '../scripts/cloudflare-ci-policy.mjs';
-import { validateRollbackRehearsal } from '../scripts/cloudflare-rollback-policy.mjs';
+import {
+    rollbackTargetSourcesAvailable,
+    validateRollbackRehearsal
+} from '../scripts/cloudflare-rollback-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -80,19 +82,45 @@ test('CI blocks deployment until all Cloudflare, artifact, and browser gates pas
 
 test('rollback rehearsal selects a locked, disabled, API-isolated compatible commit', () => {
     const plan = JSON.parse(read('config/cloudflare/rollback-rehearsal.json'));
-    const show = relativePath => execFileSync('git', [
-        'show', `${plan.previous_compatible_commit}:${relativePath}`
-    ], { cwd: root, encoding: 'utf8' });
+    const wranglerSource = JSON.stringify({
+        vars: { COLLABORATION_ENABLED: 'false' },
+        env: {
+            preview: { vars: { COLLABORATION_ENABLED: 'false' } },
+            production: { vars: { COLLABORATION_ENABLED: 'false' } }
+        }
+    });
+    const routesSource = JSON.stringify({
+        version: 1,
+        include: plan.target_fingerprints.functions_include,
+        exclude: []
+    });
+    const packageLockSource = JSON.stringify({
+        lockfileVersion: plan.target_fingerprints.lockfile_version,
+        packages: { '': { devDependencies: { wrangler: plan.target_fingerprints.wrangler_version } } }
+    });
     assert.equal(validateRollbackRehearsal(
         plan,
-        show('wrangler.jsonc'),
-        show('_routes.json'),
-        show('package-lock.json')
+        wranglerSource,
+        routesSource,
+        packageLockSource
     ), true);
     assert.throws(() => validateRollbackRehearsal(
         { ...plan, mode: 'execute' },
-        show('wrangler.jsonc'),
-        show('_routes.json'),
-        show('package-lock.json')
+        wranglerSource,
+        routesSource,
+        packageLockSource
     ), /non-destructive/);
+});
+
+test('rollback rehearsal uses fingerprints when a managed clone omits a target path', () => {
+    const commit = 'a'.repeat(40);
+    const paths = ['wrangler.jsonc', '_routes.json', 'package-lock.json'];
+    const available = new Set([
+        `${commit}^{commit}`,
+        `${commit}:_routes.json`,
+        `${commit}:package-lock.json`
+    ]);
+    assert.equal(rollbackTargetSourcesAvailable(value => available.has(value), commit, paths), false);
+    available.add(`${commit}:wrangler.jsonc`);
+    assert.equal(rollbackTargetSourcesAvailable(value => available.has(value), commit, paths), true);
 });
