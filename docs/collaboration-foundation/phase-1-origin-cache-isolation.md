@@ -1,6 +1,6 @@
 # Phase 1 origin, cache, and Service Worker isolation
 
-Status: `CF-P1-005` implemented and locally verified; production evidence pending
+Status: `CF-P1-005` implemented, deployed, and verified
 
 Date: 2026-07-15
 
@@ -46,12 +46,22 @@ The reviewed expected state is stored in [`config/cloudflare/pages-branch-contro
 - Playwright browser regression: pass with zero collaboration API requests or controls;
 - local workerd: exact local mutation `503 COLLABORATION_UNAVAILABLE`; missing and foreign origins `403 CSRF_REJECTED`; safe GET `503`; all JSON and no-store.
 
-Production deployment IDs and canonical/GitHub Pages smoke results will be appended only after the verified implementation commit reaches `main`.
+## Retained deployment result
+
+- Implementation commit: `51e9e324c0d0538817f2570267fd3e530fb7108f`.
+- GitHub Actions run: `29432147843`, success with all release gates and GitHub Pages deployment.
+- Cloudflare production deployment: `5e605899-a046-4e1a-924e-7134a0651a6a`, success from `main` at the implementation commit.
+- Canonical exact-origin mutation returned `503 COLLABORATION_UNAVAILABLE`; missing, `null`, foreign, scheme-changed, port-changed, suffix-confusion, preview-origin, and crossover variants returned `403 CSRF_REJECTED` with JSON and no-store headers.
+- A probe issued during edge propagation was discarded. After the deployment reached success, the complete hostile-origin matrix was repeated against the canonical origin and passed.
+- A seeded Cache Storage API imitation was not served: browser `fetch('/api/v1/session')` returned the live `503` JSON. Unit instrumentation recorded zero Service Worker fetch/cache read/cache write calls for `/api/*`.
+- Fresh Playwright contexts loaded and reloaded both production guest origins with zero `/api` requests and zero collaboration controls.
+- The generated `gh-pages` commit produced skipped deployment record `2c5befbe-ef0c-4053-90f8-ce7e5380e1a9`: queued, clone, build, and deploy stages all remained `idle`. No invalid preview build ran.
+- Cloudflare Pages and GitHub Pages static guest origins returned HTTP 200; the GitHub Pages API path returned static 404 and never imitated the collaboration API.
 
 ## Traceability
 
 - Requirements: `CF-SES-003`, `CF-OPS-001/002`, `CF-FB-001/002`.
 - Risks: `R01`, `R13`, `R15`, `R17`; threats: `T01`, `T14`, `T16`, `T21`.
-- Planned evidence: `CF-EV-P1-API-007`, `CF-EV-P1-SEC-004`, `CF-EV-P1-SEC-005`, `CF-EV-P1-E2E-001`.
+- Evidence: `CF-EV-P1-API-007`, `CF-EV-P1-SEC-004`, `CF-EV-P1-SEC-005`, `CF-EV-P1-E2E-001`.
 
 Official references: [Pages branch deployment controls](https://developers.cloudflare.com/pages/configuration/branch-build-controls/), [Pages Functions routing](https://developers.cloudflare.com/pages/functions/routing/), [Workers Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/), and [Workers best practices](https://developers.cloudflare.com/workers/best-practices/workers-best-practices/).
