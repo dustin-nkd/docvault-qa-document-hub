@@ -1,8 +1,8 @@
 # Collaboration Foundation
 
-Status: Phase 0 complete; Gate G4 approved; controlled Phase 1 runtime-shell implementation authorized
+Status: Phase 1 complete; Gate P1 passed; controlled Phase 2 implementation recommended while collaboration activation remains NO-GO
 
-Sprint: Phase 0 complete — Phase 1 runtime shell authorized
+Sprint: Phase 1 disabled foundation complete — Phase 2 implementation handoff ready
 
 Language: English for all repository artifacts
 
@@ -63,10 +63,11 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 
 ## Phase 1 sprint planning
 
-- [Cloudflare foundation sprint](phase-1-sprint.md) — approved; `CF-P1-001` is complete
+- [Cloudflare foundation sprint](phase-1-sprint.md) — `CF-P1-001` through `CF-P1-009` complete
 - [Cloudflare Pages configuration control](phase-1-pages-configuration.md) — `CF-P1-001` baseline, drift assertion, preflight, and rollback
 - [Cloudflare toolchain control](phase-1-cloudflare-toolchain.md) — `CF-P1-002` exact dependencies, portable commands, pinned CI, and review lifecycle
 - [Reviewed Pages Wrangler configuration](phase-1-wrangler-configuration.md) — `CF-P1-003` environment isolation, generated types, and source-of-truth transition
+- [Phase 1 exit report](phase-1-exit-report.md) — Gate P1 evidence, cross-functional review, and constrained Phase 2 recommendation
 
 ## Review ownership
 

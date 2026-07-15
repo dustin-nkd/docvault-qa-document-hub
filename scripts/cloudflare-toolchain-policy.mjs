@@ -10,7 +10,8 @@ export const cloudflareScripts = {
     'cf:test': 'node scripts/cloudflare-command.mjs test',
     'cf:rollback:rehearse': 'node scripts/rehearse-cloudflare-rollback.mjs',
     'cf:functions:build': 'node scripts/cloudflare-command.mjs functions-build',
-    'cf:pages:dry-run': 'node scripts/cloudflare-command.mjs pages-dry-run'
+    'cf:pages:dry-run': 'node scripts/cloudflare-command.mjs pages-dry-run',
+    'cf:phase1:check': 'node scripts/check-cloudflare-phase-1-exit.mjs'
 };
 
 const assert = (condition, message) => {

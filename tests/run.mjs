@@ -18,3 +18,4 @@ import './runtime-dependencies.test.mjs';
 import './cloudflare-production-policy.test.mjs';
 import './cloudflare-test-harness-policy.test.mjs';
 import './cloudflare-deployment-boundary.test.mjs';
+import './cloudflare-phase-1-exit.test.mjs';
