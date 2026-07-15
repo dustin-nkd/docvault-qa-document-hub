@@ -17,7 +17,18 @@ const mimeTypes = {
     '.woff2': 'font/woff2'
 };
 
+function readProductionHeaders() {
+    const source = fs.readFileSync(path.join(siteRoot, '_headers'), 'utf8');
+    const headers = {};
+    for (const line of source.split(/\r?\n/).slice(1)) {
+        const match = line.match(/^\s+([^:]+):\s*(.+)$/);
+        if (match) headers[match[1]] = match[2];
+    }
+    return headers;
+}
+
 function startServer() {
+    const productionHeaders = readProductionHeaders();
     const server = http.createServer((request, response) => {
         const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
         const requested = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
@@ -26,7 +37,10 @@ function startServer() {
         const filePath = fs.existsSync(safeCandidate) && fs.statSync(safeCandidate).isFile()
             ? safeCandidate
             : path.join(siteRoot, 'index.html');
-        response.writeHead(200, { 'Content-Type': mimeTypes[path.extname(filePath)] || 'application/octet-stream' });
+        response.writeHead(200, {
+            ...productionHeaders,
+            'Content-Type': mimeTypes[path.extname(filePath)] || 'application/octet-stream'
+        });
         fs.createReadStream(filePath).pipe(response);
     });
     return new Promise(resolve => {
@@ -62,8 +76,24 @@ async function run() {
         const requestedAssets = [];
         page.on('request', request => requestedAssets.push(new URL(request.url()).pathname));
 
-        await page.goto(baseUrl + '/?guest=1', { waitUntil: 'networkidle' });
+        const initialResponse = await page.goto(baseUrl + '/?guest=1', { waitUntil: 'networkidle' });
+        assert.match(initialResponse.headers()['content-security-policy'] || '', /script-src 'self'/);
+        assert.equal(initialResponse.headers()['x-content-type-options'], 'nosniff');
+        assert.equal(initialResponse.headers()['x-frame-options'], 'DENY');
         await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor();
+
+        const submittedPassword = await page.evaluate(async () => {
+            window.__cspSubmitPassword = null;
+            window.LocalAuth.unlock = password => { window.__cspSubmitPassword = password; };
+            document.getElementById('master-password').value = 'csp-regression';
+            document.querySelector('#lock-screen form[data-onsubmit]').dispatchEvent(new SubmitEvent('submit', {
+                bubbles: true,
+                cancelable: true
+            }));
+            return window.__cspSubmitPassword;
+        });
+        assert.equal(submittedPassword, 'csp-regression', 'Unlock form must submit through CSP-safe delegation');
+
         assert.equal(await page.locator('.trend-card svg').count(), 5, 'Dashboard must render all five trend charts');
         assert.equal(requestedAssets.some(pathname => pathname.includes('/vendor/toastui/')), false, 'Dashboard must not load the editor runtime');
 

@@ -2,13 +2,14 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v43'; // Vault V2: versioned encryption and migration-safe storage
+const SW_VERSION = 'v44'; // Strict CSP bootstrap and production security headers
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
 const APP_SHELL = [
     './',
     './index.html',
+    './js/bootstrap.js',
     './storage.js',
     './style.css',
     './manifest.json',

@@ -346,6 +346,10 @@ function executeAction(code, event, element) {
     }
 }
 
+function unlockVaultFromForm() {
+    return window.LocalAuth.unlock(document.getElementById('master-password').value);
+}
+
 // e.target is only guaranteed to be a real Element (with .closest()) when a
 // user actually interacts with the page. A keydown/click/etc dispatched with
 // target=document (automated testing, some extensions, or a stray future
@@ -363,6 +367,14 @@ document.addEventListener('click', (e) => {
     if (target) {
         executeAction(target.getAttribute('data-onclick'), e, target);
     }
+});
+
+document.addEventListener('submit', (e) => {
+    if (!(e.target instanceof Element)) return;
+    const target = e.target.closest('[data-onsubmit]');
+    if (!target) return;
+    e.preventDefault();
+    executeAction(target.getAttribute('data-onsubmit'), e, target);
 });
 
 document.addEventListener('input', (e) => {

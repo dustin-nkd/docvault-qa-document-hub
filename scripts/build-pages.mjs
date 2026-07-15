@@ -28,6 +28,7 @@ function include(relativePath) {
 
 include('index.html');
 include('sw.js');
+include('_headers');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const match of html.matchAll(/\b(?:src|href)=["']([^"'#]+)["']/g)) include(match[1]);
