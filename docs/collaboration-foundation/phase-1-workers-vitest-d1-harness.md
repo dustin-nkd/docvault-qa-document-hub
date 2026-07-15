@@ -1,6 +1,6 @@
 # Phase 1 Workers Vitest and disposable D1 harness
 
-Status: `CF-P1-007` implemented and locally verified; deployment evidence pending
+Status: `CF-P1-007` implemented, deployed, and verified
 
 Date: 2026-07-15
 
@@ -49,7 +49,14 @@ The shared runtime helper now uses platform `btoa()` rather than Node `Buffer`, 
 - Full quality/type/config gates: pass; Node regression 93/93 and Workers integration 10/10.
 - Wrangler Functions build and Pages production dry-run: pass; three production runtime modules and zero test adapters/selectors.
 - Static Pages artifact: 49 runtime files, 1,887,978 bytes; browser regression: pass across dashboard, category renderers, release hover, focus, mobile, and semantics.
-- Deployment IDs and production smoke results are recorded after the implementation commit reaches `main`.
+
+## Retained deployment result
+
+- Implementation commit: `dfaaa95224a25806487af7c0bbebc13ad4b775b5`.
+- GitHub Actions run `29434622486`: success, including locked install, Cloudflare policy/type gates, production quality/build, browser regression, and GitHub Pages deployment.
+- Cloudflare production deployment `225a0e5c-b9a8-445f-a137-68d16be918e8`: success from the implementation commit; `COLLABORATION_ENABLED=false`, production origin policy retained, and no D1 binding or resource ID added.
+- Canonical and immutable Cloudflare guest pages returned HTTP 200. The canonical API returned JSON `503 COLLABORATION_UNAVAILABLE`, `Cache-Control: no-store, private`, and a Web Crypto request ID.
+- GitHub Pages guest fallback returned HTTP 200; its API-shaped root URL returned static HTTP 404 and did not imitate the collaboration API.
 
 ## Traceability
 
