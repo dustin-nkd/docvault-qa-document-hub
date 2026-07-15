@@ -63,7 +63,7 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 
 ## Phase 1 sprint planning
 
-- [Cloudflare foundation sprint](phase-1-sprint.md) — approved; `CF-P1-001` implementation is in progress
+- [Cloudflare foundation sprint](phase-1-sprint.md) — approved; `CF-P1-001` is complete
 - [Cloudflare Pages configuration control](phase-1-pages-configuration.md) — `CF-P1-001` baseline, drift assertion, preflight, and rollback
 
 ## Review ownership

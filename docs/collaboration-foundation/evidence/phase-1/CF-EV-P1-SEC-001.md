@@ -1,6 +1,6 @@
 # CF-EV-P1-SEC-001 — Pages configuration privacy and drift guard
 
-Status: PASS locally; deployment evidence pending the candidate commit
+Status: PASS
 
 Captured: 2026-07-15T14:57:00.244Z
 
@@ -31,3 +31,5 @@ The automated suite mutates the baseline with a wrong project, wrong output, wro
 - Production and preview remain configured with empty binding and environment-variable inventories.
 
 Traceability: `CF-OPS-002/003/004`, `R17/R18/R19`, `T19/T20`, and `CF-EV-P1-OPS-001`.
+
+Implementation commit `2577c822c5297c16907cf38975d091bee794771c` passed all four focused negative tests, the 59-test quality gate, the browser regression suite, GitHub Actions run `29426225849`, and Cloudflare Pages production deployment `87cbc07f-8de8-4965-b66c-d335b1a1c411`. No configuration mutation API was called.

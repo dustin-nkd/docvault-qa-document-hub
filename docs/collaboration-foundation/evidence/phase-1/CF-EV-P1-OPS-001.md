@@ -1,6 +1,6 @@
 # CF-EV-P1-OPS-001 — Pages configuration baseline and rollback control
 
-Status: PASS locally; deployment evidence pending the candidate commit
+Status: PASS
 
 Captured: 2026-07-15T14:57:00.244Z
 
@@ -16,6 +16,7 @@ Reviewer: Senior QA
 - Risks: `R17`, `R18`, `R19`
 - Threats: `T19`, `T20`
 - Contract baseline: Gate G4 documents at repository base `9520b29eb1d83167ccaaecea5124dd9770b54e82`
+- Implementation commit: `2577c822c5297c16907cf38975d091bee794771c`
 
 ## Environment and inputs
 
@@ -45,6 +46,16 @@ Reviewer: Senior QA
 | Unexpected addition/deletion | Deployment-blocking | PASS by negative test |
 | Rollback | Known-good Pages deployment plus config-source recovery | Documented |
 
-Side effects: read-only Cloudflare API request and repository candidate files only. No dashboard setting, deployment, binding, database, secret, runtime route, or product data was changed.
+Capture side effects: read-only Cloudflare API request and repository candidate files only. The verified commit then triggered the normal Git-connected static deployments. No dashboard setting, binding, database, secret, runtime route, or product data was changed.
 
 Privacy: no raw API response was stored. The retained artifact contains approved configuration metadata and empty name inventories only. It contains no values, tokens, cookies, resource identifiers, protected content, or sensitive URLs.
+
+## Retained deployment evidence
+
+- Focused configuration policy: 4/4 tests passed.
+- Full quality gate: 59/59 tests passed.
+- Production artifact: 48 runtime files, 1,887,561 bytes.
+- Browser regression: dashboard, all category renderers, release hover, Focus, mobile, and semantics passed.
+- GitHub Actions run `29426225849`: passed and deployed GitHub Pages.
+- Cloudflare Pages production deployment `87cbc07f-8de8-4965-b66c-d335b1a1c411`: passed on `main` for the implementation commit.
+- GitHub Pages and canonical Cloudflare Pages guest routes both returned HTTP 200 after deployment.

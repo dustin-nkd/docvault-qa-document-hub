@@ -1,6 +1,6 @@
 # Phase 1 Cloudflare Pages configuration control
 
-Status: `CF-P1-001` implementation complete; awaiting retained pipeline evidence
+Status: `CF-P1-001` complete; implementation and retained deployment evidence passed
 
 Date: 2026-07-15
 
