@@ -1,0 +1,98 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import {
+    validateDeploymentArtifact,
+    validatePagesRoutesDocument
+} from '../scripts/cloudflare-deployment-boundary-policy.mjs';
+import { validateCloudflareCiBoundary } from '../scripts/cloudflare-ci-policy.mjs';
+import { validateRollbackRehearsal } from '../scripts/cloudflare-rollback-policy.mjs';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
+
+function createArtifact() {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'docvault-artifact-'));
+    fs.writeFileSync(path.join(directory, '.nojekyll'), '');
+    fs.writeFileSync(path.join(directory, '_headers'), '/\n  X-Content-Type-Options: nosniff\n');
+    fs.writeFileSync(path.join(directory, '_routes.json'), JSON.stringify({
+        version: 1,
+        include: ['/api/v1/*'],
+        exclude: []
+    }));
+    fs.writeFileSync(path.join(directory, 'index.html'), '<!doctype html><title>DocVault</title>');
+    return directory;
+}
+
+test('deployment artifact allowlist accepts runtime assets and emits hashes', () => {
+    const directory = createArtifact();
+    try {
+        const manifest = validateDeploymentArtifact(directory);
+        assert.equal(manifest.schema_version, 1);
+        assert.equal(manifest.files.length, 4);
+        assert.ok(manifest.files.every(file => /^[0-9a-f]{64}$/.test(file.sha256)));
+    } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+    }
+});
+
+test('deployment artifact rejects server, test, evidence, local D1, secret, and route leaks', () => {
+    const cases = [
+        ['functions/api.ts', 'export default {}'],
+        ['tests/fixture.js', 'fixture'],
+        ['docs/evidence.md', 'evidence'],
+        ['migrations/local.sql', 'CREATE TABLE leaked (id TEXT)'],
+        ['js/secret.js', 'const value = "CLOUDFLARE_API_TOKEN";']
+    ];
+    for (const [relativePath, source] of cases) {
+        const directory = createArtifact();
+        try {
+            const target = path.join(directory, ...relativePath.split('/'));
+            fs.mkdirSync(path.dirname(target), { recursive: true });
+            fs.writeFileSync(target, source);
+            assert.throws(() => validateDeploymentArtifact(directory), /protected|non-runtime/);
+        } finally {
+            fs.rmSync(directory, { recursive: true, force: true });
+        }
+    }
+    assert.throws(() => validatePagesRoutesDocument({
+        version: 1,
+        include: ['/*'],
+        exclude: []
+    }), /only for \/api\/v1/);
+});
+
+test('CI blocks deployment until all Cloudflare, artifact, and browser gates pass', () => {
+    const packageJson = JSON.parse(read('package.json'));
+    const workflow = read('.github/workflows/deploy.yml');
+    assert.equal(validateCloudflareCiBoundary(packageJson, workflow), true);
+    const withoutWorkersTests = structuredClone(packageJson);
+    withoutWorkersTests.scripts['check:cloudflare'] = withoutWorkersTests.scripts['check:cloudflare']
+        .replace(' && npm run cf:test', '');
+    assert.throws(() => validateCloudflareCiBoundary(withoutWorkersTests, workflow));
+    assert.throws(() => validateCloudflareCiBoundary(packageJson,
+        workflow.replace('run: npm run check:deployment-boundary', 'run: npm run test:e2e')));
+});
+
+test('rollback rehearsal selects a locked, disabled, API-isolated compatible commit', () => {
+    const plan = JSON.parse(read('config/cloudflare/rollback-rehearsal.json'));
+    const show = relativePath => execFileSync('git', [
+        'show', `${plan.previous_compatible_commit}:${relativePath}`
+    ], { cwd: root, encoding: 'utf8' });
+    assert.equal(validateRollbackRehearsal(
+        plan,
+        show('wrangler.jsonc'),
+        show('_routes.json'),
+        show('package-lock.json')
+    ), true);
+    assert.throws(() => validateRollbackRehearsal(
+        { ...plan, mode: 'execute' },
+        show('wrangler.jsonc'),
+        show('_routes.json'),
+        show('package-lock.json')
+    ), /non-destructive/);
+});

@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -23,16 +25,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Verify pinned Cloudflare toolchain
-        run: npm run cf:toolchain:check
-
-      - name: Verify Pages configuration
-        run: npm run cf:config:check
-
-      - name: Verify generated Cloudflare types
-        run: npm run cf:types:check
-
-      - name: Run production quality gate
+      - name: Run full production and Cloudflare gate
         run: npm run check
 
       - name: Build Tailwind CSS
@@ -40,6 +33,9 @@ jobs:
 
       - name: Build production artifact
         run: npm run build:pages
+
+      - name: Verify deployment artifact boundary
+        run: npm run check:deployment-boundary
 
       - name: Install Chromium for browser regression tests
         run: npx playwright install --with-deps chromium

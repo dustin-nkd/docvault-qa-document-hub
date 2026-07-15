@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "story": "CF-P1-008",
+  "mode": "read-only",
+  "recovery_strategy": "revert-and-redeploy",
+  "previous_compatible_commit": "10c4e657a19fb22ba5f2ba46a1cd36a5a10b8298",
+  "previous_cloudflare_deployment_id": "2379fd92-420b-4805-b1de-78f3295a8722",
+  "expected_collaboration_enabled": "false",
+  "target_fingerprints": {
+    "wrangler_sha256": "934c8f69d9973c5169caf7596e3d87e6195060c9caf54c41a9c2bb1c462593b8",
+    "routes_sha256": "e07e40e184c480637b815f32e1bbbd923cb7361e2c8b76aa8cdc1cee9b284020",
+    "package_lock_sha256": "d9dc29795b7fdae943a5a82b7cb954e497c08998e96362cd527d536384161f88",
+    "lockfile_version": 3,
+    "wrangler_version": "4.111.0",
+    "functions_include": [
+      "/api/v1/*"
+    ]
+  }
+}

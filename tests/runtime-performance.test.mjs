@@ -19,6 +19,10 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     const refs = [...html.matchAll(/\b(?:src|href)=["']([^"'#?]+)["']/g)]
         .map(match => match[1])
         .filter(value => !/^(?:[a-z]+:|\/\/|data:)/i.test(value));
+    assert.equal(refs.some(value => /(?:^|\/)collaboration(?:[./-]|\/)/i.test(value)), false,
+        'Dashboard startup must not eagerly load a collaboration module');
+    assert.doesNotMatch(html, /data-collaboration|data-workspace-id|\/api\/v1\//,
+        'Personal and guest startup markup must not expose collaboration controls or API paths');
     const bytes = [...new Set(refs)].reduce((total, relativePath) => {
         const absolutePath = path.join(root, relativePath);
         return total + (fs.existsSync(absolutePath) ? fs.statSync(absolutePath).size : 0);

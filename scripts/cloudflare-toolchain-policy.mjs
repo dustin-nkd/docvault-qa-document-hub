@@ -8,6 +8,7 @@ export const cloudflareScripts = {
     'cf:types:check': 'node scripts/cloudflare-command.mjs types-check',
     'cf:pages:dev': 'node scripts/cloudflare-command.mjs pages-dev',
     'cf:test': 'node scripts/cloudflare-command.mjs test',
+    'cf:rollback:rehearse': 'node scripts/rehearse-cloudflare-rollback.mjs',
     'cf:functions:build': 'node scripts/cloudflare-command.mjs functions-build',
     'cf:pages:dry-run': 'node scripts/cloudflare-command.mjs pages-dry-run'
 };
@@ -69,10 +70,11 @@ export function validateCloudflareToolchainState(state) {
     assert(!/run:\s*npm (?:install|i)\b/.test(workflow), 'CI must not use npm install');
     assert(!/\bnpx\s+(?:wrangler|vitest|tsc)\b/i.test(workflow), 'CI must not download Cloudflare toolchain commands');
     assert(/uses:\s*actions\/checkout@[0-9a-f]{40}\s*#\s*v6/.test(workflow), 'Checkout action must be pinned to the reviewed v6 commit');
+    assert(/fetch-depth:\s*0/.test(workflow), 'CI checkout must retain rollback verification history');
     assert(/uses:\s*actions\/setup-node@[0-9a-f]{40}\s*#\s*v6/.test(workflow), 'Setup Node action must be pinned to the reviewed v6 commit');
     assert(/uses:\s*peaceiris\/actions-gh-pages@[0-9a-f]{40}\s*#\s*v4/.test(workflow), 'GitHub Pages action must be pinned to the reviewed v4 commit');
-    assert(/run:\s*npm run cf:toolchain:check/.test(workflow), 'CI must verify the pinned Cloudflare toolchain');
-    assert(/run:\s*npm run cf:config:check/.test(workflow), 'CI must verify the Pages configuration');
-    assert(/run:\s*npm run cf:types:check/.test(workflow), 'CI must verify generated Cloudflare types');
+    assert(packageJson.scripts?.check === 'npm run check:base && npm run check:cloudflare', 'The release check must include the Cloudflare gate');
+    assert(/run:\s*npm run check\b/.test(workflow), 'CI must run the full production and Cloudflare gate');
+    assert(/run:\s*npm run check:deployment-boundary\b/.test(workflow), 'CI must inspect the final deployment artifact');
     return true;
 }
