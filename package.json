@@ -4,9 +4,20 @@
   "description": "",
   "main": "background.js",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "check": "node scripts/quality-check.mjs && npm test",
     "check:cloudflare-config": "node scripts/check-cloudflare-config.mjs",
+    "cf:toolchain:check": "node scripts/cloudflare-command.mjs toolchain-check",
+    "cf:config:check": "node scripts/cloudflare-command.mjs config-check",
+    "cf:types:generate": "node scripts/cloudflare-command.mjs types-generate",
+    "cf:types:check": "node scripts/cloudflare-command.mjs types-check",
+    "cf:pages:dev": "node scripts/cloudflare-command.mjs pages-dev",
+    "cf:test": "node scripts/cloudflare-command.mjs test",
+    "cf:functions:build": "node scripts/cloudflare-command.mjs functions-build",
+    "cf:pages:dry-run": "node scripts/cloudflare-command.mjs pages-dry-run",
     "test": "node tests/run.mjs",
     "test:e2e": "node tests/browser-smoke.mjs",
     "dev": "vite",
@@ -16,10 +27,14 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.18.5",
     "autoprefixer": "^10.5.0",
     "playwright": "^1.61.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
-    "vite": "^8.1.0"
+    "typescript": "7.0.2",
+    "vite": "^8.1.0",
+    "vitest": "4.1.10",
+    "wrangler": "4.111.0"
   }
 }

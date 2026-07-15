@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "node_ci_major": 22,
+  "compatibility_date": "2026-07-15",
+  "review_owner": "Technical Lead and Operations",
+  "next_quarterly_review": "2026-10-15",
+  "packages": {
+    "wrangler": "4.111.0",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10",
+    "@cloudflare/vitest-pool-workers": "0.18.5"
+  }
+}
