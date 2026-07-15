@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { readPagesSnapshot, validatePagesSnapshotDocument } from './cloudflare-config-policy.mjs';
 import { collectCloudflareToolchainState, validateCloudflareToolchainState } from './cloudflare-toolchain-policy.mjs';
 import { parseWranglerConfig, validateDashboardToWranglerDiff, validateGeneratedWorkerTypes, validateWranglerConfig } from './cloudflare-wrangler-policy.mjs';
+import { validateProductionHandlerWiring, validateProductionSourceGraph } from './cloudflare-production-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -114,7 +115,14 @@ for (const forbiddenPattern of [
 ]) {
     assert(!forbiddenPattern.test(functionSource), 'Forbidden Pages Function runtime pattern: ' + forbiddenPattern);
 }
-assert(/crypto\.randomUUID\s*\(/.test(functionSource), 'API request IDs must use Web Crypto');
+const productionFunctionGraph = validateProductionSourceGraph(root);
+assert(productionFunctionGraph.includes('functions/_lib/runtime-dependencies.mjs'),
+    'Production dependency implementation is missing from the Function import graph');
+assert(/PLATFORM_DEPENDENCIES/.test(read('functions/api/v1/[[path]].ts')),
+    'Production handler must inject the fixed platform dependency implementation');
+validateProductionHandlerWiring(read('functions/api/v1/[[path]].ts'));
+assert(/crypto\.randomUUID\s*\(/.test(read('functions/_lib/runtime-dependencies.mjs')),
+    'Production request IDs must use Web Crypto');
 assert(/COLLABORATION_UNAVAILABLE/.test(functionSource), 'Disabled API shell error is missing');
 assert(!/\b(?:DB|COLLAB_DB|OAuth|SESSION_SECRET)\b/.test(functionSource), 'CF-P1-004 must not access a future binding or secret');
 

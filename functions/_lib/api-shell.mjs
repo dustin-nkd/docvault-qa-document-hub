@@ -4,6 +4,8 @@ const MAX_QUERY_BYTES = 4 * 1024;
 const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 const UNSAFE_METHODS = Object.freeze(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+/** @typedef {import('./runtime-dependencies.mjs').RuntimeDependencies} RuntimeDependencies */
+
 const ROUTES = Object.freeze([
     { pattern: /^\/api\/v1\/oauth\/github\/transactions\/?$/, methods: ['POST'] },
     { pattern: /^\/api\/v1\/oauth\/github\/callback\/?$/, methods: ['GET'] },
@@ -250,10 +252,11 @@ async function readBoundedJson(request) {
  * Execute the Phase 1 fail-closed API pipeline without invoking an asset fallback.
  * @param {Request} request
  * @param {ApiEnv} env
+ * @param {RuntimeDependencies} dependencies
  * @returns {Promise<Response>}
  */
-export async function handleApiRequest(request, env) {
-    const requestId = `req_${crypto.randomUUID()}`;
+export async function handleApiRequest(request, env, dependencies) {
+    const requestId = `req_${dependencies.ids.uuid()}`;
     try {
         const url = new URL(request.url);
         if (queryByteLength(url) > MAX_QUERY_BYTES) throw new ApiError(400, 'VALIDATION_FAILED');
@@ -275,6 +278,8 @@ export async function handleApiRequest(request, env) {
             }
             await readBoundedJson(request);
         }
+
+        await dependencies.failures.checkpoint('api.before-disabled-boundary');
 
         // Inspect the environment/feature boundary without dispatching.
         const hasReviewedDisabledState = env.COLLABORATION_ENABLED === 'false'

@@ -20,6 +20,7 @@
     "cf:functions:build": "node scripts/cloudflare-command.mjs functions-build",
     "cf:pages:dry-run": "node scripts/cloudflare-command.mjs pages-dry-run",
     "test": "node tests/run.mjs",
+    "test:collab:unit": "node --test tests/runtime-dependencies.test.mjs tests/api-shell.test.mjs tests/cloudflare-production-policy.test.mjs",
     "test:e2e": "node tests/browser-smoke.mjs",
     "dev": "vite",
     "build": "vite build",

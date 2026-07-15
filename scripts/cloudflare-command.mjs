@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { collectCloudflareToolchainState, validateCloudflareToolchainState } from './cloudflare-toolchain-policy.mjs';
 import { parseWranglerConfig, validateWranglerConfig } from './cloudflare-wrangler-policy.mjs';
+import { validateCompiledWorkerArtifact, validateProductionSourceGraph } from './cloudflare-production-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const state = collectCloudflareToolchainState(root);
@@ -77,6 +78,11 @@ if (command === 'toolchain-check') {
         '--build-output-directory', '_site',
         '--metafile', '.wrangler/functions-build/meta.json'
     ]);
+    const graph = validateProductionSourceGraph(root);
+    validateCompiledWorkerArtifact(path.join(root, '.wrangler/functions-build'));
+    console.log('Cloudflare production import and artifact policy passed');
+    console.log('  Runtime modules:', graph.length);
+    console.log('  Test adapters/selectors: none');
 } else {
     throw new Error(`Unknown Cloudflare command: ${command || '<missing>'}`);
 }

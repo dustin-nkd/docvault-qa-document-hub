@@ -3,9 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { API_SHELL_LIMITS, handleApiRequest } from '../functions/_lib/api-shell.mjs';
+import { API_SHELL_LIMITS, handleApiRequest as executeApiRequest } from '../functions/_lib/api-shell.mjs';
+import { createDeterministicRuntimeDependencies } from './helpers/runtime-dependencies.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const testRuntime = createDeterministicRuntimeDependencies();
+const handleApiRequest = (request, env, dependencies = testRuntime.dependencies) => (
+    executeApiRequest(request, env, dependencies)
+);
 const productionEnv = Object.freeze({
     APP_ENV: 'production',
     ORIGIN_POLICY_MODE: 'production',
