@@ -1,6 +1,6 @@
 # Day 1 Cross-Functional Review
 
-Status: Conditionally ready for Gate G0
+Status: Gate G0 passed
 
 Date: 2026-07-15
 
@@ -111,13 +111,13 @@ Each item must receive an owner, ADR or specification decision, acceptance crite
 | Security review | Pass | Security conclusion above |
 | Senior QA review | Pass | QA conclusion above |
 | UX state inventory review | Pass for discovery | UX conclusion above |
-| Product Owner confirms target users, initial scale, scope, and non-goals | Pending | Product Owner decision required |
+| Product Owner confirms target users, initial scale, scope, and non-goals | Pass | Approved on 2026-07-15 |
 
 ## 7. Gate decision
 
-Internal squad decision: **GO WITH ONE RECORDED CONDITION**.
+Final squad decision: **GO**.
 
-Condition: the Product Owner must confirm the Day 1 product boundary before Gate G0 is closed. Until that confirmation, Day 2 may be prepared but must not silently change scope, and Phase 1 implementation remains prohibited.
+The Product Owner approved the Day 1 product boundary on 2026-07-15. Day 2 may proceed. Phase 1 implementation remains prohibited until the full Phase 0 exit gate passes.
 
 ## 8. Product Owner confirmation
 
@@ -125,5 +125,5 @@ The Product Owner is asked to confirm the following statement:
 
 > Collaboration Foundation targets small internal QA/product teams. It adds authenticated, encrypted, revision-safe workspaces while retaining Personal Vault as a separate mode. Realtime co-editing, comments, attachments, shared credentials, public workspaces, organization hierarchy, and automatic personal-data migration are outside Foundation.
 
-- [ ] Product Owner confirms the statement above.
-- [ ] Gate G0 is marked Passed after confirmation.
+- [x] Product Owner confirmed the statement above on 2026-07-15.
+- [x] Gate G0 is Passed.

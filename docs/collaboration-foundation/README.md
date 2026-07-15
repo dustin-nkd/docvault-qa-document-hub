@@ -1,6 +1,6 @@
 # Collaboration Foundation
 
-Status: Discovery in progress
+Status: Day 2 domain behavior and threat modeling in progress
 
 Sprint: Phase 0 — Specification and Threat Model
 
@@ -26,15 +26,18 @@ This directory is the source of truth for the Collaboration Foundation discovery
 - [Data classification](data-classification.md)
 - [Quality strategy](quality-strategy.md)
 - [Day 1 cross-functional review](day-1-review.md)
+- [Decision log](decision-log.md)
+- [Domain and RBAC contract](domain-and-rbac.md)
+- [Threat model](threat-model.md)
+- [Requirement-risk-test traceability](traceability-matrix.md)
+- [Day 2 cross-functional review](day-2-review.md)
+
+Gate G0 was approved by the Product Owner on 2026-07-15.
 
 ## Planned Phase 0 artifacts
 
-- `domain-and-rbac.md`
-- `threat-model.md`
 - `api-contract.md`
-- `traceability-matrix.md`
 - `risk-register.md`
-- `decision-log.md`
 - `adr/001-runtime-and-storage.md` through `adr/012-migrations-and-rollback.md`
 
 ## Review ownership

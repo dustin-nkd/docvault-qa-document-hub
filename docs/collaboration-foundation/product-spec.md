@@ -7,7 +7,7 @@
 | Document ID | CF-PROD-001 |
 | Phase | Phase 0 — Specification and Threat Model |
 | Sprint checkpoint | Day 1 — Product framing and Gate G0 |
-| Status | Draft — ready for cross-functional G0 review |
+| Status | Gate G0 approved; baseline for Day 2 |
 | Version | 0.1 |
 | Owner | Product Owner / Senior Business Analyst |
 | Required reviewers | Product Owner, Technical Lead, Senior QA, Security Reviewer, UX Lead |
@@ -371,8 +371,8 @@ An invalidated assumption must create a recorded product decision and impact ass
 | PD-06 | Lost-device/all-keys recovery | User-held encrypted recovery kit with explicit no-server-plaintext-recovery limitation | Product + Security | Day 5 | Open |
 | PD-07 | Member removal and key rotation | Immediate authorization removal; future-key exclusion; define when rotation is mandatory | Security + Product | Day 5 | Open |
 | PD-08 | Audit retention | Define minimum retention, export needs, and privacy-safe event fields | Product + Security | Day 5 | Open |
-| PD-09 | Personal-to-workspace operation | Explicit one-time copy; no automatic migration or ongoing synchronization link | Product | Day 2 | Open |
-| PD-10 | Eligible document categories | All current non-credential categories unless Security identifies additional exclusions | Product + Security | Day 4 | Open |
+| PD-09 | Personal-to-workspace operation | Explicit one-time copy; no automatic migration or ongoing synchronization link | Product | Day 2 | Approved at Gate G0 |
+| PD-10 | Eligible document categories | Credential exclusion is approved; approval of every other category remains pending Security review | Product + Security | Day 4 | Partially approved |
 | PD-11 | Offline support boundary | Retain encrypted pending mutations locally; define storage quota and expiry behavior | Product + UX + QA | Day 6 | Open |
 | PD-12 | Conflict UX | Preserve local draft and offer review-latest or save-as-copy; no automatic last-writer-wins | Product + UX + QA | Day 6 | Open |
 | PD-13 | Ownership transfer safeguards | Re-authentication/strong confirmation and prevention of ownerless state | Product + Security | Day 5 | Open |
@@ -412,14 +412,14 @@ Gate G0 verifies that the product problem and boundaries are ready for cross-fun
 
 ### Required G0 review outcomes
 
-- [ ] Product Owner confirms target users, initial team size, scope, and non-goals.
+- [x] Product Owner confirms target users, initial team size, scope, and non-goals.
 - [x] Technical Lead confirms that no product requirement contradicts known platform constraints.
 - [x] Security Reviewer confirms that no critical asset or trust boundary is missing from the next threat-model step.
 - [x] Senior QA confirms that the journeys and failure criteria are testable.
 - [x] UX review confirms the required workspace, invitation, conflict, offline, and fallback states are enumerated for discovery.
 - [x] Review comments are resolved or recorded as owned, dated product decisions.
 
-**G0 exit rule:** Gate G0 passes only when all six review outcomes are checked. Until then, this document remains Draft and implementation must not begin.
+**G0 decision:** The Product Owner approved Gate G0 on 2026-07-15. This product boundary is the baseline for Day 2. Production implementation remains prohibited until the complete Phase 0 exit gate passes.
 
 ## 15. Repository evidence reviewed on Day 1
 

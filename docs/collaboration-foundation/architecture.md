@@ -1,6 +1,6 @@
 # Collaboration Foundation Architecture Discovery
 
-Status: Day 1 draft
+Status: Gate G0 approved; Day 2 baseline
 
 Owner: Senior Developer / Architect
 
@@ -237,7 +237,7 @@ The following existing behavior must remain protected throughout implementation:
 - [x] Personal Vault and collaboration isolation recorded as a target invariant.
 - [x] GitHub Pages fallback behavior recorded as personal/guest only.
 - [x] Primary affected modules and regression surfaces identified.
-- [ ] BA/PO confirms product scope and non-goals.
+- [x] BA/PO confirms product scope and non-goals.
 - [x] Security confirms asset classification and trust-boundary inventory.
 - [x] Senior QA confirms the regression surface is complete and testable.
 - [x] Cross-functional Day 1 review records Gate G0 as conditionally ready with Product Owner confirmation pending.

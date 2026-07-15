@@ -1,6 +1,6 @@
 # Collaboration Foundation: Data Classification and Trust-Boundary Inventory
 
-Status: Phase 0 discovery draft
+Status: Gate G0 approved; Day 2 security baseline
 
 Scope: current personal vault and the proposed Cloudflare collaboration foundation
 
@@ -160,8 +160,8 @@ This document defines the data that DocVault currently handles, the data the col
 - [x] Current plaintext-local metadata and session-password exposure are recorded as known limitations rather than assumed safe patterns.
 - [x] Critical data-handling and retention constraints are documented.
 - [x] Assumptions and unresolved product/security decisions are visible for ADR ownership.
-- [ ] BA/PO confirms product data classification, credential exclusion, metadata privacy, export, and retention expectations.
+- [x] BA/PO confirms the Day 1 product boundary, credential exclusion, and the proposed metadata-privacy direction; final export and retention values remain Day 3 decisions.
 - [x] Security Architect approves the trust boundaries and confirms that no Critical asset or flow is missing.
 - [x] Senior Developer confirms the inventory matches the proposed Pages Functions + D1 architecture.
 - [ ] Senior QA maps every Critical and Restricted asset to at least one Phase 0 abuse case or later verification requirement.
-- [ ] Gate G0 is signed off before authentication, encryption, or persistence implementation begins.
+- [x] Gate G0 was signed off by the Product Owner on 2026-07-15; production implementation remains blocked by the Phase 0 exit gate.
