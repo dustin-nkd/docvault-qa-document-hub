@@ -1,6 +1,6 @@
 # Collaboration Foundation evidence plan
 
-Status: Proposed for Gate G4 / Phase 0 exit
+Status: Approved at Gate G4; controlling implementation and release evidence policy
 
 Date: 2026-07-15
 
@@ -149,11 +149,11 @@ The final production decision is separate from Gate G4 and requires Phase 8 and 
 
 ## 14. Gate G4 acceptance
 
-- [ ] Senior QA approves identifiers, manifest, environments, evidence matrix, and zero-skip P0/P1 policy.
-- [ ] Technical Lead confirms every phase deliverable can emit the required side-effect and traceability evidence.
-- [ ] Security Reviewer approves secret/privacy handling, canary corpus, threat/abuse coverage, and residual-limit wording.
-- [ ] Operations approves retained deployment/migration/restore/canary evidence and access controls.
-- [ ] Product/UX approve performance, browser, accessibility, and truthful user-journey evidence.
-- [ ] Gate G4 authorizes evidence-producing implementation only; it does not pre-approve any later phase or production release.
+- [x] Senior QA approves identifiers, manifest, environments, evidence matrix, and zero-skip P0/P1 policy.
+- [x] Technical Lead confirms every phase deliverable can emit the required side-effect and traceability evidence.
+- [x] Security Reviewer approves secret/privacy handling, canary corpus, threat/abuse coverage, and residual-limit wording.
+- [x] Operations approves retained deployment/migration/restore/canary evidence and access controls.
+- [x] Product/UX approve performance, browser, accessibility, and truthful user-journey evidence.
+- [x] Gate G4 authorizes evidence-producing implementation only; it does not pre-approve any later phase or production release.
 
-Current recommendation: **GO to Gate G4 review; production release remains NO-GO.**
+Gate G4 decision: **PASSED on 2026-07-15; evidence-producing Phase 1 implementation is authorized and production release remains NO-GO.**

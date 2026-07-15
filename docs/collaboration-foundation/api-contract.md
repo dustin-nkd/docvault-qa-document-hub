@@ -478,7 +478,7 @@ Threat and abuse coverage includes T01–T23 as mapped in the ADRs, particularly
 
 ## 12. Gate G3 acceptance
 
-Current assessment: **APPROVED at Gate G3; NO-GO for implementation until the Phase 0 exit authority passes. Runtime and release evidence remains pending.**
+Current assessment: **APPROVED at Gate G3 and authorized for controlled Phase 1 implementation by Gate G4. Runtime and release evidence remains pending.**
 
 - [x] Product Owner approves route capabilities, all current non-credential category eligibility, lifecycle deny-closed behavior, and truthful credential-content limitation.
 - [x] Security Reviewer approves session/CSRF/origin gates, envelopes, non-enumeration map, error details, request limits, and capability-token handling.
@@ -493,4 +493,4 @@ Current assessment: **APPROVED at Gate G3; NO-GO for implementation until the Ph
 - [x] Export, deletion, hard purge, recovery artifact, server recovery, batch documents, and semantic search remain unavailable in the approved Foundation contract.
 - [ ] Preview/production/GitHub Pages isolation, Service Worker bypass, migration compatibility, backup/restore, and non-destructive feature disablement are demonstrated.
 
-Approval of this document fixes the v1 contract baseline; it does not itself authorize deployment or weaken any Phase 0 exit criterion.
+Gate G4 authorizes implementation against this fixed v1 contract baseline; it does not authorize production activation or weaken any later phase/release criterion.

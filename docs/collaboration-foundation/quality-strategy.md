@@ -401,10 +401,10 @@ Gate rules:
 - [x] Product Owner approves workload, budgets, browser matrix, production canary, and accepted credential-content residual risk.
 - [x] Technical Lead approves harness, command surface, preview isolation, exact API/schema contract ownership, and migration evidence.
 - [x] Security Reviewer approves deterministic-seam exclusion, canary/evidence redaction, and credential limitation wording.
-- [x] Senior QA records Gate G3 `PASSED`; Phase 1 remains `NO-GO` until the Phase 0 exit gate.
+- [x] Senior QA records Gate G3 `PASSED`; Gate G4 subsequently authorizes controlled Phase 1 implementation.
 
 ## 12. Day 4 conclusion
 
 The Day 4 quality design was approved at Gate G3. Existing personal-vault, Vault V2, storage/sync, CSP, offline-shell, performance, artifact, guest, public-share, and both-deployment regressions remain mandatory. Collaboration adds a second executable evidence stack: real local Pages Functions/D1, contract/security suites, isolated multi-user Playwright, production-like preview, and a non-destructive production canary.
 
-Gate G3 passed on 2026-07-15. Squad recommendation: `GO` to Day 5 sign-off, `NO-GO` for Phase 1 runtime implementation until the Phase 0 exit package is approved.
+Gates G3 and G4 passed on 2026-07-15. The approved evidence strategy controls Phase 1 and every later phase; production activation remains `NO-GO`.

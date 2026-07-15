@@ -4,7 +4,7 @@ Status: Approved at Gate G3; operational rehearsal evidence pending
 
 Owners: Operations, Technical Lead, Security Reviewer, Senior QA
 
-This runbook defines the deployment, migration, recovery, observability, and incident contract for Collaboration Foundation. It is a specification: no production binding, database, secret, or runtime route is authorized until the complete Phase 0 exit gate passes.
+This runbook defines the deployment, migration, recovery, observability, and incident contract for Collaboration Foundation. Gate G4 authorizes controlled implementation in the approved sequence; production bindings, data, secrets, and feature activation remain gated by the applicable implementation/release phase.
 
 ## 1. Environment contract
 
@@ -216,7 +216,7 @@ Monthly:
 - [x] The Day 5 implementation plan assigns logical Cloudflare resource names without committing IDs or secrets.
 - [x] No runtime implementation begins until Gate G3 and the complete Phase 0 exit gate pass.
 
-Current assessment: **Gate G3 PASSED; runtime implementation remains NO-GO until the Phase 0 exit gate.**
+Current assessment: **Gates G3/G4 PASSED; controlled Phase 1 implementation is authorized and production activation remains NO-GO.**
 
 ## 13. Current primary references
 

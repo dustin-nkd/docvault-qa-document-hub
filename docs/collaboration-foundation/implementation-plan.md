@@ -1,6 +1,6 @@
 # Collaboration Foundation implementation plan
 
-Status: Proposed for Gate G4 / Phase 0 exit
+Status: Approved at Gate G4; Phase 1 runtime-shell implementation authorized
 
 Date: 2026-07-15
 
@@ -242,12 +242,12 @@ Production release gate:
 
 ## 14. Gate G4 acceptance
 
-- [ ] Product Owner approves the phase outcomes, scope boundary, resource naming, and separate production-release gate.
-- [ ] Technical Lead approves dependency order, PR slicing, interfaces, migration sequence, and ownership.
-- [ ] Security Reviewer approves placement of authentication, crypto, privacy, abuse, and residual-risk gates.
-- [ ] Operations approves preview-first provisioning and the Phase 8/9 rehearsal and rollout sequence.
-- [ ] UX Lead approves the Phase 7 accessibility and truthful limitation journeys.
-- [ ] Senior QA confirms every phase has objective entry/exit evidence and no P0/P1 skip path.
-- [ ] Gate G4 authorizes Phase 1 only; later phases remain gated and production remains disabled.
+- [x] Product Owner approves the phase outcomes, scope boundary, resource naming, and separate production-release gate.
+- [x] Technical Lead approves dependency order, PR slicing, interfaces, migration sequence, and ownership.
+- [x] Security Reviewer approves placement of authentication, crypto, privacy, abuse, and residual-risk gates.
+- [x] Operations approves preview-first provisioning and the Phase 8/9 rehearsal and rollout sequence.
+- [x] UX Lead approves the Phase 7 accessibility and truthful limitation journeys.
+- [x] Senior QA confirms every phase has objective entry/exit evidence and no P0/P1 skip path.
+- [x] Gate G4 authorizes Phase 1 only; later phases remain gated and production remains disabled.
 
-Current recommendation: **GO to Gate G4 review; NO-GO for implementation until Gate G4 is explicitly approved.**
+Gate G4 decision: **PASSED on 2026-07-15. GO to Phase 1 runtime-shell implementation; production remains disabled.**

@@ -7,7 +7,7 @@
 | Document ID | CF-DOM-001 |
 | Phase | Phase 0 — Specification and Threat Model |
 | Sprint checkpoint | Day 2 — Domain, RBAC, and Gate G1 |
-| Status | Gate G1 approved; dependent architecture/contracts approved through Gate G3; implementation not authorized before Gate G4 |
+| Status | Phase 0 complete; controlled implementation authorized at Gate G4 |
 | Language | English |
 | Required approval | Product Owner, Technical Lead, Security Reviewer, Senior QA |
 
@@ -202,7 +202,7 @@ For every journey, tests verify response and side effects across own-workspace, 
 
 ## 9. Gate G1 — Domain and authorization readiness
 
-Current assessment: **Gate G1 PASSED and its Phase 0 contract dependencies were resolved through Gates G2/G3; NO-GO for runtime implementation until Gate G4.** Executable implementation/release evidence remains assigned to later phase gates.
+Current assessment: **Gate G1 PASSED, its Phase 0 dependencies were resolved through Gates G2/G3, and Gate G4 authorizes controlled implementation.** Executable implementation/release evidence remains assigned to later phase gates.
 
 Gate G1 passes only when:
 

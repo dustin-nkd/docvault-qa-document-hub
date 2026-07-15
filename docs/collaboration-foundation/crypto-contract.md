@@ -217,4 +217,4 @@ Transient Critical values exist in browser memory during unlock and use. Clear a
 - [x] Product Owner accepts terminal all-provisioners-lost behavior and inability to revoke old keys or prior copies.
 - [x] No P0/P1 crypto design threat is unowned, waived, downgraded, or covered only by UI behavior; executable evidence remains mandatory before release.
 
-**Gate G3 assessment: `PASSED` for the contract baseline. Runtime implementation remains `NO-GO` until the Phase 0 exit gate; production release remains `NO-GO` until every evidence checkbox passes.**
+**Gate G3 contract assessment: `PASSED`. Gate G4 authorizes only the sequenced implementation phases; cryptographic implementation waits for its Phase 5 entry gate and production release remains `NO-GO` until every evidence checkbox passes.**

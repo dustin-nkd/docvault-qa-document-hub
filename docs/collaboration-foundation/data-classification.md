@@ -1,6 +1,6 @@
 # Collaboration Foundation: Data Classification and Trust-Boundary Inventory
 
-Status: Gates G0 through G3 approved; Phase 0 exit baseline
+Status: Phase 0 complete; Gate G4-approved data and privacy baseline
 
 Scope: current personal vault and the proposed Cloudflare collaboration foundation
 

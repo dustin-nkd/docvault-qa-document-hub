@@ -2,7 +2,7 @@
 
 Date: 2026-07-15
 
-Status: Proposed for Gate G4 / Phase 0 exit
+Status: Gate G4 passed; Phase 0 closed; controlled Phase 1 authorized
 
 Reviewers: Product Owner / Senior BA, Technical Lead / Architect, Security Reviewer, Operations, Senior QA, UX Lead
 
@@ -27,7 +27,7 @@ It does not mean the runtime exists, risks are proven closed, or production is a
 | G1 — Domain and threat model | Roles/state machines, invitations, abuse/threat coverage, stable traceability | Passed 2026-07-15 |
 | G2 — Architecture decisions | Twelve ADRs covering runtime, identity, RBAC, E2EE, sync, audit, recovery, security, and migrations | Passed 2026-07-15 |
 | G3 — Contracts and quality | API, D1, crypto, operations, risk, workload/budgets/browser matrix, harness and evidence policy | Passed 2026-07-15 |
-| G4 — Phase 0 exit | Sequenced implementation, resource naming, ownership, evidence gates, and authorization boundary | Awaiting Product Owner approval |
+| G4 — Phase 0 exit | Sequenced implementation, resource naming, ownership, evidence gates, and authorization boundary | Passed 2026-07-15 |
 
 ## 3. Phase 0 artifact sign-off
 
@@ -133,19 +133,17 @@ Phase 1 must not create workspaces, authenticate production users, persist produ
 
 ## 9. Gate G4 / Phase 0 exit checklist
 
-- [ ] Product Owner accepts the complete Phase 0 baseline, approved residual limitations, nine-phase sequence, and separate production-release gate.
-- [ ] Technical Lead signs the implementation dependencies, resource names, PR discipline, stop conditions, and Phase 1 scope.
-- [ ] Security Reviewer signs the risk boundaries and confirms every P0/P1 security outcome has a mandatory future evidence gate.
-- [ ] Operations signs preview-first provisioning, migration/restore/incident ownership, and production-disabled default.
-- [ ] Senior QA signs traceability, evidence manifests, regression baseline, zero-skip P0/P1 policy, and phase gates.
-- [ ] UX Lead signs browser/accessibility and truthful failure/limitation journeys.
-- [ ] No P0 decision, unowned Critical/High risk, unresolved cross-contract contradiction, or missing phase owner remains.
-- [ ] Phase 1 is the only implementation phase authorized by this gate; later phases require their exit/entry reviews.
-- [ ] Production activation remains `NO-GO` until Phase 8/9 evidence and a separate Product Owner decision.
-- [ ] Product Owner explicitly records Gate G4 `PASSED` before runtime work begins.
+- [x] Product Owner accepts the complete Phase 0 baseline, approved residual limitations, nine-phase sequence, and separate production-release gate.
+- [x] Technical Lead signs the implementation dependencies, resource names, PR discipline, stop conditions, and Phase 1 scope.
+- [x] Security Reviewer signs the risk boundaries and confirms every P0/P1 security outcome has a mandatory future evidence gate.
+- [x] Operations signs preview-first provisioning, migration/restore/incident ownership, and production-disabled default.
+- [x] Senior QA signs traceability, evidence manifests, regression baseline, zero-skip P0/P1 policy, and phase gates.
+- [x] UX Lead signs browser/accessibility and truthful failure/limitation journeys.
+- [x] No P0 decision, unowned Critical/High risk, unresolved cross-contract contradiction, or missing phase owner remains.
+- [x] Phase 1 is the only implementation phase authorized by this gate; later phases require their exit/entry reviews.
+- [x] Production activation remains `NO-GO` until Phase 8/9 evidence and a separate Product Owner decision.
+- [x] Product Owner recorded Gate G4 `PASSED` on 2026-07-15 before runtime work begins.
 
 ## 10. Squad recommendation
 
-**GO to Gate G4 / Phase 0 exit approval.**
-
-If approved: **GO to controlled Phase 1 runtime-shell implementation; NO-GO for production collaboration activation.**
+**Gate G4 PASSED. Phase 0 is CLOSED. GO to controlled Phase 1 runtime-shell implementation; NO-GO for production collaboration activation.**

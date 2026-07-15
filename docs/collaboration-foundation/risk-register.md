@@ -82,4 +82,4 @@ Accepted limitations must be visible in UX/documentation: the server cannot insp
 - [ ] No P0/P1 test is skipped/quarantined and no Critical/High item is unowned or has an expired action.
 - [x] Security Reviewer, Product Owner, Technical Lead/Operations, and Senior QA sign the residual-risk contract review; implementation evidence remains pending.
 
-**Gate G3 assessment: `PASSED` for the residual-risk contract. Runtime implementation remains `NO-GO` until Gate G4; production release remains `NO-GO` until evidence closes the applicable risks.**
+**Gate G3 residual-risk assessment and Gate G4 Phase 0 exit: `PASSED`. Controlled Phase 1 implementation is authorized; production release remains `NO-GO` until evidence closes the applicable risks.**

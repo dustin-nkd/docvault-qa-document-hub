@@ -1,6 +1,6 @@
 # Collaboration Foundation Decision Log
 
-Status: Active during Phase 0
+Status: Phase 0 closed at Gate G4; retained as the controlling implementation decision history
 
 Owner: Product Owner
 
@@ -34,7 +34,7 @@ This log records approved decisions, working assumptions, and blocking decisions
 | DL-010 | 2026-07-15 | Gate G1 role policy is approved: Owner retains ownership and highest-risk lifecycle controls; Admin manages Editor/Viewer membership and devices; Editor mutates eligible shared documents; Viewer is read-only; removed, revoked, unauthenticated, Guest, and pending-key principals are deny-closed. | Approved | Product Owner | Day 3 ADRs must preserve these ceilings and finalize key-envelope provisioning. |
 | DL-011 | 2026-07-15 | The twelve-ADR Day 3 package is approved as the architecture baseline while preserving Gates G0/G1. | Approved at Gate G2 | Product Owner + Architecture + Security + QA | Day 4 contracts may proceed; Phase 1 remains blocked by the Phase 0 exit gate. |
 | DL-012 | 2026-07-15 | Adopt the Day 4 API, D1 schema, cryptographic, operations, risk, and quality contracts as the implementation baseline. The official client excludes Credentials, while the E2EE API cannot semantically inspect malicious authorized ciphertext. | Approved at Gate G3 | Product Owner + Architecture + Security + QA + Operations | Day 5 consolidation may proceed; Phase 1 remains blocked by the Phase 0 exit gate. |
-| DL-013 | 2026-07-15 | Use the Day 5 sequenced backlog and evidence plan as the proposed controlled path from specification to implementation. | Proposed for Gate G4 / Phase 0 exit | Product Owner + Architecture + Security + QA + Operations | Gate G4 may authorize Phase 1 implementation work; production rollout remains separately gated by executable evidence. |
+| DL-013 | 2026-07-15 | Use the Day 5 sequenced backlog and evidence plan as the controlled path from specification to implementation. | Approved at Gate G4 / Phase 0 Exit | Product Owner + Architecture + Security + QA + Operations + UX | Phase 0 is closed and controlled Phase 1 runtime-shell work is authorized; later phases and production rollout remain separately gated by executable evidence. |
 
 ## Blocking decisions for Day 3
 

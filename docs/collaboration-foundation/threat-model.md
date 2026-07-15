@@ -7,7 +7,7 @@
 | Document ID | CF-SEC-001 |
 | Phase | Phase 0 - Specification and Threat Model |
 | Checkpoint | Day 4 — Contract and risk clarification |
-| Status | Gates G0 through G3 approved; Phase 0 exit risk baseline; no runtime implementation authorized before Gate G4 |
+| Status | Phase 0 complete; Gate G4-approved threat baseline; Phase 1 evidence pending |
 | Scope | Collaboration Foundation and its isolation from Personal Vault, guest mode, public sharing, and GitHub Sync |
 | Owners | Security Reviewer and Technical Lead |
 | Required reviewers | Product Owner, Senior QA, UX Lead |

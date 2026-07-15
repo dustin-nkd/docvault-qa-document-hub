@@ -7,7 +7,7 @@
 | Document ID | CF-PROD-001 |
 | Phase | Phase 0 — Specification and Threat Model |
 | Sprint checkpoint | Day 5 — Review and sign-off |
-| Status | Gates G0 through G3 approved; Phase 0 exit proposed for Gate G4 |
+| Status | Phase 0 complete; Gates G0 through G4 approved; Phase 1 authorized under the implementation plan |
 | Version | 0.1 |
 | Owner | Product Owner / Senior Business Analyst |
 | Required reviewers | Product Owner, Technical Lead, Senior QA, Security Reviewer, UX Lead |

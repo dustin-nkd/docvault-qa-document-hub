@@ -6,7 +6,7 @@
 
 **Sprint checkpoint:** Day 4 — Quality architecture and Gate G3 readiness
 
-**Status:** Approved at Gate G3; Day 5 Phase 0 exit traceability baseline
+**Status:** Phase 0 complete; Gate G4-approved implementation traceability baseline
 
 **Owner:** Senior QA
 
@@ -406,4 +406,4 @@ Gate G3 approves the executable quality contract, not fabricated runtime results
 - [x] UX Lead approves WCAG 2.2 AA evidence and conflict/offline/terminal-loss journeys.
 - [x] Senior QA records Gate G3 `PASSED` with reviewer record and no unowned P0/P1 contract.
 
-**Gate G3 decision: `PASSED` on 2026-07-15; `GO` to Day 5 sign-off and `NO-GO` for Phase 1 runtime implementation until Gate G4.**
+**Gates G3/G4 decision: `PASSED` on 2026-07-15; controlled Phase 1 implementation is authorized and production activation remains `NO-GO`.**

@@ -1,8 +1,8 @@
 # Collaboration Foundation
 
-Status: Gate G3 approved; Day 5 review and Phase 0 sign-off in progress
+Status: Phase 0 complete; Gate G4 approved; controlled Phase 1 runtime-shell implementation authorized
 
-Sprint: Phase 0 — Specification and Threat Model
+Sprint: Phase 0 complete — Phase 1 runtime shell authorized
 
 Language: English for all repository artifacts
 
@@ -42,6 +42,8 @@ Gate G2 was approved by the Product Owner on 2026-07-15.
 
 Gate G3 was approved by the Product Owner on 2026-07-15.
 
+Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
+
 ## Day 4 artifacts approved at Gate G3
 
 - [API contract](api-contract.md)
@@ -53,7 +55,7 @@ Gate G3 was approved by the Product Owner on 2026-07-15.
 - [Updated requirement-risk-test traceability](traceability-matrix.md)
 - [Day 4 cross-functional review](day-4-review.md)
 
-## Day 5 artifacts proposed for Gate G4
+## Day 5 artifacts approved at Gate G4
 
 - [Sequenced implementation plan](implementation-plan.md)
 - [Implementation and release evidence plan](evidence-plan.md)

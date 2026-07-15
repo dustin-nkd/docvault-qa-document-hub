@@ -4,7 +4,7 @@ Status: Approved at Gate G2
 
 Date: 2026-07-15
 
-Phase 1 implementation remains prohibited until Gate G2 and the complete Phase 0 exit gate pass.
+Gates G2 and G4 passed on 2026-07-15. The ADR set now controls the sequenced Phase 1 implementation; later phases and production activation remain separately gated.
 
 ## Decision set
 
