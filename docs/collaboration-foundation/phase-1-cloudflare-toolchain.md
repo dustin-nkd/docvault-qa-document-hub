@@ -23,11 +23,12 @@ The machine-readable policy is [`config/cloudflare/toolchain.json`](../../config
 | TypeScript | `7.0.2` |
 | Vitest | `4.1.10` |
 | Workers Vitest pool | `0.18.5` |
+| Node.js type definitions | `22.20.1` |
 | Compatibility date | `2026-07-15` |
 | Review owner | Technical Lead and Operations |
 | Next quarterly review | `2026-10-15` |
 
-All four packages use exact `devDependencies` and exact lockfile root entries. Wrangler also resolves to the same version required by the Workers Vitest pool. The selected packages support Node 22 and the current local Node 24 environment.
+All five packages use exact `devDependencies` and exact lockfile root entries. Wrangler also resolves to the same version required by the Workers Vitest pool. Node type definitions match the CI major. The selected packages support Node 22 and the current local Node 24 environment.
 
 ## Approved commands
 

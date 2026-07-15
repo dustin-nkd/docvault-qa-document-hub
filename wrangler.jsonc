@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "docvault-qa-document-hub",
+  "pages_build_output_dir": "./_site",
+  "compatibility_date": "2026-07-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "APP_ENV": "local",
+    "ORIGIN_POLICY_MODE": "local",
+    "CANONICAL_PRODUCTION_ORIGIN": "https://docvault-qa-document-hub.pages.dev",
+    "COLLABORATION_ENABLED": "false"
+  },
+  "env": {
+    "preview": {
+      "vars": {
+        "APP_ENV": "preview",
+        "ORIGIN_POLICY_MODE": "preview",
+        "CANONICAL_PRODUCTION_ORIGIN": "https://docvault-qa-document-hub.pages.dev",
+        "COLLABORATION_ENABLED": "false"
+      }
+    },
+    "production": {
+      "vars": {
+        "APP_ENV": "production",
+        "ORIGIN_POLICY_MODE": "production",
+        "CANONICAL_PRODUCTION_ORIGIN": "https://docvault-qa-document-hub.pages.dev",
+        "COLLABORATION_ENABLED": "false"
+      }
+    }
+  }
+}

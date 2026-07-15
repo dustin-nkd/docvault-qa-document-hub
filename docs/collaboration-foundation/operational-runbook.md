@@ -24,7 +24,9 @@ The future Pages Functions configuration must declare and type-check these logic
 |---|---|---|
 | `COLLAB_DB` | D1 binding | Collaboration schema and server-visible records |
 | `APP_ENV` | Non-secret variable | `local`, `preview`, or `production` |
-| `CANONICAL_ORIGIN` | Non-secret variable | Exact accepted application origin |
+| `ORIGIN_POLICY_MODE` | Non-secret variable | Environment-specific local, preview, or production origin policy |
+| `CANONICAL_PRODUCTION_ORIGIN` | Non-secret variable | Stable canonical production origin; not a preview-origin allow-list |
+| `COLLABORATION_ENABLED` | Non-secret variable | Exact string `false` until a separately approved rollout phase |
 | `GITHUB_OAUTH_CLIENT_ID` | Non-secret variable | Environment-specific OAuth application |
 | `GITHUB_OAUTH_CLIENT_SECRET` | Secret | OAuth code exchange |
 | `SESSION_TOKEN_PEPPER` | Secret | Domain-separated session-token digest protection |
@@ -56,7 +58,7 @@ No result may be marked passed from a skipped, retried-without-cause, or fabrica
 
 ## 4. Release choreography
 
-The operator substitutes the reviewed database name from restricted environment inventory. Commands shown here contain no resource ID or secret. Phase 1 must pin Wrangler in `devDependencies` and the lockfile; after `npm ci`, every `npx wrangler` command below must resolve that local pinned binary and must not download an unreviewed CLI version during release.
+The operator substitutes the reviewed database name from restricted environment inventory. Commands shown here contain no resource ID or secret. Wrangler is pinned in `devDependencies` and the lockfile; after `npm ci`, remote administrative commands use `npm exec --offline -- wrangler` so npm cannot download an unreviewed CLI during release.
 
 ### 4.1 Preflight
 
@@ -64,8 +66,8 @@ The operator substitutes the reviewed database name from restricted environment 
 npm ci
 npm run check
 npm run build
-npx wrangler types
-npx wrangler d1 migrations list <preview-database> --remote
+npm run cf:types:check
+npm exec --offline -- wrangler d1 migrations list <preview-database> --remote
 ```
 
 Then:
@@ -81,8 +83,8 @@ Then:
 Apply every migration first to a new local database, a representative populated fixture, and the isolated preview D1:
 
 ```powershell
-npx wrangler d1 migrations apply <preview-database> --remote
-npx wrangler d1 migrations list <preview-database> --remote
+npm exec --offline -- wrangler d1 migrations apply <preview-database> --remote
+npm exec --offline -- wrangler d1 migrations list <preview-database> --remote
 ```
 
 Re-running the migration check must report no unapplied migration. Verify constraints, indexes, row counts, foreign-key behavior, idempotency races, and old/new code compatibility. A failed or ambiguous rehearsal blocks production.
@@ -94,9 +96,9 @@ Re-running the migration check must report no unapplied migration. Verify constr
 3. Apply only reviewed, immutable, backward-compatible **expand** migrations:
 
 ```powershell
-npx wrangler d1 migrations list <production-database> --remote
-npx wrangler d1 migrations apply <production-database> --remote
-npx wrangler d1 migrations list <production-database> --remote
+npm exec --offline -- wrangler d1 migrations list <production-database> --remote
+npm exec --offline -- wrangler d1 migrations apply <production-database> --remote
+npm exec --offline -- wrangler d1 migrations list <production-database> --remote
 ```
 
 4. Run read-only schema and integrity probes.

@@ -64,7 +64,11 @@ for (const relativePath of [...included].sort()) {
 }
 fs.writeFileSync(path.join(output, '.nojekyll'), '');
 
-const forbidden = ['docvault.js', 'package.json', 'README.md', 'tests', 'scripts', 'src', '.github', '.agents', '.claude'];
+const forbidden = [
+    'docvault.js', 'package.json', 'README.md', 'tests', 'scripts', 'src',
+    '.github', '.agents', '.claude', 'wrangler.jsonc', 'worker-configuration.d.ts',
+    'config'
+];
 for (const relativePath of forbidden) {
     if (fs.existsSync(path.join(output, relativePath))) {
         throw new Error('Non-runtime asset leaked into deployment artifact: ' + relativePath);

@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { readPagesSnapshot, validatePagesSnapshotDocument } from './cloudflare-config-policy.mjs';
 import { collectCloudflareToolchainState, validateCloudflareToolchainState } from './cloudflare-toolchain-policy.mjs';
+import { parseWranglerConfig, validateDashboardToWranglerDiff, validateGeneratedWorkerTypes, validateWranglerConfig } from './cloudflare-wrangler-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -83,6 +84,14 @@ assert(fs.existsSync(pagesBaselinePath), 'Sanitized Cloudflare Pages configurati
 const pagesBaseline = readPagesSnapshot(pagesBaselinePath);
 validatePagesSnapshotDocument(pagesBaseline, pagesBaseline);
 validateCloudflareToolchainState(collectCloudflareToolchainState(root));
+const wranglerConfig = parseWranglerConfig(path.join(root, 'wrangler.jsonc'));
+validateWranglerConfig(wranglerConfig.config, wranglerConfig.source);
+validateGeneratedWorkerTypes(read('worker-configuration.d.ts'));
+validateDashboardToWranglerDiff(
+    wranglerConfig.config,
+    JSON.parse(read('config/cloudflare/pages-project-baseline.json')),
+    JSON.parse(read('config/cloudflare/pages-wrangler-diff.json'))
+);
 
 const html = read('index.html');
 assert(/<html\s+lang=["']en["']/.test(html), 'index.html must declare lang="en"');

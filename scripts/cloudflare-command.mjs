@@ -2,15 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
 import { collectCloudflareToolchainState, validateCloudflareToolchainState } from './cloudflare-toolchain-policy.mjs';
+import { parseWranglerConfig, validateWranglerConfig } from './cloudflare-wrangler-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const state = collectCloudflareToolchainState(root);
 const wranglerBin = path.join(root, 'node_modules/wrangler/bin/wrangler.js');
 const vitestBin = path.join(root, 'node_modules/vitest/vitest.mjs');
 const configPath = path.join(root, 'wrangler.jsonc');
-const generatedTypesPath = path.join(root, 'worker-configuration.d.ts');
 const functionsPath = path.join(root, 'functions');
 
 const runNodeTool = (entrypoint, args) => {
@@ -24,22 +23,17 @@ const requireFoundationFiles = () => {
     if (!fs.existsSync(functionsPath)) throw new Error('Pages Functions are not available until CF-P1-004');
 };
 
-const readWranglerConfig = () => {
-    if (!fs.existsSync(configPath)) return null;
-    const parsed = ts.parseConfigFileTextToJson(configPath, fs.readFileSync(configPath, 'utf8'));
-    if (parsed.error) throw new Error('wrangler.jsonc is not valid JSONC');
-    return parsed.config;
-};
-
 const validateConfig = () => {
-    const config = readWranglerConfig();
-    if (!config) {
+    if (!fs.existsSync(configPath)) {
         console.log('Cloudflare configuration gate armed: wrangler.jsonc is intentionally deferred to CF-P1-003');
         return;
     }
-    if (config.name !== 'docvault-qa-document-hub') throw new Error('Wrangler project name drifted');
-    if (config.pages_build_output_dir !== './_site') throw new Error('Wrangler Pages output must remain ./_site');
-    if (config.compatibility_date !== state.toolchain.compatibility_date) throw new Error('Wrangler compatibility date drifted');
+    const { config, source } = parseWranglerConfig(configPath);
+    validateWranglerConfig(config, source, state.toolchain.compatibility_date);
+    console.log('Cloudflare Wrangler configuration policy passed');
+    console.log('  Environments: local, preview, production');
+    console.log('  Collaboration: disabled in every environment');
+    console.log('  Remote bindings: none');
 };
 
 const command = process.argv[2];
@@ -53,17 +47,18 @@ if (command === 'toolchain-check') {
     console.log(`  TypeScript: ${state.installed.typescript}`);
     console.log(`  Vitest: ${state.installed.vitest}`);
     console.log(`  Workers pool: ${state.installed['@cloudflare/vitest-pool-workers']}`);
+    console.log(`  Node types: ${state.installed['@types/node']}`);
     console.log(`  Compatibility date: ${state.toolchain.compatibility_date}`);
 } else if (command === 'config-check') {
     validateConfig();
 } else if (command === 'types-generate') {
     validateConfig();
     if (!fs.existsSync(configPath)) process.exit(1);
-    runNodeTool(wranglerBin, ['types', generatedTypesPath]);
+    runNodeTool(wranglerBin, ['types', 'worker-configuration.d.ts']);
 } else if (command === 'types-check') {
     validateConfig();
     if (!fs.existsSync(configPath)) process.exit(1);
-    runNodeTool(wranglerBin, ['types', generatedTypesPath, '--check']);
+    runNodeTool(wranglerBin, ['types', 'worker-configuration.d.ts', '--check']);
 } else if (command === 'pages-dev') {
     requireFoundationFiles();
     validateConfig();

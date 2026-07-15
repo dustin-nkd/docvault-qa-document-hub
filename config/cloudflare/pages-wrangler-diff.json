@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "baseline": "config/cloudflare/pages-project-baseline.json",
+  "target": "wrangler.jsonc",
+  "approval": "CF-P1-003 approved by Product Owner",
+  "unchanged": {
+    "project_name": "docvault-qa-document-hub",
+    "production_branch": "main",
+    "pages_build_output_dir": "_site",
+    "compatibility_date": "2026-07-15"
+  },
+  "changes": {
+    "preview_compatibility_flags": {
+      "before": [],
+      "after": [
+        "nodejs_compat"
+      ]
+    },
+    "production_compatibility_flags": {
+      "before": [],
+      "after": [
+        "nodejs_compat"
+      ]
+    },
+    "preview_environment_variable_names": {
+      "before": [],
+      "after": [
+        "APP_ENV",
+        "CANONICAL_PRODUCTION_ORIGIN",
+        "COLLABORATION_ENABLED",
+        "ORIGIN_POLICY_MODE"
+      ]
+    },
+    "production_environment_variable_names": {
+      "before": [],
+      "after": [
+        "APP_ENV",
+        "CANONICAL_PRODUCTION_ORIGIN",
+        "COLLABORATION_ENABLED",
+        "ORIGIN_POLICY_MODE"
+      ]
+    }
+  },
+  "remote_binding_names": {
+    "preview": [],
+    "production": []
+  }
+}

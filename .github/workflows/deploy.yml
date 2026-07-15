@@ -26,6 +26,12 @@ jobs:
       - name: Verify pinned Cloudflare toolchain
         run: npm run cf:toolchain:check
 
+      - name: Verify Pages configuration
+        run: npm run cf:config:check
+
+      - name: Verify generated Cloudflare types
+        run: npm run cf:types:check
+
       - name: Run production quality gate
         run: npm run check
 

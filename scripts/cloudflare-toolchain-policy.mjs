@@ -42,7 +42,8 @@ export function validateCloudflareToolchainState(state) {
         wrangler: '4.111.0',
         typescript: '7.0.2',
         vitest: '4.1.10',
-        '@cloudflare/vitest-pool-workers': '0.18.5'
+        '@cloudflare/vitest-pool-workers': '0.18.5',
+        '@types/node': '22.20.1'
     };
     assert(JSON.stringify(toolchain.packages) === JSON.stringify(expectedPackages), 'Cloudflare toolchain package policy drifted');
     const rootLock = packageLock.packages?.['']?.devDependencies || {};
@@ -71,5 +72,7 @@ export function validateCloudflareToolchainState(state) {
     assert(/uses:\s*actions\/setup-node@[0-9a-f]{40}\s*#\s*v6/.test(workflow), 'Setup Node action must be pinned to the reviewed v6 commit');
     assert(/uses:\s*peaceiris\/actions-gh-pages@[0-9a-f]{40}\s*#\s*v4/.test(workflow), 'GitHub Pages action must be pinned to the reviewed v4 commit');
     assert(/run:\s*npm run cf:toolchain:check/.test(workflow), 'CI must verify the pinned Cloudflare toolchain');
+    assert(/run:\s*npm run cf:config:check/.test(workflow), 'CI must verify the Pages configuration');
+    assert(/run:\s*npm run cf:types:check/.test(workflow), 'CI must verify generated Cloudflare types');
     return true;
 }

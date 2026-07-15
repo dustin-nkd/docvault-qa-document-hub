@@ -66,6 +66,7 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Cloudflare foundation sprint](phase-1-sprint.md) — approved; `CF-P1-001` is complete
 - [Cloudflare Pages configuration control](phase-1-pages-configuration.md) — `CF-P1-001` baseline, drift assertion, preflight, and rollback
 - [Cloudflare toolchain control](phase-1-cloudflare-toolchain.md) — `CF-P1-002` exact dependencies, portable commands, pinned CI, and review lifecycle
+- [Reviewed Pages Wrangler configuration](phase-1-wrangler-configuration.md) — `CF-P1-003` environment isolation, generated types, and source-of-truth transition
 
 ## Review ownership
 
