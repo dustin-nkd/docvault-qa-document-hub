@@ -1,6 +1,6 @@
 # Phase 1 build, CI, fallback, and deployment boundaries
 
-Status: `CF-P1-008` implemented and locally verified; deployment evidence pending
+Status: `CF-P1-008` implemented, deployed, and production verified
 
 Date: 2026-07-16
 
@@ -43,12 +43,14 @@ This story protects how the disabled Cloudflare foundation is built, tested, pub
 
 ## Local verification
 
-- Node regression/policy suite: 97 passed, zero failed/skipped/retried.
+- Node regression/policy suite: 98 passed, zero failed/skipped/retried.
 - Cloudflare API/security unit suite: 18 passed.
 - Workers Vitest/D1 integration suite: 10 passed across four files.
 - Strict TypeScript, Wrangler config/generated types, Pages static build, Functions compilation/metafile/import graph, final artifact boundary, and rollback rehearsal: pass.
 - Static artifact: 50 entries including `.nojekyll`, 1,887,978 bytes, zero protected path/content marker.
-- Clean install, browser regression, deployment IDs, production configuration, and final origin smoke are recorded after the story gate reaches `main`.
+- Clean install and browser regression passed locally and in GitHub Actions run `29436208626`.
+- Cloudflare deployment `ffe6ce47-05ad-4e3d-8f73-28bfae7bab4f` built and deployed commit `06395b4316f5f709d5706e925f151f36c98faa91` successfully with `COLLABORATION_ENABLED=false`.
+- Production boundary smoke passed: Cloudflare guest `200`, disabled API `503 COLLABORATION_UNAVAILABLE` with `no-store`, GitHub Pages guest `200`, and GitHub Pages API absent with `404`.
 
 ## Traceability
 
