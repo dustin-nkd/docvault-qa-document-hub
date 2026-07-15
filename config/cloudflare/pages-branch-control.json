@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "project_name": "docvault-qa-document-hub",
+  "production_branch": "main",
+  "production_deployments_enabled": true,
+  "preview_deployment_setting": "custom",
+  "preview_branch_includes": [
+    "*"
+  ],
+  "preview_branch_excludes": [
+    "gh-pages"
+  ]
+}

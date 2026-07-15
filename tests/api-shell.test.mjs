@@ -12,17 +12,27 @@ const productionEnv = Object.freeze({
     CANONICAL_PRODUCTION_ORIGIN: 'https://docvault-qa-document-hub.pages.dev',
     COLLABORATION_ENABLED: 'false'
 });
+const previewEnv = Object.freeze({
+    ...productionEnv,
+    APP_ENV: 'preview',
+    ORIGIN_POLICY_MODE: 'preview'
+});
 
 const request = (pathName, init = {}) => new Request(
     `https://docvault-qa-document-hub.pages.dev${pathName}`,
     init
 );
+const requestAt = (origin, pathName, init = {}) => new Request(`${origin}${pathName}`, init);
 
 const readError = async response => {
     const body = await response.json();
     assert.equal(body.meta.apiVersion, 'v1');
     assert.match(body.meta.requestId, /^req_[0-9a-f-]{36}$/);
     assert.equal(response.headers.get('X-Request-ID'), body.meta.requestId);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store, private');
+    assert.equal(response.headers.get('Pragma'), 'no-cache');
+    assert.equal(response.headers.get('Expires'), '0');
+    assert.equal(response.headers.get('Access-Control-Allow-Origin'), null);
     return body.error;
 };
 
@@ -65,6 +75,88 @@ test('Accept gate rejects an incompatible response media type', async () => {
     assert.equal((await readError(unacceptable)).code, 'NOT_ACCEPTABLE');
 });
 
+test('mutation origin matrix rejects hostile variants before body parsing or dispatch', async () => {
+    const pathName = '/api/v1/session/logout';
+    const baseInit = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: '{broken-json'
+    };
+    const rejectedOrigins = [
+        undefined,
+        'null',
+        'https://attacker.example',
+        'http://docvault-qa-document-hub.pages.dev',
+        'https://docvault-qa-document-hub.pages.dev:8443',
+        'https://docvault-qa-document-hub.pages.dev.attacker.example'
+    ];
+
+    for (const origin of rejectedOrigins) {
+        const headers = { ...baseInit.headers };
+        if (origin !== undefined) headers.Origin = origin;
+        const response = await handleApiRequest(request(pathName, { ...baseInit, headers }), productionEnv);
+        assert.equal(response.status, 403, `origin ${String(origin)} must be rejected`);
+        assert.equal((await readError(response)).code, 'CSRF_REJECTED');
+        assert.equal(response.headers.get('Access-Control-Allow-Origin'), null);
+    }
+});
+
+test('exact production and dynamic preview origins are isolated by environment', async () => {
+    const productionOrigin = productionEnv.CANONICAL_PRODUCTION_ORIGIN;
+    const previewOrigin = 'https://feature-auth.docvault-qa-document-hub.pages.dev';
+    const mutation = origin => ({
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Origin: origin
+        },
+        body: '{}'
+    });
+
+    const production = await handleApiRequest(requestAt(productionOrigin, '/api/v1/session/logout', mutation(productionOrigin)), productionEnv);
+    assert.equal(production.status, 503);
+    assert.equal((await readError(production)).code, 'COLLABORATION_UNAVAILABLE');
+
+    const preview = await handleApiRequest(requestAt(previewOrigin, '/api/v1/session/logout', mutation(previewOrigin)), previewEnv);
+    assert.equal(preview.status, 503);
+    assert.equal((await readError(preview)).code, 'COLLABORATION_UNAVAILABLE');
+
+    const previewUsingProduction = await handleApiRequest(requestAt(previewOrigin, '/api/v1/session/logout', mutation(productionOrigin)), previewEnv);
+    assert.equal(previewUsingProduction.status, 403);
+    assert.equal((await readError(previewUsingProduction)).code, 'CSRF_REJECTED');
+
+    const productionUsingPreview = await handleApiRequest(requestAt(previewOrigin, '/api/v1/session/logout', mutation(previewOrigin)), productionEnv);
+    assert.equal(productionUsingPreview.status, 403);
+    assert.equal((await readError(productionUsingPreview)).code, 'CSRF_REJECTED');
+
+    const canonicalUnderPreviewPolicy = await handleApiRequest(requestAt(productionOrigin, '/api/v1/session/logout', mutation(productionOrigin)), previewEnv);
+    assert.equal(canonicalUnderPreviewPolicy.status, 403);
+    assert.equal((await readError(canonicalUnderPreviewPolicy)).code, 'CSRF_REJECTED');
+});
+
+test('origin comparison follows URL origin normalization without accepting path confusion', async () => {
+    const response = await handleApiRequest(request('/api/v1/session/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Origin: 'HTTPS://DOCVAULT-QA-DOCUMENT-HUB.PAGES.DEV:443'
+        },
+        body: '{}'
+    }), productionEnv);
+    assert.equal(response.status, 503);
+
+    const pathConfusion = await handleApiRequest(request('/api/v1/session/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Origin: 'https://docvault-qa-document-hub.pages.dev/attacker'
+        },
+        body: '{}'
+    }), productionEnv);
+    assert.equal(pathConfusion.status, 403);
+    assert.equal((await readError(pathConfusion)).code, 'CSRF_REJECTED');
+});
+
 test('mutation media type, byte limit, and JSON syntax fail before feature handling', async () => {
     const noMedia = await handleApiRequest(request('/api/v1/session/logout', {
         method: 'POST',
@@ -96,7 +188,10 @@ test('mutation media type, byte limit, and JSON syntax fail before feature handl
         'https://docvault-qa-document-hub.pages.dev/api/v1/session/logout',
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+            headers: {
+                'Content-Type': 'application/json; charset=utf-8',
+                Origin: productionEnv.CANONICAL_PRODUCTION_ORIGIN
+            },
             body: streamedBody,
             duplex: 'half'
         }
@@ -108,7 +203,8 @@ test('mutation media type, byte limit, and JSON syntax fail before feature handl
         method: 'POST',
         headers: {
             'Content-Length': 'not-a-number',
-            'Content-Type': 'application/json; charset=utf-8'
+            'Content-Type': 'application/json; charset=utf-8',
+            Origin: productionEnv.CANONICAL_PRODUCTION_ORIGIN
         },
         body: '{}'
     }), productionEnv);
@@ -154,7 +250,10 @@ test('unexpected body-stream failures return sanitized JSON without an exception
     });
     const failingRequest = new Request('https://docvault-qa-document-hub.pages.dev/api/v1/session/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Origin: productionEnv.CANONICAL_PRODUCTION_ORIGIN
+        },
         body: failingBody,
         duplex: 'half'
     });

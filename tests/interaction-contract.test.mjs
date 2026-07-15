@@ -45,8 +45,8 @@ test('user-controlled editor actions use the shared safe action serializer', () 
     assert.doesNotMatch(editor, /selectCustomOption\('\$\{id\}/);
 });
 
-test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v44'/);
+test('service worker version is bumped for API cache isolation', () => {
+    assert.match(read('sw.js'), /const SW_VERSION = 'v45'/);
 });
 
 test('deployment blocks on the locked browser regression suite', () => {

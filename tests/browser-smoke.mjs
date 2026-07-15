@@ -173,6 +173,11 @@ async function run() {
         await mobileDocs.click();
         await page.getByRole('heading', { name: 'All Documents', exact: true }).waitFor();
 
+        assert.equal(requestedAssets.some(pathname => pathname === '/api' || pathname.startsWith('/api/')), false,
+            'Guest and Personal flows must make zero collaboration API requests');
+        assert.equal(await page.locator('[data-collaboration], [data-workspace-id], [data-action*="collaboration"]').count(), 0,
+            'GitHub Pages-compatible output must not render collaboration controls');
+
         assert.deepEqual(runtimeErrors, [], 'Browser smoke tests must not emit runtime errors');
         await context.close();
         process.stdout.write('Browser regression suite passed: dashboard, all category renderers, release hover, focus, mobile, semantics\n');

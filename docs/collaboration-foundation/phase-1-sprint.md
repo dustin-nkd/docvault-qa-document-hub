@@ -10,7 +10,7 @@ Owners: Senior Developer / Technical Lead, Senior QA, Senior BA / Product Owner
 
 Required reviewers: Security Reviewer, Operations, UX Lead for fallback messaging
 
-Delivery status: `CF-P1-001` through `CF-P1-004` are complete. Stories `CF-P1-005` through `CF-P1-009` have not started.
+Delivery status: `CF-P1-001` through `CF-P1-004` are complete. `CF-P1-005` is implemented and locally verified; production evidence is pending. Stories `CF-P1-006` through `CF-P1-009` have not started.
 
 ## 1. Sprint goal
 

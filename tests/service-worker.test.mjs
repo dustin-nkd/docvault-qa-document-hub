@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 
-function loadServiceWorker({ fetchImpl, matchImpl, addAllImpl } = {}) {
+function loadServiceWorker({ fetchImpl, matchImpl, addAllImpl, putImpl } = {}) {
     const listeners = {};
     let skipWaitingCalls = 0;
     const deletedCacheNames = [];
@@ -16,7 +16,7 @@ function loadServiceWorker({ fetchImpl, matchImpl, addAllImpl } = {}) {
         async addAll(items) {
             if (addAllImpl) return addAllImpl(items);
         },
-        async put() {}
+        async put(request, response) { if (putImpl) return putImpl(request, response); }
     };
     const caches = {
         async open() { return cache; },
@@ -43,6 +43,39 @@ function loadServiceWorker({ fetchImpl, matchImpl, addAllImpl } = {}) {
     vm.runInContext(source, context, { filename: 'sw.js' });
     return { listeners, deletedCacheNames, getSkipWaitingCalls: () => skipWaitingCalls };
 }
+
+test('same-origin API paths bypass the worker before network, cache, and navigation fallback', () => {
+    const calls = { fetch: 0, match: 0, put: 0 };
+    const harness = loadServiceWorker({
+        fetchImpl: async () => { calls.fetch++; return new Response('must not run'); },
+        matchImpl: async () => { calls.match++; return new Response('must not run'); },
+        putImpl: async () => { calls.put++; }
+    });
+
+    for (const pathname of ['/api', '/api/', '/api/v1/session', '/api/v1/oauth/github/callback']) {
+        const response = dispatchFetch(harness.listeners.fetch, {
+            url: `https://docvault.test${pathname}`,
+            method: 'GET',
+            mode: 'navigate'
+        });
+        assert.equal(response, undefined, `${pathname} must be left to the browser network stack`);
+    }
+    assert.deepEqual(calls, { fetch: 0, match: 0, put: 0 });
+});
+
+test('similar non-API paths retain normal app-shell handling', async () => {
+    let fetchCalls = 0;
+    const harness = loadServiceWorker({
+        fetchImpl: async () => { fetchCalls++; return new Response('network'); }
+    });
+    const response = await dispatchFetch(harness.listeners.fetch, {
+        url: 'https://docvault.test/apiary',
+        method: 'GET',
+        mode: 'cors'
+    });
+    assert.equal(await response.text(), 'network');
+    assert.equal(fetchCalls, 1);
+});
 
 function dispatchFetch(handler, request) {
     let responsePromise;

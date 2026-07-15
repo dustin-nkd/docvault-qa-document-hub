@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPagesSnapshot, validatePagesSnapshotDocument } from '../scripts/cloudflare-config-policy.mjs';
+import fs from 'node:fs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const baseline = readPagesSnapshot(path.join(root, 'config/cloudflare/pages-project-baseline.json'));
@@ -51,4 +52,17 @@ test('Cloudflare Pages snapshot rejects resource identifiers and secret-shaped f
         candidate.snapshot[key] = value;
         assert.throws(() => validatePagesSnapshotDocument(candidate), /keys changed|prohibited/);
     }
+});
+
+test('Cloudflare Pages branch control excludes only the generated GitHub Pages artifact branch', () => {
+    const control = JSON.parse(fs.readFileSync(path.join(root, 'config/cloudflare/pages-branch-control.json'), 'utf8'));
+    assert.deepEqual(control, {
+        schema_version: 1,
+        project_name: 'docvault-qa-document-hub',
+        production_branch: 'main',
+        production_deployments_enabled: true,
+        preview_deployment_setting: 'custom',
+        preview_branch_includes: ['*'],
+        preview_branch_excludes: ['gh-pages']
+    });
 });

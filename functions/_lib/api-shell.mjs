@@ -137,6 +137,72 @@ function queryByteLength(url) {
     return new TextEncoder().encode(url.search.startsWith('?') ? url.search.slice(1) : url.search).byteLength;
 }
 
+/** @param {string} value */
+function parseOrigin(value) {
+    try {
+        const url = new URL(value);
+        if (url.username || url.password || url.pathname !== '/' || url.search || url.hash) return null;
+        return url.origin;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Resolve the one origin allowed by the reviewed environment policy. Preview
+ * aliases have exactly one label before the canonical Pages hostname; the
+ * request Origin still has to equal that complete runtime origin.
+ * @param {URL} requestUrl
+ * @param {ApiEnv} env
+ */
+function resolveAllowedOrigin(requestUrl, env) {
+    if (env.APP_ENV !== env.ORIGIN_POLICY_MODE) return null;
+
+    const canonicalOrigin = parseOrigin(env.CANONICAL_PRODUCTION_ORIGIN);
+    if (!canonicalOrigin || canonicalOrigin !== env.CANONICAL_PRODUCTION_ORIGIN) return null;
+    const canonicalUrl = new URL(canonicalOrigin);
+
+    if (env.ORIGIN_POLICY_MODE === 'production') {
+        return requestUrl.origin === canonicalOrigin ? canonicalOrigin : null;
+    }
+    if (env.ORIGIN_POLICY_MODE === 'preview') {
+        const canonicalLabels = canonicalUrl.hostname.split('.');
+        const requestLabels = requestUrl.hostname.split('.');
+        const isPagesPreview = requestUrl.protocol === 'https:'
+            && requestUrl.port === ''
+            && requestUrl.origin !== canonicalOrigin
+            && requestLabels.length === canonicalLabels.length + 1
+            && requestLabels.slice(1).every((label, index) => label === canonicalLabels[index])
+            && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(requestLabels[0]);
+        return isPagesPreview ? requestUrl.origin : null;
+    }
+    if (env.ORIGIN_POLICY_MODE === 'local') {
+        const isLocalHost = requestUrl.hostname === 'localhost'
+            || requestUrl.hostname === '127.0.0.1'
+            || requestUrl.hostname === '[::1]';
+        return isLocalHost && ['http:', 'https:'].includes(requestUrl.protocol) ? requestUrl.origin : null;
+    }
+    return null;
+}
+
+/**
+ * @param {Request} request
+ * @param {URL} requestUrl
+ * @param {ApiEnv} env
+ */
+function enforceOriginPolicy(request, requestUrl, env) {
+    const allowedOrigin = resolveAllowedOrigin(requestUrl, env);
+    if (!allowedOrigin) throw new ApiError(403, 'CSRF_REJECTED');
+
+    const suppliedHeader = request.headers.get('Origin');
+    if (!suppliedHeader) {
+        if (UNSAFE_METHODS.includes(request.method)) throw new ApiError(403, 'CSRF_REJECTED');
+        return;
+    }
+    const suppliedOrigin = parseOrigin(suppliedHeader);
+    if (!suppliedOrigin || suppliedOrigin !== allowedOrigin) throw new ApiError(403, 'CSRF_REJECTED');
+}
+
 /** @param {Request} request */
 async function readBoundedJson(request) {
     const lengthHeader = request.headers.get('Content-Length');
@@ -199,6 +265,10 @@ export async function handleApiRequest(request, env) {
         }
         if (!acceptsJson(request.headers.get('Accept'))) throw new ApiError(406, 'NOT_ACCEPTABLE');
 
+        // Reject a mismatched host/origin before reading a mutation body. This
+        // boundary emits no CORS headers and performs no storage or dispatch.
+        enforceOriginPolicy(request, url, env);
+
         if (UNSAFE_METHODS.includes(request.method)) {
             if (!hasRequiredJsonContentType(request.headers.get('Content-Type'))) {
                 throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE');
@@ -206,10 +276,7 @@ export async function handleApiRequest(request, env) {
             await readBoundedJson(request);
         }
 
-        // Inspect the environment/feature boundary without dispatching. The
-        // exact-origin enforcement that uses ORIGIN_POLICY_MODE is CF-P1-005.
-        // CF-P1-004 deliberately contains no business dispatch, so even a
-        // malformed or tampered environment remains unavailable.
+        // Inspect the environment/feature boundary without dispatching.
         const hasReviewedDisabledState = env.COLLABORATION_ENABLED === 'false'
             && env.APP_ENV === env.ORIGIN_POLICY_MODE
             && ['local', 'preview', 'production'].includes(env.APP_ENV)
