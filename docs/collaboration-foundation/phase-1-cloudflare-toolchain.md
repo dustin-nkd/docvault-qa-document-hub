@@ -1,6 +1,6 @@
 # Phase 1 Cloudflare toolchain control
 
-Status: `CF-P1-002` implemented and locally verified; retained deployment evidence pending
+Status: `CF-P1-002` complete; local, CI, and deployment evidence passed
 
 Date: 2026-07-15
 

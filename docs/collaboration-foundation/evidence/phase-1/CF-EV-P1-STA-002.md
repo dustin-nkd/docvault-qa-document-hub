@@ -1,6 +1,6 @@
 # CF-EV-P1-STA-002 — Cloudflare command portability and fail-closed evidence
 
-Status: PASS locally; retained CI evidence pending
+Status: PASS
 
 Date: 2026-07-15
 
@@ -22,3 +22,5 @@ Reviewer: Senior QA and Security Reviewer
 Negative tests mutate a command to `npx wrangler@latest`, change the Pages dev command, drift direct/lock/installed versions, remove an expected action pin, change `npm ci` to `npm install`, and alter the date/review policy. Every mutation must throw.
 
 Traceability: `CF-OPS-002/003`, `CF-NFR-002`, `R19`, and `T20`.
+
+Implementation commit `cb6e5ecb1d79cae81e8a7ec0d6fe1b01b851936c` ran the same Node dispatcher successfully on Windows locally and Linux CI. Deferred type and Functions commands returned non-zero before their prerequisite stories; no remote command ran.

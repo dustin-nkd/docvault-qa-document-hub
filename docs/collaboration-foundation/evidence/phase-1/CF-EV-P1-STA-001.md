@@ -1,6 +1,6 @@
 # CF-EV-P1-STA-001 — Exact Cloudflare dependency and lock evidence
 
-Status: PASS locally; retained CI evidence pending
+Status: PASS
 
 Date: 2026-07-15
 
@@ -25,3 +25,5 @@ Clean-install result: `npm ci` installed 159 locked packages, left `package-lock
 Traceability: `CF-OPS-002/003`, `CF-NFR-002`, `R19`, and `T20`.
 
 Privacy and side effects: package registry reads and local dependency installation only. No Cloudflare API mutation, authentication command, deployment, binding, secret, runtime route, or product data change occurred.
+
+Implementation commit `cb6e5ecb1d79cae81e8a7ec0d6fe1b01b851936c` passed clean Linux `npm ci`, exact local tool resolution, the 63-test quality gate, production build, browser regression, and dependency audit in GitHub Actions run `29427363518`.
