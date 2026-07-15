@@ -10,3 +10,4 @@ import './maintainability-characterization.test.mjs';
 import './markup-helpers.test.mjs';
 import './interaction-contract.test.mjs';
 import './runtime-performance.test.mjs';
+import './cloudflare-config-policy.test.mjs';

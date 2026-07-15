@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-07-15T14:57:00.244Z",
+  "capture_method": "Cloudflare Pages project API with an allow-list transform",
+  "snapshot": {
+    "project_name": "docvault-qa-document-hub",
+    "canonical_subdomain": "docvault-qa-document-hub.pages.dev",
+    "production_branch": "main",
+    "build_config": {
+      "build_command": "npm run check && npm run build:css && npm run build:pages",
+      "destination_dir": "_site",
+      "root_dir": ""
+    },
+    "deployment_source": {
+      "type": "github",
+      "owner": "dustin-nkd",
+      "repository": "docvault-qa-document-hub",
+      "production_branch": "main",
+      "deployments_enabled": true,
+      "production_deployments_enabled": true,
+      "preview_deployment_setting": "all",
+      "path_includes": [
+        "*"
+      ],
+      "path_excludes": []
+    },
+    "environments": {
+      "preview": {
+        "compatibility_date": "2026-07-15",
+        "compatibility_flags": [],
+        "environment_variable_names": [],
+        "d1_binding_names": [],
+        "kv_binding_names": [],
+        "r2_binding_names": [],
+        "durable_object_binding_names": [],
+        "service_binding_names": [],
+        "queue_producer_binding_names": [],
+        "analytics_engine_binding_names": [],
+        "hyperdrive_binding_names": []
+      },
+      "production": {
+        "compatibility_date": "2026-07-15",
+        "compatibility_flags": [],
+        "environment_variable_names": [],
+        "d1_binding_names": [],
+        "kv_binding_names": [],
+        "r2_binding_names": [],
+        "durable_object_binding_names": [],
+        "service_binding_names": [],
+        "queue_producer_binding_names": [],
+        "analytics_engine_binding_names": [],
+        "hyperdrive_binding_names": []
+      }
+    }
+  }
+}

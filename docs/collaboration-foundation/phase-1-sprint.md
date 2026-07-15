@@ -1,6 +1,6 @@
 # Phase 1 sprint — Cloudflare foundation
 
-Status: Ready for Product Owner sprint approval; implementation not started
+Status: Approved by the Product Owner; implementation in progress
 
 Sprint ID: `CF-P1-S01`
 
@@ -9,6 +9,8 @@ Dates: 2026-07-16 through 2026-07-29 (10 working days, Asia/Ho_Chi_Minh)
 Owners: Senior Developer / Technical Lead, Senior QA, Senior BA / Product Owner
 
 Required reviewers: Security Reviewer, Operations, UX Lead for fallback messaging
+
+Delivery status: `CF-P1-001` is implemented and locally verified; retained deployment evidence is pending. Stories `CF-P1-002` through `CF-P1-009` have not started.
 
 ## 1. Sprint goal
 

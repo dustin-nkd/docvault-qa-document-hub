@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "check": "node scripts/quality-check.mjs && npm test",
+    "check:cloudflare-config": "node scripts/check-cloudflare-config.mjs",
     "test": "node tests/run.mjs",
     "test:e2e": "node tests/browser-smoke.mjs",
     "dev": "vite",

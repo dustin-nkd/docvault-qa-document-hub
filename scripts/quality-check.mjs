@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { readPagesSnapshot, validatePagesSnapshotDocument } from './cloudflare-config-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -75,6 +76,11 @@ assert(!/publish_dir:\s*\.\/\s*$/m.test(workflow), 'Production deploy must not p
 assert(/run:\s*npm ci/.test(workflow), 'Production must install the committed lockfile with npm ci');
 assert(/run:\s*npm run build:css/.test(workflow), 'Production must use the local Tailwind build script');
 assert(!/npx\s+tailwind/i.test(workflow), 'Production must not download Tailwind through npx');
+
+const pagesBaselinePath = path.join(root, 'config/cloudflare/pages-project-baseline.json');
+assert(fs.existsSync(pagesBaselinePath), 'Sanitized Cloudflare Pages configuration baseline is required');
+const pagesBaseline = readPagesSnapshot(pagesBaselinePath);
+validatePagesSnapshotDocument(pagesBaseline, pagesBaseline);
 
 const html = read('index.html');
 assert(/<html\s+lang=["']en["']/.test(html), 'index.html must declare lang="en"');
