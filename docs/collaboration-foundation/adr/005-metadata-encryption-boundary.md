@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval.
+Approved at Gate G2.
 
 ## Date
 
@@ -30,6 +30,8 @@ Only the minimum metadata listed below is server-visible. Adding a server-visibl
 - Workspace payload: description and any semantic/custom workspace fields beyond the bounded display name. The client may keep a local decrypted cache, cleared on lock/account switch.
 - Revision payloads are independently authenticated ciphertext using the workspace key version recorded by the server-visible envelope.
 - Credential documents and secret fields are prohibited from Collaboration Foundation, not merely encrypted.
+
+Day 4 clarification proposed for Gate G3: the official client enforces that product prohibition before encryption, but the API cannot inspect encrypted category/content semantics. It validates the declared envelope, authorization, key version, payload bounds, and revision rules and must not claim universal credential detection against a malicious authorized client. Accepting this residual limitation preserves the approved E2EE boundary.
 
 ### Exact server-visible metadata
 
@@ -79,7 +81,7 @@ Maintain a machine-reviewable API/D1 field allow-list, schema migration review, 
 ## Test implications
 
 - Sensitive canaries in every protected field must be absent from API metadata, D1 columns, audit, logs, telemetry, caches, build output, and error messages.
-- Schema tests reject unknown/plaintext top-level fields, credential categories, oversized payloads, and mismatched envelope/key versions.
+- Schema tests reject unknown/plaintext top-level fields, oversized payloads, and mismatched envelope/key versions. Client workflow tests reject stored Credential categories; adversarial tests document that the API cannot semantically classify opaque ciphertext.
 - Authorization tests cover list, pagination, tombstone, revision, audit, and cross-workspace metadata enumeration.
 - Personal copy tests prove explicit confirmation, credential rejection, local-only plaintext, distinct IDs, and unchanged source.
 
@@ -90,7 +92,7 @@ CF-DOC-001, CF-DOC-004 through CF-DOC-006; CF-AUD-001 and CF-AUD-002; CF-ISO-001
 ## Gate G2 acceptance
 
 - [x] Security Reviewer approves the encrypted and exact server-visible field lists.
-- [ ] Product Owner accepts the workspace-name, identity, membership, audit, access-pattern, and retention privacy tradeoffs.
+- [x] Product Owner accepts the workspace-name, identity, membership, audit, access-pattern, and retention privacy tradeoffs.
 - [x] Day 4 API and D1 schemas must contain no undeclared semantic metadata.
 - [x] Senior QA accepts the canary and unknown-field rejection plan for every protected field.
 - [x] Any requested server search/filter field is rejected or approved through an ADR amendment.

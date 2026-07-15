@@ -1,6 +1,6 @@
 # Collaboration Foundation
 
-Status: Day 3 architecture decisions in progress
+Status: Day 4 contracts and quality strategy in progress
 
 Sprint: Phase 0 — Specification and Threat Model
 
@@ -38,12 +38,18 @@ Gate G0 was approved by the Product Owner on 2026-07-15.
 
 Gate G1 was approved by the Product Owner on 2026-07-15.
 
-## Planned Phase 0 artifacts
+Gate G2 was approved by the Product Owner on 2026-07-15.
 
-- `api-contract.md`
-- `risk-register.md`
-- `schema-contract.md`
-- `operational-runbook.md`
+## Day 4 artifacts proposed for Gate G3
+
+- [API contract](api-contract.md)
+- [D1 schema contract](schema-contract.md)
+- [Cryptographic contract](crypto-contract.md)
+- [Operational runbook](operational-runbook.md)
+- [Risk register](risk-register.md)
+- [Day 4 quality strategy](quality-strategy.md)
+- [Updated requirement-risk-test traceability](traceability-matrix.md)
+- [Day 4 cross-functional review](day-4-review.md)
 
 ## Review ownership
 

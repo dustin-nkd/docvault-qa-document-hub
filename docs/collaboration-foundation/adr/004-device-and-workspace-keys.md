@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval. Cryptographic implementation remains blocked until vectors and browser support evidence pass.
+Approved at Gate G2. Cryptographic implementation remains blocked until vectors and browser support evidence pass.
 
 ## Date
 
@@ -103,7 +103,7 @@ CF-DEV-001 through CF-DEV-004; CF-KEY-001 through CF-KEY-006; CF-DOC-001; CF-INV
 
 - [x] Security Reviewer approves the suite, canonicalization, AAD, bounds, authorization, and state machine.
 - [x] Security Reviewer approves the local unlock, PBKDF2 600,000 baseline/bounds, encrypted PKCS#8 envelope, transient-memory, and key-clearing contracts.
-- [ ] Product Owner approves unlock-secret setup/forgetting, pending-key, unsupported-browser, and terminal all-keys-lost UX.
+- [x] Product Owner approves unlock-secret setup/forgetting, pending-key, unsupported-browser, and terminal all-keys-lost UX.
 - [x] Security and Senior QA accept the positive/negative vector plan; executable vectors remain a Phase 1 release gate.
 - [x] The supported-browser gate must prove P-256 PKCS#8 generation/export/encryption and non-extractable `deriveBits` import or explicitly exclude the browser.
 - [x] Lifecycle key-reference clearing tests are defined as release-blocking evidence.

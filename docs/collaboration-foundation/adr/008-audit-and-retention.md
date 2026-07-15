@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval.
+Approved at Gate G2.
 
 ## Date
 
@@ -140,7 +140,7 @@ Retention jobs use server time, deterministic cutoffs, bounded batches, idempote
 
 ## Gate G2 acceptance
 
-- [ ] Product Owner accepts the 365-day audit baseline, 30-day terminal-record baselines, and explicit deferral of physical revision deletion.
+- [x] Product Owner accepts the 365-day audit baseline, 30-day terminal-record baselines, and explicit deferral of physical revision deletion.
 - [x] Security Reviewer approves the event registry, access model, correction model, sensitive-field exclusions, and hold controls.
 - [x] Technical Lead confirms atomic domain-event writes, stable ordering, bounded pagination, and purge isolation.
 - [x] Operations confirms monitoring, least-privilege access, retention job, hold, backup, and restore procedures are implementable.

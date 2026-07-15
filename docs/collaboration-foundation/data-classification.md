@@ -1,6 +1,6 @@
 # Collaboration Foundation: Data Classification and Trust-Boundary Inventory
 
-Status: Gates G0 and G1 approved; Day 3 security baseline
+Status: Gates G0, G1, and G2 approved; Day 4 E2EE enforcement clarification proposed for Gate G3
 
 Scope: current personal vault and the proposed Cloudflare collaboration foundation
 
@@ -103,7 +103,7 @@ This document defines the data that DocVault currently handles, the data the col
 - Secrets must be supplied through Cloudflare secret storage and must not be present in source, `_site`, D1, client JavaScript, or build logs.
 - Preview and production must use separate D1 databases, OAuth credentials, secrets, session namespaces, and origin allow-lists.
 - Personal data migration must be explicit, user-initiated, category-filtered, and performed after encryption for the destination workspace. There is no automatic upload on login or workspace creation.
-- Credential documents are out of scope for collaboration and must be rejected by both UI and API migration validation.
+- Credential documents are out of scope for collaboration. The official client and copy/import workflows reject a stored Credential category before encryption. Because category and content are encrypted, the API validates only envelope, routing, authorization, and cryptographic structure; it cannot semantically inspect opaque ciphertext or guarantee rejection from a malicious authorized client. Gate G3 must accept this residual limitation without weakening E2EE.
 - Document deletion initially produces a server-authoritative tombstone. Physical deletion and revision retention require a product/legal retention decision.
 - Invitations must be single-use, expiring, revocable, and eventually purged. Only token hashes may be retained server-side.
 - Sessions must have absolute expiry, idle/revocation behavior, and purge rules. Raw session values must never be retained server-side.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval.
+Approved at Gate G2.
 
 ## Date
 
@@ -136,7 +136,7 @@ The server retains terminal idempotency records for 30 days from the authoritati
 
 ## Gate G2 acceptance
 
-- [ ] Product Owner accepts explicit manual conflict resolution, the seven-day outbox expiry, and the no-silent-discard UX.
+- [x] Product Owner accepts explicit manual conflict resolution, the seven-day outbox expiry, and the no-silent-discard UX.
 - [x] Technical Lead confirms the atomic D1 consistency boundary, uniqueness constraints, fingerprint contract, and current-authorization-before-replay order.
 - [x] Security Reviewer approves the binding, encrypted outbox boundary, non-disclosing errors, and quarantine rules.
 - [x] Senior QA confirms every P1 concurrency, replay, stale-authority, and failure-injection case has measurable evidence ownership.

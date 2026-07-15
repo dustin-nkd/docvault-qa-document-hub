@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted by Product Owner for the Phase 0 domain baseline. Security review and Gate G2 evidence remain required; this ADR does not authorize runtime implementation.
+Approved at Gate G2 as the Phase 0 domain baseline; this ADR does not authorize runtime implementation.
 
 ## Date
 

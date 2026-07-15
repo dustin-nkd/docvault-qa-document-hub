@@ -1,6 +1,6 @@
 # ADR-001: Runtime and Storage Boundary
 
-Status: Proposed for Gate G2
+Status: Approved at Gate G2
 
 Date: 2026-07-15
 
@@ -107,4 +107,4 @@ Requirements: CF-ISO, CF-SEC, CF-SYNC, CF-AUD, CF-OPS. Threats: T01, T06, T08, T
 - [x] Architecture and Security accept Pages Functions plus D1 as the Foundation boundary.
 - [x] Senior QA accepts the local, preview, production, and fallback evidence plan.
 - [x] Environment separation, API cache exclusion, binding use, observability, and migration ordering are non-optional Phase 1 controls.
-- [ ] Product accepts that collaboration is unavailable on GitHub Pages and during a canonical API outage.
+- [x] Product accepts that collaboration is unavailable on GitHub Pages and during a canonical API outage.

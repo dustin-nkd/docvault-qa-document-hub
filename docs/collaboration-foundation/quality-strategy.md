@@ -1,6 +1,6 @@
 # Collaboration Foundation Quality Strategy
 
-**Status:** Day 1 draft
+**Status:** Day 4 proposed quality contract for Gate G3
 
 **Owner:** Senior QA
 
@@ -9,7 +9,7 @@
 
 ## 1. Purpose
 
-This document defines the quality contract that must exist before Collaboration Foundation implementation begins. It records the current regression surface, proposed test levels and environments, evidence expectations, initial risk traceability, and the unresolved testability decisions that must be closed during Phase 0.
+This document defines the proposed Gate G3 quality contract that must be approved before Collaboration Foundation implementation begins. It records the regression surface, executable test levels and environments, evidence expectations, stable requirement traceability, workload and browser baselines, and the disposition of all Day 1 testability decisions.
 
 The strategy protects the existing personal vault while adding a second, server-backed collaboration mode. Collaboration must not silently change the security, persistence, offline, guest, public-share, or deployment behavior already relied on by the application.
 
@@ -130,7 +130,7 @@ Unit tests must use fixed clocks and deterministic identifiers where relevant. P
 
 ### 4.3 Integration tests
 
-Integration tests must run the actual request handlers with an isolated local D1 database:
+Integration tests run actual Pages request handlers through `@cloudflare/vitest-pool-workers` using the official Pages recipe and an isolated real local D1 database:
 
 - Schema creation and every migration path.
 - Repository queries, constraints, indexes, and transactions.
@@ -143,7 +143,7 @@ Integration tests must run the actual request handlers with an isolated local D1
 - Idempotent replay under retry.
 - Sanitized logging and audit persistence.
 
-Mock only external OAuth exchange endpoints. Do not mock the D1 repository in integration coverage.
+Mock only external OAuth exchange endpoints through injected adapters. Do not mock the D1 repository in integration coverage. Clock, UUID, token, provider, and failure seams are constructor/request-context dependencies selected by the test harness; no test bypass, deterministic secret, or mock-provider branch may be reachable in a production build.
 
 ### 4.4 API contract tests
 
@@ -164,7 +164,7 @@ Authorization failures must avoid leaking whether a cross-workspace resource exi
 
 ### 4.5 Browser E2E tests
 
-Playwright must later use separate browser contexts for separate users and devices. Required journeys include:
+Playwright uses separate browser contexts for separate users and devices. The release browser matrix is the latest two stable versions of Chrome, Edge, and Firefox plus Safari 17.4 or later. Required journeys include:
 
 - Login, logout, session restoration, and revoked-session behavior.
 - Owner creates a workspace and invites Editor and Viewer users.
@@ -188,6 +188,7 @@ Security coverage must include:
 - IDOR and role escalation across every workspace route.
 - Invitation token expiry, hashing, single use, and concurrent acceptance.
 - Ciphertext and IV tampering, wrong key/device, malformed envelopes, unsupported algorithms, and excessive payloads.
+- Credential-category controls in the official client, including absent copy/share controls and rejection before encryption. Because the server sees only authenticated ciphertext and minimal metadata, it cannot inspect semantic content or prevent an authorized member from pasting a secret into an otherwise eligible encrypted document; tests and product claims must state this limitation rather than claim server content inspection.
 - Database and log inspection for plaintext content, keys, secrets, cookies, OAuth codes, and invitation tokens.
 - XSS and unsafe interpolation through encrypted fields after client decryption.
 - Rate-limit and resource-exhaustion behavior.
@@ -197,11 +198,22 @@ Any authorization bypass, plaintext secret exposure, silent overwrite, reusable 
 
 ### 4.7 Performance and resilience tests
 
-The final workload profile remains a Phase 0 decision. Initial test dimensions should include:
+The Gate G3 small-team workload baseline is 25 members per workspace, 10,000 documents per workspace, up to 50 revisions per document, and 10 concurrently active users. Unless an endpoint contract is stricter, performance sign-off uses representative preview data and records p50/p95/max, error rate, D1 work, deployment ID, and test-runner profile.
 
-- API read and write latency under expected concurrent workspace use.
-- Large workspace/member/document pagination.
-- Client decrypt and render cost for document batches.
+The proposed release budgets are:
+
+- Authenticated API reads: p95 no greater than 300 ms in Cloudflare preview, excluding OAuth-provider time.
+- Authenticated API writes: p95 no greater than 500 ms in Cloudflare preview, excluding OAuth-provider time.
+- Conflict compare-and-set and idempotent replay correctness: 100% under the approved concurrent/retry corpus; latency never excuses a duplicate or lost update.
+- Initial collaboration-only JavaScript loaded by the personal/guest startup path: no more than 75 KiB gzip; editor, crypto, and administration modules remain lazy.
+- Client decrypt and render of 100 representative documents: p95 no greater than 500 ms on the recorded reference hardware/browser profile.
+- Accessibility: WCAG 2.2 AA for every collaboration workflow, with automated results supplemented by keyboard and screen-reader evidence.
+
+Test dimensions include:
+
+- API read and write latency under baseline concurrent workspace use.
+- Member, document, revision, and audit pagination at the approved limits.
+- Client decrypt and render cost for representative document batches.
 - Duplicate-free behavior during retry and reconnect storms.
 - Concurrent writes to the same document and different documents.
 - D1 transient failures and transaction rollback.
@@ -241,6 +253,9 @@ Environment rules:
 5. OAuth callbacks, cookie origins, and CSP behavior must be tested on HTTPS preview rather than inferred from localhost.
 6. Service-worker tests must prove that `/api/*` is network-only and never receives cached HTML.
 7. GitHub Pages must be tested as an intentionally collaboration-incapable environment, not as a backend failover.
+8. The local Functions environment uses `@cloudflare/vitest-pool-workers`, the Pages recipe, and a real disposable local D1; repository mocks do not qualify as integration evidence.
+9. Preview uses a dedicated OAuth application/callback and D1 database. Production credentials, sessions, bindings, users, and origins are forbidden in preview.
+10. Multi-user and multi-device Playwright journeys use isolated browser contexts and unique environment-scoped identities.
 
 ## 6. Quality risk register
 
@@ -257,7 +272,7 @@ Environment rules:
 | QR-09 | Cloudflare deploy runs against incompatible D1 schema | High | Medium | Versioned compatible migrations, deployment checks, restore rehearsal |
 | QR-10 | GitHub Pages exposes broken collaboration UI | Medium | High | Runtime capability detection and fallback browser suite |
 | QR-11 | Existing vault crypto or GitHub Sync regresses | Critical | Medium | Preserve all current encryption/storage/sync suites and add provider isolation tests |
-| QR-12 | Credential documents are accidentally shared | Critical | Medium | Domain/API validation plus negative UI and direct-API tests |
+| QR-12 | The official client copies a credential-category document, or product claims overstate what an E2EE server can inspect | Critical | Medium | Client/domain eligibility validation before encryption, absent copy controls, category-transition regression, and explicit insider/content-blindness limitation; the ciphertext-only server cannot detect an authorized user pasting secrets into an eligible encrypted document |
 | QR-13 | Encrypted content becomes an XSS vector after decrypt | High | Medium | Safe rendering contract and hostile-content browser tests |
 | QR-14 | Collaboration degrades dashboard/editor performance | Medium | Medium | Lazy loading, asset budgets, client decrypt/render benchmarks |
 | QR-15 | Recovery design makes encrypted data permanently inaccessible | High | Medium | Explicit recovery contract, multi-device and recovery rehearsal |
@@ -298,86 +313,98 @@ Environment rules:
 - **P2:** Major workflow failure with a practical workaround. Requires explicit Product and QA risk acceptance before release.
 - **P3:** Limited usability or cosmetic defect. May be scheduled with documented ownership.
 
-## 8. Requirement–risk–test matrix scaffold
+## 8. Stable requirement-to-contract coverage
 
-This matrix will become the authoritative traceability artifact during Phase 0. Requirement IDs are provisional until the product specification assigns stable identifiers.
+The detailed requirement-level source is `traceability-matrix.md`. The table below uses only its stable IDs and covers every Foundation requirement, including all 58 P0/P1-sensitive requirements. `Planned` means the contract and evidence owner are fixed but runtime evidence does not yet exist.
 
-| Requirement ID | Requirement | Risk/threat ID | Control/contract | Planned verification | Test level | Phase | Owner | Evidence | Status |
-|---|---|---|---|---|---|---|---|---|---|
-| CF-AUTH-001 | Establish GitHub identity securely | QR-04 | OAuth state, PKCE, callback allow-list | Valid and negative callback flows | Integration, E2E, security | 3 | TBD | TBD | Draft |
-| CF-SESS-001 | Maintain revocable server-side session | QR-04, QR-05 | Opaque cookie token, server revocation | Expiry, logout, fixation, replay, revoke | Unit, integration, security | 3 | TBD | TBD | Draft |
-| CF-WS-001 | Isolate every workspace | QR-02 | Central membership authorization | Cross-user and cross-workspace matrix | Unit, API, E2E | 4 | TBD | TBD | Draft |
-| CF-RBAC-001 | Enforce Owner/Admin/Editor/Viewer permissions | QR-02 | Central role policy | All role/action combinations, direct API calls | Unit, API, E2E | 4 | TBD | TBD | Draft |
-| CF-INV-001 | Invitations are expiring and single-use | QR-02, QR-04 | Hashed token and atomic state transition | Expire, revoke, reuse, concurrent accept | Integration, API, security | 4 | TBD | TBD | Draft |
-| CF-KEY-001 | Server cannot recover workspace plaintext keys | QR-03, QR-15 | Client device keys and wrapped workspace key | Multi-device decrypt plus DB/log scan | Unit, integration, security | 5 | TBD | TBD | Draft |
-| CF-KEY-002 | Revoked devices do not receive future keys | QR-05 | Revoked device state and key versions | Active/offline device revocation | Integration, E2E, security | 5 | TBD | TBD | Draft |
-| CF-DOC-001 | Store encrypted shared documents | QR-03, QR-13 | Versioned authenticated ciphertext envelope | Round trip, tamper, malformed and hostile content | Unit, integration, E2E | 6 | TBD | TBD | Draft |
-| CF-DOC-002 | Prevent silent lost updates | QR-06 | `baseRevision` compare-and-set | Simultaneous writers and stale update | Integration, API, E2E | 6 | TBD | TBD | Draft |
-| CF-SYNC-001 | Retry mutations without duplication | QR-07 | `clientMutationId` and uniqueness constraint | Replay and reconnect storm | Integration, E2E, resilience | 6 | TBD | TBD | Draft |
-| CF-ISO-001 | Preserve personal vault isolation | QR-01, QR-11 | Explicit storage-provider boundary | Switch, create, update, logout, reload | Unit, integration, E2E | 6 | TBD | TBD | Draft |
-| CF-GUEST-001 | Keep guest mode isolated | QR-01 | Capability/auth bootstrap guard | No storage/auth/API calls in guest mode | Unit, E2E | 6–7 | TBD | TBD | Draft |
-| CF-CRED-001 | Exclude credentials from workspace sharing | QR-12 | Client and server category validation | UI omission plus direct API rejection | Unit, API, E2E | 6–7 | TBD | TBD | Draft |
-| CF-SW-001 | Never cache collaboration API responses | QR-08 | Network-only `/api/*` policy | Online, offline and navigation fallback tests | Unit, browser | 1–6 | TBD | TBD | Draft |
-| CF-DEP-001 | Deploy compatible code and schema | QR-09 | Versioned compatible migrations and rollout gate | Migration/restore/deployment rehearsal | Integration, operational | 2–9 | TBD | TBD | Draft |
-| CF-FALLBACK-001 | Keep GitHub Pages personal mode functional | QR-10, QR-11 | Capability detection and hidden collaboration UI | Static fallback browser smoke | E2E | 1–9 | TBD | TBD | Draft |
+| Stable IDs | Approved/proposed contract | Accountable evidence owners | Required evidence | Status |
+|---|---|---|---|---|
+| `CF-ID-001`–`004` | ADR-002 immutable GitHub subject, OAuth state/PKCE/exact callback, no retained provider credential, mode-gated bootstrap | Developer, Senior QA, Security Reviewer | U/I/A/E/S identity and callback abuse suite; provider-secret scans | Planned |
+| `CF-SES-001`–`004` | ADR-002/011 opaque hashed session, 12-hour idle, 7-day absolute, 15-minute high-risk reauth, Origin plus CSRF, stable no-store errors | Developer, Senior QA, Security Reviewer | U/I/A/E/S cookie, expiry, revocation, CSRF, enumeration, cache, and log suite | Planned |
+| `CF-DEV-001`–`004` | ADR-004/010 per-device P-256 keys, encrypted local private key, live revocation, truthful no-escrow/no-all-keys recovery | Developer, Senior QA, Security Reviewer, Product Owner | Crypto vectors, browser storage inspection, multi-device/revocation/loss E2E and abuse evidence | Planned |
+| `CF-WS-001`–`004` | ADR-001/003/008/012 atomic owner creation, last-owner guard, lifecycle deny-closed until approved export/delete contract | Developer, Senior QA, Product Owner, Technical Lead | Transaction/fault tests, ownership races, retention and operational review | Planned; export/delete deny-closed |
+| `CF-RBAC-001`–`004` | ADR-003 centralized deny-by-default workspace-scoped role policy with server-derived actor/time | Developer, Senior QA, Security Reviewer | Full role/action/resource-state API matrix and D1/audit side-effect inspection | Planned |
+| `CF-INV-001`–`005` | ADR-009 identity-bound 72-hour hash-only single-use invitation and distinct `pending_key` readiness | Developer, Senior QA, Security Reviewer, UX Lead | State/race/rate/identity/replay tests and pending-key E2E | Planned |
+| `CF-KEY-001`–`006` | ADR-004/010 versioned P-256 ECDH/HKDF/AES-GCM envelopes, canonical device binding, rotation and terminal-loss contract | Developer, Senior QA, Security Reviewer, Product Owner | Fixed positive/negative vectors, substitution/replay/downgrade scans, rotation/recovery drills | Planned |
+| `CF-DOC-001`–`006` | ADR-005/006 encrypted semantic payload, append-only server revision/tombstone, Viewer denial, safe rendering | Developer, Senior QA, Security Reviewer, UX Lead | Encryption/tamper/DB scan, revision transaction, RBAC, XSS, tombstone and client eligibility tests | Planned |
+| `CF-SYNC-001`–`005` | ADR-006 revision CAS/409, scoped idempotency, encrypted bounded seven-day outbox and quarantine | Developer, Senior QA, Security Reviewer, UX Lead | Concurrent writer, replay storm, offline lifecycle, quota/expiry/conflict/re-auth E2E | Planned |
+| `CF-AUD-001`–`002` | ADR-008/011 server-derived append-only allow-list events, no bodies/secrets, 365-day baseline | Developer, Senior QA, Security Reviewer, Operations | Event completeness/atomicity, canary/redaction, access, retention and restore evidence | Planned |
+| `CF-ISO-001`–`005` | ADR-007 separate providers/namespaces; explicit one-time eligible copy; guest/share/PAT isolation | Developer, Senior QA, Security Reviewer, UX Lead | Provider-routing, network/storage, regression and hostile cross-context tests | Planned |
+| `CF-FB-001`–`002` | ADR-001/007/011 GitHub Pages personal/guest fallback; Cloudflare is the exact collaboration origin | Senior QA, Technical Lead, Security Reviewer | Both-origin browser/network/cookie/CSP/capability evidence | Planned |
+| `CF-OPS-001`–`005` | ADR-001/008/011/012 network-only API, environment isolation, immutable expand/contract migration, feature flag, stable privacy-safe observability | Developer, Senior QA, Technical Lead, Security Reviewer, Operations | Local real-D1 integration, config isolation, migration/restore/rollback/canary and error evidence | Proposed at Gate G3 |
+| `CF-NFR-001`–`004` | Day 4 workload/budgets, 75 KiB lazy-load ceiling, WCAG 2.2 AA, latest-two Chrome/Edge/Firefox and Safari 17.4+ | Senior QA, Product Owner, UX Lead, Security Reviewer, Technical Lead | Preview load/client benchmark, artifact budget, accessibility and browser matrix reports | Proposed at Gate G3 |
 
-No requirement may be marked Ready for implementation until its acceptance criteria, control, planned verification, and evidence owner are populated.
+Credential exclusion is a client eligibility boundary, not server plaintext inspection. The official client omits copy/share controls and rejects credential-category transitions before encryption. An authorized user can still paste a secret into an eligible encrypted document; E2EE prevents the server from detecting that semantic misuse. Insider training, truthful UX, and incident response are residual controls.
 
-## 9. Phase 0 entry gate
+## 9. Commands, environments, and evidence naming
 
-Phase 0 QA work may proceed when:
+The following command surface is the Gate G3 contract to implement before the corresponding phase can claim executable evidence. Existing `npm run check` remains the aggregate regression gate while scripts are added incrementally.
 
-- Collaboration scope and non-goals are available.
-- The proposed Pages Functions, D1, identity, encryption, and revision architecture is available for review.
-- Product, Engineering, QA, and Security decision owners are named.
-- Current Cloudflare and GitHub Pages deployment responsibilities are understood.
-- Open architecture decisions are tracked rather than assumed.
+| Command contract | Environment | Evidence |
+|---|---|---|
+| `npm run check` | Node plus generated artifact | Existing regression, syntax, CSP, artifact, English-only, and maintainability results |
+| `npm run test:collab:unit` | Node | Policy, parser, state-machine, crypto-vector, deterministic clock/ID result |
+| `npm run test:collab:integration` | `@cloudflare/vitest-pool-workers` Pages recipe plus real disposable local D1 | Handler, repository, transaction, migration, audit, and fault result |
+| `npm run test:collab:contract` | Local Pages Functions/D1 | Route/schema/auth/CSRF/error/cache/idempotency report |
+| `npm run test:collab:e2e` | Playwright isolated contexts; local then preview | Multi-user/device browser report, trace and failure screenshots |
+| `npm run test:collab:security` | Local, preview, artifact and storage inspection | Abuse matrix, canary scan, dependency/header and cross-environment result |
+| `npm run test:collab:performance` | Representative Cloudflare preview plus recorded reference client | Workload, latency, correctness, bundle and decrypt/render report |
+| `npm run test:collab:a11y` | Supported browser matrix | Automated WCAG scan plus linked manual keyboard/screen-reader record |
+| `npm run test:collab:production-smoke` | Dedicated production canary workspace | Non-destructive health/capability/header/read-only canary report |
 
-## 10. Phase 0 exit gate
+Evidence paths use `artifacts/qa/<commit-sha>/<environment>/<suite>/<UTC-timestamp>/`. Every suite writes `manifest.json` containing commit SHA, branch, command, runner/tool versions, environment, deployment ID where applicable, D1 migration version, start/end UTC time, result counts, skipped/quarantined count, and artifact hashes. No token, cookie, content, ciphertext body, key, invitation URL, or personal data may appear in evidence.
 
-Phase 1 implementation must not begin until:
+Gate rules:
 
-- Every P0/P1 product requirement has measurable acceptance criteria.
-- Every P0/P1 threat has a control, owner, planned verification, and residual-risk disposition.
-- The role/action matrix is complete and unambiguous.
-- Authentication, session, CSRF, invitation, device, key, document, conflict, idempotency, and error contracts are approved.
-- Personal, guest, public-share, offline, GitHub Sync, Cloudflare, and GitHub Pages compatibility requirements are traceable.
-- Test environments and data isolation are approved.
-- Migration, backup, restore, feature-flag, and rollback approaches are approved.
-- Performance workload and budgets are approved.
-- WCAG 2.2 AA is accepted as the collaboration UI target.
-- There are no unresolved implementation-blocking testability decisions.
-- Senior QA records `GO`, `GO WITH RECORDED CONDITIONS`, or `NO-GO` with evidence links.
+- P0/P1 suites have zero skipped, disabled, quarantined, or accepted-flaky cases.
+- A P0/P1 result without required D1/audit/log/storage side-effect inspection is incomplete.
+- A retry after flaky failure is not a pass until root cause and disposition are recorded.
+- Preview evidence uses its dedicated OAuth app, D1, secrets, origins, and synthetic users.
+- Production evidence is non-destructive and uses an approved canary workspace; no production user data is a fixture.
 
-## 11. Open testability decisions
+## 10. Testability decision disposition
 
-The squad must resolve the following during Phase 0:
-
-| ID | Decision required | Why QA needs it | Blocking |
+| ID | Day 4 disposition | Source | Status |
 |---|---|---|---|
-| TD-01 | Exact OAuth provider contract and whether a separate preview OAuth app is used | Determines callback, identity, fixture, and preview test design | Yes |
-| TD-02 | Session store, expiry, idle timeout, rotation, and immediate-revocation contract | Required for deterministic auth and revocation tests | Yes |
-| TD-03 | CSRF mechanism for same-origin Pages Functions | Required to enumerate protected requests and negative cases | Yes |
-| TD-04 | Stable user identity when GitHub username/email changes | Prevents duplicate or hijacked memberships | Yes |
-| TD-05 | Device private-key protection and recovery mechanism | Defines recovery, multi-device, and lost-device acceptance tests | Yes |
-| TD-06 | Member and device revocation semantics, including already downloaded data | Defines enforceable security claims and residual risk | Yes |
-| TD-07 | Key rotation trigger, completion state, and offline-device behavior | Required for key-version compatibility tests | Yes |
-| TD-08 | Exact encrypted-envelope schema and server-visible metadata | Required for crypto vectors, validation, and privacy inspection | Yes |
-| TD-09 | Credential document exclusion point and category validation source | Must be enforced beyond UI | Yes |
-| TD-10 | Revision and idempotency response contracts, including replay after a successful write whose response was lost | Required for duplicate-free sync tests | Yes |
-| TD-11 | Conflict UX and local-draft retention behavior | Required for user-visible recovery E2E | Yes |
-| TD-12 | Client storage for collaboration cache, device keys, and outbox | Determines quota, browser lifecycle, and offline testing | Yes |
-| TD-13 | Data limits and pagination defaults for members, documents, revisions, and audit events | Required for validation and performance tests | Yes |
-| TD-14 | D1 migration orchestration relative to Cloudflare automatic deployment | Required to prove schema/code compatibility and rollback | Yes |
-| TD-15 | Test hooks for clock, UUID/token generation, and external OAuth without production bypasses | Required for reliable deterministic tests | Yes |
-| TD-16 | Standard request ID, error envelope, error-code catalog, and log redaction fields | Required for contract and evidence assertions | Yes |
-| TD-17 | Pages Functions local/integration harness and CI runner | Determines executable integration coverage | Yes |
-| TD-18 | Expected workspace workload and measurable API/client performance budgets | Required before performance sign-off | No for Phase 1 scaffold; yes before feature release |
-| TD-19 | Supported browsers and minimum versions, including Web Crypto behavior | Required for crypto and browser coverage matrix | Yes before key implementation |
-| TD-20 | Production canary workspace and non-destructive smoke policy | Required for production evidence | No for Phase 1; yes before rollout |
+| TD-01 | GitHub OAuth; preview has a separate OAuth application, callback, subjects, and D1 | ADR-002, ADR-012 | Resolved |
+| TD-02 | Hash-only opaque session; 12-hour idle, 7-day absolute, immediate revocation, 15-minute high-risk reauth | ADR-002 | Resolved |
+| TD-03 | SameSite cookie plus exact Origin and session-bound synchronizer CSRF proof on every mutation | ADR-002, ADR-011 | Resolved |
+| TD-04 | Immutable numeric GitHub subject is identity; login/email is display metadata only | ADR-002, ADR-009 | Resolved |
+| TD-05 | P-256 device key, encrypted local private key, key-ready Owner/Admin provisioning, no escrow/exported recovery kit | ADR-004, ADR-010 | Resolved |
+| TD-06 | Current authorization on every request; immediate server/device denial; prior downloads cannot be erased | ADR-003, ADR-010 | Resolved |
+| TD-07 | Rotation on removal/compromise for future versions; explicit paused migration and historical-access limits | ADR-010 | Resolved |
+| TD-08 | Versioned P-256/HKDF/AES-GCM envelope and strict encrypted/server-visible field allow-list | ADR-004, ADR-005 | Resolved |
+| TD-09 | Official client rejects credential category before encryption; server cannot inspect opaque semantic content | ADR-005, ADR-007 plus Day 4 limitation | Resolved with accepted residual risk |
+| TD-10 | Atomic revision CAS, stable 409, scoped fingerprinted 30-day idempotency replay | ADR-006 | Resolved |
+| TD-11 | Draft retained; review latest, reapply, save copy, encrypted draft backup, or confirmed discard | ADR-006 | Resolved |
+| TD-12 | Encrypted IndexedDB, environment/user/device/workspace namespace, FIFO dependency, 100 entries/25 MiB, seven-day quarantine | ADR-006, ADR-007 | Resolved |
+| TD-13 | API default page 50/max 100 plus Day 4 workload baseline; route-specific body/envelope bounds stay in API schema | ADR-011 and Day 4 | Resolved for quality design; exact schemas required before route implementation |
+| TD-14 | Immutable ordered expand/contract migration, dedicated step, compatibility window, recovery point, flag and restore drill | ADR-012 | Resolved |
+| TD-15 | Deterministic seams only through dependency injection; production build excludes test adapters and bypasses | Day 4 quality contract | Resolved |
+| TD-16 | Stable error code/request ID, allow-listed log fields, no body/secret/stack/SQL echo | ADR-008, ADR-011 | Resolved for quality design; exact catalog required before route implementation |
+| TD-17 | `@cloudflare/vitest-pool-workers` Pages recipe with real disposable local D1; Playwright multi-context browser layer | Day 4 quality contract | Resolved |
+| TD-18 | 25 members, 10,000 documents, 50 revisions/document, 10 active users; API/client/bundle budgets in section 4.7 | Day 4 quality contract | Proposed for Gate G3 |
+| TD-19 | Latest two stable Chrome, Edge, Firefox; Safari 17.4+ with fail-closed capability detection | Day 4 quality contract | Proposed for Gate G3 |
+| TD-20 | Dedicated synthetic production canary; non-destructive smoke, explicit cleanup, deployment/migration evidence | ADR-012 and Day 4 quality contract | Proposed for Gate G3 |
 
-## 12. Day 1 conclusion
+## 11. Gate G3 Senior QA checklist
 
-The current repository has strong characterization around its static personal-vault runtime, Vault V2 migration, storage/sync resilience, strict CSP, offline shell, performance budgets, and production artifact. Collaboration introduces a new server, identity, authorization, database, key-distribution, revision, and multi-user failure domain that the existing tests do not cover.
+- [x] All 60 stable requirements retain a control, planned verification, evidence owner, and phase in the traceability matrix.
+- [x] Every P0/P1 threat maps to a stable requirement, contract, owner, and required evidence family.
+- [x] TD-01 through TD-20 have a decision source and honest status.
+- [x] Local Functions/D1 and multi-user browser harnesses are selected without production test bypasses.
+- [x] Preview/production OAuth, D1, secret, session, origin, user, and evidence isolation is explicit.
+- [x] Workload, API/client/bundle budgets, browser support, and WCAG 2.2 AA target are measurable.
+- [x] Credential-category prevention and the ciphertext-only server limitation are both stated accurately.
+- [x] Evidence commands, naming, redaction, side-effect inspection, and production canary policy are defined.
+- [x] P0/P1 evidence permits zero skips, quarantines, disabled cases, or accepted flakiness.
+- [ ] Product Owner approves workload, budgets, browser matrix, production canary, and accepted credential-content residual risk.
+- [ ] Technical Lead approves harness, command surface, preview isolation, exact API/schema contract ownership, and migration evidence.
+- [ ] Security Reviewer approves deterministic-seam exclusion, canary/evidence redaction, and credential limitation wording.
+- [ ] Senior QA records Gate G3 `PASSED`; until then Phase 1 runtime implementation remains `NO-GO`.
 
-The highest Day 1 quality priority is therefore isolation: collaboration must be introduced through explicit boundaries and contracts rather than by extending the current global persistence and timestamp-merge paths in place. Phase 0 should close the blocking decisions above and convert the matrix scaffold into complete acceptance and verification traceability before implementation starts.
+## 12. Day 4 conclusion
+
+The Day 4 quality design is decision-complete enough for Gate G3 review. Existing personal-vault, Vault V2, storage/sync, CSP, offline-shell, performance, artifact, guest, public-share, and both-deployment regressions remain mandatory. Collaboration adds a second executable evidence stack: real local Pages Functions/D1, contract/security suites, isolated multi-user Playwright, production-like preview, and a non-destructive production canary.
+
+Squad recommendation: `GO` to Gate G3 review, `NO-GO` for Phase 1 runtime implementation until the unchecked approvals above are recorded and the Phase 0 exit package is complete.

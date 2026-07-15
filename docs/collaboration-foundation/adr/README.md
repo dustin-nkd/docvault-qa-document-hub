@@ -1,6 +1,6 @@
 # Collaboration Foundation Architecture Decision Records
 
-Status: Day 3 review set
+Status: Approved at Gate G2
 
 Date: 2026-07-15
 
@@ -10,18 +10,18 @@ Phase 1 implementation remains prohibited until Gate G2 and the complete Phase 0
 
 | ADR | Decision | Owner | Status |
 |---|---|---|---|
-| [ADR-001](001-runtime-and-storage.md) | Runtime and storage boundary | Architect | Proposed for Gate G2 |
-| [ADR-002](002-authentication-and-sessions.md) | Authentication and sessions | Security | Proposed for Gate G2 |
-| [ADR-003](003-workspace-rbac.md) | Workspace RBAC | Product + Security | Proposed for Gate G2 |
-| [ADR-004](004-device-and-workspace-keys.md) | Device and workspace keys | Security + Architect | Proposed for Gate G2 |
-| [ADR-005](005-metadata-encryption-boundary.md) | Metadata encryption boundary | Product + Security | Proposed for Gate G2 |
-| [ADR-006](006-revisions-conflicts-and-idempotency.md) | Revisions, conflicts, and idempotency | Architect + QA | Proposed for Gate G2 |
-| [ADR-007](007-provider-isolation.md) | Personal and collaboration provider isolation | Architect + Product | Proposed for Gate G2 |
-| [ADR-008](008-audit-and-retention.md) | Audit and retention | Product + Security + QA | Proposed for Gate G2 |
-| [ADR-009](009-invitations-and-membership.md) | Invitations and membership | Product + Security | Proposed for Gate G2 |
-| [ADR-010](010-revocation-rotation-and-recovery.md) | Revocation, rotation, and recovery | Product + Security | Proposed for Gate G2 |
-| [ADR-011](011-browser-and-api-security.md) | Browser and API security | Security + Architect | Proposed for Gate G2 |
-| [ADR-012](012-migrations-and-rollback.md) | Migrations and rollback | Architect + QA | Proposed for Gate G2 |
+| [ADR-001](001-runtime-and-storage.md) | Runtime and storage boundary | Architect | Approved at Gate G2 |
+| [ADR-002](002-authentication-and-sessions.md) | Authentication and sessions | Security | Approved at Gate G2 |
+| [ADR-003](003-workspace-rbac.md) | Workspace RBAC | Product + Security | Approved at Gate G2 |
+| [ADR-004](004-device-and-workspace-keys.md) | Device and workspace keys | Security + Architect | Approved at Gate G2 |
+| [ADR-005](005-metadata-encryption-boundary.md) | Metadata encryption boundary | Product + Security | Approved at Gate G2 |
+| [ADR-006](006-revisions-conflicts-and-idempotency.md) | Revisions, conflicts, and idempotency | Architect + QA | Approved at Gate G2 |
+| [ADR-007](007-provider-isolation.md) | Personal and collaboration provider isolation | Architect + Product | Approved at Gate G2 |
+| [ADR-008](008-audit-and-retention.md) | Audit and retention | Product + Security + QA | Approved at Gate G2 |
+| [ADR-009](009-invitations-and-membership.md) | Invitations and membership | Product + Security | Approved at Gate G2 |
+| [ADR-010](010-revocation-rotation-and-recovery.md) | Revocation, rotation, and recovery | Product + Security | Approved at Gate G2 |
+| [ADR-011](011-browser-and-api-security.md) | Browser and API security | Security + Architect | Approved at Gate G2 |
+| [ADR-012](012-migrations-and-rollback.md) | Migrations and rollback | Architect + QA | Approved at Gate G2 |
 
 ## Status rules
 

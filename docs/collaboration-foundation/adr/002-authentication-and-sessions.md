@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval. No implementation is authorized by this ADR alone.
+Approved at Gate G2. No implementation is authorized by this ADR alone.
 
 ## Date
 
@@ -84,7 +84,7 @@ CF-ID-001 through CF-ID-004; CF-SES-001 through CF-SES-004; CF-OPS-002 and CF-OP
 ## Gate G2 acceptance
 
 - [x] Security Reviewer approves the stable-subject, OAuth transaction, session, CSRF, and reauthentication contracts.
-- [ ] Product Owner approves high-risk actions and session durations.
+- [x] Product Owner approves high-risk actions and session durations.
 - [x] Preview and production OAuth/session isolation is specified and provisionable.
 - [x] Senior QA maps every contract boundary to deterministic positive and negative evidence.
 - [x] No open P0/P1 auth/session threat lacks an owner, control, or test.

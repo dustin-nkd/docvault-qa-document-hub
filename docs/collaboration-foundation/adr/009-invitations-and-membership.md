@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted by Product Owner for the Phase 0 product contract. Security/technical review and Gate G2 evidence remain required; invitation delivery UX is still open.
+Approved at Gate G2 as the Phase 0 product contract; implementation evidence remains required before release.
 
 ## Date
 
@@ -148,7 +148,7 @@ Costs and limitations:
 - [x] Security Reviewer approves token entropy/hash construction, provider lookup, anti-enumeration, and URL-handling contract.
 - [x] Technical Lead approves GitHub API identity-resolution behavior, timeout/rate limits, and transaction contract.
 - [x] UX Lead approves manual fragment-link delivery, single-pending replacement, invite preview, and recovery messaging.
-- [ ] Product Owner approves manual fragment-link delivery, single-pending replacement, invite preview, and recovery messaging.
+- [x] Product Owner approves manual fragment-link delivery, single-pending replacement, invite preview, and recovery messaging.
 - [x] Retention and cleanup rules are approved through ADR-008.
 - [x] Senior QA accepts the identity, lifecycle, race, privacy, and pending-key provisioning evidence plan; executable evidence remains a Phase 1 release gate.
 

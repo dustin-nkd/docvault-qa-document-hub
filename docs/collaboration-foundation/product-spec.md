@@ -6,8 +6,8 @@
 | --- | --- |
 | Document ID | CF-PROD-001 |
 | Phase | Phase 0 — Specification and Threat Model |
-| Sprint checkpoint | Day 1 — Product framing and Gate G0 |
-| Status | Gates G0 and G1 approved; baseline for Day 3 |
+| Sprint checkpoint | Day 4 — Contracts and quality strategy |
+| Status | Gates G0, G1, and G2 approved; Day 4 contract clarification proposed for Gate G3 |
 | Version | 0.1 |
 | Owner | Product Owner / Senior Business Analyst |
 | Required reviewers | Product Owner, Technical Lead, Senior QA, Security Reviewer, UX Lead |
@@ -363,20 +363,20 @@ An invalidated assumption must create a recorded product decision and impact ass
 
 | ID | Decision | Recommended starting position | Owner(s) | Required by | Status |
 | --- | --- | --- | --- | --- | --- |
-| PD-01 | External identity provider | GitHub OAuth using stable provider subject, not username | Product + Security | Day 3 | Proposed in ADR-002 |
-| PD-02 | Invitation addressing | Resolve entered GitHub username at creation and bind the invitation to the immutable provider subject; email deferred | Product | Day 3 | Proposed in ADR-009 |
+| PD-01 | External identity provider | GitHub OAuth using stable provider subject, not username | Product + Security | Day 3 | Approved at Gate G2 in ADR-002 |
+| PD-02 | Invitation addressing | Resolve entered GitHub username at creation and bind the invitation to the immutable provider subject; email deferred | Product | Day 3 | Approved at Gate G2 in ADR-009 |
 | PD-03 | Workspace role matrix | Owner, Admin, Editor, Viewer with authorization enforced by API | Product + QA + Security | Day 2 | Approved at Gate G1 |
-| PD-04 | Protected metadata | Encrypt all document semantics and workspace description; keep a bounded workspace display name plus the ADR-005 operational allow-list server-side | Product + Security | Day 3 | Proposed in ADR-005 |
-| PD-05 | Private device-key protection | Encrypt at rest with a user-specific local unlock secret; import only a non-extractable in-memory key while unlocked | Security + Product | Day 3 | Proposed in ADR-004 |
-| PD-06 | Lost-device/all-keys recovery | Foundation uses another key-ready Owner/Admin device and no server escrow/exported recovery kit; all-provisioners-lost can be terminal | Product + Security | Day 3 | Proposed in ADR-010 |
-| PD-07 | Member removal and key rotation | Immediate authorization denial; mandatory future-key rotation on removal, compromise, or suspected exposure | Security + Product | Day 3 | Proposed in ADR-010 |
-| PD-08 | Audit retention | Allow-listed server audit metadata retained 365 days; protected content and secret material prohibited | Product + Security | Day 3 | Proposed in ADR-008 |
+| PD-04 | Protected metadata | Encrypt all document semantics and workspace description; keep a bounded workspace display name plus the ADR-005 operational allow-list server-side | Product + Security | Day 3 | Approved at Gate G2 in ADR-005 |
+| PD-05 | Private device-key protection | Encrypt at rest with a user-specific local unlock secret; import only a non-extractable in-memory key while unlocked | Security + Product | Day 3 | Approved at Gate G2 in ADR-004 |
+| PD-06 | Lost-device/all-keys recovery | Foundation uses another key-ready Owner/Admin device and no server escrow/exported recovery kit; all-provisioners-lost can be terminal | Product + Security | Day 3 | Approved at Gate G2 in ADR-010 |
+| PD-07 | Member removal and key rotation | Immediate authorization denial; mandatory future-key rotation on removal, compromise, or suspected exposure | Security + Product | Day 3 | Approved at Gate G2 in ADR-010 |
+| PD-08 | Audit retention | Allow-listed server audit metadata retained 365 days; protected content and secret material prohibited | Product + Security | Day 3 | Approved at Gate G2 in ADR-008 |
 | PD-09 | Personal-to-workspace operation | Explicit one-time copy; no automatic migration or ongoing synchronization link | Product | Day 2 | Approved at Gate G0 |
-| PD-10 | Eligible document categories | Credential exclusion is approved; approval of every other category remains pending Security review | Product + Security | Day 4 | Partially approved |
-| PD-11 | Offline support boundary | Retain encrypted pending mutations in an isolated, bounded outbox with expiry and quarantine | Product + UX + QA | Day 3 | Proposed in ADR-006 |
-| PD-12 | Conflict UX | Preserve the local draft and offer review-latest or save-as-copy; no automatic last-writer-wins | Product + UX + QA | Day 3 | Proposed in ADR-006 |
-| PD-13 | Ownership transfer safeguards | Reauthentication within 15 minutes, strong confirmation, eligible successor, and atomic last-Owner protection | Product + Security | Day 3 | Proposed in ADR-002/003/010 |
-| PD-14 | Collaboration fallback messaging | GitHub Pages remains personal/guest-only and links once to the canonical Cloudflare deployment | Product + UX | Day 3 | Proposed in ADR-001/007/011 |
+| PD-10 | Eligible document categories | All current non-Credential categories are eligible through the official explicit copy/create workflows. The official client blocks stored Credential documents. Because category and content are E2EE ciphertext, the API can validate envelopes but cannot semantically detect a malicious authorized client that hides credential content; this is a truthful residual-risk boundary, not a server-enforced plaintext guarantee. | Product + Security | Day 4 | Proposed for Gate G3 |
+| PD-11 | Offline support boundary | Retain encrypted pending mutations in an isolated, bounded outbox with expiry and quarantine | Product + UX + QA | Day 3 | Approved at Gate G2 in ADR-006 |
+| PD-12 | Conflict UX | Preserve the local draft and offer review-latest or save-as-copy; no automatic last-writer-wins | Product + UX + QA | Day 3 | Approved at Gate G2 in ADR-006 |
+| PD-13 | Ownership transfer safeguards | Reauthentication within 15 minutes, strong confirmation, eligible successor, and atomic last-Owner protection | Product + Security | Day 3 | Approved at Gate G2 in ADR-002/003/010 |
+| PD-14 | Collaboration fallback messaging | GitHub Pages remains personal/guest-only and links once to the canonical Cloudflare deployment | Product + UX | Day 3 | Approved at Gate G2 in ADR-001/007/011 |
 
 Open decisions are not permission to make implicit implementation choices. Any P0 decision still open at its required-by date blocks the dependent Phase 1 work.
 

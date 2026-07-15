@@ -1,6 +1,6 @@
 # ADR-007: Personal and Collaboration Provider Isolation
 
-Status: Proposed for Gate G2
+Status: Approved at Gate G2
 
 Date: 2026-07-15
 
@@ -34,7 +34,7 @@ The only Foundation transfer is an explicit one-time `Copy to workspace` operati
 
 ### Copy eligibility and semantics
 
-- Credential documents are rejected by UI and API policy.
+- The official client rejects stored Credential documents before copy/create encryption. The API enforces provider, authorization, envelope, and routing policy but, by design, cannot semantically inspect encrypted category/content or guarantee rejection from a malicious authorized client. This Day 4 clarification requires Gate G3 residual-risk acceptance.
 - The user selects one eligible personal document and a destination workspace where the user is an Editor, Admin, or Owner and is key-ready.
 - The confirmation identifies that a new independent copy will be created and that later edits do not synchronize.
 - Destination encryption occurs before the request crosses the browser boundary.

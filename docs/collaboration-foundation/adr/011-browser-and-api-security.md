@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval.
+Approved at Gate G2.
 
 ## Date
 

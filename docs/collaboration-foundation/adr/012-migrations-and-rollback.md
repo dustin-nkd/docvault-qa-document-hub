@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval.
+Approved at Gate G2.
 
 ## Date
 
@@ -144,5 +144,5 @@ The runbook records recovery-point objective, recovery-time objective measuremen
 - [x] Operations approves environment isolation, recovery-point creation, monitoring, rollback decision tree, and timed restore drill as implementable controls.
 - [x] Security Reviewer approves binding/secret isolation, recovery-artifact controls, logging exclusions, and production denial of test bypasses.
 - [x] Senior QA confirms empty/populated/repeated/faulted migration, compatibility, integrity, performance, isolation, rollback, and restore cases are measurable and release-blocking where P1 applies.
-- [ ] Product Owner accepts feature-flagged rollout, possible recovery-point gap, and the extra release required before destructive contraction.
+- [x] Product Owner accepts feature-flagged rollout, possible recovery-point gap, and the extra release required before destructive contraction.
 - [x] No runtime implementation begins until Gate G2 approves this ADR and the deployment/schema runbook reflects it.

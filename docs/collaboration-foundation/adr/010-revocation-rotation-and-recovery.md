@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for Gate G2 approval. Terminal-loss UX and retention values require Product Owner sign-off.
+Approved at Gate G2, including terminal-loss UX and retention consequences.
 
 ## Date
 
@@ -90,7 +90,7 @@ CF-DEV-003 and CF-DEV-004; CF-RBAC-003; CF-KEY-004 through CF-KEY-006; CF-SYNC-0
 ## Gate G2 acceptance
 
 - [x] Security Reviewer approves rotation triggers, Owner-only rotation initiation, historical access, and no-artifact recovery policy.
-- [ ] Product Owner accepts terminal-loss UX and inability to revoke previously downloaded plaintext, ciphertext, or old keys.
+- [x] Product Owner accepts terminal-loss UX and inability to revoke previously downloaded plaintext, ciphertext, or old keys.
 - [x] Role/owner and authorized-provisioner policies contain no unresolved `Allow*`/`Deny*` values.
 - [x] Day 4 API/D1 schemas must reflect atomic state transitions and monotonic key-version contracts.
 - [x] Senior QA owns the release-blocking revocation, race, rotation, recovery, and rollback drill plan.
