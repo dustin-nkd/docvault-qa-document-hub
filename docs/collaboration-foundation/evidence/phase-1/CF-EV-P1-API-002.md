@@ -1,6 +1,6 @@
 # CF-EV-P1-API-002 — Route resolution contract
 
-Status: PASS locally; retained deployment evidence pending
+Status: PASS
 
 Date: 2026-07-15
 

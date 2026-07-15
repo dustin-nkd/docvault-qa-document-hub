@@ -1,6 +1,6 @@
 # CF-EV-P1-API-005 — Bounded body and JSON contract
 
-Status: PASS locally; retained deployment evidence pending
+Status: PASS
 
 Date: 2026-07-15
 

@@ -1,6 +1,6 @@
 # Phase 1 disabled API runtime shell
 
-Status: `CF-P1-004` implemented and locally verified; retained deployment evidence pending
+Status: `CF-P1-004` implemented, deployed, and verified
 
 Date: 2026-07-15
 
@@ -55,5 +55,15 @@ Release gates reject `passThroughOnException`, `context.next()`, `Math.random()`
 - `CF-EV-P1-SEC-003`: side-effect/artifact/privacy review.
 - Requirements: `CF-OPS-001/004/005`, `CF-SES-004`.
 - Risks: `R13`, `R15`, `R16`, `R21`; threats: `T14`, `T16`, `T21`, `T23`.
+
+## Retained deployment result
+
+- Implementation commit: `60e37e2d8adb786a9a858711ad5daf1f9ed444d3`.
+- GitHub Actions run: `29431093836`, success on Node 22 with all release gates and GitHub Pages deployment.
+- Cloudflare production deployment: `c4657e36-265f-4ff3-ab39-60add79b3a45`, success from clean `main`.
+- Canonical production matrix: session `503 COLLABORATION_UNAVAILABLE`; unknown route `404 RESOURCE_NOT_FOUND`; wrong method `405 METHOD_NOT_ALLOWED` with `Allow: GET`; missing media `415 UNSUPPORTED_MEDIA_TYPE`; malformed JSON `400 INVALID_JSON`.
+- Cloudflare and GitHub static guest origins: HTTP 200.
+
+Cloudflare also attempted a non-production build from the generated `gh-pages` artifact branch and failed before deploy because that branch is not an application source checkout. It did not affect the successful `main` deployment or either production origin. This is retained as a branch-control input for `CF-P1-005`; no preview-isolation evidence is claimed by this story.
 
 Official references: [Pages Functions routing](https://developers.cloudflare.com/pages/functions/routing/), [routing control](https://developers.cloudflare.com/pages/functions/routing/#functions-invocation-routes), [Workers TypeScript](https://developers.cloudflare.com/workers/languages/typescript/), and [Workers best practices](https://developers.cloudflare.com/workers/best-practices/workers-best-practices/).
