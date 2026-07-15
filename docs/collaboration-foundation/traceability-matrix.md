@@ -6,7 +6,7 @@
 
 **Sprint checkpoint:** Day 4 — Quality architecture and Gate G3 readiness
 
-**Status:** Day 4 proposed quality and traceability contract for Gate G3
+**Status:** Approved at Gate G3; Day 5 Phase 0 exit traceability baseline
 
 **Owner:** Senior QA
 
@@ -79,6 +79,8 @@ The canonical threat identifiers are `T01` through `T23` in `threat-model.md`. T
 
 ## 3. Master traceability matrix
 
+In legacy rows below, `Draft` means the runtime/evidence has not yet been implemented; the requirement and measurable control are part of the Gate G3-approved contract baseline. Day 5 does not treat those rows as open product or architecture decisions.
+
 ### 3.1 Identity, sessions, and devices
 
 | Requirement ID | Journey / domain rule | Threat or failure | Required control / measurable contract | Planned tests | Evidence owner | Phase | Status |
@@ -127,7 +129,7 @@ The canonical threat identifiers are `T01` through `T23` in `threat-model.md`. T
 | CF-DOC-001 | J4: Eligible shared-document protected fields are encrypted before upload | D1, logs, or operators see title/content/tags/category data | Approved encrypted-metadata boundary; authenticated versioned payload; fresh IV; no plaintext fallback | U: round trip/fresh IV/tamper; I: persisted records; E: Editor-to-Viewer; S: D1/log scan | Security Reviewer, Senior QA | 5, 6 | ADR-004/005 approved; verification planned |
 | CF-DOC-002 | J4: Viewer can read authorized documents but cannot create, update, delete, or copy into workspace | UI-only enforcement permits direct mutation | Server RBAC on each mutation; read-only UI is a secondary control | U: policy; A/S: direct Viewer mutation attempts; E: read-only state | Senior QA, Security Reviewer, UX Lead | 6, 7 | ADR-003 approved; verification planned |
 | CF-DOC-003 | Every successful mutation creates exactly one authoritative append-only revision and attributable audit event | History alteration, missing actor, or partial write | D1 transaction; server revision/time/actor; immutable prior revision; audit event in the same defined consistency boundary | I/A: create/update/delete and failure injection; S: forged actor/time; O: data inspection | Developer, Senior QA | 6 | Draft |
-| CF-DOC-004 | The official client never offers a stored Credential document as eligible for Collaboration Foundation | Client copy/category flows expose stored credentials, or product claims imply ciphertext semantic inspection | UI/domain validation rejects Credential records before encryption for copy/import/category/batch flows; because category and content are encrypted, the API validates envelope/schema/authorization but cannot detect an authorized malicious client that labels or pastes secret content as an eligible document | U: official-client eligibility and category transitions; E: controls absent and truthful warning; S: verify no plaintext inspection path and record authorized-insider residual risk | Product Owner, Senior QA, Security Reviewer | 6, 7 | ADR-005/007 client boundary approved; residual risk proposed for Gate G3 |
+| CF-DOC-004 | The official client never offers a stored Credential document as eligible for Collaboration Foundation | Client copy/category flows expose stored credentials, or product claims imply ciphertext semantic inspection | UI/domain validation rejects Credential records before encryption for copy/import/category/batch flows; because category and content are encrypted, the API validates envelope/schema/authorization but cannot detect an authorized malicious client that labels or pastes secret content as an eligible document | U: official-client eligibility and category transitions; E: controls absent and truthful warning; S: verify no plaintext inspection path and record authorized-insider residual risk | Product Owner, Senior QA, Security Reviewer | 6, 7 | ADR-005/007 boundary and residual risk approved at Gate G3; evidence planned |
 | CF-DOC-005 | Decrypted user-controlled fields render through existing safe markup/content boundaries | Ciphertext decrypts into XSS that steals plaintext keys/content | Safe rendering and action serialization; strict CSP retained; no unsafe HTML/inline handlers | U: hostile strings; E/S: stored XSS payloads across document fields; CSP regression | Developer, Senior QA, Security Reviewer | 6, 7 | Draft |
 | CF-DOC-006 | Deletion uses an authoritative, revisioned tombstone until retention is approved | Deleted content reappears, history disappears unexpectedly, or old client resurrects it | Tombstone revision participates in conflict/idempotency and list filtering; physical revisions remain retained until a separately approved deletion policy | U: state; I/A: delete/retry/stale restore; E: offline old-client reconnect | Product Owner, Senior QA | 6 | ADR-006/008 approved baseline; physical purge deny-closed |
 | CF-SYNC-001 | J5: Shared updates use server revision compare-and-set, never client timestamp last-write-wins | Concurrent Editor silently overwrites another | Mutation includes `baseRevision`; atomic compare-and-set; stale write returns stable `409` without changing latest revision | U: revision decision; I/A: simultaneous writers; E: two Editors; S: forged timestamp ignored | Developer, Senior QA | 6 | Draft |
@@ -143,7 +145,7 @@ The canonical threat identifiers are `T01` through `T23` in `threat-model.md`. T
 | CF-AUD-001 | J2–J8: Security-relevant actions produce attributable, ordered audit events | Missing accountability or client-forged history | Server actor/time/event type; stable ordering; allow-listed metadata; authorized audit access | U: event schema/redaction; I/A: event per action; S: actor/time spoof; E: Owner/Admin access | Senior QA, Security Reviewer | 4–8 | ADR-008 approved; verification planned |
 | CF-AUD-002 | Audit and operational logs never become a second content/secret store | Plaintext title/content, ciphertext body, keys, token, cookie, OAuth code, or invitation appears in logs | Structured allow-list logging, size limits, redaction, 365-day audit baseline, 30-day terminal session/invitation/idempotency records, and access policy | U: redactor; I: emitted-field inspection; S: canary sensitive strings across success/error paths | Security Reviewer, Senior QA | 1–8 | ADR-008/011 approved; exact event/error schemas proposed before implementation |
 | CF-ISO-001 | Personal Vault and Collaboration use explicit separate providers | Collaboration action mutates `DocStorage`/GitHub Sync or personal action reaches D1 | Provider interface and explicit active context; no implicit migration or synchronization link | U: routing; I/E: create/edit/delete/import/export/switch/reload; network/storage inspection | Developer, Senior QA | 6, 7 | Draft |
-| CF-ISO-002 | J8: Personal-to-workspace transfer is an explicit one-time copy and leaves source unchanged | Automatic upload, hidden link, later propagation, or official-client copy of a Credential record | User confirmation, official-client eligibility validation before encryption, new ID/revision/encryption, and no source mutation/link; the ciphertext-only API cannot semantically inspect an authorized malicious client's payload | U: copy transformation/eligibility; E: confirm/cancel/copy/edit both sides and credential controls absent; S: residual-risk wording | Product Owner, Senior QA, Security Reviewer, UX Lead | 6, 7 | ADR-007 approved; credential residual risk proposed for Gate G3 |
+| CF-ISO-002 | J8: Personal-to-workspace transfer is an explicit one-time copy and leaves source unchanged | Automatic upload, hidden link, later propagation, or official-client copy of a Credential record | User confirmation, official-client eligibility validation before encryption, new ID/revision/encryption, and no source mutation/link; the ciphertext-only API cannot semantically inspect an authorized malicious client's payload | U: copy transformation/eligibility; E: confirm/cancel/copy/edit both sides and credential controls absent; S: residual-risk wording | Product Owner, Senior QA, Security Reviewer, UX Lead | 6, 7 | ADR-007 and credential residual risk approved at Gate G3; evidence planned |
 | CF-ISO-003 | Existing GitHub PAT and GitHub Sync remain personal-only | PAT reaches backend or GitHub timestamp merge controls shared data | No collaboration API field accepts PAT; shared writes only use revision API; GitHub provider regression remains green | U/static: forbidden fields/dependencies; I/S: request/log scan; existing sync regression | Technical Lead, Senior QA, Security Reviewer | 1–9 | Accepted baseline |
 | CF-ISO-004 | Existing public-share links remain distinct from authenticated membership | Bearer share grants workspace access or receives workspace key | Separate route/state/provider; share token/key cannot establish session, membership, or envelope access | U: capability routing; A/S: use share identifiers on workspace APIs; E: public-share regression | Senior QA, Security Reviewer | 3–9 | Draft |
 | CF-ISO-005 | Guest mode remains in-memory and never calls collaboration, local vault, or GitHub Sync persistence | Demo changes pollute real data or generate real audit events | Existing guest early return preserved; collaboration disabled before storage/auth/network bootstrap | U: hydrate/persist; E: network, local/session/IndexedDB, D1/audit inspection | Senior QA | 1–9 | Draft |
@@ -154,10 +156,10 @@ The canonical threat identifiers are `T01` through `T23` in `threat-model.md`. T
 | CF-OPS-003 | Code and D1 schema deploy in a backward-compatible, recoverable order | Automatic Pages deploy runs incompatible code or corrupts data | Versioned immutable migrations, expand/contract compatibility, preflight, recovery point/restore, feature flag, canary, and rollback runbook | I: empty/populated/repeated/faulted migrations; O: old/new compatibility, restore and rollback rehearsal | Technical Lead, Developer, Senior QA | 2, 9 | ADR-012 approved; executable runbook/evidence proposed before implementation |
 | CF-OPS-004 | Production can disable Collaboration without deleting shared data or breaking Personal Vault | Incident requires destructive rollback or full product outage | Server/client feature flag; non-destructive disable path; personal mode independent | U: flag routing; E/O: preview and canary disable/enable rehearsal | Technical Lead, Senior QA | 1, 9 | Draft |
 | CF-OPS-005 | API errors are observable but privacy-safe | Failures cannot be diagnosed or leak internal/resource details | Request ID, stable error code, route/result/latency fields, sanitized client message, no stack/SQL/cross-workspace detail | U: mapper/redactor; A: error catalog; S: hostile/error-path scan; O: request-to-log correlation | Developer, Senior QA, Security Reviewer | 1–8 | ADR-008/011 approved; exact route error catalog proposed before implementation |
-| CF-NFR-001 | Collaboration meets an approved initial workload and latency budget | Slow API or decrypt/render path makes team use unreliable | 25 members/workspace, 10,000 documents, 50 revisions/document, 10 active users; preview read p95 ≤300 ms, write p95 ≤500 ms, and decrypt/render 100 documents p95 ≤500 ms on recorded reference hardware | U/static: limits; A: pagination; P: API load and client decrypt/render; O: preview metrics | Product Owner, Senior QA, Technical Lead | 1–9 | Day 4 budget proposed for Gate G3 |
-| CF-NFR-002 | Collaboration modules do not regress existing dashboard startup budget | Eager auth/editor/crypto code increases static startup cost | Feature-gated lazy loading; initial collaboration JS on personal/guest startup ≤75 KiB gzip; existing performance suites stay green | Static/U: dependency boundary; P: asset and startup comparison; E: guest/personal startup | Developer, Senior QA | 1–9 | Day 4 budget proposed for Gate G3 |
-| CF-NFR-003 | Collaboration workflows meet WCAG 2.2 AA | Keyboard/screen-reader users cannot invite, manage roles, recover conflicts, or understand sync state | Semantic controls, visible focus, announced status/errors, non-color state, dialog focus management, AA contrast | X/E: automated scan plus keyboard, zoom, reduced motion, and screen-reader journeys | UX Lead, Senior QA | 7–9 | Day 4 WCAG 2.2 AA contract proposed for Gate G3 |
-| CF-NFR-004 | Supported browsers implement the selected crypto, storage, and session behavior consistently | Key generation/decryption or offline storage fails on a supported browser | Latest two stable Chrome, Edge, and Firefox plus Safari 17.4+; capability detection fails closed with recovery guidance | U: capability decisions; E/S: browser matrix, crypto vectors, IndexedDB and cookie behavior | Product Owner, Senior QA, Security Reviewer | 3–9 | Day 4 browser matrix proposed for Gate G3 |
+| CF-NFR-001 | Collaboration meets an approved initial workload and latency budget | Slow API or decrypt/render path makes team use unreliable | 25 members/workspace, 10,000 documents, 50 revisions/document, 10 active users; preview read p95 ≤300 ms, write p95 ≤500 ms, and decrypt/render 100 documents p95 ≤500 ms on recorded reference hardware | U/static: limits; A: pagination; P: API load and client decrypt/render; O: preview metrics | Product Owner, Senior QA, Technical Lead | 1–9 | Budget approved at Gate G3; evidence planned |
+| CF-NFR-002 | Collaboration modules do not regress existing dashboard startup budget | Eager auth/editor/crypto code increases static startup cost | Feature-gated lazy loading; initial collaboration JS on personal/guest startup ≤75 KiB gzip; existing performance suites stay green | Static/U: dependency boundary; P: asset and startup comparison; E: guest/personal startup | Developer, Senior QA | 1–9 | Budget approved at Gate G3; evidence planned |
+| CF-NFR-003 | Collaboration workflows meet WCAG 2.2 AA | Keyboard/screen-reader users cannot invite, manage roles, recover conflicts, or understand sync state | Semantic controls, visible focus, announced status/errors, non-color state, dialog focus management, AA contrast | X/E: automated scan plus keyboard, zoom, reduced motion, and screen-reader journeys | UX Lead, Senior QA | 7–9 | WCAG 2.2 AA contract approved at Gate G3; evidence planned |
+| CF-NFR-004 | Supported browsers implement the selected crypto, storage, and session behavior consistently | Key generation/decryption or offline storage fails on a supported browser | Latest two stable Chrome, Edge, and Firefox plus Safari 17.4+; capability detection fails closed with recovery guidance | U: capability decisions; E/S: browser matrix, crypto vectors, IndexedDB and cookie behavior | Product Owner, Senior QA, Security Reviewer | 3–9 | Browser matrix approved at Gate G3; evidence planned |
 
 ## 4. Parameterized role/action verification matrix
 
@@ -319,7 +321,7 @@ Gate G1 determines whether Phase 0 requirements are sufficiently traceable to co
 - [x] Role/action parameterization includes Owner, Admin, Editor, Viewer, removed/revoked, unauthenticated, and Guest states.
 - [x] Cross-workspace, nonexistent, deleted, malformed, and forged-actor variants are required.
 - [x] Product Owner approves the proposed role policy and Admin ceilings; the later RBAC ADR preserves that approved policy.
-- [ ] Ownership transfer, last-Owner, Admin limits, audit access, export, and key-distribution policies are approved.
+- [x] Ownership transfer, last-Owner, Admin limits, audit access, deny-closed export, and key-distribution policies are approved.
 
 ### 9.3 Security and cryptographic testability
 
@@ -328,10 +330,10 @@ Gate G1 determines whether Phase 0 requirements are sufficiently traceable to co
 - [x] Crypto verification requires fixed positive and negative vectors.
 - [x] Invitation acceptance, pending-key membership, envelope provisioning, and decrypt-ready states are independently traceable.
 - [x] Public-key substitution, unauthorized envelope wrapping, envelope binding/replay, and unavailable-provisioner cases are required negative coverage.
-- [ ] Device-key/private-key/recovery design is approved.
-- [ ] Encrypted-envelope fields, algorithms, bounds, and authenticated binding data are approved.
-- [ ] Authorized provisioning-device policy, canonical public-key/fingerprint lookup, and pending-key API/UX contract are approved.
-- [ ] Rotation and historical-revision access semantics are approved.
+- [x] Device-key/private-key/recovery design is approved.
+- [x] Encrypted-envelope fields, algorithms, bounds, and authenticated binding data are approved.
+- [x] Authorized provisioning-device policy, canonical public-key/fingerprint lookup, and pending-key API/UX contract are approved.
+- [x] Rotation and historical-revision access semantics are approved.
 
 ### 9.4 Reliability and operational testability
 
@@ -339,19 +341,19 @@ Gate G1 determines whether Phase 0 requirements are sufficiently traceable to co
 - [x] Offline account/access/key-change abuse cases are required.
 - [x] Service Worker `/api/*` exclusion is traceable.
 - [x] D1 migration and compatibility rehearsal is traceable.
-- [ ] Outbox persistence, quota, expiry, and quarantine contracts are approved.
-- [ ] Migration ordering relative to Cloudflare automatic deployment is approved.
-- [ ] Backup/restore and production canary policies are approved.
+- [x] Outbox persistence, quota, expiry, and quarantine contracts are approved.
+- [x] Migration ordering relative to Cloudflare automatic deployment is approved.
+- [x] Backup/restore and production canary policies are approved.
 
 ### 9.5 Test infrastructure readiness
 
 - [x] Unit, local Functions/D1, local browser, preview, production smoke, and GitHub Pages fallback environments are identified.
 - [x] Multi-user/device browser isolation is required.
 - [x] Evidence ownership and severity gates are defined.
-- [ ] Local Pages Functions/D1 runner and CI command are selected.
-- [ ] Deterministic clock, ID/token, OAuth mock, and fixture seams are approved without production bypasses.
+- [x] Local Pages Functions/D1 runner and CI command are selected.
+- [x] Deterministic clock, ID/token, OAuth mock, and fixture seams are approved without production bypasses.
 - [ ] Preview/production D1, OAuth, secret, session, and origin isolation is configured and verifiable.
-- [ ] Workload, performance budgets, and supported browser matrix are approved.
+- [x] Workload, performance budgets, and supported browser matrix are approved.
 
 ### 9.6 Gate decision
 
@@ -398,10 +400,10 @@ Gate G3 approves the executable quality contract, not fabricated runtime results
 
 ### 10.4 Approval and decision
 
-- [ ] Product Owner approves workload, budgets, browser matrix, canary policy, and credential-content residual risk.
-- [ ] Technical Lead approves harness, deterministic seams, environment isolation, and exact API/schema follow-up ownership.
-- [ ] Security Reviewer approves threat coverage, evidence redaction, build exclusion, and credential limitation wording.
-- [ ] UX Lead approves WCAG 2.2 AA evidence and conflict/offline/terminal-loss journeys.
-- [ ] Senior QA records Gate G3 `PASSED` with reviewer record and no unowned P0/P1 contract.
+- [x] Product Owner approves workload, budgets, browser matrix, canary policy, and credential-content residual risk.
+- [x] Technical Lead approves harness, deterministic seams, environment isolation, and exact API/schema follow-up ownership.
+- [x] Security Reviewer approves threat coverage, evidence redaction, build exclusion, and credential limitation wording.
+- [x] UX Lead approves WCAG 2.2 AA evidence and conflict/offline/terminal-loss journeys.
+- [x] Senior QA records Gate G3 `PASSED` with reviewer record and no unowned P0/P1 contract.
 
-**Current recommendation: `GO` to Gate G3 review; `NO-GO` for Phase 1 runtime implementation until the unchecked approvals above pass.**
+**Gate G3 decision: `PASSED` on 2026-07-15; `GO` to Day 5 sign-off and `NO-GO` for Phase 1 runtime implementation until Gate G4.**

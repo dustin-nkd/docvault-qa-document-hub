@@ -6,8 +6,8 @@
 | --- | --- |
 | Document ID | CF-PROD-001 |
 | Phase | Phase 0 — Specification and Threat Model |
-| Sprint checkpoint | Day 4 — Contracts and quality strategy |
-| Status | Gates G0, G1, and G2 approved; Day 4 contract clarification proposed for Gate G3 |
+| Sprint checkpoint | Day 5 — Review and sign-off |
+| Status | Gates G0 through G3 approved; Phase 0 exit proposed for Gate G4 |
 | Version | 0.1 |
 | Owner | Product Owner / Senior Business Analyst |
 | Required reviewers | Product Owner, Technical Lead, Senior QA, Security Reviewer, UX Lead |
@@ -359,7 +359,7 @@ An invalidated assumption must create a recorded product decision and impact ass
 - Migration/rollout/rollback ADR.
 - QA strategy and traceability matrix.
 
-## 13. Open product decisions
+## 13. Product decision register
 
 | ID | Decision | Recommended starting position | Owner(s) | Required by | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -372,13 +372,13 @@ An invalidated assumption must create a recorded product decision and impact ass
 | PD-07 | Member removal and key rotation | Immediate authorization denial; mandatory future-key rotation on removal, compromise, or suspected exposure | Security + Product | Day 3 | Approved at Gate G2 in ADR-010 |
 | PD-08 | Audit retention | Allow-listed server audit metadata retained 365 days; protected content and secret material prohibited | Product + Security | Day 3 | Approved at Gate G2 in ADR-008 |
 | PD-09 | Personal-to-workspace operation | Explicit one-time copy; no automatic migration or ongoing synchronization link | Product | Day 2 | Approved at Gate G0 |
-| PD-10 | Eligible document categories | All current non-Credential categories are eligible through the official explicit copy/create workflows. The official client blocks stored Credential documents. Because category and content are E2EE ciphertext, the API can validate envelopes but cannot semantically detect a malicious authorized client that hides credential content; this is a truthful residual-risk boundary, not a server-enforced plaintext guarantee. | Product + Security | Day 4 | Proposed for Gate G3 |
+| PD-10 | Eligible document categories | All current non-Credential categories are eligible through the official explicit copy/create workflows. The official client blocks stored Credential documents. Because category and content are E2EE ciphertext, the API can validate envelopes but cannot semantically detect a malicious authorized client that hides credential content; this is a truthful residual-risk boundary, not a server-enforced plaintext guarantee. | Product + Security | Day 4 | Approved at Gate G3 |
 | PD-11 | Offline support boundary | Retain encrypted pending mutations in an isolated, bounded outbox with expiry and quarantine | Product + UX + QA | Day 3 | Approved at Gate G2 in ADR-006 |
 | PD-12 | Conflict UX | Preserve the local draft and offer review-latest or save-as-copy; no automatic last-writer-wins | Product + UX + QA | Day 3 | Approved at Gate G2 in ADR-006 |
 | PD-13 | Ownership transfer safeguards | Reauthentication within 15 minutes, strong confirmation, eligible successor, and atomic last-Owner protection | Product + Security | Day 3 | Approved at Gate G2 in ADR-002/003/010 |
 | PD-14 | Collaboration fallback messaging | GitHub Pages remains personal/guest-only and links once to the canonical Cloudflare deployment | Product + UX | Day 3 | Approved at Gate G2 in ADR-001/007/011 |
 
-Open decisions are not permission to make implicit implementation choices. Any P0 decision still open at its required-by date blocks the dependent Phase 1 work.
+All Phase 0 product decisions above have an approved disposition. A future change is not permission to make an implicit implementation choice: it requires a decision-log amendment and blocks dependent work until the correct owners approve it.
 
 ## 14. Day-1 Gate G0 checklist
 

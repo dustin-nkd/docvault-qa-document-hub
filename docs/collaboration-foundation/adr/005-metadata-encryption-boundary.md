@@ -31,7 +31,7 @@ Only the minimum metadata listed below is server-visible. Adding a server-visibl
 - Revision payloads are independently authenticated ciphertext using the workspace key version recorded by the server-visible envelope.
 - Credential documents and secret fields are prohibited from Collaboration Foundation, not merely encrypted.
 
-Day 4 clarification proposed for Gate G3: the official client enforces that product prohibition before encryption, but the API cannot inspect encrypted category/content semantics. It validates the declared envelope, authorization, key version, payload bounds, and revision rules and must not claim universal credential detection against a malicious authorized client. Accepting this residual limitation preserves the approved E2EE boundary.
+Day 4 clarification approved at Gate G3: the official client enforces that product prohibition before encryption, but the API cannot inspect encrypted category/content semantics. It validates the declared envelope, authorization, key version, payload bounds, and revision rules and must not claim universal credential detection against a malicious authorized client. This accepted residual limitation preserves the approved E2EE boundary.
 
 ### Exact server-visible metadata
 

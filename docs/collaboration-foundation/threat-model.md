@@ -7,7 +7,7 @@
 | Document ID | CF-SEC-001 |
 | Phase | Phase 0 - Specification and Threat Model |
 | Checkpoint | Day 4 — Contract and risk clarification |
-| Status | Gates G0, G1, and G2 approved; Day 4 update proposed for Gate G3; no runtime implementation authorized |
+| Status | Gates G0 through G3 approved; Phase 0 exit risk baseline; no runtime implementation authorized before Gate G4 |
 | Scope | Collaboration Foundation and its isolation from Personal Vault, guest mode, public sharing, and GitHub Sync |
 | Owners | Security Reviewer and Technical Lead |
 | Required reviewers | Product Owner, Senior QA, UX Lead |
@@ -89,7 +89,7 @@ Trust boundaries:
 | T14 | I/D | Service Worker caches `/api/*`, auth/private responses, or navigation HTML for an API request, leaking stale/cross-user data or enabling offline spoofing. | 4 | 5 | 20 Critical | P1 | P: explicit `/api/*` bypass before any endpoint, network-only auth/private paths, `Cache-Control: no-store`, versioned app-shell allow-list. D: seeded-cache/offline tests and cache inspection. R: unregister/replace worker and purge caches through versioned activation. | Low; Technical Lead | CF-OPS-001, AB-16 |
 | T15 | I/E | D1 injection, missing transaction boundary, overly broad query, migration mismatch, or backup restore corrupts tenant, ownership, revision, or audit state. | 4 | 5 | 20 Critical | P1 | P: parameterized workspace-scoped queries, constraints, atomic transactions, forward/backward-compatible migrations, backups and restore rehearsal. D: fault injection, schema compatibility and integrity checks. R: feature-flag off, rollback compatible code, restore and reconcile audit. | Medium; Technical Lead / Operations | CF-WS-001, CF-DOC-003/006, CF-OPS-003, AB-19 |
 | T16 | I/R | Audit events are forgeable, missing, unordered, overprivileged, or contain content/secrets; logs leak tokens, ciphertext bodies, keys, PII, SQL, or stack traces. | 4 | 5 | 20 Critical | P1 | P: server-derived actor/time, transactional append, allow-listed event/log schemas, scoped read access, retention, redaction, request IDs, no bodies. D: sensitive canaries and event completeness tests; access monitoring. R: restrict/purge leakage, rotate exposed secrets, reconstruct incident from trusted sources. | Medium; Security Reviewer / Operations | CF-AUD-001-002, CF-OPS-005, AB-18 |
-| T17 | E/I | Credential content enters collaboration through a supported client defect or a malicious authorized client that hides it in opaque ciphertext. | 4 | 5 | 20 Critical | P1 | P: the official client rejects stored Credential documents on create/copy/import/category paths; no automatic migration; explicit target confirmation; API validates authorization, envelope, size, and routing but cannot inspect E2EE semantics. D: supported-client bypass matrix, privacy inspection, and policy-abuse reporting. R: quarantine/delete the prohibited collaboration record under incident policy and rotate exposed credentials. | Medium residual; Product Owner / Security | CF-DOC-004, CF-ISO-001-003, AB-11; Gate G3 acceptance required |
+| T17 | E/I | Credential content enters collaboration through a supported client defect or a malicious authorized client that hides it in opaque ciphertext. | 4 | 5 | 20 Critical | P1 | P: the official client rejects stored Credential documents on create/copy/import/category paths; no automatic migration; explicit target confirmation; API validates authorization, envelope, size, and routing but cannot inspect E2EE semantics. D: supported-client bypass matrix, privacy inspection, and policy-abuse reporting. R: quarantine/delete the prohibited collaboration record under incident policy and rotate exposed credentials. | Medium residual accepted at Gate G3; Product Owner / Security | CF-DOC-004, CF-ISO-001-003, AB-11 |
 | T18 | S/I | GitHub Pages or missing API presents imitation collaboration, loops requests, transfers session/key state, or damages Personal Vault/guest data. | 3 | 5 | 15 High | P1 | P: signed/known canonical capability discovery; collaboration controls disabled on fallback; no copied auth/key query state; bounded failure; providers isolated. D: fallback browser suite and network/storage inspection. R: feature flag, clear invalid state, direct to canonical origin without sensitive URL data. | Low; Technical Lead / UX Lead | CF-FB-001-002, CF-ISO-005, AB-17 |
 | T19 | E/I | Preview/prod share D1, OAuth credentials, session keys, origins, secrets, or telemetry, enabling cross-environment access or destructive tests. | 4 | 5 | 20 Critical | P1 | P: separate bindings/resources/redirects/origin allow-lists and visible environment identity; production deny for test bypasses. D: automated config assertions and cross-environment negative tests. R: revoke/rotate, isolate database, assess contamination, restore. | Low; Operations / Technical Lead | CF-OPS-002, CF-OPS-004 |
 | T20 | E/T | CI, dependency, source, build artifact, Cloudflare binding, or operator compromise injects code/secrets or exposes repository-only files. | 3 | 5 | 15 High | P1 | P: least privilege, protected branch/environment, pinned actions/dependencies, artifact allow-list, secret store, review and provenance. D: secret/SBOM/artifact scans and deployment audit. R: halt/rollback, rotate credentials, rebuild from trusted source. | Medium; Operations | CF-ID-003, CF-OPS-002-004 |
@@ -166,13 +166,15 @@ Gate G1 permits continued Phase 0 specification/ADR work only. It does not autho
 
 ### Blocking conditions before implementation readiness
 
-- [ ] Approve OAuth/identity-linking, session lifetime/revocation/re-authentication, and CSRF ADRs.
-- [ ] Resolve every `Allow*`/`Deny*` RBAC decision, ownership/admin limit, audit access, export, and key-distribution permission.
-- [ ] Approve device-key algorithm, private-key protection, envelope schema/AAD/bounds, canonical fingerprint lookup, authorized provisioner, recovery, rotation, historical-access, and `pending_key` state contracts.
-- [ ] Approve encrypted versus server-visible fields and all retention/deletion/export values.
-- [ ] Approve offline outbox quota/expiry/order/quarantine and conflict UX contracts.
-- [ ] Select local Pages Functions/D1 harness, deterministic test seams, supported-browser matrix, and CI commands.
+- [x] Approve OAuth/identity-linking, session lifetime/revocation/re-authentication, and CSRF ADRs.
+- [x] Resolve every `Allow*`/`Deny*` RBAC decision, ownership/admin limit, audit access, export, and key-distribution permission.
+- [x] Approve device-key algorithm, private-key protection, envelope schema/AAD/bounds, canonical fingerprint lookup, authorized provisioner, recovery, rotation, historical-access, and `pending_key` state contracts.
+- [x] Approve encrypted versus server-visible fields and all retention/deletion/export values; unapproved export/delete remain deny-closed.
+- [x] Approve offline outbox quota/expiry/order/quarantine and conflict UX contracts.
+- [x] Select local Pages Functions/D1 harness, deterministic test seams, supported-browser matrix, and CI commands.
 - [ ] Configure and verify isolated preview/production D1, OAuth, secrets, session namespaces, origins, logging, backup/restore, migration ordering, rollback, and canary policy.
 - [ ] Link executable evidence for all P0/P1 threats; no skipped/quarantined P0/P1 case counts as passed.
 
 **Gate G1 decision: `PASSED` for continued Phase 0 work; `NO-GO` for Phase 1 runtime implementation.** The Product Owner approved the role policy on 2026-07-15. The implementation-readiness conditions above remain mandatory inputs to Gate G2, later Phase 0 contracts, or the Phase 0 exit gate; Gate G1 does not waive them.
+
+The two remaining unchecked items are executable implementation/release evidence, not unresolved Phase 0 design decisions. They are assigned to the implementation and evidence plan and remain release blockers.

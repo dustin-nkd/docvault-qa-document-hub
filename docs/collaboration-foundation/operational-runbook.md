@@ -1,6 +1,6 @@
 # Collaboration Foundation operational runbook
 
-Status: Proposed for Gate G3
+Status: Approved at Gate G3; operational rehearsal evidence pending
 
 Owners: Operations, Technical Lead, Security Reviewer, Senior QA
 
@@ -208,15 +208,15 @@ Monthly:
 
 ## 12. Gate G3 acceptance
 
-- [ ] Product Owner approves RPO `<= 5 minutes` and RTO `<= 60 minutes` as the initial objectives.
-- [ ] Operations approves environment isolation, release choreography, canary gates, and incident ownership.
-- [ ] Technical Lead approves the binding/secret/configuration and expand-contract migration contract.
-- [ ] Security approves the allow-listed telemetry, secret handling, containment, and restore authorization model.
-- [ ] Senior QA confirms migration, rollback, restore, privacy, and canary scenarios are traceable and executable.
-- [ ] A future Phase 1 plan assigns exact Cloudflare resources without committing IDs or secrets.
-- [ ] No runtime implementation begins until Gate G3 and the complete Phase 0 exit gate pass.
+- [x] Product Owner approves RPO `<= 5 minutes` and RTO `<= 60 minutes` as the initial objectives.
+- [x] Operations approves environment isolation, release choreography, canary gates, and incident ownership.
+- [x] Technical Lead approves the binding/secret/configuration and expand-contract migration contract.
+- [x] Security approves the allow-listed telemetry, secret handling, containment, and restore authorization model.
+- [x] Senior QA confirms migration, rollback, restore, privacy, and canary scenarios are traceable and executable.
+- [x] The Day 5 implementation plan assigns logical Cloudflare resource names without committing IDs or secrets.
+- [x] No runtime implementation begins until Gate G3 and the complete Phase 0 exit gate pass.
 
-Current assessment: **NO-GO for runtime implementation; ready for Gate G3 cross-functional review.**
+Current assessment: **Gate G3 PASSED; runtime implementation remains NO-GO until the Phase 0 exit gate.**
 
 ## 13. Current primary references
 

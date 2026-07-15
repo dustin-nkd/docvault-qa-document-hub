@@ -1,6 +1,6 @@
 # Collaboration Foundation Quality Strategy
 
-**Status:** Day 4 proposed quality contract for Gate G3
+**Status:** Approved at Gate G3; implementation evidence remains pending
 
 **Owner:** Senior QA
 
@@ -383,9 +383,9 @@ Gate rules:
 | TD-15 | Deterministic seams only through dependency injection; production build excludes test adapters and bypasses | Day 4 quality contract | Resolved |
 | TD-16 | Stable error code/request ID, allow-listed log fields, no body/secret/stack/SQL echo | ADR-008, ADR-011 | Resolved for quality design; exact catalog required before route implementation |
 | TD-17 | `@cloudflare/vitest-pool-workers` Pages recipe with real disposable local D1; Playwright multi-context browser layer | Day 4 quality contract | Resolved |
-| TD-18 | 25 members, 10,000 documents, 50 revisions/document, 10 active users; API/client/bundle budgets in section 4.7 | Day 4 quality contract | Proposed for Gate G3 |
-| TD-19 | Latest two stable Chrome, Edge, Firefox; Safari 17.4+ with fail-closed capability detection | Day 4 quality contract | Proposed for Gate G3 |
-| TD-20 | Dedicated synthetic production canary; non-destructive smoke, explicit cleanup, deployment/migration evidence | ADR-012 and Day 4 quality contract | Proposed for Gate G3 |
+| TD-18 | 25 members, 10,000 documents, 50 revisions/document, 10 active users; API/client/bundle budgets in section 4.7 | Day 4 quality contract | Approved at Gate G3 |
+| TD-19 | Latest two stable Chrome, Edge, Firefox; Safari 17.4+ with fail-closed capability detection | Day 4 quality contract | Approved at Gate G3 |
+| TD-20 | Dedicated synthetic production canary; non-destructive smoke, explicit cleanup, deployment/migration evidence | ADR-012 and Day 4 quality contract | Approved at Gate G3 |
 
 ## 11. Gate G3 Senior QA checklist
 
@@ -398,13 +398,13 @@ Gate rules:
 - [x] Credential-category prevention and the ciphertext-only server limitation are both stated accurately.
 - [x] Evidence commands, naming, redaction, side-effect inspection, and production canary policy are defined.
 - [x] P0/P1 evidence permits zero skips, quarantines, disabled cases, or accepted flakiness.
-- [ ] Product Owner approves workload, budgets, browser matrix, production canary, and accepted credential-content residual risk.
-- [ ] Technical Lead approves harness, command surface, preview isolation, exact API/schema contract ownership, and migration evidence.
-- [ ] Security Reviewer approves deterministic-seam exclusion, canary/evidence redaction, and credential limitation wording.
-- [ ] Senior QA records Gate G3 `PASSED`; until then Phase 1 runtime implementation remains `NO-GO`.
+- [x] Product Owner approves workload, budgets, browser matrix, production canary, and accepted credential-content residual risk.
+- [x] Technical Lead approves harness, command surface, preview isolation, exact API/schema contract ownership, and migration evidence.
+- [x] Security Reviewer approves deterministic-seam exclusion, canary/evidence redaction, and credential limitation wording.
+- [x] Senior QA records Gate G3 `PASSED`; Phase 1 remains `NO-GO` until the Phase 0 exit gate.
 
 ## 12. Day 4 conclusion
 
-The Day 4 quality design is decision-complete enough for Gate G3 review. Existing personal-vault, Vault V2, storage/sync, CSP, offline-shell, performance, artifact, guest, public-share, and both-deployment regressions remain mandatory. Collaboration adds a second executable evidence stack: real local Pages Functions/D1, contract/security suites, isolated multi-user Playwright, production-like preview, and a non-destructive production canary.
+The Day 4 quality design was approved at Gate G3. Existing personal-vault, Vault V2, storage/sync, CSP, offline-shell, performance, artifact, guest, public-share, and both-deployment regressions remain mandatory. Collaboration adds a second executable evidence stack: real local Pages Functions/D1, contract/security suites, isolated multi-user Playwright, production-like preview, and a non-destructive production canary.
 
-Squad recommendation: `GO` to Gate G3 review, `NO-GO` for Phase 1 runtime implementation until the unchecked approvals above are recorded and the Phase 0 exit package is complete.
+Gate G3 passed on 2026-07-15. Squad recommendation: `GO` to Day 5 sign-off, `NO-GO` for Phase 1 runtime implementation until the Phase 0 exit package is approved.

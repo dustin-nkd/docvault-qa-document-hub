@@ -7,7 +7,7 @@
 | Document ID | CF-DOM-001 |
 | Phase | Phase 0 — Specification and Threat Model |
 | Sprint checkpoint | Day 2 — Domain, RBAC, and Gate G1 |
-| Status | Product Owner Gate G1 approved; conditional baseline; implementation not authorized |
+| Status | Gate G1 approved; dependent architecture/contracts approved through Gate G3; implementation not authorized before Gate G4 |
 | Language | English |
 | Required approval | Product Owner, Technical Lead, Security Reviewer, Senior QA |
 
@@ -202,7 +202,7 @@ For every journey, tests verify response and side effects across own-workspace, 
 
 ## 9. Gate G1 — Domain and authorization readiness
 
-Current assessment: **Product Owner APPROVED Gate G1 with recorded conditions for continued Phase 0 work; NO-GO for runtime implementation.** Security, technical, UX, operational, and evidence conditions remain open.
+Current assessment: **Gate G1 PASSED and its Phase 0 contract dependencies were resolved through Gates G2/G3; NO-GO for runtime implementation until Gate G4.** Executable implementation/release evidence remains assigned to later phase gates.
 
 Gate G1 passes only when:
 
@@ -212,10 +212,10 @@ Gate G1 passes only when:
 - [x] Last-Owner, pending-key, invitation replay, envelope substitution, stale write, idempotent replay, and queued-authority failures are explicit.
 - [x] J1–J9 have measurable acceptance contracts.
 - [x] Product Owner approves the role matrix and Admin ceilings in ADR-003.
-- [ ] Security Reviewer validates the authorization and non-enumeration contract.
-- [ ] Footnoted export/deletion permissions and every open lifecycle/security decision are resolved in the owning ADR/specification.
-- [ ] Device-key, envelope, recovery, rotation, encrypted metadata, session, and CSRF contracts are approved.
-- [ ] Deterministic test seams, local Functions/D1 runner, preview/production isolation, migration/restore, and outbox contracts are ready.
-- [ ] The traceability matrix is updated with approved decisions and evidence references; no P0/P1 requirement lacks measurable verification.
+- [x] Security Reviewer validates the authorization and non-enumeration contract.
+- [x] Footnoted export/deletion permissions remain deny-closed and every Foundation lifecycle/security decision is resolved in the owning ADR/specification.
+- [x] Device-key, envelope, recovery, rotation, encrypted metadata, session, and CSRF contracts are approved.
+- [x] Deterministic test seams, local Functions/D1 runner, preview/production isolation, migration/restore, and outbox contracts are specified for executable implementation.
+- [x] The traceability matrix is updated with approved decisions and evidence references; no P0/P1 requirement lacks measurable planned verification.
 
 This gate does not authorize production code. Any later change to these states or permissions requires corresponding requirement, threat, test, and audit-contract updates.

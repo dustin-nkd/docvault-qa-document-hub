@@ -1,6 +1,6 @@
 # Collaboration Foundation Architecture Discovery
 
-Status: Gates G0 and G1 approved; Day 3 ADR baseline
+Status: Gates G0 through G3 approved; Phase 0 exit architecture baseline
 
 Owner: Senior Developer / Architect
 
@@ -10,7 +10,7 @@ Last reviewed: 2026-07-15
 
 ## 1. Purpose
 
-This document records the verified current architecture, its collaboration constraints, the proposed target boundary, and the expected disposition of existing components. It is an inventory and discovery artifact. Detailed architecture choices remain provisional until their Phase 0 ADRs are approved.
+This document records the verified current architecture, its collaboration constraints, the target boundary, and the expected disposition of existing components. It is an inventory and discovery artifact. Detailed choices are controlled by the Gate G2-approved ADR set and Gate G3-approved implementation contracts.
 
 ## 2. Evidence inspected
 

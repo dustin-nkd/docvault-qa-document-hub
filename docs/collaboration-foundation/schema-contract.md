@@ -1,6 +1,6 @@
 # Collaboration Foundation D1 Schema Contract
 
-Status: Proposed for Gate G3
+Status: Approved at Gate G3; executable migrations and evidence pending
 
 Date: 2026-07-15
 
@@ -218,9 +218,9 @@ ADRs: 001, 002, 003, 004, 005, 006, 008, 009, 010, 012. Requirements: CF-ID, CF-
 
 ## 11. Gate G3 acceptance
 
-- [ ] Technical Lead confirms every API resource and transition has a table, constraint, index, and atomic recipe.
-- [ ] Security confirms prohibited plaintext/secret fields and final authorization guards.
-- [ ] Senior QA confirms migration, constraint, race, failure-injection, canary, scale, retention, and restore evidence is measurable.
-- [ ] Operations confirms D1 binding isolation, Time Travel bookmark, migration, purge, and restore procedures are implementable.
-- [ ] API and crypto contracts use the same identifiers, envelopes, limits, and lifecycle states.
-- [ ] No core invariant depends on UI behavior, client time, or a successful zero-row SQL statement.
+- [x] Technical Lead confirms every API resource and transition has a table, constraint, index, and atomic recipe.
+- [x] Security confirms prohibited plaintext/secret fields and final authorization guards.
+- [x] Senior QA confirms migration, constraint, race, failure-injection, canary, scale, retention, and restore evidence is measurable.
+- [x] Operations confirms D1 binding isolation, Time Travel bookmark, migration, purge, and restore procedures are implementable.
+- [x] API and crypto contracts use the same identifiers, envelopes, limits, and lifecycle states.
+- [x] No core invariant depends on UI behavior, client time, or a successful zero-row SQL statement.

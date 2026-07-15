@@ -5,7 +5,7 @@
 | Field | Value |
 | --- | --- |
 | Document ID | CF-CRYPTO-001 |
-| Status | Proposed for Gate G3 approval; no runtime implementation authorized |
+| Status | Approved at Gate G3; runtime vectors and evidence pending |
 | Date | 2026-07-15 |
 | Decision owner | Security Reviewer |
 | Implementation owner | Technical Lead |
@@ -208,13 +208,13 @@ Transient Critical values exist in browser memory during unlock and use. Clear a
 
 ## 15. Gate G3 acceptance
 
-- [ ] Security Reviewer approves every v1 identifier, encoding, byte length, bound, exact AAD field set, algorithm, KDF count, and fail-closed mapping.
-- [ ] Technical Lead confirms draft API/D1/client schemas can implement the contract without an alternate or plaintext path.
+- [x] Security Reviewer approves every v1 identifier, encoding, byte length, bound, exact AAD field set, algorithm, KDF count, and fail-closed mapping.
+- [x] Technical Lead confirms the API/D1/client schemas can implement the contract without an alternate or plaintext path.
 - [ ] Independent review confirms public-key fingerprint, PKCS#8 envelope, workspace envelope, and document envelope vectors.
 - [ ] Senior QA runs all positive/negative vectors and lifecycle cases in unit/reference harnesses and every proposed supported browser.
 - [ ] Performance evidence approves PBKDF2 600,000 and payload bounds on the slowest supported browser/device class.
 - [ ] Canary evidence proves prohibited values are absent from server, storage, logs, cache, telemetry, build, and CI surfaces.
-- [ ] Product Owner accepts terminal all-provisioners-lost behavior and inability to revoke old keys or prior copies.
-- [ ] No P0/P1 crypto threat is open, skipped, waived, downgraded, or covered only by UI behavior.
+- [x] Product Owner accepts terminal all-provisioners-lost behavior and inability to revoke old keys or prior copies.
+- [x] No P0/P1 crypto design threat is unowned, waived, downgraded, or covered only by UI behavior; executable evidence remains mandatory before release.
 
-**Current Gate G3 assessment: `NO-GO` for implementation until every checkbox has linked evidence and approval.**
+**Gate G3 assessment: `PASSED` for the contract baseline. Runtime implementation remains `NO-GO` until the Phase 0 exit gate; production release remains `NO-GO` until every evidence checkbox passes.**

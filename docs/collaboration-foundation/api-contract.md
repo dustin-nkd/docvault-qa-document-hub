@@ -5,7 +5,7 @@
 | Field | Value |
 | --- | --- |
 | Document ID | CF-API-001 |
-| Status | Proposed for Gate G3 |
+| Status | Approved at Gate G3; implementation evidence pending |
 | Version | 0.1 / API v1 |
 | Date | 2026-07-15 |
 | Owners | Technical Lead, Product Owner, Security Reviewer, Senior QA |
@@ -478,19 +478,19 @@ Threat and abuse coverage includes T01–T23 as mapped in the ADRs, particularly
 
 ## 12. Gate G3 acceptance
 
-Current assessment: **PROPOSED; NO-GO for implementation until this checklist and the Phase 0 exit authority pass.**
+Current assessment: **APPROVED at Gate G3; NO-GO for implementation until the Phase 0 exit authority passes. Runtime and release evidence remains pending.**
 
-- [ ] Product Owner approves route capabilities, all current non-credential category eligibility, lifecycle deny-closed behavior, and truthful credential-content limitation.
-- [ ] Security Reviewer approves session/CSRF/origin gates, envelopes, non-enumeration map, error details, request limits, and capability-token handling.
-- [ ] Technical Lead confirms every route maps to a D1 schema/transaction, centralized policy action, audit event, and migration-compatible handler contract.
-- [ ] Senior QA maps each route across method/content type/origin/CSRF/session/role/device/workspace/state/idempotency/limit/rate variants and verifies D1/audit/log side effects.
-- [ ] CF-DOC-004, AB-11, product wording, and traceability are amended so no evidence claims server plaintext/category validation under E2EE.
+- [x] Product Owner approves route capabilities, all current non-credential category eligibility, lifecycle deny-closed behavior, and truthful credential-content limitation.
+- [x] Security Reviewer approves session/CSRF/origin gates, envelopes, non-enumeration map, error details, request limits, and capability-token handling.
+- [x] Technical Lead confirms every route maps to a D1 schema/transaction, centralized policy action, audit event, and migration-compatible handler contract.
+- [x] Senior QA maps each route to the required method/content type/origin/CSRF/session/role/device/workspace/state/idempotency/limit/rate verification families; executable side-effect evidence remains a phase gate.
+- [x] CF-DOC-004, AB-11, product wording, and traceability are amended so no evidence claims server plaintext/category validation under E2EE.
 - [ ] OAuth callback and invitation fragment bootstrap receive browser tests proving no token/code leakage through URL requests, referrers, analytics, history, logs, caches, or storage.
 - [ ] Fixed cryptographic vectors and browser capability evidence validate the exact envelope schemas and bounds.
 - [ ] Concurrency/failure injection proves workspace ownership, invitation acceptance, envelope readiness, rotation, revision, idempotency, and audit atomicity.
 - [ ] Privacy tests prove shared non-enumeration behavior and absence of protected canaries from API metadata, D1, audit, logs, telemetry, caches, and artifacts.
 - [ ] Rate, pagination, 1 MiB/body and decoded-field boundaries, outbox reconciliation, 30-day idempotency expiry, and seven-day client quarantine are executable.
-- [ ] Export, deletion, hard purge, recovery artifact, server recovery, batch documents, and semantic search remain unavailable.
+- [x] Export, deletion, hard purge, recovery artifact, server recovery, batch documents, and semantic search remain unavailable in the approved Foundation contract.
 - [ ] Preview/production/GitHub Pages isolation, Service Worker bypass, migration compatibility, backup/restore, and non-destructive feature disablement are demonstrated.
 
 Approval of this document fixes the v1 contract baseline; it does not itself authorize deployment or weaken any Phase 0 exit criterion.
