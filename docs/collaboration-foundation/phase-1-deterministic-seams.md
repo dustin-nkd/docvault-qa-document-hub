@@ -1,6 +1,6 @@
 # Phase 1 deterministic runtime seams
 
-Status: `CF-P1-006` implemented and locally verified; production evidence pending
+Status: `CF-P1-006` implemented, deployed, and verified
 
 Date: 2026-07-15
 
@@ -47,12 +47,19 @@ Both `cf:functions:build` and `cf:pages:dry-run` validate the source graph and c
 - production static artifact: 49 runtime files, 1,887,978 bytes;
 - Playwright browser regression: pass.
 
-Production deployment IDs and canonical/GitHub Pages smoke results will be appended after the verified implementation commit reaches `main`.
+## Retained deployment result
+
+- Implementation commit: `02c14b65d3f240a03f55f4996cd88b3db9f5e1c4`.
+- GitHub Actions run: `29433322178`, success with all release gates and GitHub Pages deployment.
+- Cloudflare production deployment: `a4bd3726-6214-46b8-ae0a-f4338784468d`, success from `main` at the implementation commit.
+- Canonical API returned `503 COLLABORATION_UNAVAILABLE`, JSON/no-store headers, and a Web Crypto request ID. GitHub Pages guest fallback returned HTTP 200.
+- Two production requests carrying hostile `TEST_MODE`/`failure` query values, `X-Test-Mode`, and `TEST_MODE`/`MOCK_OAUTH` cookies both remained unavailable and received different UUIDv4 request IDs. Request state could not select a deterministic adapter or failure.
+- Local Wrangler compiled-artifact inspection retained exactly three production modules and found zero test imports, deterministic fixtures, selector markers, remote bindings, or secrets.
 
 ## Traceability
 
 - Requirements: `CF-OPS-005`, future `CF-ID`/`CF-SES` testability contracts.
 - Risks: `R01`, `R02`, `R16`, `R19`; threats: `T01`, `T02`, `T16`, `T19`, `T23`.
-- Planned evidence: `CF-EV-P1-UT-002`, `CF-EV-P1-UT-003`, `CF-EV-P1-STA-005`, `CF-EV-P1-SEC-006`.
+- Evidence: `CF-EV-P1-UT-002`, `CF-EV-P1-UT-003`, `CF-EV-P1-STA-005`, `CF-EV-P1-SEC-006`.
 
 Official references: [Workers best practices](https://developers.cloudflare.com/workers/best-practices/workers-best-practices/) and [Workers Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/).
