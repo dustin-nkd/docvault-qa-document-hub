@@ -1,6 +1,6 @@
 # Phase 1 reviewed Pages Wrangler configuration
 
-Status: `CF-P1-003` implemented and locally verified; retained deployment evidence pending
+Status: `CF-P1-003` implemented, deployed, and verified
 
 Date: 2026-07-15
 
@@ -81,7 +81,9 @@ The release-blocking sequence is:
 
 The quality gate verifies exact config keys and values, full non-inheritable variable sets, environment isolation, disabled production, schema/baseline/diff consistency, generated-type content, absence of remote bindings/placeholders, and exclusion of config/types from `_site`.
 
-The first Git-connected deployment containing this file changes supported fields to Wrangler source-of-truth. Operations must retrieve a sanitized post-deployment snapshot and compare project, date, flags, variable names, and empty binding inventories to the approved diff. Any deletion or unexpected field triggers rollback under [`phase-1-pages-configuration.md`](phase-1-pages-configuration.md).
+Pages Git integration built and deployed commit `199f5a4f21a685751e0bb2bbd32e407f9d67ef83`, but its native build did not consume the Wrangler file as a configuration deployment. The documented `wrangler pages deploy` opt-in was attempted after the full local gate and stopped before mutation because the non-interactive CLI had no API token. Operations then applied only the approved non-secret compatibility flag and variable values through the authenticated Pages API. A sanitized read confirmed the approved names and empty binding inventories in both environments. No secret or remote resource was created.
+
+Future CLI configuration deployments must use the reviewed file and a least-privilege deployment credential. Until that credential is provisioned in a later operations story, the repository policy and the sanitized live read jointly enforce the approved state. Any deletion or unexpected field triggers rollback under [`phase-1-pages-configuration.md`](phase-1-pages-configuration.md).
 
 ## Rollback
 

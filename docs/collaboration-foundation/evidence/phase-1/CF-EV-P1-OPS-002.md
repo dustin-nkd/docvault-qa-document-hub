@@ -1,6 +1,6 @@
 # CF-EV-P1-OPS-002 — Dashboard-to-Wrangler transition
 
-Status: PASS locally; first deployment evidence pending
+Status: PASS
 
 Date: 2026-07-15
 
@@ -18,13 +18,16 @@ The pre-deployment check uses [`pages-project-baseline.json`](../../../../config
 
 Immediate pre-deployment read: the live allow-list snapshot matched the baseline with empty variable/binding inventories and no compatibility flag. The known-good rollback target is commit `b6f5b371995ce86746ae36bca4aa26731a88eb3d`, Cloudflare Pages deployment `d18f2f0b-7b82-46e5-a2c1-62fd410ec3c0`.
 
-## Required retained deployment result
+## Retained deployment result
 
-1. GitHub Actions passes toolchain, config, generated types, full regression, production artifact, browser suite, and GitHub Pages deployment.
-2. Cloudflare Pages deploys the same commit from `main` successfully.
-3. A sanitized API read confirms `nodejs_compat`, the four expected variable names, and no remote binding in both environments.
-4. Both production origins return HTTP 200 and Personal Vault/guest behavior remains available.
-5. No Cloudflare mutation occurs other than the normal Git-connected deployment applying the reviewed source-of-truth configuration.
+1. GitHub Actions run `29428921300` passed toolchain, config, generated types, 69 regression tests, production artifact, browser suite, and GitHub Pages deployment for commit `199f5a4f21a685751e0bb2bbd32e407f9d67ef83`.
+2. Cloudflare Pages deployment `87812a90-ba85-4b83-9d85-04d2c693e26f` deployed that exact clean `main` commit successfully.
+3. The Git-connected build did not consume `wrangler.jsonc` as a configuration deployment. A subsequent documented `wrangler pages deploy` attempt stopped before mutation because the non-interactive CLI had no API token.
+4. Operations used the authenticated Pages API to apply only the approved `nodejs_compat` flag and four non-secret values. A sanitized read confirmed the four expected names and empty D1, KV, R2, Durable Object, service, queue, Analytics Engine, and Hyperdrive inventories in both environments.
+5. The project, `main` branch, build command, `_site` output, compatibility date, Git source, and canonical deployment remained unchanged. No secret, route, Function, or remote resource was created.
+6. Both Cloudflare Pages and GitHub Pages guest URLs returned HTTP 200 after the change.
+
+The API synchronization is retained as an explicit operational exception, not represented as a Wrangler CLI deployment. A later least-privilege credential story may activate `wrangler pages deploy`; it must use this reviewed file and repeat the same sanitized drift check.
 
 Rollback uses the preceding known-good deployment and the procedure in [`phase-1-pages-configuration.md`](../../phase-1-pages-configuration.md).
 

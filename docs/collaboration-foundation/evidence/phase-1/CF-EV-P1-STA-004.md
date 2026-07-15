@@ -1,6 +1,6 @@
 # CF-EV-P1-STA-004 — Pages config schema and generated types
 
-Status: PASS locally; retained CI evidence pending
+Status: PASS
 
 Date: 2026-07-15
 
@@ -21,6 +21,8 @@ Reviewer: Senior QA
 - Clean `npm ci` installed 161 locked packages, preserved lockfile SHA-256 `4b1648f2abec36023d3becc58237cabc62e76071de46bac9fcaef60d6c78cdb6`, and reported zero vulnerabilities.
 
 Commands: `npm run cf:config:check`, `npm run cf:types:generate`, `npm run cf:types:check`, focused policy tests, full quality gate, production build, and browser regression.
+
+Retained result: implementation commit `199f5a4f21a685751e0bb2bbd32e407f9d67ef83` passed GitHub Actions run `29428921300`, including clean install, pinned toolchain, config/type checks, 69 regression tests, production artifact checks, browser regression, and GitHub Pages deployment.
 
 Side effects: local files and npm lockfile only. Type generation did not authenticate, call a Cloudflare mutation API, deploy, create a route, or create/bind a resource.
 

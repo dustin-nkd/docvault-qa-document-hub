@@ -35,9 +35,9 @@ All five packages use exact `devDependencies` and exact lockfile root entries. W
 | Command | Purpose | Current Phase 1 behavior |
 |---|---|---|
 | `npm run cf:toolchain:check` | Verify manifest, lockfile, installed packages, local Wrangler version, commands, CI, actions, date, and review owner | Active and release-blocking |
-| `npm run cf:config:check` | Validate project, output, and compatibility date in `wrangler.jsonc` | Gate is active; reports the file as intentionally deferred to `CF-P1-003` |
-| `npm run cf:types:generate` | Generate `worker-configuration.d.ts` from the reviewed config | Fails closed until `CF-P1-003` |
-| `npm run cf:types:check` | Verify generated binding/runtime types without rewriting them | Fails closed until `CF-P1-003` |
+| `npm run cf:config:check` | Validate project, output, compatibility, environment isolation, and disabled Collaboration in `wrangler.jsonc` | Active release gate |
+| `npm run cf:types:generate` | Generate `worker-configuration.d.ts` from the reviewed config | Active deterministic generator |
+| `npm run cf:types:check` | Verify generated binding/runtime types without rewriting them | Active release gate |
 | `npm run cf:pages:dev` | Build `_site` and run Pages locally with repository-local persistence | Fails closed until config and Functions exist |
 | `npm run cf:test` | Run the Workers Vitest pool | Fails closed until `CF-P1-007` supplies the test config |
 | `npm run cf:functions:build` | Compile Pages Functions locally into `.wrangler/functions-build` | Fails closed until Functions exist |
@@ -53,7 +53,7 @@ No approved command contains `npx`, `latest`, `npm install`, a remote database c
 - `peaceiris/actions-gh-pages` uses a reviewed v4 commit SHA.
 - The workflow runs `npm run cf:toolchain:check` immediately after `npm ci`.
 - `npm run check` independently validates the same policy, so removing the explicit workflow step does not silently remove enforcement.
-- Cloudflare commands resolve only the locked local packages. The first Wrangler configuration remains blocked by `CF-P1-003` and the configuration baseline from `CF-P1-001`.
+- Cloudflare commands resolve only the locked local packages. `CF-P1-003` introduced the reviewed configuration after the `CF-P1-001` baseline and this pinned toolchain were verified.
 
 ## Compatibility-date lifecycle
 

@@ -1,6 +1,6 @@
 # CF-EV-P1-SEC-002 — Disabled and isolated Wrangler configuration
 
-Status: PASS locally; retained deployment evidence pending
+Status: PASS
 
 Date: 2026-07-15
 
@@ -21,6 +21,8 @@ Reviewer: Senior QA
 - Wrangler config, generated types, Cloudflare control files, scripts, tests, and documentation remain outside `_site`.
 
 Focused policy suite: six positive/negative cases passed locally. No business route, authentication, session, D1, collaboration data, or UI exists, so configuration tampering cannot expose an enabled collaboration path in this story.
+
+Retained deployment checks confirmed `nodejs_compat` plus exactly the four reviewed variable names in both preview and production. All reviewed remote binding inventories remained empty. Collaboration remained the exact string `false`; no Pages Function or collaboration route was deployed. Both production origins returned HTTP 200.
 
 Privacy and side effects: all committed values are public operational labels or a canonical public origin. No secret, token, cookie, account/resource identifier, protected document data, or raw provider response is retained.
 
