@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P3",
+  "story": "CF-P3-002",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P3-G1",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P3-002",
+    "next_gate": "P3-G2",
+    "next_story": "CF-P3-003"
+  },
+  "scope": {
+    "isolated_runtime_modules_added": 6,
+    "identity_route_calls": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "identity_enabled": false,
+    "collaboration_enabled": false,
+    "business_routes_enabled": false
+  },
+  "implementation": {
+    "runtime": "cloudflare-workers-web-crypto",
+    "random": "crypto-getRandomValues-only",
+    "keyring": "strict-version-1-active-plus-optional-previous",
+    "derivation": "HKDF-SHA-256-domain-separated-32-byte-output",
+    "message_authentication": "HMAC-SHA-256-sign-and-subtle-verify",
+    "oauth_envelope": "AES-256-GCM-version-1-bound-AAD-4096-byte-maximum",
+    "pkce": "S256-64-random-byte-verifier",
+    "oauth_state": "32-random-bytes-base64url-unpadded",
+    "session_token": "32-random-bytes-base64url-unpadded-digest-only",
+    "csrf": "session-bound-HMAC-browser-memory-only",
+    "safe_return_path": "exact-origin-normalized-path-and-query-512-byte-maximum",
+    "cookies": "reserved-Host-names-Secure-HttpOnly-SameSite-Lax-Path-root-no-Domain",
+    "environment": "exact-preview-or-explicit-harness-predicate-fail-closed"
+  },
+  "approved_labels": [
+    "docvault:oauth-state-hmac:v1",
+    "docvault:oauth-envelope-aead:v1",
+    "docvault:session-token-hmac:v1",
+    "docvault:csrf-token-hmac:v1",
+    "docvault:rate-limit-hmac:v1"
+  ],
+  "fixed_vectors": {
+    "state_base64url": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+    "pkce_challenge_base64url": "wsNdZaf3VpLTsEDmR5gPk2C6xYVWxKb0xcaG3O6kX10",
+    "oauth_envelope_vector_classification": "synthetic-only",
+    "oauth_envelope_vector_asserted_in_workers_runtime": true
+  },
+  "negative_coverage": [
+    "malformed-keyring",
+    "unknown-key-id",
+    "ciphertext-or-tag-tamper",
+    "AAD-substitution",
+    "malformed-verifier",
+    "cross-session-CSRF",
+    "open-or-nested-redirect",
+    "forbidden-auth-query",
+    "duplicate-or-malformed-cookie",
+    "partial-preview-config",
+    "production-enablement",
+    "secret-canary-echo"
+  ],
+  "source_files": [
+    "functions/_lib/identity/encoding.ts",
+    "functions/_lib/identity/crypto.ts",
+    "functions/_lib/identity/oauth-envelope.ts",
+    "functions/_lib/identity/return-path.ts",
+    "functions/_lib/identity/cookies.ts",
+    "functions/_lib/identity/environment.ts",
+    "functions/_lib/identity/index.ts"
+  ],
+  "workers_test_file": "tests/cloudflare/identity-primitives.workers.test.ts",
+  "workers_test_count": 10,
+  "evidence": [
+    "CF-EV-P3-UT-001",
+    "CF-EV-P3-SEC-002"
+  ],
+  "next_decision": {
+    "gate": "P3-G2",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P3-003-only",
+    "remote_changes_authorized": false
+  }
+}

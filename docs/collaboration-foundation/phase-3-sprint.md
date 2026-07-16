@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **ACTIVE — `CF-P3-001` PASS; awaiting Product Owner approval at Gate P3-G1**
+Status: **ACTIVE — `CF-P3-002` PASS; awaiting Product Owner approval at Gate P3-G2**
 
 Sprint ID: `CF-P3-S01`
 
@@ -161,6 +161,8 @@ Tasks: Web Crypto random generation, PKCE S256, domain-separated HMAC, versioned
 Acceptance: deterministic vectors and negative/malformed/key-rotation cases pass; logs/errors/snapshots contain no raw state, verifier, provider token, session token, CSRF token, or secret; production cannot satisfy identity configuration.
 
 Evidence: `CF-EV-P3-UT-001`, `CF-EV-P3-SEC-002`.
+
+Execution result (2026-07-16): **PASS**. The isolated identity primitive library now provides strict versioned keyrings, domain-separated HKDF/HMAC, PKCE S256, opaque state/session/CSRF tokens, deterministic AES-256-GCM transaction envelopes with bound AAD, safe return-path normalization, host-only session cookies, and fail-closed environment validation. Ten Workers-runtime tests cover fixed vectors, malformed input, tamper, AAD substitution, key rotation, cookie ambiguity, open redirects, secret canaries, and production/preview isolation. No route invokes the library yet; no migration, Wrangler binding, secret, OAuth application, remote resource, identity runtime, or collaboration capability changed.
 
 Gate P3-G2 authorizes `CF-P3-003` only.
 

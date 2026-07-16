@@ -11,9 +11,9 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P3-G0",
+    "gate": "P3-G1",
     "decision": "APPROVED",
-    "authorized_story": "CF-P3-001"
+    "authorized_story": "CF-P3-002"
   },
   "entry": {
     "phase_2_exit": "PASS",
@@ -83,7 +83,7 @@
       "id": "CF-P3-002",
       "title": "Build cryptographic, token, cookie, and secret-validation primitives",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P3-G1",
       "exit_gate": "P3-G2",
       "owners": ["Senior Developer"],

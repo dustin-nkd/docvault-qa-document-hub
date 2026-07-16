@@ -26,4 +26,4 @@ validatePhase3ContractFreeze({
 console.log('Cloudflare Phase 3 identity/session contract freeze passed');
 console.log('  CF-P3-001: PASS; evidence: STA-001 and SEC-001');
 console.log('  Runtime/schema/remote changes: zero');
-console.log('  Gate P3-G1: pending; CF-P3-002 recommended only');
+console.log('  Contract remains frozen; CF-P3-002 implementation is tracked by its separate gate');

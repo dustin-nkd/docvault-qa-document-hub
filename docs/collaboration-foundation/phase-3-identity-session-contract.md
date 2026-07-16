@@ -1,6 +1,6 @@
 # Phase 3 identity and session implementation contract
 
-Status: **PASS for `CF-P3-001`; awaiting Gate P3-G1 approval**
+Status: **Contract frozen; `CF-P3-002` PASS; awaiting Gate P3-G2 approval**
 
 Date: 2026-07-16
 
