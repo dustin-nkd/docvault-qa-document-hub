@@ -34,7 +34,7 @@ test('CF-P2-003 rejects unsafe query source and missing tenant/index controls', 
         input => { input.querySource = input.querySource.replace('LIMIT ?', 'LIMIT ? OFFSET ?'); },
         input => { input.querySource = input.querySource.replace('workspace_id = ? AND id = ?', 'id = ?'); },
         input => { input.querySource = input.querySource.replace("stableKeyset: ['updated_at', 'id']", 'stableKeyset: []'); },
-        input => { input.migrationSources[Object.keys(input.migrationSources).at(-1)] = ''; },
+        input => { input.migrationSources[Object.keys(input.migrationSources).find(name => name.startsWith('0007_'))] = ''; },
         input => { input.readiness.required_indexes.pop(); },
         input => { input.readiness.tenant_guard_triggers.pop(); }
     ];

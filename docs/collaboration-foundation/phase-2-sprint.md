@@ -230,6 +230,8 @@ Acceptance:
 - no partial membership, envelope, revision, mutation, key-version, or audit state survives failure;
 - evidence: `CF-EV-P2-INT-004`, `CF-EV-P2-INT-005`, `CF-EV-P2-SEC-005`.
 
+Execution result (2026-07-16): **PASS**. Gate `P2-G2A` approved a forward-only pre-membership transition-guard correction because workspace creation and invitation acceptance cannot rely on a membership-scoped ledger before that membership exists. Migration `0008` adds immutable, authority-checked transition guards without modifying migrations `0001` through `0007`. All seven static recipes, idempotency winner/loser re-read, fingerprint mismatch, expiry, live-authority revocation, and D1 race matrices pass locally. The disabled API remains isolated, collaboration remains off, and no remote D1 resource or binding was authorized.
+
 ### `CF-P2-006` — Complete migration, retention, privacy, and scale matrix
 
 Size: L | Owner: Senior QA + Operations | Reviewers: Security, Technical Lead, Privacy
@@ -261,7 +263,7 @@ Tasks:
 1. Recheck current D1 configuration/migration commands and account plan capabilities with the pinned Wrangler version.
 2. Create only `docvault-collab-preview`; record its identifier in the exact allow-listed configuration path without exposing account/token data.
 3. Add preview-only `COLLAB_DB`; assert production binding inventory remains empty and collaboration remains disabled everywhere.
-4. Record migration list, apply `0001` through `0006`, run sanitized integrity/query-plan/canary checks, and repeat list/apply.
+4. Record migration list, apply `0001` through `0008`, run sanitized integrity/query-plan/canary checks, and repeat list/apply.
 5. Deploy a disabled preview and prove zero business persistence from API/browser flows.
 
 Acceptance:

@@ -1,4 +1,4 @@
-export const COLLABORATION_SCHEMA_VERSION = 7 as const;
+export const COLLABORATION_SCHEMA_VERSION = 8 as const;
 export const COLLABORATION_MINIMUM_RUNTIME_SCHEMA = 1 as const;
 
 export type D1Blob = ArrayBuffer;
@@ -93,6 +93,14 @@ export interface MutationResultRow {
     target_id: string; http_status: number; result_json: string; created_at: number; expires_at: number;
 }
 
+export interface TransitionGuardRow {
+    id: string; actor_user_id: string; actor_device_id: string; workspace_id: string;
+    operation: 'workspace.create' | 'invitation.accept'; client_mutation_id: string;
+    request_fingerprint: D1Blob; invitation_id: Nullable<string>;
+    credential_digest: Nullable<D1Blob>; http_status: number; result_json: string;
+    created_at: number; expires_at: number; authority_guard: 1;
+}
+
 export interface AuditEventRow {
     sequence: number; event_id: string; schema_version: number; workspace_id: string; event_type: string;
     outcome: 'success' | 'denied' | 'failure' | 'correction'; reason_code: string;
@@ -114,6 +122,7 @@ export interface CollaborationTableRowMap {
     invitations: InvitationRow; devices: DeviceRow; workspace_key_versions: WorkspaceKeyVersionRow;
     workspace_key_envelopes: WorkspaceKeyEnvelopeRow; documents: DocumentRow;
     document_revisions: DocumentRevisionRow; mutation_results: MutationResultRow;
+    transition_guards: TransitionGuardRow;
     audit_events: AuditEventRow; retention_holds: RetentionHoldRow;
 }
 

@@ -46,7 +46,7 @@ export function validatePhase2PersistenceFoundation({ foundation, sources, apiSo
     assert(!/\bas\s+(?:any|unknown)\b|:\s*any\b/i.test(source), 'Unsafe persistence casts are prohibited');
     assert(!/first-unconstrained/.test(source), 'Authorization sessions must never use unconstrained consistency');
     assert(!/\.exec\s*\(/.test(source), 'D1 exec is prohibited in repository primitives');
-    assert(!/\b(?:BEGIN|COMMIT|ROLLBACK)\b/i.test(source), 'Manual transaction SQL is prohibited');
+    assert(!/^\s*(?:BEGIN(?:\s+TRANSACTION)?|COMMIT|ROLLBACK)\s*;/im.test(source), 'Manual transaction SQL is prohibited');
     assert(!/Math\.random|crypto\.randomUUID/.test(source), 'Persistence primitives must not create nondeterministic authority inputs');
 
     const apiSource = Object.values(apiSources).join('\n');

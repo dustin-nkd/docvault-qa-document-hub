@@ -77,7 +77,7 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
 
     const entries = manifest.entries || [];
-    assert(entries.length === 7, 'Migration manifest must contain the six frozen expansions and one approved forward migration');
+    assert(entries.length === 8, 'Migration manifest must contain six frozen expansions and two approved forward migrations');
     assert(sameSet(Object.keys(migrationSources), entries.map(entry => entry.filename)), 'Migration files and manifest differ');
     const frozenOwnership = new Map((freeze.migration_sequence || []).map(item => [item.sequence, item.owns]));
     const discoveredTables = {};
@@ -88,8 +88,11 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         const initialMigration = freeze.migration_sequence[index];
         if (initialMigration) {
             assert(entry.slug === initialMigration.slug, `Migration ${sequence} slug drifted`);
-        } else {
+        } else if (sequence === 7) {
             assert(entry.slug === 'tenant_scope_indexes' && entry.story === 'CF-P2-003', `Forward migration ${sequence} is not authorized`);
+        } else {
+            assert(entry.slug === 'transition_guards' && entry.story === 'CF-P2-005'
+                && entry.gate === 'P2-G2A', `Schema correction ${sequence} is not authorized`);
         }
         assert(entry.previous_sha256 === previousSha, `Migration ${sequence} hash chain drifted`);
         assert(new RegExp(`^${String(sequence).padStart(4, '0')}_[a-f0-9]{12}_${entry.slug}\\.sql$`).test(entry.filename), `Migration ${sequence} filename is invalid`);
@@ -98,7 +101,8 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         assert(entry.sha256 === digest, `Migration ${entry.filename} checksum drifted`);
         assert(entry.filename.slice(5, 17) === digest.slice(0, 12), `Migration ${entry.filename} short checksum drifted`);
         assert(entry.normalized_bytes === bytes(source), `Migration ${entry.filename} byte count drifted`);
-        assert(same(entry.tables, frozenOwnership.get(sequence) || []), `Migration ${entry.filename} table ownership drifted`);
+        const expectedTables = sequence === 8 ? ['transition_guards'] : (frozenOwnership.get(sequence) || []);
+        assert(same(entry.tables, expectedTables), `Migration ${entry.filename} table ownership drifted`);
         assert(entry.owner && entry.reviewers?.includes('Senior QA') && entry.reviewers.includes('Security Reviewer'), `Migration ${entry.filename} lacks accountable review`);
         assert(entry.requirements?.length > 0 && entry.threats?.length > 0 && entry.risks?.length > 0 && entry.validations?.length > 0, `Migration ${entry.filename} lacks traceability`);
         assert(entry.backfill === 'none' && entry.rollback_class === 'compatible-code-rollback', `Migration ${entry.filename} is not an additive compatible expansion`);
@@ -112,6 +116,11 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     });
 
     const frozenColumns = Object.fromEntries(freeze.tables.map(table => [table.name, table.columns]));
+    frozenColumns.transition_guards = [
+        'id', 'actor_user_id', 'actor_device_id', 'workspace_id', 'operation',
+        'client_mutation_id', 'request_fingerprint', 'invitation_id', 'credential_digest',
+        'http_status', 'result_json', 'created_at', 'expires_at', 'authority_guard'
+    ];
     assert(sameSet(Object.keys(discoveredTables), Object.keys(frozenColumns)), 'SQL table inventory differs from the schema freeze');
     for (const [table, columns] of Object.entries(frozenColumns)) assert(same(discoveredTables[table], columns), `${table} SQL columns differ from the schema freeze`);
     assert(migrationSources[entries[0].filename].includes(`X'${manifest.migration_set_digest}'`), 'schema_metadata does not bind the approved migration set digest');
@@ -132,6 +141,10 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         'retention_holds_tenant_guard', 'retention_holds_workspace_immutable',
         'workspaces_id_immutable'
     ]) assert(tenantSource.includes(`CREATE TRIGGER ${trigger}`), `Tenant guard trigger is missing: ${trigger}`);
+    const transitionSource = migrationSources[entries[7].filename];
+    for (const trigger of ['transition_guards_authority_insert', 'transition_guards_no_update', 'transition_guards_no_delete']) {
+        assert(transitionSource.includes(`CREATE TRIGGER ${trigger}`), `Transition guard trigger is missing: ${trigger}`);
+    }
     validateAppliedMigrationNames([], manifest);
     validateAppliedMigrationNames(entries.map(entry => entry.filename), manifest, { requireComplete: true });
     return true;

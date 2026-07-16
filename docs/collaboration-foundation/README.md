@@ -74,6 +74,7 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Phase 2 immutable Foundation migrations](phase-2-immutable-migrations.md) — `CF-P2-002` SQL, manifest/hash chain, strict schema, typed rows, local D1 evidence, and remote denial
 - [Phase 2 tenant constraints and index plans](phase-2-tenant-constraints-index-plans.md) — `CF-P2-003` tenant guards, keyset contracts, representative query plans, and approved P2-G2 evidence
 - [Phase 2 typed persistence foundation](phase-2-sprint.md) — `CF-P2-004` checked persistence, guarded atomic batches, server-owned consistency, rollback tests, and evidence
+- [Phase 2 security mutation recipes](phase-2-security-mutation-recipes.md) — `CF-P2-005` transition guards, authoritative idempotency, seven atomic recipes, race matrices, and Gate P2-G2A evidence
 
 ## Review ownership
 

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P2",
+  "story": "CF-P2-005",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P2-G2A",
+    "decision": "APPROVED",
+    "approved_at": "2026-07-16",
+    "authorized_change": "forward-only-pre-membership-transition-guard"
+  },
+  "schema_correction": {
+    "migration": "0008_a3d0bd3e8ae7_transition_guards.sql",
+    "previous_migrations_immutable": true,
+    "backfill": "none"
+  },
+  "recipes": [
+    "workspace.create", "invitation.replace", "invitation.accept", "membership.change",
+    "envelope.provision", "document.update", "rotation.commit"
+  ],
+  "race_matrix": [
+    "workspace-create", "invitation-acceptance", "last-owner", "duplicate-mutation-id",
+    "envelope-uniqueness", "document-revision-cas", "key-version-commit"
+  ],
+  "environment_boundary": {
+    "remote_d1_created": false,
+    "remote_d1_bound": false,
+    "production_d1_allowed": false,
+    "collaboration_enabled": false,
+    "http_business_routes_added": false
+  },
+  "evidence": ["CF-EV-P2-INT-004", "CF-EV-P2-INT-005", "CF-EV-P2-SEC-005"]
+}
