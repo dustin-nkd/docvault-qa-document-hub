@@ -278,6 +278,8 @@ Acceptance:
 
 Gate P2-G4: Operations and Security approve remote preview state before recovery rehearsal.
 
+Execution result (2026-07-16): **PASS**. Gate `P2-G3` explicitly authorized one isolated `docvault-collab-preview` D1 resource and preview-only `COLLAB_DB` Pages binding. Immutable migrations `0001` through `0009`, the ordered ledger, schema version/digest, foreign-key integrity, repeat/no-pending behavior, empty entity state, and privacy canary scan pass remotely. Wrangler CLI authentication failed closed, so the authenticated Cloudflare API was used without a temporary account. Production remains unbound and collaboration remains disabled. Gate `P2-G4` review is next.
+
 ### `CF-P2-008` — Rehearse recovery, compatible rollback, and disabled deployment
 
 Size: L | Owner: Operations + Senior QA | Reviewers: Security, Technical Lead, Product

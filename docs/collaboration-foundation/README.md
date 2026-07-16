@@ -76,6 +76,7 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Phase 2 typed persistence foundation](phase-2-sprint.md) — `CF-P2-004` checked persistence, guarded atomic batches, server-owned consistency, rollback tests, and evidence
 - [Phase 2 security mutation recipes](phase-2-security-mutation-recipes.md) — `CF-P2-005` transition guards, authoritative idempotency, seven atomic recipes, race matrices, and Gate P2-G2A evidence
 - [Phase 2 quality matrix](phase-2-quality-matrix.md) — `CF-P2-006` migration compatibility, bounded retention, privacy scans, representative scale, and Gate P2-G2B evidence
+- `CF-P2-007` preview D1 state is machine-checked in `config/cloudflare/phase-2-preview-d1.json`; production remains unbound and collaboration remains disabled
 
 ## Review ownership
 

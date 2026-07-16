@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P2",
+  "story": "CF-P2-007",
+  "status": "PASS",
+  "approved_start": "2026-07-16",
+  "gate_authorization": {
+    "id": "P2-G3",
+    "decision": "APPROVED",
+    "approved_at": "2026-07-16",
+    "authorized_story": "CF-P2-007",
+    "scope": "one isolated preview D1 and preview-only Pages binding"
+  },
+  "resource": {
+    "database_name": "docvault-collab-preview",
+    "database_id": "0454359c-d663-409e-8962-951f173efb79",
+    "primary_location_hint": "apac",
+    "read_replication": "disabled"
+  },
+  "binding": {
+    "project_name": "docvault-qa-document-hub",
+    "environment": "preview",
+    "name": "COLLAB_DB",
+    "configuration_authority": "cloudflare-pages-preview-deployment-config",
+    "production_binding_count": 0
+  },
+  "migration": {
+    "directory": "migrations/collaboration",
+    "table": "d1_migrations",
+    "applied_count": 9,
+    "schema_version": 9,
+    "migration_set_digest": "8fb7afd3e0d5da2fe756d2ae7a252a6bf3273a4846c726e407053a28a9efbdf8",
+    "repeat_pending_count": 0,
+    "foreign_key_violations": 0
+  },
+  "remote_verification": {
+    "entity_rows": 0,
+    "privacy_canary_matches": 0,
+    "api_business_writes": 0,
+    "cli_auth": "unavailable-failed-closed",
+    "execution_channel": "authenticated-cloudflare-api"
+  },
+  "environment_boundary": {
+    "preview_d1_created": true,
+    "preview_d1_bound": true,
+    "production_d1_bound": false,
+    "collaboration_enabled": false,
+    "real_user_data_allowed": false
+  },
+  "p0_p1_exceptions": [],
+  "evidence": ["CF-EV-P2-OPS-001", "CF-EV-P2-INT-007", "CF-EV-P2-SEC-007"]
+}
