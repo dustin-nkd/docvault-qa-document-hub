@@ -43,18 +43,19 @@ export function validatePhase3ContractFreeze({ manifest, sprintManifest, sprintS
     }
 
     assert(sprintManifest.status === 'ACTIVE'
-        && sprintManifest.authorization?.gate === 'P3-G2B'
+        && sprintManifest.authorization?.gate === 'P3-G2C'
         && sprintManifest.authorization.decision === 'APPROVED'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-005'
+        && sprintManifest.authorization.authorized_story === 'CF-P3-006'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-001')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-002')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-003')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-004')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-005')?.status === 'PASS'
-        && sprintManifest.stories.filter(story => !['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005'].includes(story.id))
+        && sprintManifest.stories?.find(story => story.id === 'CF-P3-006')?.status === 'PASS'
+        && sprintManifest.stories.filter(story => !['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005', 'CF-P3-006'].includes(story.id))
             .every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
-    assert(/^Status: \*\*ACTIVE — `CF-P3-005` PASS; awaiting Product Owner approval at Gate P3-G2C\*\*$/m.test(sprintSource), 'Sprint status text drifted');
-    assert(/^Status: \*\*Contract frozen; `CF-P3-005` PASS; awaiting Gate P3-G2C approval\*\*$/m.test(contractSource), 'Contract status text drifted');
+    assert(/^Status: \*\*ACTIVE — `CF-P3-006` PASS; awaiting Product Owner approval at Gate P3-G3\*\*$/m.test(sprintSource), 'Sprint status text drifted');
+    assert(/^Status: \*\*Contract frozen; `CF-P3-006` PASS; awaiting Gate P3-G3 approval\*\*$/m.test(contractSource), 'Contract status text drifted');
 
     const observations = manifest.platform_observations || {};
     assert(observations.cloudflare_pages?.project === branchControl.project_name

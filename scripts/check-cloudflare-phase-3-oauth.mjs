@@ -24,4 +24,4 @@ validatePhase3OAuthTransactions({
 console.log('Cloudflare Phase 3 OAuth transaction gate passed');
 console.log('  CF-P3-003: PASS; Workers tests: 8; evidence: UT-002, INT-001, SEC-003');
 console.log('  Routes/schema/bindings/secrets/remote/user/session changes: zero');
-console.log('  Historical transaction gate preserved; CF-P3-005 now PASS');
+console.log('  Historical transaction gate preserved; CF-P3-006 now PASS');

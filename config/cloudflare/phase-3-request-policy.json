@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P3",
+  "story": "CF-P3-006",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P3-G2C",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P3-006",
+    "next_gate": "P3-G3",
+    "next_story": "CF-P3-007"
+  },
+  "scope": {
+    "isolated_runtime_modules_added": 1,
+    "identity_route_calls": 0,
+    "business_route_calls": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "production_identity_enabled": false,
+    "preview_identity_enabled": false,
+    "collaboration_enabled": false,
+    "business_routes_enabled": false
+  },
+  "route_scope": [
+    "POST /api/v1/oauth/github/transactions",
+    "GET /api/v1/oauth/github/callback",
+    "GET /api/v1/session",
+    "POST /api/v1/session/logout"
+  ],
+  "request_profile": {
+    "mutation_origin": "exact-approved-request-origin",
+    "session_get_origin": "missing-or-exact-approved-request-origin",
+    "callback_origin": "state-pkce-protocol-exception",
+    "mutation_content_type": "application/json;charset=utf-8-exact",
+    "normal_api_cors": "absent",
+    "preflight": "method-denied",
+    "response_cache": "no-store-private",
+    "service_worker_api_mode": "network-only-no-cache-lookup",
+    "validation_order": ["route-method", "exact-origin", "live-session", "session-bound-csrf"]
+  },
+  "session_profile": {
+    "session_get": "optional-session-issues-csrf-only-when-live",
+    "logout": "live-session-and-current-csrf",
+    "sign_in_transaction": "public-after-exact-origin",
+    "reauthenticate_transaction": "live-session-and-current-csrf",
+    "csrf_header": "X-CSRF-Token",
+    "csrf_derivation": "separate-keyring-hmac-over-raw-session-token",
+    "csrf_failure_session_activity": "unchanged",
+    "invalid_csrf": "generic-CSRF_REJECTED",
+    "invalid_required_session": "generic-UNAUTHENTICATED"
+  },
+  "negative_coverage": [
+    "missing-origin",
+    "null-origin",
+    "lookalike-origin",
+    "subdomain-origin",
+    "port-origin",
+    "scheme-origin",
+    "cross-environment-origin",
+    "preflight",
+    "wrong-method",
+    "trailing-slash",
+    "query-confusion",
+    "business-route",
+    "missing-csrf",
+    "malformed-csrf",
+    "old-key-csrf",
+    "cross-session-csrf"
+  ],
+  "source_files": [
+    "functions/_lib/identity/request-policy.ts",
+    "functions/_lib/identity/index.ts",
+    "functions/_lib/identity/crypto.ts",
+    "functions/_lib/identity/session-service.ts",
+    "sw.js"
+  ],
+  "workers_test_file": "tests/cloudflare/identity-request-policy.workers.test.ts",
+  "workers_test_count": 12,
+  "evidence": ["CF-EV-P3-UT-004", "CF-EV-P3-API-003", "CF-EV-P3-SEC-006"],
+  "next_decision": {
+    "gate": "P3-G3",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P3-007-only",
+    "remote_changes_authorized": false
+  }
+}

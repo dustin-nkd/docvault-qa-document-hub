@@ -34,17 +34,17 @@ export function validatePhase3SessionLifecycle({ manifest, sprintManifest, sprin
     }
     assert(scope.isolated_runtime_modules_added === 2, 'Session module inventory drifted');
 
-    assert(sprintManifest.authorization?.gate === 'P3-G2B'
+    assert(sprintManifest.authorization?.gate === 'P3-G2C'
         && sprintManifest.authorization.decision === 'APPROVED'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-005', 'Sprint authorization drifted');
-    const completed = ['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005'];
+        && sprintManifest.authorization.authorized_story === 'CF-P3-006', 'Sprint authorization drifted');
+    const completed = ['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005', 'CF-P3-006'];
     assert((sprintManifest.stories || []).filter(story => completed.includes(story.id))
         .every(story => story.status === 'PASS')
         && sprintManifest.stories.filter(story => !completed.includes(story.id))
             .every(story => story.status === 'PLANNED'), 'Sprint story disposition drifted');
-    assert(sprintSource.includes('`CF-P3-005` PASS; awaiting Product Owner approval at Gate P3-G2C'),
+    assert(sprintSource.includes('`CF-P3-006` PASS; awaiting Product Owner approval at Gate P3-G3'),
         'Sprint status text drifted');
-    assert(contractSource.includes('`CF-P3-005` PASS; awaiting Gate P3-G2C approval'),
+    assert(contractSource.includes('`CF-P3-006` PASS; awaiting Gate P3-G3 approval'),
         'Contract execution status drifted');
 
     assert(sameSet(manifest.source_files || [], SOURCES) && sameSet(Object.keys(sourceFiles), SOURCES),
@@ -79,7 +79,7 @@ export function validatePhase3SessionLifecycle({ manifest, sprintManifest, sprin
     }
     assert(repository.includes('WHERE s.token_digest IN (?, ?) LIMIT 3')
         && repository.includes('last_seen_at = ? AND idle_expires_at > ? AND absolute_expires_at > ?')
-        && service.includes('if (now - record.lastSeenAt >= LAST_SEEN_COALESCE_MS)')
+        && service.includes('input.coalesceActivity !== false && now - record.lastSeenAt >= LAST_SEEN_COALESCE_MS')
         && service.includes('const reread = await lookup('), 'Lookup/touch amplification controls weakened');
 
     const rotation = manifest.rotation_profile || {};

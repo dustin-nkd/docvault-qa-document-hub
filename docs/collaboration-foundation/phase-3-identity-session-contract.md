@@ -1,6 +1,6 @@
 # Phase 3 identity and session implementation contract
 
-Status: **Contract frozen; `CF-P3-005` PASS; awaiting Gate P3-G2C approval**
+Status: **Contract frozen; `CF-P3-006` PASS; awaiting Gate P3-G3 approval**
 
 Date: 2026-07-16
 
@@ -267,4 +267,4 @@ Recommendation: **APPROVE Gate P3-G1 and authorize `CF-P3-002` only.**
 
 ## 12. Implementation progress
 
-`CF-P3-002` through `CF-P3-005` now pass their executable gates. The bounded GitHub adapter and atomic callback create digest-only authority, while the server-side lifecycle enforces idle/absolute expiry, coalesced activity, recent authentication, active/previous pepper lookup, single-successor rotation, revoke-first logout, and bounded retention using existing schema version 9. Evidence `CF-EV-P3-UT-003`, `CF-EV-P3-API-002`, `CF-EV-P3-INT-003`, and `CF-EV-P3-SEC-005` closes the session story. No HTTP route, binding, secret, OAuth app, or remote resource is active. The next decision is Gate P3-G2C for `CF-P3-006` only.
+`CF-P3-002` through `CF-P3-006` now pass their executable gates. The bounded GitHub adapter and atomic callback create digest-only authority, the server-side lifecycle enforces idle/absolute expiry and safe rotation/revocation, and the isolated request boundary locks the four-route surface, exact Origin, session-bound CSRF, no-store responses, CORS denial, and Service Worker isolation. Evidence `CF-EV-P3-UT-004`, `CF-EV-P3-API-003`, and `CF-EV-P3-SEC-006` closes the request-policy story. No HTTP route invokes the identity runtime; no binding, secret, OAuth app, migration, or remote resource changed. The next decision is Gate P3-G3 for `CF-P3-007` only.

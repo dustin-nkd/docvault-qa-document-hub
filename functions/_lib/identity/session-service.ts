@@ -39,6 +39,7 @@ export type SessionLifecycleCheckpoint =
 export interface SessionLifecycleInput {
     readonly sessionTokenPepper: IdentityKeyring;
     readonly cookieName: SessionCookieName;
+    readonly coalesceActivity?: boolean;
 }
 
 export interface AuthenticatedSession {
@@ -159,7 +160,7 @@ export async function resolveSessionToken(database: AuthorizationSessionSource,
         if (record.digestSlot === 1) {
             return await rotate(session, input, record, now, 'pepper_rotation', dependencies);
         }
-        if (now - record.lastSeenAt >= LAST_SEEN_COALESCE_MS) {
+        if (input.coalesceActivity !== false && now - record.lastSeenAt >= LAST_SEEN_COALESCE_MS) {
             await dependencies.failures.checkpoint('session.lookup.before-touch');
             const idleExpiresAt = Math.min(now + SESSION_IDLE_MS, record.absoluteExpiresAt);
             const touched = await touchSession(session, record, now, idleExpiresAt);

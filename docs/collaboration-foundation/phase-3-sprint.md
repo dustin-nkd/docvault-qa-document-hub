@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **ACTIVE — `CF-P3-005` PASS; awaiting Product Owner approval at Gate P3-G2C**
+Status: **ACTIVE — `CF-P3-006` PASS; awaiting Product Owner approval at Gate P3-G3**
 
 Sprint ID: `CF-P3-S01`
 
@@ -218,6 +218,8 @@ Acceptance: missing/null/lookalike/subdomain/port/scheme/cross-environment origi
 
 Evidence: `CF-EV-P3-UT-004`, `CF-EV-P3-API-003`, `CF-EV-P3-SEC-006`.
 
+Execution result (2026-07-16): **PASS**. A single isolated request-policy boundary now classifies only the four frozen identity method/path pairs, validates the exact HTTPS environment origin before mutation/session work, preserves the state/PKCE-protected callback GET exception, rejects preflight/CORS and non-contract media types, and applies optional or required server sessions with a separately keyed synchronizer CSRF token bound to the raw current session token. Twelve Workers/D1 tests prove missing/null/lookalike/subdomain/port/scheme/cross-environment Origin denial, method/path/query confusion denial, callback behavior, optional session issuance, validation order, old-key/cross-session CSRF denial, and no-store/no-CORS headers. The policy remains isolated: no production/preview route invokes it, business routes remain disabled, schema 9 and bindings are unchanged, and no secret or remote resource changed.
+
 Gate P3-G3 authorizes `CF-P3-007` only.
 
 ### `CF-P3-007` — Add abuse controls, privacy-safe observability, and resilience
@@ -332,6 +334,6 @@ A story is Done only when acceptance criteria and all mapped evidence pass, char
 
 ## 11. Current recommendation
 
-Cross-functional recommendation: **Approve Gate P3-G2C and authorize `CF-P3-006` only.**
+Cross-functional recommendation: **Approve Gate P3-G3 and authorize `CF-P3-007` only.**
 
 This authorizes exact-Origin, session-bound CSRF, and four-route scope enforcement only. It does not provision OAuth, enable preview identity, or change production.

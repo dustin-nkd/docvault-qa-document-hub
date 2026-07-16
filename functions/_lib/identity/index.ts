@@ -9,5 +9,6 @@ export * from './oauth-envelope';
 export * from './oauth-transaction-repository';
 export * from './oauth-transaction-service';
 export * from './return-path';
+export * from './request-policy';
 export * from './session-repository';
 export * from './session-service';

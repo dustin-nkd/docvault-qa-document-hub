@@ -34,3 +34,4 @@ import './cloudflare-phase-3-primitives-policy.test.mjs';
 import './cloudflare-phase-3-oauth-policy.test.mjs';
 import './cloudflare-phase-3-callback-policy.test.mjs';
 import './cloudflare-phase-3-session-policy.test.mjs';
+import './cloudflare-phase-3-request-policy.test.mjs';
