@@ -56,7 +56,10 @@ export function extractQueryContracts(source) {
 export function validatePhase2LocalReadiness({ readiness, querySource, migrationSources, evidenceSources, wrangler }) {
     assert(readiness?.schema_version === 1 && readiness.phase === 'CF-P2' && readiness.story === 'CF-P2-003', 'Unsupported CF-P2-003 readiness contract');
     assert(readiness.status === 'PASS' && readiness.approved_start === '2026-07-16', 'CF-P2-003 implementation status drifted');
-    assert(readiness.gate_candidate?.id === 'P2-G2' && readiness.gate_candidate.decision === 'REVIEW_REQUIRED', 'P2-G2 must remain a review candidate until explicit approval');
+    assert(readiness.gate_candidate?.id === 'P2-G2'
+        && readiness.gate_candidate.decision === 'APPROVED'
+        && readiness.gate_candidate.approved_at === '2026-07-16'
+        && readiness.gate_candidate.authorized_story === 'CF-P2-004', 'P2-G2 approval provenance drifted');
     assert(sameSet(readiness.gate_candidate.required_reviewers || [], ['Security Reviewer', 'Technical Lead', 'Senior QA']), 'P2-G2 reviewer inventory drifted');
     assert(Object.values(readiness.environment_boundary || {}).every(value => value === false), 'CF-P2-003 must not authorize remote D1 or collaboration');
     assert(!containsKey(wrangler, REMOTE_BINDING_KEYS), 'Wrangler contains a remote binding during CF-P2-003');
@@ -98,7 +101,7 @@ export function validatePhase2LocalReadiness({ readiness, querySource, migration
         assert(/^Status: PASS$/m.test(source), `${id} is not PASS`);
         assert(source.includes('CF-P2-003'), `${id} does not identify CF-P2-003`);
         assert(/local-only|No remote D1/i.test(source), `${id} lacks local-only evidence`);
-        assert(source.includes('P2-G2') && source.includes('REVIEW_REQUIRED'), `${id} does not preserve the P2-G2 review boundary`);
+        assert(source.includes('P2-G2') && source.includes('APPROVED'), `${id} does not preserve the P2-G2 approval boundary`);
     }
     return true;
 }

@@ -45,9 +45,9 @@ test('CF-P2-003 rejects unsafe query source and missing tenant/index controls', 
     }
 });
 
-test('CF-P2-003 rejects premature gate approval, remote state, activation, and evidence drift', () => {
+test('CF-P2-003 rejects gate approval drift, remote state, activation, and evidence drift', () => {
     const cases = [
-        input => { input.readiness.gate_candidate.decision = 'PASS'; },
+        input => { input.readiness.gate_candidate.decision = 'REVIEW_REQUIRED'; },
         input => { input.wrangler.d1_databases = [{ binding: 'COLLAB_DB', database_id: 'forbidden' }]; },
         input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
         input => { delete input.evidenceSources['CF-EV-P2-SEC-003']; }

@@ -4,7 +4,7 @@ Status: PASS
 
 Story: `CF-P2-003`
 
-Gate: `P2-G2` `REVIEW_REQUIRED`
+Gate: `P2-G2` `APPROVED` on 2026-07-16 for `CF-P2-004`
 
 The local-only Workers D1 suite applies all seven immutable/forward migrations, enables foreign keys, seeds two isolated workspaces, and proves cross-workspace document/revision, key, envelope, invitation replacement, actor, and retention relations fail closed. Foreign-tenant and absent document lookups are indistinguishable no-row results.
 

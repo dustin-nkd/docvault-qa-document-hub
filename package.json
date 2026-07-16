@@ -10,7 +10,7 @@
   "scripts": {
     "check": "npm run check:base && npm run check:cloudflare",
     "check:base": "node scripts/quality-check.mjs && npm run check:functions && npm test",
-    "check:cloudflare": "npm run cf:toolchain:check && npm run cf:config:check && npm run cf:types:check && npm run test:collab:unit && npm run cf:test && npm run cf:rollback:rehearse && npm run cf:pages:dry-run && npm run cf:phase1:check && npm run cf:phase2:schema:check && npm run cf:phase2:migrations:check && npm run cf:phase2:readiness:check",
+    "check:cloudflare": "npm run cf:toolchain:check && npm run cf:config:check && npm run cf:types:check && npm run test:collab:unit && npm run cf:test && npm run cf:rollback:rehearse && npm run cf:pages:dry-run && npm run cf:phase1:check && npm run cf:phase2:schema:check && npm run cf:phase2:migrations:check && npm run cf:phase2:readiness:check && npm run cf:phase2:persistence:check",
     "check:deployment-boundary": "node scripts/check-deployment-boundary.mjs",
     "smoke:production:boundaries": "node scripts/smoke-production-boundaries.mjs",
     "check:functions": "tsc --project tsconfig.functions.json",
@@ -29,6 +29,7 @@
     "cf:phase2:schema:check": "node scripts/check-cloudflare-phase-2-schema.mjs",
     "cf:phase2:migrations:check": "node scripts/check-cloudflare-phase-2-migrations.mjs",
     "cf:phase2:readiness:check": "node scripts/check-cloudflare-phase-2-readiness.mjs",
+    "cf:phase2:persistence:check": "node scripts/check-cloudflare-phase-2-persistence.mjs",
     "test": "node tests/run.mjs",
     "test:collab:unit": "node --test tests/runtime-dependencies.test.mjs tests/api-shell.test.mjs tests/cloudflare-production-policy.test.mjs",
     "test:e2e": "node tests/browser-smoke.mjs",

@@ -4,7 +4,7 @@ Status: PASS
 
 Story: `CF-P2-003`
 
-Gate: `P2-G2` `REVIEW_REQUIRED`
+Gate: `P2-G2` `APPROVED` on 2026-07-16 for `CF-P2-004`
 
 The disposable local D1 workload contains 10,000 documents and 50 revisions for a hot document. All 13 approved repository read contracts are checked with `EXPLAIN QUERY PLAN`; each must use its intended primary/unique/named index and no plan may contain a full table scan or temporary sort.
 

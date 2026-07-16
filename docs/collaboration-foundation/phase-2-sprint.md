@@ -188,7 +188,7 @@ Acceptance:
 
 Gate P2-G2: local schema/constraint/query-plan evidence must pass before persistence helpers merge.
 
-Execution result (2026-07-16): **PASS** for `CF-P2-003`; Gate `P2-G2` remains **REVIEW_REQUIRED** pending explicit sign-off. Evidence: `CF-EV-P2-INT-002`, `CF-EV-P2-PERF-001`, `CF-EV-P2-SEC-003`.
+Execution result (2026-07-16): **PASS** for `CF-P2-003`; Gate `P2-G2` is **APPROVED** and authorizes `CF-P2-004` only. Evidence: `CF-EV-P2-INT-002`, `CF-EV-P2-PERF-001`, `CF-EV-P2-SEC-003`.
 
 ### `CF-P2-004` — Build typed persistence and atomic batch primitives
 
@@ -208,6 +208,8 @@ Acceptance:
 - failure at every batch position rolls back all domain, idempotency, and audit changes;
 - production API remains `503 COLLABORATION_UNAVAILABLE` with zero D1 calls;
 - evidence: `CF-EV-P2-UT-001`, `CF-EV-P2-INT-003`, `CF-EV-P2-SEC-004`.
+
+Execution result (2026-07-16): **PASS**. Typed bounded reads, exact checked writes, guarded atomic batch topology, server-owned D1 session/bookmark handling, four-position rollback injection, and disabled-API isolation passed locally. No remote D1 resource or collaboration activation was authorized.
 
 ### `CF-P2-005` — Prove idempotency and security mutation recipes
 
@@ -344,7 +346,7 @@ No story may skip its upstream gate. P2-002 and P2-003 may share review iteratio
 | 2 | Migration policy, manifest/hash checker, schema metadata | STA/SEC evidence |
 | 3 | Identity/session and workspace/membership/invitation migrations | Schema review |
 | 4 | Device/key/envelope and document/revision/idempotency migrations | Crypto/API alignment |
-| 5 | Audit/retention migrations, indexes, immutable-history guards | Gate P2-G2 candidate |
+| 5 | Audit/retention migrations, indexes, immutable-history guards | Gate P2-G2 approved for CF-P2-004 |
 | 6 | Full constraint and cross-workspace negative matrix | Security review |
 | 7 | Query plans, keyset pagination, typed repository boundary | Performance + code review |
 | 8 | Guarded atomic batch and checked-write primitives | Fault evidence |

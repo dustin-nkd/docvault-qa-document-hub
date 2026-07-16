@@ -1,6 +1,6 @@
 # CF-P2-003 tenant constraints and index plans
 
-Status: PASS; Gate P2-G2 REVIEW_REQUIRED
+Status: PASS; Gate P2-G2 APPROVED on 2026-07-16 for CF-P2-004
 
 Date: 2026-07-16
 
@@ -43,7 +43,7 @@ Forward migration 0007 adds the missing tie-breaker indexes for membership, invi
 
 Workers Vitest applies all seven migrations to a disposable local D1 database, creates two isolated tenants, and loads 10,000 documents plus 50 revisions for a hot document. `EXPLAIN QUERY PLAN` is executed for all 13 approved queries. Each plan must name its intended index and must not contain a full `SCAN` or `USE TEMP B-TREE` step.
 
-The source policy independently rejects missing workspace predicates, unbounded reads, offset pagination, missing stable keysets, protected-field terms, missing indexes/triggers, remote bindings, activation, or premature Gate P2-G2 approval.
+The source policy independently rejects missing workspace predicates, unbounded reads, offset pagination, missing stable keysets, protected-field terms, missing indexes/triggers, remote bindings, activation, or Gate P2-G2 approval-provenance drift.
 
 Current platform behavior was checked against Cloudflare's [D1 index guidance](https://developers.cloudflare.com/d1/best-practices/use-indexes/), [prepared statement API](https://developers.cloudflare.com/d1/worker-api/prepared-statements/), and [local development guidance](https://developers.cloudflare.com/d1/best-practices/local-development/).
 
@@ -51,4 +51,4 @@ Current platform behavior was checked against Cloudflare's [D1 index guidance](h
 
 `CF-P2-003`: **PASS**.
 
-Gate `P2-G2`: **REVIEW_REQUIRED**. Persistence helpers in CF-P2-004 remain blocked until explicit Security, Technical Lead, and Senior QA review/approval.
+Gate `P2-G2`: **APPROVED** on 2026-07-16. The approval authorizes CF-P2-004 only; remote D1, business mutation recipes, and collaboration activation remain prohibited.

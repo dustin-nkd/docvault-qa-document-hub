@@ -88,6 +88,10 @@ test('CI blocks deployment until all Cloudflare, artifact, and browser gates pas
     withoutPhase2Readiness.scripts['check:cloudflare'] = withoutPhase2Readiness.scripts['check:cloudflare']
         .replace(' && npm run cf:phase2:readiness:check', '');
     assert.throws(() => validateCloudflareCiBoundary(withoutPhase2Readiness, workflow));
+    const withoutPhase2Persistence = structuredClone(packageJson);
+    withoutPhase2Persistence.scripts['check:cloudflare'] = withoutPhase2Persistence.scripts['check:cloudflare']
+        .replace(' && npm run cf:phase2:persistence:check', '');
+    assert.throws(() => validateCloudflareCiBoundary(withoutPhase2Persistence, workflow));
     assert.throws(() => validateCloudflareCiBoundary(packageJson,
         workflow.replace('run: npm run check:deployment-boundary', 'run: npm run test:e2e')));
 });

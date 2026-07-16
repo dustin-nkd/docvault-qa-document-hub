@@ -24,4 +24,4 @@ console.log('  Constraint domains: 11 fail-closed matrices');
 console.log('  Query contracts: 13 prepared, explicit, bounded, keyset-scoped plans');
 console.log('  Representative workload: 10,000 documents + 50 hot-document revisions');
 console.log('  Tenant guards and intended index plans: verified locally');
-console.log('  Gate P2-G2: REVIEW_REQUIRED; remote D1 and collaboration remain disabled');
+console.log('  Gate P2-G2: APPROVED for CF-P2-004; remote D1 and collaboration remain disabled');

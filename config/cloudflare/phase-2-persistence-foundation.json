@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P2",
+  "story": "CF-P2-004",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P2-G2",
+    "decision": "APPROVED",
+    "approved_at": "2026-07-16",
+    "authorized_story": "CF-P2-004"
+  },
+  "environment_boundary": {
+    "remote_d1_created": false,
+    "remote_d1_bound": false,
+    "production_d1_allowed": false,
+    "collaboration_enabled": false
+  },
+  "batch_contract": {
+    "roles": ["guard", "domain", "audit", "result"],
+    "maximum_statements": 32,
+    "exact_audit_statements": 1,
+    "minimum_domain_statements": 1,
+    "checked_changes_required": true,
+    "exact_result_rows": 1
+  },
+  "read_contract": {
+    "maximum_page_size": 100,
+    "explicit_row_mapping": true,
+    "client_consistency_modes_allowed": false,
+    "initial_session_constraint": "first-primary"
+  },
+  "evidence": ["CF-EV-P2-UT-001", "CF-EV-P2-INT-003", "CF-EV-P2-SEC-004"]
+}

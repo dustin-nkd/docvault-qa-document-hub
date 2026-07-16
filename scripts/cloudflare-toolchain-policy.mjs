@@ -14,7 +14,8 @@ export const cloudflareScripts = {
     'cf:phase1:check': 'node scripts/check-cloudflare-phase-1-exit.mjs',
     'cf:phase2:schema:check': 'node scripts/check-cloudflare-phase-2-schema.mjs',
     'cf:phase2:migrations:check': 'node scripts/check-cloudflare-phase-2-migrations.mjs',
-    'cf:phase2:readiness:check': 'node scripts/check-cloudflare-phase-2-readiness.mjs'
+    'cf:phase2:readiness:check': 'node scripts/check-cloudflare-phase-2-readiness.mjs',
+    'cf:phase2:persistence:check': 'node scripts/check-cloudflare-phase-2-persistence.mjs'
 };
 
 const assert = (condition, message) => {

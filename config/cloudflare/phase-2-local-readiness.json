@@ -6,7 +6,9 @@
   "approved_start": "2026-07-16",
   "gate_candidate": {
     "id": "P2-G2",
-    "decision": "REVIEW_REQUIRED",
+    "decision": "APPROVED",
+    "approved_at": "2026-07-16",
+    "authorized_story": "CF-P2-004",
     "required_reviewers": ["Security Reviewer", "Technical Lead", "Senior QA"]
   },
   "environment_boundary": {

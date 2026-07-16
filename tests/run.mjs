@@ -22,3 +22,4 @@ import './cloudflare-phase-1-exit.test.mjs';
 import './cloudflare-phase-2-schema-policy.test.mjs';
 import './cloudflare-phase-2-migration-policy.test.mjs';
 import './cloudflare-phase-2-readiness-policy.test.mjs';
+import './cloudflare-phase-2-persistence-policy.test.mjs';
