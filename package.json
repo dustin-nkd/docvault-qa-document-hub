@@ -47,7 +47,7 @@
     "cf:phase3:session:check": "node scripts/check-cloudflare-phase-3-session.mjs",
     "cf:phase3:request-policy:check": "node scripts/check-cloudflare-phase-3-request-policy.mjs",
     "cf:phase3:abuse:check": "node scripts/check-cloudflare-phase-3-abuse.mjs",
-    "test": "node tests/run.mjs",
+    "test": "node --test --test-reporter=spec tests/run.mjs",
     "test:collab:unit": "node --test tests/runtime-dependencies.test.mjs tests/api-shell.test.mjs tests/cloudflare-production-policy.test.mjs",
     "test:e2e": "node tests/browser-smoke.mjs",
     "dev": "vite",

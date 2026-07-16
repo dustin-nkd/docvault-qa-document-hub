@@ -164,7 +164,7 @@ export function validateBurstWorkerConfig(config, source, compatibilityDate = '2
 }
 
 export function validateGeneratedBurstWorkerTypes(source) {
-    assert(/interface\s+Env\s*\{/.test(source), 'Burst Worker Env interface is missing');
+    assert(/interface\s+Env\s+extends\s+__BaseEnv_Env\s*\{/.test(source), 'Burst Worker Env interface is missing');
     assert(source.includes('AUTH_BURST_LIMITER: RateLimit'), 'Burst Worker RateLimit binding type is missing');
     assert(!/\b(?:COLLAB_DB|AUTH_BURST_SERVICE|GITHUB_OAUTH|SESSION_TOKEN|OAUTH_TRANSACTION|CSRF_TOKEN|RATE_LIMIT_KEY)\b/
         .test(source), 'Burst Worker types contain an unauthorized binding or secret');
