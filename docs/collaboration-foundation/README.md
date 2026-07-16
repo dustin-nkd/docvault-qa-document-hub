@@ -69,6 +69,8 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Reviewed Pages Wrangler configuration](phase-1-wrangler-configuration.md) — `CF-P1-003` environment isolation, generated types, and source-of-truth transition
 - [Phase 1 exit report](phase-1-exit-report.md) — Gate P1 evidence, cross-functional review, and constrained Phase 2 recommendation
 - [Phase 2 D1 schema and persistence sprint](phase-2-sprint.md) — proposed story sequence, migration architecture, non-production resource gates, recovery, and Gate P2 evidence
+- [Phase 2 schema inventory freeze](phase-2-schema-freeze.md) — `CF-P2-001` canonical tables, columns, relationships, invariants, ownership, and Gate P2-G1 disposition
+- [Phase 2 migration governance](phase-2-migration-governance.md) — immutable naming/hash/manifest, compatibility, correction, validation, and unknown-history policy
 
 ## Review ownership
 

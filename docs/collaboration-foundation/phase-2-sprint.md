@@ -125,6 +125,8 @@ Migrations never execute from a browser request, Function startup, Pages build, 
 
 Size: M | Owner: Technical Lead + Senior QA | Reviewers: Security, Operations, Product
 
+Execution: **PASS on 2026-07-16; awaiting Gate P2-G1 approval.** Canonical artifacts: [`phase-2-schema-freeze.md`](phase-2-schema-freeze.md), [`phase-2-migration-governance.md`](phase-2-migration-governance.md), and `config/cloudflare/phase-2-schema-freeze.json`.
+
 Tasks:
 
 1. Reconcile every schema table/column/state/index with API, crypto, audit, retention, and ADR contracts.

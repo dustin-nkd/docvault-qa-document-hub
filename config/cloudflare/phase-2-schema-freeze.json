@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P2",
+  "story": "CF-P2-001",
+  "status": "PASS",
+  "frozen_at": "2026-07-16",
+  "gate": {
+    "id": "P2-G1",
+    "decision": "REVIEW_REQUIRED",
+    "required_reviewers": [
+      "Product Owner",
+      "Security Reviewer",
+      "Technical Lead",
+      "Operations",
+      "Senior QA"
+    ]
+  },
+  "environment_boundary": {
+    "remote_d1_created": false,
+    "remote_d1_bound": false,
+    "production_d1_allowed": false,
+    "collaboration_enabled": false
+  },
+  "identifier_profile": {
+    "opaque_id": "lowercase-uuid-v4-text",
+    "provider_subject": "unsigned-decimal-text-max-20",
+    "server_time": "utc-unix-milliseconds-integer",
+    "digest": "blob-32",
+    "boolean": "integer-0-or-1"
+  },
+  "tables": [
+    {
+      "name": "schema_metadata",
+      "migration": 1,
+      "owner": "Technical Lead",
+      "workspace_scoped": false,
+      "columns": ["singleton_id", "schema_version", "minimum_runtime_schema", "maximum_runtime_schema", "migration_set_digest", "updated_at"],
+      "requirements": ["CF-OPS-002", "CF-OPS-003"],
+      "invariants": ["INV-MIG-001", "INV-MIG-002"]
+    },
+    {
+      "name": "users",
+      "migration": 1,
+      "owner": "Identity and Session Repository",
+      "workspace_scoped": false,
+      "columns": ["id", "provider", "provider_subject", "display_login", "display_name", "avatar_url", "status", "created_at", "updated_at", "deactivated_at"],
+      "requirements": ["CF-ID-001", "CF-ID-002"],
+      "invariants": ["INV-ID-001", "INV-ID-002"]
+    },
+    {
+      "name": "oauth_transactions",
+      "migration": 1,
+      "owner": "Identity and Session Repository",
+      "workspace_scoped": false,
+      "columns": ["id", "state_digest", "pkce_verifier_envelope", "callback_origin", "callback_path", "invitation_id", "created_at", "expires_at", "consumed_at", "status"],
+      "requirements": ["CF-ID-003", "CF-ID-004"],
+      "invariants": ["INV-AUTH-001", "INV-AUTH-002", "INV-RET-001"]
+    },
+    {
+      "name": "sessions",
+      "migration": 1,
+      "owner": "Identity and Session Repository",
+      "workspace_scoped": false,
+      "columns": ["id", "token_digest", "user_id", "device_hint", "created_at", "last_seen_at", "authenticated_at", "idle_expires_at", "absolute_expires_at", "revoked_at", "revoke_reason"],
+      "requirements": ["CF-SES-001", "CF-SES-002", "CF-SES-003"],
+      "invariants": ["INV-SES-001", "INV-SES-002", "INV-RET-002"]
+    },
+    {
+      "name": "workspaces",
+      "migration": 2,
+      "owner": "Workspace Repository",
+      "workspace_scoped": true,
+      "columns": ["id", "display_name", "description_envelope", "state", "current_key_version", "created_by", "created_at", "updated_at", "deleted_at"],
+      "requirements": ["CF-WS-001", "CF-WS-002", "CF-WS-004"],
+      "invariants": ["INV-WS-001", "INV-WS-002", "INV-KEY-001"]
+    },
+    {
+      "name": "memberships",
+      "migration": 2,
+      "owner": "Workspace Repository",
+      "workspace_scoped": true,
+      "columns": ["workspace_id", "user_id", "role", "state", "invited_by", "accepted_by", "removed_by", "created_at", "activated_at", "removed_at", "role_version"],
+      "requirements": ["CF-RBAC-001", "CF-RBAC-002", "CF-RBAC-003", "CF-RBAC-004"],
+      "invariants": ["INV-RBAC-001", "INV-RBAC-002", "INV-RBAC-003"]
+    },
+    {
+      "name": "invitations",
+      "migration": 2,
+      "owner": "Workspace Repository",
+      "workspace_scoped": true,
+      "columns": ["id", "workspace_id", "target_provider", "target_provider_subject", "target_login_snapshot", "offered_role", "token_digest", "state", "invited_by", "accepted_by", "created_at", "expires_at", "accepted_at", "revoked_at", "expired_at", "replacement_of"],
+      "requirements": ["CF-INV-001", "CF-INV-002", "CF-INV-003", "CF-INV-004", "CF-INV-005"],
+      "invariants": ["INV-INV-001", "INV-INV-002", "INV-INV-003", "INV-RET-003"]
+    },
+    {
+      "name": "devices",
+      "migration": 3,
+      "owner": "Key and Device Repository",
+      "workspace_scoped": false,
+      "columns": ["id", "user_id", "label", "public_jwk", "fingerprint", "suite", "state", "created_at", "revoked_at", "revoke_reason"],
+      "requirements": ["CF-DEV-001", "CF-DEV-002", "CF-DEV-003", "CF-DEV-004"],
+      "invariants": ["INV-DEV-001", "INV-DEV-002"]
+    },
+    {
+      "name": "workspace_key_versions",
+      "migration": 3,
+      "owner": "Key and Device Repository",
+      "workspace_scoped": true,
+      "columns": ["workspace_id", "key_version", "suite", "state", "rotation_reason", "created_by_device_id", "created_by_user_id", "created_at", "committed_at", "retired_at"],
+      "requirements": ["CF-KEY-001", "CF-KEY-003", "CF-KEY-004"],
+      "invariants": ["INV-KEY-001", "INV-KEY-002", "INV-KEY-003"]
+    },
+    {
+      "name": "workspace_key_envelopes",
+      "migration": 3,
+      "owner": "Key and Device Repository",
+      "workspace_scoped": true,
+      "columns": ["id", "workspace_id", "key_version", "target_user_id", "target_device_id", "target_fingerprint", "wrapper_user_id", "wrapper_device_id", "suite", "ephemeral_public_jwk", "hkdf_salt", "nonce", "ciphertext", "aad_digest", "created_at", "revoked_at"],
+      "requirements": ["CF-KEY-002", "CF-KEY-003", "CF-KEY-005", "CF-KEY-006"],
+      "invariants": ["INV-ENV-001", "INV-ENV-002", "INV-ENV-003"]
+    },
+    {
+      "name": "documents",
+      "migration": 4,
+      "owner": "Document Repository",
+      "workspace_scoped": true,
+      "columns": ["id", "workspace_id", "current_revision", "current_key_version", "current_ciphertext_digest", "ciphertext_bytes", "envelope_version", "state", "created_by", "created_at", "updated_at", "tombstoned_at"],
+      "requirements": ["CF-DOC-001", "CF-DOC-002", "CF-DOC-003", "CF-DOC-004"],
+      "invariants": ["INV-DOC-001", "INV-DOC-002", "INV-DOC-003"]
+    },
+    {
+      "name": "document_revisions",
+      "migration": 4,
+      "owner": "Document Repository",
+      "workspace_scoped": true,
+      "columns": ["document_id", "workspace_id", "revision", "base_revision", "operation", "key_version", "ciphertext_envelope", "ciphertext_digest", "ciphertext_bytes", "actor_user_id", "actor_device_id", "client_mutation_id", "server_time"],
+      "requirements": ["CF-DOC-003", "CF-DOC-005", "CF-DOC-006", "CF-SYNC-001", "CF-SYNC-005"],
+      "invariants": ["INV-REV-001", "INV-REV-002", "INV-REV-003"]
+    },
+    {
+      "name": "mutation_results",
+      "migration": 4,
+      "owner": "Persistence Core",
+      "workspace_scoped": true,
+      "columns": ["id", "actor_user_id", "actor_device_id", "workspace_id", "operation", "client_mutation_id", "request_fingerprint", "target_type", "target_id", "http_status", "result_json", "created_at", "expires_at"],
+      "requirements": ["CF-SYNC-002", "CF-SYNC-003", "CF-SYNC-004"],
+      "invariants": ["INV-MUT-001", "INV-MUT-002", "INV-MUT-003", "INV-RET-004"]
+    },
+    {
+      "name": "audit_events",
+      "migration": 5,
+      "owner": "Audit and Retention Repository",
+      "workspace_scoped": true,
+      "columns": ["sequence", "event_id", "schema_version", "workspace_id", "event_type", "outcome", "reason_code", "actor_user_id", "actor_device_id", "target_type", "target_id", "request_id", "server_time", "metadata_json", "correction_of_event_id", "related_event_id", "hold_state"],
+      "requirements": ["CF-AUD-001", "CF-AUD-002", "CF-AUD-003", "CF-AUD-004"],
+      "invariants": ["INV-AUD-001", "INV-AUD-002", "INV-AUD-003", "INV-RET-005"]
+    },
+    {
+      "name": "retention_holds",
+      "migration": 5,
+      "owner": "Audit and Retention Repository",
+      "workspace_scoped": true,
+      "columns": ["id", "workspace_id", "hold_type", "reason_code", "created_by", "created_at", "expires_at", "released_at", "status"],
+      "requirements": ["CF-AUD-003", "CF-OPS-004"],
+      "invariants": ["INV-HOLD-001", "INV-HOLD-002"]
+    }
+  ],
+  "migration_sequence": [
+    {"sequence": 1, "slug": "identity", "owns": ["schema_metadata", "users", "oauth_transactions", "sessions"]},
+    {"sequence": 2, "slug": "workspaces", "owns": ["workspaces", "memberships", "invitations"]},
+    {"sequence": 3, "slug": "devices_keys", "owns": ["devices", "workspace_key_versions", "workspace_key_envelopes"]},
+    {"sequence": 4, "slug": "documents", "owns": ["documents", "document_revisions", "mutation_results"]},
+    {"sequence": 5, "slug": "audit_retention", "owns": ["audit_events", "retention_holds"]},
+    {"sequence": 6, "slug": "invariants_indexes", "owns": []}
+  ],
+  "prohibited_patterns": [
+    "runtime-sql-interpolation",
+    "select-star",
+    "workspace-query-without-workspace-predicate",
+    "unchecked-zero-row-security-write",
+    "plaintext-protected-content",
+    "raw-token-or-secret-storage",
+    "migration-from-request-or-build",
+    "edit-or-renumber-applied-migration",
+    "same-release-destructive-contract",
+    "normal-request-cascade-of-history-or-last-owner"
+  ],
+  "evidence": ["CF-EV-P2-STA-001", "CF-EV-P2-SEC-001"]
+}
