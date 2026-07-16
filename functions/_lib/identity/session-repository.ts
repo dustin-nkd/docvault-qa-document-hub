@@ -25,6 +25,8 @@ export interface SessionRecord {
     readonly userStatus: 'active' | 'deactivated';
     readonly providerSubject: string;
     readonly login: string;
+    readonly displayName: string | null;
+    readonly avatarUrl: string | null;
 }
 
 export interface RotateSessionInput {
@@ -65,6 +67,10 @@ function mapSession(row: Record<string, unknown>, knownDigests: readonly ArrayBu
         || typeof row.provider_subject !== 'string' || !/^[1-9][0-9]{0,19}$/.test(row.provider_subject)
         || typeof row.display_login !== 'string' || row.display_login.length < 1
         || row.display_login.length > 100 || (row.digest_slot !== 0 && row.digest_slot !== 1)
+        || !(row.display_name === null || (typeof row.display_name === 'string'
+            && row.display_name.length >= 1 && row.display_name.length <= 255))
+        || !(row.avatar_url === null || (typeof row.avatar_url === 'string'
+            && row.avatar_url.length >= 1 && row.avatar_url.length <= 2_048))
         || !(knownDigests[row.digest_slot] instanceof ArrayBuffer)
         || knownDigests[row.digest_slot].byteLength !== 32) {
         throw new PersistenceError('PERSISTENCE_INTEGRITY');
@@ -84,7 +90,9 @@ function mapSession(row: Record<string, unknown>, knownDigests: readonly ArrayBu
         revokeReason: row.revoke_reason,
         userStatus: row.user_status,
         providerSubject: row.provider_subject,
-        login: row.display_login
+        login: row.display_login,
+        displayName: row.display_name,
+        avatarUrl: row.avatar_url
     });
 }
 
@@ -110,7 +118,7 @@ export async function findSessionByDigests(database: Pick<D1DatabaseSession, 'pr
                     CASE WHEN s.token_digest = ? THEN 0 WHEN s.token_digest = ? THEN 1 ELSE 2 END AS digest_slot,
                     s.user_id, s.device_hint, s.created_at, s.last_seen_at, s.authenticated_at,
                     s.idle_expires_at, s.absolute_expires_at, s.revoked_at, s.revoke_reason,
-                    u.status AS user_status, u.provider_subject, u.display_login
+                    u.status AS user_status, u.provider_subject, u.display_login, u.display_name, u.avatar_url
              FROM sessions s JOIN users u ON u.id = s.user_id
              WHERE s.token_digest IN (?, ?) LIMIT 3`
         ).bind(first, second, first, second).all<Record<string, unknown>>();
@@ -182,7 +190,7 @@ export async function rotateSessionAtomically(database: Pick<D1DatabaseSession, 
             `SELECT s.id, 0 AS digest_slot, s.user_id, s.device_hint,
                     s.created_at, s.last_seen_at, s.authenticated_at, s.idle_expires_at,
                     s.absolute_expires_at, s.revoked_at, s.revoke_reason,
-                    u.status AS user_status, u.provider_subject, u.display_login
+                    u.status AS user_status, u.provider_subject, u.display_login, u.display_name, u.avatar_url
              FROM sessions s JOIN users u ON u.id = s.user_id
              WHERE s.id = ? AND s.token_digest = ? AND s.revoked_at IS NULL LIMIT 1`
         ).bind(input.successorId, input.successorTokenDigest)

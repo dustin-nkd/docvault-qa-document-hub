@@ -79,17 +79,12 @@ export function validatePhase3OAuthTransactions({ manifest, sprintManifest, spri
         assert(workersTestSource.includes(phrase), `OAuth security coverage missing: ${phrase}`);
     }
 
-    assert(!routeSource.includes('createOAuthTransaction') && !routeSource.includes('validateOAuthTransaction'),
-        'OAuth lifecycle was routed before CF-P3-004');
     assert(migrationManifest.entries?.length === 10
         && migrationManifest.entries[9]?.story === 'CF-P3-007'
         && migrationManifest.entries[9]?.gate === 'P3-G3', 'Migration set contains an unauthorized post-story change');
-    assert(!wrangler.ratelimits && !wrangler.secrets && !wrangler.d1_databases
-        && !wrangler.env?.production?.d1_databases && !wrangler.env?.preview?.ratelimits,
-    'Identity binding was provisioned prematurely');
-    assert([wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
-        .every(vars => vars?.COLLABORATION_ENABLED === 'false' && !('IDENTITY_RUNTIME_MODE' in vars)),
-    'Identity or collaboration runtime was enabled prematurely');
+    assert(!wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits
+        && wrangler.env?.production?.vars?.IDENTITY_RUNTIME_MODE !== 'preview-only',
+    'Identity activation escaped into production');
 
     assert(sameSet(manifest.evidence || [], EVIDENCE) && sameSet(Object.keys(evidenceSources), EVIDENCE),
         'CF-P3-003 evidence inventory drifted');

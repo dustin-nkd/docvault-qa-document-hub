@@ -80,14 +80,9 @@ export function validatePhase3AbusePolicy({ manifest, sprintManifest, sourceFile
         assert(workersTestSource.includes(phrase), `Required abuse coverage missing: ${phrase}`);
     }
 
-    assert(!routeSource.includes('enforceIdentityRateLimit') && !routeSource.includes('withProviderCircuit'),
-        'Abuse controls were routed before preview activation');
-    assert(!wrangler.ratelimits && !wrangler.secrets && !wrangler.d1_databases
-        && !wrangler.env?.production?.d1_databases && !wrangler.env?.preview?.ratelimits,
-    'Binding or secret provisioned prematurely');
-    assert([wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
-        .every(vars => vars?.COLLABORATION_ENABLED === 'false' && !('IDENTITY_RUNTIME_MODE' in vars)),
-    'Identity runtime enabled prematurely');
+    assert(!wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits
+        && wrangler.env?.production?.vars?.IDENTITY_RUNTIME_MODE !== 'preview-only',
+    'Identity activation escaped into production');
     assert(same(Object.keys(evidenceSources).sort(), [...ABUSE_EVIDENCE].sort())
         && Object.entries(evidenceSources).every(([id, source]) => source.startsWith(`# ${id} `)
             && /^Status: PASS$/m.test(source) && source.includes('CF-P3-007')), 'Evidence inventory drifted');

@@ -14,19 +14,22 @@ export const expectedEnvironmentVars = {
         APP_ENV: 'local',
         ORIGIN_POLICY_MODE: 'local',
         CANONICAL_PRODUCTION_ORIGIN: canonicalProductionOrigin,
-        COLLABORATION_ENABLED: 'false'
+        COLLABORATION_ENABLED: 'false',
+        IDENTITY_RUNTIME_MODE: 'disabled'
     },
     preview: {
         APP_ENV: 'preview',
         ORIGIN_POLICY_MODE: 'preview',
         CANONICAL_PRODUCTION_ORIGIN: canonicalProductionOrigin,
-        COLLABORATION_ENABLED: 'false'
+        COLLABORATION_ENABLED: 'false',
+        IDENTITY_RUNTIME_MODE: 'preview-only'
     },
     production: {
         APP_ENV: 'production',
         ORIGIN_POLICY_MODE: 'production',
         CANONICAL_PRODUCTION_ORIGIN: canonicalProductionOrigin,
-        COLLABORATION_ENABLED: 'false'
+        COLLABORATION_ENABLED: 'false',
+        IDENTITY_RUNTIME_MODE: 'disabled'
     }
 };
 
@@ -61,9 +64,12 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
     assert(JSON.stringify(config.compatibility_flags) === '["nodejs_compat"]', 'Wrangler must use only nodejs_compat');
 
     exactKeys(config.env, ['preview', 'production'], 'wrangler.env');
-    exactKeys(config.env.preview, ['d1_databases', 'vars'], 'wrangler.env.preview');
+    exactKeys(config.env.preview, ['d1_databases', 'ratelimits', 'vars'], 'wrangler.env.preview');
     exactKeys(config.env.production, ['vars'], 'wrangler.env.production');
     assert(JSON.stringify(config.env.preview.d1_databases) === JSON.stringify([approvedPreviewD1]), 'Preview D1 binding drifted');
+    assert(JSON.stringify(config.env.preview.ratelimits) === JSON.stringify([{
+        name: 'AUTH_BURST_LIMITER', namespace_id: '1010', simple: { limit: 6, period: 60 }
+    }]), 'Preview rate-limit binding drifted');
     for (const [environment, vars] of [
         ['local', config.vars],
         ['preview', config.env.preview.vars],
@@ -73,6 +79,9 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
         assert(JSON.stringify(vars) === JSON.stringify(expectedEnvironmentVars[environment]), `${environment} variables drifted`);
         assert(vars.COLLABORATION_ENABLED === 'false', `${environment} collaboration must use the exact disabled string`);
     }
+    assert(config.vars.IDENTITY_RUNTIME_MODE === 'disabled'
+        && config.env.preview.vars.IDENTITY_RUNTIME_MODE === 'preview-only'
+        && config.env.production.vars.IDENTITY_RUNTIME_MODE === 'disabled', 'Identity runtime environment boundary drifted');
     assert(config.env.preview.vars.APP_ENV !== config.env.production.vars.APP_ENV, 'Preview and production APP_ENV must differ');
     assert(config.env.preview.vars.ORIGIN_POLICY_MODE !== config.env.production.vars.ORIGIN_POLICY_MODE, 'Preview and production origin policies must differ');
 
@@ -84,7 +93,7 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
         /\bhyperdrive\b/i,
         /\bservices\b/i,
         /\bqueues\b/i,
-        /\bsecret/i,
+        /\bsecret(?:s)?\b/i,
         /\btoken\b/i,
         /<[^>]+>/,
         /\b(?:TODO|TBD|PLACEHOLDER)\b/i,
@@ -111,6 +120,7 @@ export function validateGeneratedWorkerTypes(source) {
         ['ORIGIN_POLICY_MODE', ['"local"', '"preview"', '"production"']],
         ['CANONICAL_PRODUCTION_ORIGIN', [`"${canonicalProductionOrigin}"`]],
         ['COLLABORATION_ENABLED', ['"false"']]
+        ,['IDENTITY_RUNTIME_MODE', ['"disabled"', '"preview-only"']]
     ]) {
         assert(new RegExp(`\\b${name}\\b`).test(source), `Generated Env type is missing ${name}`);
         for (const value of values) assert(source.includes(value), `Generated Env type is missing ${name} value ${value}`);
@@ -121,7 +131,8 @@ export function validateGeneratedWorkerTypes(source) {
         assert(!envBlock.includes(prohibited), `Generated Env unexpectedly contains ${prohibited}`);
     }
     assert(source.includes('COLLAB_DB: D1Database'), 'Generated types are missing the approved preview D1 binding');
-    assert(!/\b(?:GITHUB_OAUTH|SESSION_TOKEN|CURSOR_SIGNING)\b/.test(source), 'Generated types contain a future secret');
+    assert(source.includes('AUTH_BURST_LIMITER: RateLimit'), 'Generated types are missing the preview rate-limit binding');
+    assert(!/\b(?:GITHUB_OAUTH|SESSION_TOKEN|OAUTH_TRANSACTION_KEY|CSRF_TOKEN_KEY|RATE_LIMIT_KEY|PREVIEW_ALLOWED_GITHUB_SUBJECTS|CURSOR_SIGNING)\b/.test(source), 'Generated types contain a secret');
     return true;
 }
 
@@ -137,7 +148,7 @@ export function validateDashboardToWranglerDiff(config, baselineDocument, diff) 
     assert(baseline.environments.preview.compatibility_date === config.compatibility_date, 'Preview compatibility date drifted');
     assert(baseline.environments.production.compatibility_date === config.compatibility_date, 'Production compatibility date drifted');
 
-    const names = Object.keys(expectedEnvironmentVars.preview).sort();
+    const names = ['APP_ENV', 'CANONICAL_PRODUCTION_ORIGIN', 'COLLABORATION_ENABLED', 'ORIGIN_POLICY_MODE'].sort();
     const expectedDiff = {
         preview_compatibility_flags: { before: [], after: ['nodejs_compat'] },
         production_compatibility_flags: { before: [], after: ['nodejs_compat'] },

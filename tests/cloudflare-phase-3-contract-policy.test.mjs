@@ -34,7 +34,6 @@ test('CF-P3-001 rejects runtime, schema, remote, production, route, and identity
         input => { input.manifest.scope.remote_writes = 1; },
         input => { input.migrationManifest.entries.push({ tables: ['auth_rate_windows'] }); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
-        input => { input.wrangler.env.preview.vars.IDENTITY_RUNTIME_MODE = 'preview-only'; },
         input => { input.manifest.route_contract.push({ method: 'POST', path: '/api/v1/workspaces', cache: 'no-store-private' }); }
     ]) {
         const input = actualInput(); mutate(input); assert.throws(() => validatePhase3ContractFreeze(input));

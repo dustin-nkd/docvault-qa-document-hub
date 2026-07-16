@@ -13,6 +13,7 @@ export interface IdentityEnvironmentInput {
     readonly SESSION_TOKEN_PEPPER?: string;
     readonly CSRF_TOKEN_KEY?: string;
     readonly RATE_LIMIT_KEY?: string;
+    readonly PREVIEW_ALLOWED_GITHUB_SUBJECTS?: string;
 }
 
 export interface IdentitySecrets {

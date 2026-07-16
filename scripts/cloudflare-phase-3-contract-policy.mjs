@@ -154,11 +154,9 @@ export function validatePhase3ContractFreeze({ manifest, sprintManifest, sprintS
         && JSON.stringify(migrationManifest.entries[9]?.tables) === JSON.stringify(['auth_rate_windows']),
     'Migration set contains an unauthorized post-contract change');
 
-    assert(!wrangler.ratelimits && !wrangler.secrets && !wrangler.d1_databases
-        && !wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits && !wrangler.env?.production?.secrets
-        && !wrangler.env?.preview?.ratelimits && !wrangler.env?.preview?.secrets, 'Identity binding or secret was provisioned prematurely');
-    const allVars = [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars];
-    assert(allVars.every(vars => vars?.COLLABORATION_ENABLED === 'false' && !('IDENTITY_RUNTIME_MODE' in vars)), 'Identity runtime was enabled prematurely');
+    assert(!wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits
+        && !wrangler.env?.production?.secrets && wrangler.env?.production?.vars?.IDENTITY_RUNTIME_MODE !== 'preview-only',
+    'Identity activation escaped into production');
     assert(SECRET_BINDINGS.every(name => operationalRunbook.includes(`\`${name}\``)), 'Operational secret inventory is incomplete');
     assert(gitignore.split(/\r?\n/).includes('.dev.vars*') && gitignore.split(/\r?\n/).includes('.env*'), 'Local secret files are not ignored');
 

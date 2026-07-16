@@ -10,10 +10,21 @@
     "APP_ENV": "local",
     "ORIGIN_POLICY_MODE": "local",
     "CANONICAL_PRODUCTION_ORIGIN": "https://docvault-qa-document-hub.pages.dev",
-    "COLLABORATION_ENABLED": "false"
+    "COLLABORATION_ENABLED": "false",
+    "IDENTITY_RUNTIME_MODE": "disabled"
   },
   "env": {
     "preview": {
+      "ratelimits": [
+        {
+          "name": "AUTH_BURST_LIMITER",
+          "namespace_id": "1010",
+          "simple": {
+            "limit": 6,
+            "period": 60
+          }
+        }
+      ],
       "d1_databases": [
         {
           "binding": "COLLAB_DB",
@@ -27,7 +38,8 @@
         "APP_ENV": "preview",
         "ORIGIN_POLICY_MODE": "preview",
         "CANONICAL_PRODUCTION_ORIGIN": "https://docvault-qa-document-hub.pages.dev",
-        "COLLABORATION_ENABLED": "false"
+        "COLLABORATION_ENABLED": "false",
+        "IDENTITY_RUNTIME_MODE": "preview-only"
       }
     },
     "production": {
@@ -35,7 +47,8 @@
         "APP_ENV": "production",
         "ORIGIN_POLICY_MODE": "production",
         "CANONICAL_PRODUCTION_ORIGIN": "https://docvault-qa-document-hub.pages.dev",
-        "COLLABORATION_ENABLED": "false"
+        "COLLABORATION_ENABLED": "false",
+        "IDENTITY_RUNTIME_MODE": "disabled"
       }
     }
   }

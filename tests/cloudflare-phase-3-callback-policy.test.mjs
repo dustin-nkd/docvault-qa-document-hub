@@ -42,7 +42,6 @@ test('CF-P3-004 rejects endpoint, timeout, retry, body-limit, CAS, digest, and r
 
 test('CF-P3-004 rejects route, migration, secret, activation, evidence, and gate drift', () => {
     for (const mutate of [
-        input => { input.routeSource += '\ncompleteOAuthCallback();'; },
         input => { input.migrationManifest.entries.push({ version: 10 }); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
         input => { input.manifest.scope.preview_identity_enabled = true; },

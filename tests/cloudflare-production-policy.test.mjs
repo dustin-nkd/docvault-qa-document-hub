@@ -14,6 +14,25 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 test('production import graph contains only reviewed Function runtime modules', () => {
     assert.deepEqual(validateProductionSourceGraph(root), [
         'functions/_lib/api-shell.mjs',
+        'functions/_lib/identity/abuse-control.ts',
+        'functions/_lib/identity/cookies.ts',
+        'functions/_lib/identity/crypto.ts',
+        'functions/_lib/identity/encoding.ts',
+        'functions/_lib/identity/environment.ts',
+        'functions/_lib/identity/github-oauth-adapter.ts',
+        'functions/_lib/identity/oauth-callback-repository.ts',
+        'functions/_lib/identity/oauth-callback-service.ts',
+        'functions/_lib/identity/oauth-envelope.ts',
+        'functions/_lib/identity/oauth-transaction-repository.ts',
+        'functions/_lib/identity/oauth-transaction-service.ts',
+        'functions/_lib/identity/observability.ts',
+        'functions/_lib/identity/request-policy.ts',
+        'functions/_lib/identity/return-path.ts',
+        'functions/_lib/identity/runtime-handler.ts',
+        'functions/_lib/identity/session-repository.ts',
+        'functions/_lib/identity/session-service.ts',
+        'functions/_lib/persistence/authorization-session.ts',
+        'functions/_lib/persistence/repository.ts',
         'functions/_lib/runtime-dependencies.mjs',
         'functions/api/v1/[[path]].ts'
     ]);

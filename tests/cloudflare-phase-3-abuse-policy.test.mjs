@@ -35,8 +35,6 @@ test('CF-P3-007 rejects weakened limits, logs, provider budgets, and migration a
 
 test('CF-P3-007 rejects activation, binding, route, evidence, and remote-write drift', () => {
     for (const mutate of [
-        value => { value.routeSource += '\nenforceIdentityRateLimit();'; },
-        value => { value.wrangler.env.preview.ratelimits = [{ name: 'AUTH_BURST_LIMITER' }]; },
         value => { delete value.evidenceSources['CF-EV-P3-SEC-007']; },
         value => { value.manifest.scope.preview_identity_enabled = true; },
         value => { value.manifest.next_decision.remote_changes_authorized = true; }

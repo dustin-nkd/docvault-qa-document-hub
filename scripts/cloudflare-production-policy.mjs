@@ -58,6 +58,14 @@ function relativeImports(source) {
     return imports;
 }
 
+function resolveSourceImport(fromFile, specifier) {
+    const candidate = path.resolve(path.dirname(fromFile), specifier);
+    for (const resolved of [candidate, `${candidate}.ts`, `${candidate}.mjs`]) {
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) return resolved;
+    }
+    return candidate;
+}
+
 export function validateProductionSourceGraph(root) {
     const functionsRoot = path.resolve(root, 'functions');
     const pending = [path.resolve(root, ENTRYPOINT)];
@@ -82,7 +90,7 @@ export function validateProductionSourceGraph(root) {
         if (relativePath === ENTRYPOINT) validateProductionHandlerWiring(source);
         visited.add(filePath);
         for (const specifier of relativeImports(source)) {
-            pending.push(path.resolve(path.dirname(filePath), specifier));
+            pending.push(resolveSourceImport(filePath, specifier));
         }
     }
 

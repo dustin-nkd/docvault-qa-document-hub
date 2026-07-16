@@ -48,6 +48,9 @@ export interface AuthenticatedSession {
     readonly userId: string;
     readonly providerSubject: string;
     readonly login: string;
+    readonly displayName: string | null;
+    readonly avatarUrl: string | null;
+    readonly createdAt: number;
     readonly authenticatedAt: number;
     readonly recentlyAuthenticated: boolean;
     readonly idleExpiresAt: number;
@@ -106,6 +109,9 @@ function resolved(record: SessionRecord, now: number, setCookie: string | null):
         userId: record.userId,
         providerSubject: record.providerSubject,
         login: record.login,
+        displayName: record.displayName,
+        avatarUrl: record.avatarUrl,
+        createdAt: record.createdAt,
         authenticatedAt: record.authenticatedAt,
         recentlyAuthenticated: now - record.authenticatedAt <= RECENT_AUTH_MS,
         idleExpiresAt: record.idleExpiresAt,

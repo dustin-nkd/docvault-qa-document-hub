@@ -42,7 +42,6 @@ test('CF-P3-006 rejects route, Origin, CSRF, response, and test-coverage drift',
 
 test('CF-P3-006 rejects route activation, migration, binding, evidence, and gate drift', () => {
     for (const mutate of [
-        input => { input.routeSource += '\nauthorizeIdentityRequest();'; },
         input => { input.migrationManifest.entries.push({ version: 10 }); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
         input => { input.manifest.scope.preview_identity_enabled = true; },

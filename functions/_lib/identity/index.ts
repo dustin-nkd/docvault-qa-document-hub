@@ -13,5 +13,6 @@ export * from './observability';
 export * from './provider-resilience';
 export * from './return-path';
 export * from './request-policy';
+export * from './runtime-handler';
 export * from './session-repository';
 export * from './session-service';

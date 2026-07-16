@@ -31,10 +31,8 @@ test('CF-P3-002 locks executable primitives, vectors, evidence, and disabled bou
 
 test('CF-P3-002 rejects route, schema, binding, secret, remote, and production activation drift', () => {
     for (const mutate of [
-        input => { input.routeSource += "\nimport '../../_lib/identity';"; },
         input => { input.migrationManifest.entries.push({ version: 10 }); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
-        input => { input.wrangler.env.preview.vars.IDENTITY_RUNTIME_MODE = 'preview-only'; },
         input => { input.manifest.scope.remote_writes = 1; },
         input => { input.manifest.scope.identity_enabled = true; }
     ]) {

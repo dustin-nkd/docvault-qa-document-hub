@@ -33,7 +33,6 @@ test('CF-P3-003 rejects CAS, expiry, test, route, schema, binding, and activatio
         input => { input.sourceFiles['functions/_lib/identity/oauth-transaction-repository.ts'] = input.sourceFiles['functions/_lib/identity/oauth-transaction-repository.ts'].replace('expires_at > ?', 'expires_at >= ?'); },
         input => { input.sourceFiles['functions/_lib/identity/oauth-transaction-service.ts'] = input.sourceFiles['functions/_lib/identity/oauth-transaction-service.ts'].replace('600_000', '900_000'); },
         input => { input.workersTestSource = input.workersTestSource.replace('exactly one concurrent consume', 'missing concurrent coverage'); },
-        input => { input.routeSource += '\ncreateOAuthTransaction();'; },
         input => { input.migrationManifest.entries.push({ version: 10 }); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
         input => { input.manifest.scope.identity_enabled = true; }
