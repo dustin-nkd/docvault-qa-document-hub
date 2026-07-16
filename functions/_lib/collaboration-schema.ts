@@ -1,4 +1,4 @@
-export const COLLABORATION_SCHEMA_VERSION = 8 as const;
+export const COLLABORATION_SCHEMA_VERSION = 9 as const;
 export const COLLABORATION_MINIMUM_RUNTIME_SCHEMA = 1 as const;
 
 export type D1Blob = ArrayBuffer;
@@ -116,6 +116,12 @@ export interface RetentionHoldRow {
     released_at: Nullable<number>; status: 'active' | 'released' | 'expired';
 }
 
+export interface RetentionPurgeRunRow {
+    id: string; target: 'audit_events' | 'transition_guards'; cutoff_at: number;
+    started_at: number; max_rows: number; status: 'running' | 'completed' | 'failed';
+    completed_at: Nullable<number>;
+}
+
 export interface CollaborationTableRowMap {
     schema_metadata: SchemaMetadataRow; users: UserRow; oauth_transactions: OAuthTransactionRow;
     sessions: SessionRow; workspaces: WorkspaceRow; memberships: MembershipRow;
@@ -124,14 +130,21 @@ export interface CollaborationTableRowMap {
     document_revisions: DocumentRevisionRow; mutation_results: MutationResultRow;
     transition_guards: TransitionGuardRow;
     audit_events: AuditEventRow; retention_holds: RetentionHoldRow;
+    retention_purge_runs: RetentionPurgeRunRow;
 }
 
 export type CollaborationTableName = keyof CollaborationTableRowMap;
 export type CollaborationWriteResult = D1Result<Record<string, never>>;
 
+export function isRuntimeSchemaCompatible(metadata: Pick<SchemaMetadataRow,
+    'minimum_runtime_schema' | 'maximum_runtime_schema'>, runtimeSchemaVersion: number): boolean {
+    return Number.isInteger(runtimeSchemaVersion)
+        && metadata.minimum_runtime_schema <= runtimeSchemaVersion
+        && metadata.maximum_runtime_schema >= runtimeSchemaVersion;
+}
+
 export function isCompatibleSchema(metadata: Pick<SchemaMetadataRow,
     'schema_version' | 'minimum_runtime_schema' | 'maximum_runtime_schema'>): boolean {
-    return metadata.schema_version === COLLABORATION_SCHEMA_VERSION
-        && metadata.minimum_runtime_schema <= COLLABORATION_SCHEMA_VERSION
-        && metadata.maximum_runtime_schema >= COLLABORATION_SCHEMA_VERSION;
+    return metadata.schema_version >= COLLABORATION_SCHEMA_VERSION
+        && isRuntimeSchemaCompatible(metadata, COLLABORATION_SCHEMA_VERSION);
 }

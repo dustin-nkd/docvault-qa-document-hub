@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P2",
+  "story": "CF-P2-006",
+  "status": "PASS",
+  "approved_start": "2026-07-16",
+  "gate_authorization": {
+    "id": "P2-G2B",
+    "decision": "APPROVED",
+    "approved_at": "2026-07-16",
+    "scope": "forward-only hold-aware audit purge control correction"
+  },
+  "schema_correction": {
+    "migration": "0009_16957b5a3089_retention_purge_control.sql",
+    "previous_migrations_immutable": true,
+    "backfill": "none"
+  },
+  "migration_matrix": [
+    "empty", "populated", "repeated", "immediately-previous", "malformed",
+    "interrupted", "restored-snapshot", "old-runtime-new-schema",
+    "disabled-new-runtime-old-schema"
+  ],
+  "retention_matrix": [
+    "oauth-transactions", "sessions", "invitations", "mutation-results",
+    "transition-guards", "audit-events", "active-holds", "expired-holds",
+    "document-revisions-retained"
+  ],
+  "retention": {
+    "operational_days": 30,
+    "audit_days": 365,
+    "maximum_rows_per_type": 100,
+    "boundary": "operational-inclusive-audit-exclusive",
+    "clock": "server-owned"
+  },
+  "representative_workload": {
+    "documents": 10000,
+    "revisions_per_hot_document": 50,
+    "query_contracts": 13,
+    "query_plan_budget_ms": 2000
+  },
+  "privacy_surfaces": [
+    "schema", "rows", "fixtures", "errors", "logs", "exports", "deployment-artifact"
+  ],
+  "environment_boundary": {
+    "remote_d1_created": false,
+    "remote_d1_bound": false,
+    "production_d1_allowed": false,
+    "collaboration_enabled": false,
+    "remote_migration_applied": false
+  },
+  "p0_p1_exceptions": [],
+  "open_regressions": [],
+  "evidence": ["CF-EV-P2-INT-006", "CF-EV-P2-PERF-002", "CF-EV-P2-SEC-006"]
+}

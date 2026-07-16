@@ -112,6 +112,7 @@ describe('CF-P2-003 tenant constraints and query plans', () => {
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM documents').first<number>('count')).toBe(10000);
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM document_revisions').first<number>('count')).toBe(50);
 
+        const startedAt = performance.now();
         for (const contract of COLLABORATION_QUERY_CONTRACTS) {
             const plan = await env.COLLAB_DB.prepare(`EXPLAIN QUERY PLAN ${contract.sql}`)
                 .bind(...queryParams[contract.id])
@@ -121,6 +122,7 @@ describe('CF-P2-003 tenant constraints and query plans', () => {
             expect(details, contract.id).not.toMatch(/\bSCAN\b/);
             expect(details, contract.id).not.toContain('USE TEMP B-TREE');
         }
+        expect(performance.now() - startedAt).toBeLessThan(2_000);
     });
 
     it('makes foreign-workspace and missing document lookups indistinguishable', async () => {

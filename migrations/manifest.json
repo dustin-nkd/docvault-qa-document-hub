@@ -198,6 +198,31 @@
       "backfill": "none",
       "rollback_class": "compatible-code-rollback",
       "privacy": "schema-only-digests-no-raw-credentials-no-protected-values"
+    },
+    {
+      "sequence": 9,
+      "filename": "0009_16957b5a3089_retention_purge_control.sql",
+      "slug": "retention_purge_control",
+      "story": "CF-P2-006",
+      "gate": "P2-G2B",
+      "sha256": "16957b5a3089d2746849b90e67fefbc10066e73040c82d53aa4176d06bb05145",
+      "normalized_bytes": 2803,
+      "previous_sha256": "a3d0bd3e8ae70aa050fd37a22a45357a8354a6b27c933269adab21c8fa1fdaa8",
+      "owner": "Audit and Retention Repository",
+      "reviewers": ["Product Owner", "Technical Lead", "Security Reviewer", "Senior QA", "Operations", "Privacy Reviewer"],
+      "created_at": "2026-07-16",
+      "contract_version": "CF-P2-schema-freeze-v1-amendment-P2-G2B",
+      "change_class": "forward-only-hold-aware-retention-purge-control",
+      "tables": ["retention_purge_runs"],
+      "requirements": ["CF-AUD-001", "CF-AUD-003", "CF-OPS-003", "CF-OPS-004", "CF-SYNC-004"],
+      "threats": ["T11", "T15", "T16", "T19", "T20"],
+      "risks": ["R13", "R16", "R18", "R21"],
+      "validations": ["schema-version-nine", "bounded-purge", "server-time-cutoff", "active-hold-denial", "append-only-default", "idempotent-retry", "privacy-canary"],
+      "compatibility": {"minimum_runtime_schema": 1, "maximum_runtime_schema": 9},
+      "runtime_class": "bounded-schema-correction",
+      "backfill": "none",
+      "rollback_class": "compatible-code-rollback",
+      "privacy": "schema-only-operational-identifiers-and-count-bounds"
     }
   ]
 }

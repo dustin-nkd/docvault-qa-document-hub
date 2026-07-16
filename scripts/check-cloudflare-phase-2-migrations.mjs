@@ -18,7 +18,7 @@ validatePhase2Migrations({
 });
 
 console.log('Cloudflare Phase 2 immutable migration gate passed');
-console.log('  Migrations: 6 frozen expansions + 2 approved hashed forward-only migrations');
-console.log('  Tables: 1 control + 15 entity STRICT tables');
+console.log('  Migrations: 6 frozen expansions + 3 approved hashed forward-only migrations');
+console.log('  Tables: 2 control + 15 entity STRICT tables');
 console.log('  Manifest, hash chain, columns, compatibility, append-only, and tenant guards: verified');
 console.log('  Remote D1, binding, fixtures, protected plaintext, and collaboration: absent');

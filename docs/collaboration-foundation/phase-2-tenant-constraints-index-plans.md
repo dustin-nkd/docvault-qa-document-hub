@@ -41,7 +41,7 @@ Forward migration 0007 adds the missing tie-breaker indexes for membership, invi
 
 ## Query-plan evidence
 
-Workers Vitest applies all eight migrations to a disposable local D1 database, creates two isolated tenants, and loads 10,000 documents plus 50 revisions for a hot document. `EXPLAIN QUERY PLAN` is executed for all 13 approved queries. Each plan must name its intended index and must not contain a full `SCAN` or `USE TEMP B-TREE` step.
+Workers Vitest applies all nine migrations to a disposable local D1 database, creates two isolated tenants, and loads 10,000 documents plus 50 revisions for a hot document. `EXPLAIN QUERY PLAN` is executed for all 13 approved queries. Each plan must name its intended index and must not contain a full `SCAN` or `USE TEMP B-TREE` step.
 
 The source policy independently rejects missing workspace predicates, unbounded reads, offset pagination, missing stable keysets, protected-field terms, missing indexes/triggers, remote bindings, activation, or Gate P2-G2 approval-provenance drift.
 

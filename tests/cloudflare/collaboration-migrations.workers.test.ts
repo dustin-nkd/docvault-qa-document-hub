@@ -58,7 +58,7 @@ describe('CF-P2-002 immutable Foundation migrations', () => {
         await seedFoundation();
     });
 
-    it('applies all eight migrations once and exposes schema version eight', async () => {
+    it('applies all nine migrations once and exposes schema version nine', async () => {
         const ledger = await env.COLLAB_DB.prepare(
             'SELECT name FROM collaboration_migrations ORDER BY id'
         ).all<{ name: string }>();
@@ -75,9 +75,9 @@ describe('CF-P2-002 immutable Foundation migrations', () => {
             migration_set_digest: string;
         }>();
         expect(metadata).toEqual({
-            schema_version: 8,
+            schema_version: 9,
             minimum_runtime_schema: 1,
-            maximum_runtime_schema: 8,
+            maximum_runtime_schema: 9,
             migration_set_digest: '8FB7AFD3E0D5DA2FE756D2AE7A252A6BF3273A4846C726E407053A28A9EFBDF8'
         });
     });
@@ -87,7 +87,8 @@ describe('CF-P2-002 immutable Foundation migrations', () => {
             'schema_metadata', 'users', 'oauth_transactions', 'sessions', 'workspaces',
             'memberships', 'invitations', 'devices', 'workspace_key_versions',
             'workspace_key_envelopes', 'documents', 'document_revisions',
-            'mutation_results', 'audit_events', 'retention_holds'
+            'mutation_results', 'audit_events', 'retention_holds', 'transition_guards',
+            'retention_purge_runs'
         ];
         const tableList = await env.COLLAB_DB.prepare('PRAGMA table_list').all<{ name: string; strict: number }>();
         for (const table of expectedTables) {
@@ -106,7 +107,7 @@ describe('CF-P2-002 immutable Foundation migrations', () => {
         const count = await env.COLLAB_DB.prepare(
             'SELECT COUNT(*) AS count FROM collaboration_migrations'
         ).first<number>('count');
-        expect(count).toBe(8);
+        expect(count).toBe(9);
     });
 
     it('enforces strict types, foreign keys, pending-target uniqueness, and one current key version', async () => {

@@ -252,6 +252,8 @@ Acceptance:
 - performance thresholds are recorded before remote provisioning and any regression has an owner/deadline;
 - evidence: `CF-EV-P2-INT-006`, `CF-EV-P2-PERF-002`, `CF-EV-P2-SEC-006`.
 
+Execution result (2026-07-16): **PASS**. Gate `P2-G2B` authorized forward-only migration `0009`, which replaces the unconditional audit/transition delete guards with bounded operational-run guards while keeping direct application deletes denied. Empty, populated, repeated, immediately previous, malformed, interrupted, restored-snapshot, and adjacent-runtime matrices pass locally. The 30-day operational and 365-day audit cutoffs are server-owned, limited to 100 rows per type, idempotent, active-hold aware, and preserve document revisions. The 10,000-document/50-revision workload, all 13 indexed query contracts, seven privacy surfaces, disabled API, and zero-remote-D1 boundary pass with no P0/P1 exception or open regression.
+
 Gate P2-G3: local evidence review and explicit Product/Operations authorization are required before any remote D1 creation.
 
 ### `CF-P2-007` — Provision and migrate isolated preview D1
@@ -263,7 +265,7 @@ Tasks:
 1. Recheck current D1 configuration/migration commands and account plan capabilities with the pinned Wrangler version.
 2. Create only `docvault-collab-preview`; record its identifier in the exact allow-listed configuration path without exposing account/token data.
 3. Add preview-only `COLLAB_DB`; assert production binding inventory remains empty and collaboration remains disabled everywhere.
-4. Record migration list, apply `0001` through `0008`, run sanitized integrity/query-plan/canary checks, and repeat list/apply.
+4. Record migration list, apply `0001` through `0009`, run sanitized integrity/query-plan/canary checks, and repeat list/apply.
 5. Deploy a disabled preview and prove zero business persistence from API/browser flows.
 
 Acceptance:
