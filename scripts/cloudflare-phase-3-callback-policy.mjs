@@ -1,4 +1,4 @@
-const assert = (condition, message) => {
+﻿const assert = (condition, message) => {
     if (!condition) throw new Error(message);
 };
 
@@ -33,17 +33,17 @@ export function validatePhase3OAuthCallback({ manifest, sprintManifest, sprintSo
     }
     assert(scope.isolated_runtime_modules_added === 3, 'Callback module inventory drifted');
 
-    assert(sprintManifest.authorization?.gate === 'P3-G2C'
+    assert(sprintManifest.authorization?.gate === 'P3-G3'
         && sprintManifest.authorization.decision === 'APPROVED'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-006', 'Sprint authorization drifted');
-    const completed = ['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005', 'CF-P3-006'];
+        && sprintManifest.authorization.authorized_story === 'CF-P3-007', 'Sprint authorization drifted');
+    const completed = ['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005', 'CF-P3-006', 'CF-P3-007'];
     assert((sprintManifest.stories || []).filter(story => completed.includes(story.id))
         .every(story => story.status === 'PASS')
         && sprintManifest.stories.filter(story => !completed.includes(story.id))
             .every(story => story.status === 'PLANNED'), 'Sprint story disposition drifted');
-    assert(sprintSource.includes('`CF-P3-006` PASS; awaiting Product Owner approval at Gate P3-G3'),
+    assert(sprintSource.includes('`CF-P3-007` PASS; awaiting Product Owner approval at Gate P3-G3A'),
         'Sprint status text drifted');
-    assert(contractSource.includes('`CF-P3-006` PASS; awaiting Gate P3-G3 approval'),
+    assert(contractSource.includes('`CF-P3-007` PASS; awaiting Gate P3-G3A approval'),
         'Contract execution status drifted');
 
     assert(sameSet(manifest.source_files || [], SOURCES) && sameSet(Object.keys(sourceFiles), SOURCES),
@@ -108,7 +108,9 @@ export function validatePhase3OAuthCallback({ manifest, sprintManifest, sprintSo
 
     assert(!routeSource.includes('completeOAuthCallback') && !routeSource.includes('createGitHubOAuthAdapter'),
         'OAuth callback was routed before CF-P3-006');
-    assert(migrationManifest.entries?.length === 9, 'CF-P3-004 changed the approved migration set');
+    assert(migrationManifest.entries?.length === 10
+        && migrationManifest.entries[9]?.story === 'CF-P3-007'
+        && migrationManifest.entries[9]?.gate === 'P3-G3', 'Migration set contains an unauthorized post-story change');
     assert(!wrangler.ratelimits && !wrangler.secrets && !wrangler.d1_databases
         && !wrangler.env?.production?.d1_databases && !wrangler.env?.preview?.ratelimits,
     'Identity binding was provisioned prematurely');

@@ -26,7 +26,9 @@ export function validatePhase2PreviewD1({ preview, manifest, wrangler, apiSource
         && preview.migration.migration_set_digest === manifest.migration_set_digest
         && preview.migration.repeat_pending_count === 0
         && preview.migration.foreign_key_violations === 0, 'Remote migration evidence drifted');
-    assert(manifest.entries?.length === 9 && manifest.entries.every((entry, index) => entry.sequence === index + 1), 'Migration manifest is incomplete');
+    assert(manifest.entries?.length >= 9
+        && manifest.entries.slice(0, 9).every((entry, index) => entry.sequence === index + 1),
+    'Historical Phase 2 migration prefix is incomplete');
     assert(preview.remote_verification?.entity_rows === 0
         && preview.remote_verification.privacy_canary_matches === 0
         && preview.remote_verification.api_business_writes === 0

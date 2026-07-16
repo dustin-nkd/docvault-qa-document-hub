@@ -44,7 +44,7 @@ function splitDefinitions(source) {
 
 export function extractTableColumns(sql) {
     const tables = {};
-    const expression = /CREATE\s+TABLE\s+([a-z_][a-z0-9_]*)\s*\(([\s\S]*?)\)\s*STRICT\s*;/gi;
+    const expression = /CREATE\s+TABLE\s+([a-z_][a-z0-9_]*)\s*\(([\s\S]*?)\)\s*STRICT(?:\s*,\s*WITHOUT\s+ROWID)?\s*;/gi;
     for (const match of normalize(sql).matchAll(expression)) {
         const columns = splitDefinitions(match[2])
             .filter(definition => !/^(?:PRIMARY|UNIQUE|CHECK|FOREIGN|CONSTRAINT)\b/i.test(definition))
@@ -78,7 +78,7 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
 
     const entries = manifest.entries || [];
-    assert(entries.length === 9, 'Migration manifest must contain six frozen expansions and three approved forward migrations');
+    assert(entries.length === 10, 'Migration manifest must contain the frozen set and authorized CF-P3-007 expansion');
     assert(sameSet(Object.keys(migrationSources), entries.map(entry => entry.filename)), 'Migration files and manifest differ');
     const frozenOwnership = new Map((freeze.migration_sequence || []).map(item => [item.sequence, item.owns]));
     const discoveredTables = {};
@@ -94,9 +94,12 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         } else if (sequence === 8) {
             assert(entry.slug === 'transition_guards' && entry.story === 'CF-P2-005'
                 && entry.gate === 'P2-G2A', `Schema correction ${sequence} is not authorized`);
-        } else {
+        } else if (sequence === 9) {
             assert(entry.slug === 'retention_purge_control' && entry.story === 'CF-P2-006'
                 && entry.gate === 'P2-G2B', `Retention correction ${sequence} is not authorized`);
+        } else {
+            assert(entry.slug === 'auth_rate_windows' && entry.story === 'CF-P3-007'
+                && entry.gate === 'P3-G3', `Identity abuse-control migration ${sequence} is not authorized`);
         }
         assert(entry.previous_sha256 === previousSha, `Migration ${sequence} hash chain drifted`);
         assert(new RegExp(`^${String(sequence).padStart(4, '0')}_[a-f0-9]{12}_${entry.slug}\\.sql$`).test(entry.filename), `Migration ${sequence} filename is invalid`);
@@ -106,7 +109,8 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         assert(entry.filename.slice(5, 17) === digest.slice(0, 12), `Migration ${entry.filename} short checksum drifted`);
         assert(entry.normalized_bytes === bytes(source), `Migration ${entry.filename} byte count drifted`);
         const expectedTables = sequence === 8 ? ['transition_guards']
-            : sequence === 9 ? ['retention_purge_runs'] : (frozenOwnership.get(sequence) || []);
+            : sequence === 9 ? ['retention_purge_runs']
+                : sequence === 10 ? ['auth_rate_windows'] : (frozenOwnership.get(sequence) || []);
         assert(same(entry.tables, expectedTables), `Migration ${entry.filename} table ownership drifted`);
         assert(entry.owner && entry.reviewers?.includes('Senior QA') && entry.reviewers.includes('Security Reviewer'), `Migration ${entry.filename} lacks accountable review`);
         assert(entry.requirements?.length > 0 && entry.threats?.length > 0 && entry.risks?.length > 0 && entry.validations?.length > 0, `Migration ${entry.filename} lacks traceability`);
@@ -132,6 +136,9 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     ];
     frozenColumns.retention_purge_runs = [
         'id', 'target', 'cutoff_at', 'started_at', 'max_rows', 'status', 'completed_at'
+    ];
+    frozenColumns.auth_rate_windows = [
+        'key_digest', 'route_family', 'window_started_at', 'attempt_count', 'expires_at'
     ];
     assert(sameSet(Object.keys(discoveredTables), Object.keys(frozenColumns)), 'SQL table inventory differs from the schema freeze');
     for (const [table, columns] of Object.entries(frozenColumns)) assert(same(discoveredTables[table], columns), `${table} SQL columns differ from the schema freeze`);

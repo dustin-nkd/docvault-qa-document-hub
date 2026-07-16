@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **ACTIVE — `CF-P3-006` PASS; awaiting Product Owner approval at Gate P3-G3**
+Status: **ACTIVE — `CF-P3-007` PASS; awaiting Product Owner approval at Gate P3-G3A**
 
 Sprint ID: `CF-P3-S01`
 

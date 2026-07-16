@@ -62,7 +62,7 @@ export function validatePhase2ExitGate({
     assert(manifest.schema_inventory?.schema_version === 9
         && manifest.schema_inventory.migration_count === 9
         && manifest.schema_inventory.migration_set_digest === migrationManifest.migration_set_digest
-        && sameSet(manifest.schema_inventory.migration_sha256 || [], migrationManifest.entries.map(entry => entry.sha256))
+        && sameSet(manifest.schema_inventory.migration_sha256 || [], migrationManifest.entries.slice(0, 9).map(entry => entry.sha256))
         && manifest.schema_inventory.minimum_runtime_schema === 1
         && manifest.schema_inventory.maximum_runtime_schema === 9
         && manifest.schema_inventory.destructive_or_down_migrations === 0, 'Schema checksum inventory drifted');

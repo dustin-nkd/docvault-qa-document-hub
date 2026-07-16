@@ -18,8 +18,8 @@ export function validatePhase2QualityMatrix({ quality, manifest, migrationSource
     assert(quality.schema_correction?.migration === '0009_16957b5a3089_retention_purge_control.sql'
         && quality.schema_correction.previous_migrations_immutable === true
         && quality.schema_correction.backfill === 'none', 'Retention correction drifted');
-    assert(manifest.entries.at(-1)?.filename === quality.schema_correction.migration
-        && manifest.entries.at(-1)?.gate === 'P2-G2B', 'Migration manifest lacks P2-G2B correction');
+    assert(manifest.entries[8]?.filename === quality.schema_correction.migration
+        && manifest.entries[8]?.gate === 'P2-G2B', 'Migration manifest lacks P2-G2B correction');
     assert(same(quality.migration_matrix, [
         'empty', 'populated', 'repeated', 'immediately-previous', 'malformed',
         'interrupted', 'restored-snapshot', 'old-runtime-new-schema',

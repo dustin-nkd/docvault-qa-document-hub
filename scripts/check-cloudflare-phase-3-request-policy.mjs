@@ -24,4 +24,4 @@ validatePhase3RequestPolicy({
 console.log('Cloudflare Phase 3 request-policy gate passed');
 console.log('  CF-P3-006: PASS; Workers tests: 12; evidence: UT-004, API-003, SEC-006');
 console.log('  Identity/business route calls, migrations, bindings, secrets, remote changes: zero');
-console.log('  Gate P3-G3: pending; CF-P3-007 recommended only');
+console.log('  Historical request-policy gate preserved; CF-P3-007 now PASS');

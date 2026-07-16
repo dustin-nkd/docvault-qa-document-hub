@@ -1,4 +1,4 @@
-const assert = (condition, message) => {
+﻿const assert = (condition, message) => {
     if (!condition) throw new Error(message);
 };
 
@@ -43,19 +43,20 @@ export function validatePhase3ContractFreeze({ manifest, sprintManifest, sprintS
     }
 
     assert(sprintManifest.status === 'ACTIVE'
-        && sprintManifest.authorization?.gate === 'P3-G2C'
+        && sprintManifest.authorization?.gate === 'P3-G3'
         && sprintManifest.authorization.decision === 'APPROVED'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-006'
+        && sprintManifest.authorization.authorized_story === 'CF-P3-007'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-001')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-002')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-003')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-004')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-005')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-006')?.status === 'PASS'
-        && sprintManifest.stories.filter(story => !['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005', 'CF-P3-006'].includes(story.id))
+        && sprintManifest.stories?.find(story => story.id === 'CF-P3-007')?.status === 'PASS'
+        && sprintManifest.stories.filter(story => !['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005', 'CF-P3-006', 'CF-P3-007'].includes(story.id))
             .every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
-    assert(/^Status: \*\*ACTIVE — `CF-P3-006` PASS; awaiting Product Owner approval at Gate P3-G3\*\*$/m.test(sprintSource), 'Sprint status text drifted');
-    assert(/^Status: \*\*Contract frozen; `CF-P3-006` PASS; awaiting Gate P3-G3 approval\*\*$/m.test(contractSource), 'Contract status text drifted');
+    assert(sprintSource.includes('`CF-P3-007` PASS; awaiting Product Owner approval at Gate P3-G3A'), 'Sprint status text drifted');
+    assert(contractSource.includes('`CF-P3-007` PASS; awaiting Gate P3-G3A approval'), 'Contract status text drifted');
 
     const observations = manifest.platform_observations || {};
     assert(observations.cloudflare_pages?.project === branchControl.project_name
@@ -147,8 +148,11 @@ export function validatePhase3ContractFreeze({ manifest, sprintManifest, sprintS
         && rate.authoritative_oauth_window.migration_story === 'CF-P3-007'
         && rate.authoritative_oauth_window.migration_requires_gate === 'P3-G3'
         && rate.process_local_limiter === 'prohibited' && rate.silent_schema_change === 'prohibited', 'Rate-limit decision drifted');
-    assert(migrationManifest.entries?.length === 9
-        && migrationManifest.entries.every(entry => !(entry.tables || []).includes('auth_rate_windows')), 'CF-P3-001 must not add the future rate-window migration');
+    assert(migrationManifest.entries?.length === 10
+        && migrationManifest.entries[9]?.story === 'CF-P3-007'
+        && migrationManifest.entries[9]?.gate === 'P3-G3'
+        && JSON.stringify(migrationManifest.entries[9]?.tables) === JSON.stringify(['auth_rate_windows']),
+    'Migration set contains an unauthorized post-contract change');
 
     assert(!wrangler.ratelimits && !wrangler.secrets && !wrangler.d1_databases
         && !wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits && !wrangler.env?.production?.secrets

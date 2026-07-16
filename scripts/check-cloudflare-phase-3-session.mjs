@@ -23,4 +23,4 @@ validatePhase3SessionLifecycle({
 console.log('Cloudflare Phase 3 session lifecycle gate passed');
 console.log('  CF-P3-005: PASS; Workers tests: 12; evidence: UT-003, API-002, INT-003, SEC-005');
 console.log('  Routes/migrations/bindings/secrets/remote changes: zero');
-console.log('  Historical session gate preserved; CF-P3-006 now PASS');
+console.log('  Historical session gate preserved; CF-P3-007 now PASS');

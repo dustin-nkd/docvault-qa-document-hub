@@ -223,6 +223,31 @@
       "backfill": "none",
       "rollback_class": "compatible-code-rollback",
       "privacy": "schema-only-operational-identifiers-and-count-bounds"
+    },
+    {
+      "sequence": 10,
+      "filename": "0010_1e1759754601_auth_rate_windows.sql",
+      "slug": "auth_rate_windows",
+      "story": "CF-P3-007",
+      "gate": "P3-G3",
+      "sha256": "1e1759754601bde8ab486753856d39bda7cf48ba43d3952f84b2bb5a1736ca4b",
+      "normalized_bytes": 1699,
+      "previous_sha256": "16957b5a3089d2746849b90e67fefbc10066e73040c82d53aa4176d06bb05145",
+      "owner": "Identity Abuse Control Repository",
+      "reviewers": ["Technical Lead", "Security Reviewer", "Senior QA", "Operations", "Privacy Reviewer"],
+      "created_at": "2026-07-16",
+      "contract_version": "CF-P3-identity-session-contract-v1",
+      "change_class": "additive-authoritative-rate-window",
+      "tables": ["auth_rate_windows"],
+      "requirements": ["CF-ID-004", "CF-SES-004", "CF-OPS-005", "CF-NFR-002"],
+      "threats": ["T01", "T02", "T16"],
+      "risks": ["R16", "R20", "R21"],
+      "validations": ["schema-version-ten", "atomic-rate-window", "bounded-cleanup", "privacy-canary", "overload-fail-closed"],
+      "compatibility": {"minimum_runtime_schema": 1, "maximum_runtime_schema": 10},
+      "runtime_class": "bounded-schema-expansion",
+      "backfill": "none",
+      "rollback_class": "compatible-code-rollback",
+      "privacy": "schema-only-window-scoped-hmac-digest-no-raw-source-or-user-identifier"
     }
   ]
 }

@@ -1,4 +1,5 @@
 export * from './cookies';
+export * from './abuse-control';
 export * from './crypto';
 export * from './encoding';
 export * from './environment';
@@ -8,6 +9,8 @@ export * from './oauth-callback-service';
 export * from './oauth-envelope';
 export * from './oauth-transaction-repository';
 export * from './oauth-transaction-service';
+export * from './observability';
+export * from './provider-resilience';
 export * from './return-path';
 export * from './request-policy';
 export * from './session-repository';

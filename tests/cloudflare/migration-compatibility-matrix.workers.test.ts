@@ -62,7 +62,7 @@ describe('CF-P2-006 migration and adjacent-runtime compatibility matrix', () => 
 
         await applyD1Migrations(env.COLLAB_DB, env.COLLAB_MIGRATIONS, 'compatibility_migrations');
         const expanded = await metadata();
-        expect(expanded.schema_version).toBe(9);
+        expect(expanded.schema_version).toBe(10);
         expect(isCompatibleSchema(expanded)).toBe(true);
         expect(isRuntimeSchemaCompatible(expanded, 8)).toBe(true);
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM users WHERE id = ?')
@@ -72,7 +72,7 @@ describe('CF-P2-006 migration and adjacent-runtime compatibility matrix', () => 
         )).resolves.toBeUndefined();
         expect(await env.COLLAB_DB.prepare(
             'SELECT COUNT(*) AS count FROM compatibility_migrations'
-        ).first<number>('count')).toBe(9);
+        ).first<number>('count')).toBe(10);
         expect((await env.COLLAB_DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([]);
     });
 });

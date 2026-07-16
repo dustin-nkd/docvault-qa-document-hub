@@ -1,6 +1,6 @@
 # Phase 3 identity and session implementation contract
 
-Status: **Contract frozen; `CF-P3-006` PASS; awaiting Gate P3-G3 approval**
+Status: **Contract frozen; `CF-P3-007` PASS; awaiting Gate P3-G3A approval**
 
 Date: 2026-07-16
 
@@ -198,7 +198,7 @@ The approved API budget is 20 OAuth transaction/callback attempts per source IP 
 The frozen design is:
 
 1. `AUTH_BURST_LIMITER`: GA Cloudflare binding, six attempts per keyed source per 60 seconds, used as an early burst shield.
-2. A future forward-only schema-10 operational table added in `CF-P3-007`, after P3-G3 approval, atomically enforces 20 attempts per 600-second window.
+2. The forward-only schema-10 `auth_rate_windows` table added under Gate P3-G3 atomically enforces 20 attempts per 600-second window.
 3. `RATE_LIMIT_KEY` creates a window-scoped HMAC of route family, aligned 600-second server window, and Cloudflare-provided `CF-Connecting-IP`; raw IP is never stored or logged. Local tests inject the source discriminator without trusting a request header. Counter rows expire after 1,200 seconds.
 4. Local tests use a deterministic injected adapter. Process-global counters and request-selectable bypasses are prohibited.
 

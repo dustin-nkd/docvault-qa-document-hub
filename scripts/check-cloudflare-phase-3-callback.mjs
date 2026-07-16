@@ -23,4 +23,4 @@ validatePhase3OAuthCallback({
 console.log('Cloudflare Phase 3 OAuth callback gate passed');
 console.log('  CF-P3-004: PASS; Workers tests: 10; evidence: API-001, INT-002, SEC-004');
 console.log('  Routes/migrations/bindings/secrets/OAuth apps/remote changes: zero');
-console.log('  Historical callback gate preserved; CF-P3-006 now PASS');
+console.log('  Historical callback gate preserved; CF-P3-007 now PASS');
