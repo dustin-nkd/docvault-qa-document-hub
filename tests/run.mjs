@@ -32,3 +32,4 @@ import './cloudflare-phase-3-sprint-policy.test.mjs';
 import './cloudflare-phase-3-contract-policy.test.mjs';
 import './cloudflare-phase-3-primitives-policy.test.mjs';
 import './cloudflare-phase-3-oauth-policy.test.mjs';
+import './cloudflare-phase-3-callback-policy.test.mjs';

@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **ACTIVE — `CF-P3-003` PASS; awaiting Product Owner approval at Gate P3-G2A**
+Status: **ACTIVE — `CF-P3-004` PASS; awaiting Product Owner approval at Gate P3-G2B**
 
 Sprint ID: `CF-P3-S01`
 
@@ -190,6 +190,8 @@ Acceptance: login/email changes do not change identity; missing/non-numeric subj
 
 Evidence: `CF-EV-P3-API-001`, `CF-EV-P3-INT-002`, `CF-EV-P3-SEC-004`.
 
+Execution result (2026-07-16): **PASS**. A bounded GitHub adapter now performs exact server-side code exchange with PKCE, revalidates `GET /user`, uses numeric `id` as the sole stable subject, discards the provider token after lookup, and caps response size, timeouts, retry statuses, delay, and total provider budget. The callback authority batch converts every failed compare-and-set into a SQL constraint failure so D1 rolls back transaction consumption, identity changes, predecessor revocation, and successor insertion together. Ten Workers/D1 tests prove mutable-login stability, concurrent single-winner behavior, replay denial, session-conflict rollback, same-subject reauthentication, expiry/fault denial, and canary non-echo. No route, migration, binding, secret, OAuth app, remote resource, or deployed identity capability changed.
+
 Gate P3-G2B authorizes `CF-P3-005` only.
 
 ### `CF-P3-005` — Implement session lifecycle and recent authentication
@@ -328,6 +330,6 @@ A story is Done only when acceptance criteria and all mapped evidence pass, char
 
 ## 11. Current recommendation
 
-Cross-functional recommendation: **Approve Gate P3-G2A and authorize `CF-P3-004` only.**
+Cross-functional recommendation: **Approve Gate P3-G2B and authorize `CF-P3-005` only.**
 
-This authorizes the bounded GitHub adapter, numeric identity normalization, and atomic callback story. It does not provision OAuth, enable preview identity, or change production.
+This authorizes the complete server-side session lifecycle and recent-authentication story. It does not provision OAuth, enable preview identity, or change production.

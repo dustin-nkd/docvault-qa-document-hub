@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P3",
+  "story": "CF-P3-004",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P3-G2A",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P3-004",
+    "next_gate": "P3-G2B",
+    "next_story": "CF-P3-005"
+  },
+  "scope": {
+    "isolated_runtime_modules_added": 3,
+    "identity_route_calls": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "oauth_apps_created": 0,
+    "secrets_created_or_changed": 0,
+    "production_identity_enabled": false,
+    "preview_identity_enabled": false,
+    "collaboration_enabled": false,
+    "business_routes_enabled": false
+  },
+  "provider": {
+    "type": "github-oauth-web-flow-pkce-s256",
+    "token_endpoint": "https://github.com/login/oauth/access_token",
+    "identity_endpoint": "https://api.github.com/user",
+    "api_version": "2026-03-10",
+    "token_exchange_retries": 0,
+    "identity_retries": 1,
+    "retry_statuses": [429, 502, 503, 504],
+    "request_timeout_ms": 5000,
+    "overall_budget_ms": 8000,
+    "maximum_retry_delay_ms": 1000,
+    "maximum_response_bytes": 16384,
+    "redirect_policy": "error",
+    "stable_identity": "provider-plus-positive-safe-decimal-github-id",
+    "display_metadata": ["login", "name", "avatar_url"],
+    "provider_token_storage": "prohibited"
+  },
+  "atomic_callback": {
+    "consistency": "first-primary",
+    "transaction_guard": "pending-unconsumed-unexpired-compare-and-set",
+    "zero_change_assertion": "constraint-failure-rolls-back-entire-d1-batch",
+    "sign_in": ["consume-transaction", "upsert-numeric-identity", "insert-digest-only-session"],
+    "reauthenticate": ["consume-transaction", "match-same-numeric-subject", "revoke-live-predecessor", "insert-successor-session"],
+    "maximum_batch_statements": 9,
+    "session_token_storage": "hmac-sha256-digest-only",
+    "session_idle_seconds": 43200,
+    "session_absolute_seconds": 604800,
+    "external_error": "OAUTH_CALLBACK_FAILED"
+  },
+  "source_files": [
+    "functions/_lib/identity/github-oauth-adapter.ts",
+    "functions/_lib/identity/oauth-callback-repository.ts",
+    "functions/_lib/identity/oauth-callback-service.ts",
+    "functions/_lib/identity/oauth-transaction-service.ts",
+    "functions/_lib/identity/index.ts"
+  ],
+  "workers_test_file": "tests/cloudflare/oauth-callback.workers.test.ts",
+  "workers_test_count": 10,
+  "negative_coverage": [
+    "token-exchange-no-retry",
+    "identity-single-bounded-retry",
+    "provider-overall-budget",
+    "oversized-provider-response",
+    "non-numeric-provider-identity",
+    "mutable-login-stable-subject",
+    "concurrent-callback-single-winner",
+    "replay",
+    "session-insert-conflict-full-rollback",
+    "reauthentication-wrong-subject-full-rollback",
+    "expiry-during-provider-call",
+    "provider-and-injected-fault-no-authority",
+    "provider-token-and-code-non-echo"
+  ],
+  "evidence": ["CF-EV-P3-API-001", "CF-EV-P3-INT-002", "CF-EV-P3-SEC-004"],
+  "next_decision": {
+    "gate": "P3-G2B",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P3-005-only",
+    "remote_changes_authorized": false
+  }
+}

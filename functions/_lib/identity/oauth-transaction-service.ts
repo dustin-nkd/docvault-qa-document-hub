@@ -16,6 +16,7 @@ const TRANSACTION_TTL_MS = 600_000;
 const CALLBACK_PATH = '/api/v1/oauth/github/callback';
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const validatedRecord: unique symbol = Symbol('validated-oauth-transaction-record');
+const validatedPayload: unique symbol = Symbol('validated-oauth-transaction-payload');
 
 export type OAuthTransactionCheckpoint =
     | 'oauth.create.before-insert'
@@ -57,6 +58,7 @@ export interface ValidatedOAuthTransaction {
     readonly createdAt: number;
     readonly expiresAt: number;
     readonly [validatedRecord]: OAuthTransactionRecord;
+    readonly [validatedPayload]: OAuthTransactionPayload;
 }
 
 export class OAuthTransactionLifecycleError extends Error {
@@ -136,10 +138,10 @@ export async function createOAuthTransaction(database: AuthorizationSessionSourc
     }
 }
 
-export async function validateOAuthTransaction(database: AuthorizationSessionSource, input: {
+async function validateOAuthTransactionInternal(database: AuthorizationSessionSource, input: {
     readonly keyring: IdentityKeyring;
     readonly state: string;
-    readonly expectedPurpose: 'sign_in' | 'reauthenticate';
+    readonly expectedPurpose?: 'sign_in' | 'reauthenticate';
     readonly expectedCallbackOrigin: string;
 }, dependencies: OAuthTransactionDependencies): Promise<ValidatedOAuthTransaction> {
     try {
@@ -161,7 +163,7 @@ export async function validateOAuthTransaction(database: AuthorizationSessionSou
             createdAt: record.createdAt,
             expiresAt: record.expiresAt
         });
-        if (payload.purpose !== input.expectedPurpose) {
+        if (input.expectedPurpose !== undefined && payload.purpose !== input.expectedPurpose) {
             throw new IdentityPrimitiveError('IDENTITY_CRYPTO_INVALID');
         }
         return Object.freeze({
@@ -173,20 +175,55 @@ export async function validateOAuthTransaction(database: AuthorizationSessionSou
             initiatingUserId: payload.initiatingUserId,
             createdAt: record.createdAt,
             expiresAt: record.expiresAt,
-            [validatedRecord]: record
+            [validatedRecord]: record,
+            [validatedPayload]: payload
         });
     } catch {
         throw new OAuthTransactionLifecycleError('OAUTH_TRANSACTION_INVALID');
     }
 }
 
+export function validateOAuthTransaction(database: AuthorizationSessionSource, input: {
+    readonly keyring: IdentityKeyring;
+    readonly state: string;
+    readonly expectedPurpose: 'sign_in' | 'reauthenticate';
+    readonly expectedCallbackOrigin: string;
+}, dependencies: OAuthTransactionDependencies): Promise<ValidatedOAuthTransaction> {
+    return validateOAuthTransactionInternal(database, input, dependencies);
+}
+
+export function validateOAuthTransactionForCallback(database: AuthorizationSessionSource, input: {
+    readonly keyring: IdentityKeyring;
+    readonly state: string;
+    readonly expectedCallbackOrigin: string;
+}, dependencies: OAuthTransactionDependencies): Promise<ValidatedOAuthTransaction> {
+    return validateOAuthTransactionInternal(database, input, dependencies);
+}
+
+export function validatedOAuthTransactionRecord(transaction: ValidatedOAuthTransaction): OAuthTransactionRecord {
+    const record = transaction[validatedRecord];
+    if (!record || transaction.transactionId !== record.id) {
+        throw new OAuthTransactionLifecycleError('OAUTH_TRANSACTION_INVALID');
+    }
+    return record;
+}
+
+export function validatedOAuthCallbackContext(transaction: ValidatedOAuthTransaction): {
+    readonly record: OAuthTransactionRecord;
+    readonly verifier: string;
+} {
+    const record = validatedOAuthTransactionRecord(transaction);
+    const payload = transaction[validatedPayload];
+    if (!payload || payload.purpose !== transaction.purpose) {
+        throw new OAuthTransactionLifecycleError('OAUTH_TRANSACTION_INVALID');
+    }
+    return Object.freeze({ record, verifier: payload.verifier });
+}
+
 export async function consumeValidatedOAuthTransaction(database: AuthorizationSessionSource,
     transaction: ValidatedOAuthTransaction, dependencies: OAuthTransactionDependencies): Promise<void> {
     try {
-        const record = transaction[validatedRecord];
-        if (!record || transaction.transactionId !== record.id) {
-            throw new IdentityPrimitiveError('IDENTITY_CRYPTO_INVALID');
-        }
+        const record = validatedOAuthTransactionRecord(transaction);
         const serverTime = now(dependencies);
         await dependencies.failures.checkpoint('oauth.consume.before-cas');
         await consumeOAuthTransaction(openAuthorizationSession(database), record, serverTime);
