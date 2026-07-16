@@ -11,9 +11,9 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P3-G2A",
+    "gate": "P3-G2B",
     "decision": "APPROVED",
-    "authorized_story": "CF-P3-004"
+    "authorized_story": "CF-P3-005"
   },
   "entry": {
     "phase_2_exit": "PASS",
@@ -125,7 +125,7 @@
       "id": "CF-P3-005",
       "title": "Implement server-side session lifecycle and recent authentication",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P3-G2B",
       "exit_gate": "P3-G2C",
       "owners": ["Senior Developer"],

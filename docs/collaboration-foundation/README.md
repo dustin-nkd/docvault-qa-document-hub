@@ -1,8 +1,8 @@
 # Collaboration Foundation
 
-Status: Phase 3 active; `CF-P3-004` GitHub adapter and atomic callback passed; Gate P3-G2B is pending and collaboration activation remains NO-GO
+Status: Phase 3 active; `CF-P3-005` session lifecycle passed; Gate P3-G2C is pending and collaboration activation remains NO-GO
 
-Sprint: `CF-P3-S01` — `CF-P3-001` through `CF-P3-004` PASS; no remote identity resource; Gate P3-G2B pending
+Sprint: `CF-P3-S01` — `CF-P3-001` through `CF-P3-005` PASS; no remote identity resource; Gate P3-G2C pending
 
 Language: English for all repository artifacts
 
@@ -79,11 +79,12 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - `CF-P2-007` preview D1 state is machine-checked in `config/cloudflare/phase-2-preview-d1.json`; production remains unbound and collaboration remains disabled
 - `CF-P2-008` recovery rehearsal is machine-checked in `config/cloudflare/phase-2-recovery-rehearsal.json`; the disposable D1 was restored, verified, and deleted without touching shared preview or production
 - [Phase 2 exit report](phase-2-exit-report.md) — nine stories, 25 evidence records, remote reconciliation, and constrained Phase 3 identity/session recommendation
-- [Phase 3 identity and sessions sprint](phase-3-sprint.md) — ten gated stories covering contract freeze, OAuth, sessions, CSRF, abuse controls, isolated preview verification, and Phase 4 handoff; `CF-P3-001` through `CF-P3-004` passed and Gate P3-G2B is pending
-- [Phase 3 identity/session implementation contract](phase-3-identity-session-contract.md) — frozen OAuth, session, CSRF, preview isolation, rate-control, error, rollback, and evidence profile; atomic callback authority passed and Gate P3-G2B is pending
+- [Phase 3 identity and sessions sprint](phase-3-sprint.md) — ten gated stories covering contract freeze, OAuth, sessions, CSRF, abuse controls, isolated preview verification, and Phase 4 handoff; `CF-P3-001` through `CF-P3-005` passed and Gate P3-G2C is pending
+- [Phase 3 identity/session implementation contract](phase-3-identity-session-contract.md) — frozen OAuth, session, CSRF, preview isolation, rate-control, error, rollback, and evidence profile; session lifecycle passed and Gate P3-G2C is pending
 - `config/cloudflare/phase-3-identity-primitives.json` — machine-enforced `CF-P3-002` Web Crypto, vector, negative-security, evidence, and disabled-boundary record
 - `config/cloudflare/phase-3-oauth-transactions.json` — machine-enforced `CF-P3-003` single-use, expiry, replay, cleanup, and disabled-boundary record
 - `config/cloudflare/phase-3-oauth-callback.json` — machine-enforced `CF-P3-004` provider, numeric identity, atomic rollback, replay, and disabled-boundary record
+- `config/cloudflare/phase-3-session-lifecycle.json` — machine-enforced `CF-P3-005` lookup, expiry, rotation, logout, recent-authentication, retention, and disabled-boundary record
 
 ## Review ownership
 

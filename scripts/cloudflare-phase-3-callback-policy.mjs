@@ -33,17 +33,17 @@ export function validatePhase3OAuthCallback({ manifest, sprintManifest, sprintSo
     }
     assert(scope.isolated_runtime_modules_added === 3, 'Callback module inventory drifted');
 
-    assert(sprintManifest.authorization?.gate === 'P3-G2A'
+    assert(sprintManifest.authorization?.gate === 'P3-G2B'
         && sprintManifest.authorization.decision === 'APPROVED'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-004', 'Sprint authorization drifted');
-    const completed = ['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004'];
+        && sprintManifest.authorization.authorized_story === 'CF-P3-005', 'Sprint authorization drifted');
+    const completed = ['CF-P3-001', 'CF-P3-002', 'CF-P3-003', 'CF-P3-004', 'CF-P3-005'];
     assert((sprintManifest.stories || []).filter(story => completed.includes(story.id))
         .every(story => story.status === 'PASS')
         && sprintManifest.stories.filter(story => !completed.includes(story.id))
             .every(story => story.status === 'PLANNED'), 'Sprint story disposition drifted');
-    assert(sprintSource.includes('`CF-P3-004` PASS; awaiting Product Owner approval at Gate P3-G2B'),
+    assert(sprintSource.includes('`CF-P3-005` PASS; awaiting Product Owner approval at Gate P3-G2C'),
         'Sprint status text drifted');
-    assert(contractSource.includes('`CF-P3-004` PASS; awaiting Gate P3-G2B approval'),
+    assert(contractSource.includes('`CF-P3-005` PASS; awaiting Gate P3-G2C approval'),
         'Contract execution status drifted');
 
     assert(sameSet(manifest.source_files || [], SOURCES) && sameSet(Object.keys(sourceFiles), SOURCES),

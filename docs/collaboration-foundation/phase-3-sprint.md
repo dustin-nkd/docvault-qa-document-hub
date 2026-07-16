@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **ACTIVE — `CF-P3-004` PASS; awaiting Product Owner approval at Gate P3-G2B**
+Status: **ACTIVE — `CF-P3-005` PASS; awaiting Product Owner approval at Gate P3-G2C**
 
 Sprint ID: `CF-P3-S01`
 
@@ -204,6 +204,8 @@ Acceptance: no raw session value reaches D1/logs; revoked/expired/predecessor/cr
 
 Evidence: `CF-EV-P3-UT-003`, `CF-EV-P3-API-002`, `CF-EV-P3-INT-003`, `CF-EV-P3-SEC-005`.
 
+Execution result (2026-07-16): **PASS**. The isolated lifecycle resolves at most two active/previous pepper digests through a `first-primary` D1 session, coalesces `last_seen_at` writes at five minutes, enforces 12-hour idle, seven-day absolute, and 15-minute recent-authentication boundaries, and rotates previous-pepper/security/fixation sessions with one rollback-enforced batch. Rotation preserves the original absolute lifetime and authentication age unless the OAuth reauthentication callback explicitly refreshes it. Logout revokes server-side before returning cookie expiry. Twelve Workers/D1 tests prove uniform invalid-session handling, cross-environment denial, exact boundary behavior, concurrent single-winner rotation, real constraint rollback, bounded race reread, fault safety, and capped terminal purge. No route, migration, binding, secret, OAuth app, remote resource, preview identity, production identity, or collaboration capability changed.
+
 Gate P3-G2C authorizes `CF-P3-006` only.
 
 ### `CF-P3-006` — Enforce Origin, CSRF, and four-route scope
@@ -330,6 +332,6 @@ A story is Done only when acceptance criteria and all mapped evidence pass, char
 
 ## 11. Current recommendation
 
-Cross-functional recommendation: **Approve Gate P3-G2B and authorize `CF-P3-005` only.**
+Cross-functional recommendation: **Approve Gate P3-G2C and authorize `CF-P3-006` only.**
 
-This authorizes the complete server-side session lifecycle and recent-authentication story. It does not provision OAuth, enable preview identity, or change production.
+This authorizes exact-Origin, session-bound CSRF, and four-route scope enforcement only. It does not provision OAuth, enable preview identity, or change production.

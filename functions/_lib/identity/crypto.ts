@@ -132,6 +132,24 @@ export async function digestSessionToken(keyring: IdentityKeyring, token: string
     return signWithKeyring(keyring, IDENTITY_KEY_LABELS.sessionToken, decodeBase64Url(token, 32));
 }
 
+export async function sessionTokenDigestCandidates(keyring: IdentityKeyring, token: string): Promise<readonly {
+    keyId: string; digest: Uint8Array;
+}[]> {
+    const value = decodeBase64Url(token, 32);
+    const orderedKeyIds = [keyring.activeKeyId,
+        ...[...keyring.keys.keys()].filter(keyId => keyId !== keyring.activeKeyId)];
+    const candidates = [];
+    for (const keyId of orderedKeyIds) {
+        const rawKey = keyring.keys.get(keyId);
+        if (!rawKey) throw new IdentityPrimitiveError('IDENTITY_CONFIGURATION_INVALID');
+        candidates.push(Object.freeze({
+            keyId,
+            digest: await hmacSign(await deriveIdentityKey(rawKey, IDENTITY_KEY_LABELS.sessionToken), value)
+        }));
+    }
+    return Object.freeze(candidates);
+}
+
 export async function matchSessionTokenDigest(keyring: IdentityKeyring, token: string,
     digest: Uint8Array): Promise<string | null> {
     return matchKeyringDigest(keyring, IDENTITY_KEY_LABELS.sessionToken, decodeBase64Url(token, 32), digest);
