@@ -197,7 +197,7 @@ The approved API budget is 20 OAuth transaction/callback attempts per source IP 
 
 The frozen design is:
 
-1. `AUTH_BURST_LIMITER`: GA Cloudflare binding, six attempts per keyed source per 60 seconds, used as an early burst shield.
+1. Preview Pages calls the private `docvault-identity-burst-preview` Worker through `AUTH_BURST_SERVICE`. That Worker alone owns the GA `AUTH_BURST_LIMITER` binding (six attempts per keyed source per 60 seconds), has no public route, and receives only a window-scoped HMAC digest.
 2. The forward-only schema-10 `auth_rate_windows` table added under Gate P3-G3 atomically enforces 20 attempts per 600-second window.
 3. `RATE_LIMIT_KEY` creates a window-scoped HMAC of route family, aligned 600-second server window, and Cloudflare-provided `CF-Connecting-IP`; raw IP is never stored or logged. Local tests inject the source discriminator without trusting a request header. Counter rows expire after 1,200 seconds.
 4. Local tests use a deterministic injected adapter. Process-global counters and request-selectable bypasses are prohibited.

@@ -34,7 +34,7 @@ const SUBJECT = /^[1-9][0-9]{0,19}$/;
 
 interface IdentityRuntimeBindings extends IdentityEnvironmentInput {
     readonly COLLAB_DB?: AuthorizationSessionSource;
-    readonly AUTH_BURST_LIMITER?: IdentityBurstLimiter;
+    readonly AUTH_BURST_SERVICE?: IdentityBurstLimiter;
     readonly PREVIEW_ALLOWED_GITHUB_SUBJECTS?: string;
 }
 
@@ -72,10 +72,31 @@ function databaseBinding(source: object): AuthorizationSessionSource | undefined
 }
 
 function limiterBinding(source: object): IdentityBurstLimiter | undefined {
-    if (!('AUTH_BURST_LIMITER' in source)) return undefined;
-    const value = Reflect.get(source, 'AUTH_BURST_LIMITER');
-    return typeof value === 'object' && value !== null && 'limit' in value
-        && typeof Reflect.get(value, 'limit') === 'function' ? value as IdentityBurstLimiter : undefined;
+    if (!('AUTH_BURST_SERVICE' in source)) return undefined;
+    const value = Reflect.get(source, 'AUTH_BURST_SERVICE');
+    if (typeof value !== 'object' || value === null) return undefined;
+    if ('limit' in value && typeof Reflect.get(value, 'limit') === 'function') return value as IdentityBurstLimiter;
+    if (!('fetch' in value) || typeof Reflect.get(value, 'fetch') !== 'function') return undefined;
+    const service = value as { fetch(request: Request): Promise<Response> };
+    return Object.freeze({
+        async limit(options: { readonly key: string }): Promise<{ readonly success: boolean }> {
+            const response = await service.fetch(new Request('https://identity-burst.internal/v1/limit', {
+                method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({ key: options.key })
+            }));
+            const length = response.headers.get('Content-Length');
+            if (length !== null && (!/^\d{1,3}$/.test(length) || Number(length) > 64)) throw new Error('RATE_LIMIT_UNAVAILABLE');
+            const text = await response.text();
+            if (new TextEncoder().encode(text).byteLength > 64 || response.status !== 200) throw new Error('RATE_LIMIT_UNAVAILABLE');
+            let result: unknown;
+            try { result = JSON.parse(text); } catch { throw new Error('RATE_LIMIT_UNAVAILABLE'); }
+            if (typeof result !== 'object' || result === null || Array.isArray(result)
+                || Object.keys(result).length !== 1 || typeof Reflect.get(result, 'success') !== 'boolean') {
+                throw new Error('RATE_LIMIT_UNAVAILABLE');
+            }
+            return Object.freeze({ success: Reflect.get(result, 'success') as boolean });
+        }
+    });
 }
 
 function bindings(source: object): IdentityRuntimeBindings {
@@ -91,7 +112,7 @@ function bindings(source: object): IdentityRuntimeBindings {
         RATE_LIMIT_KEY: stringBinding(source, 'RATE_LIMIT_KEY'),
         PREVIEW_ALLOWED_GITHUB_SUBJECTS: stringBinding(source, 'PREVIEW_ALLOWED_GITHUB_SUBJECTS'),
         COLLAB_DB: databaseBinding(source),
-        AUTH_BURST_LIMITER: limiterBinding(source)
+        AUTH_BURST_SERVICE: limiterBinding(source)
     });
 }
 
@@ -192,10 +213,10 @@ async function handleEnabled(request: Request, runtime: IdentityRuntimeConfigura
     if (policy.route.id === 'oauth-callback') {
         let returnPath = '/';
         try {
-            await rate(database, runtime, request, 'oauth_source', source, dependencies, env.AUTH_BURST_LIMITER);
+            await rate(database, runtime, request, 'oauth_source', source, dependencies, env.AUTH_BURST_SERVICE);
             const query = callbackQuery(request);
             const subjects = allowedSubjects(env.PREVIEW_ALLOWED_GITHUB_SUBJECTS);
-            if (!subjects || !env.AUTH_BURST_LIMITER) throw new Error('IDENTITY_CONFIGURATION_INVALID');
+            if (!subjects || !env.AUTH_BURST_SERVICE) throw new Error('IDENTITY_CONFIGURATION_INVALID');
             const provider = guardedProvider(dependencies.provider({ clientId: runtime.secrets.githubClientId,
                 clientSecret: runtime.secrets.githubClientSecret }), subjects);
             const result = await completeOAuthCallback(database, {
@@ -225,7 +246,7 @@ async function handleEnabled(request: Request, runtime: IdentityRuntimeConfigura
         csrfTokenKey: runtime.secrets.csrfTokenKey
     }, dependencies);
     if (policy.route.id === 'oauth-transaction' && body) {
-        await rate(database, runtime, request, 'oauth_source', source, dependencies, env.AUTH_BURST_LIMITER);
+        await rate(database, runtime, request, 'oauth_source', source, dependencies, env.AUTH_BURST_SERVICE);
         const created = await createOAuthTransaction(database, {
             keyring: runtime.secrets.oauthTransactionKey,
             purpose: body.purpose,

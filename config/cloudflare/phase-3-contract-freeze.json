@@ -250,11 +250,14 @@
   },
   "rate_limit_contract": {
     "edge_burst_shield": {
-      "binding": "AUTH_BURST_LIMITER",
+      "pages_service_binding": "AUTH_BURST_SERVICE",
+      "service": "docvault-identity-burst-preview",
+      "worker_binding": "AUTH_BURST_LIMITER",
       "limit": 6,
       "period_seconds": 60,
       "key": "hmac-rate-key(route-family|600-second-window|cloudflare-source-ip)",
-      "authoritative_for_10_minute_budget": false
+      "authoritative_for_10_minute_budget": false,
+      "public_route": false
     },
     "authoritative_oauth_window": {
       "limit": 20,

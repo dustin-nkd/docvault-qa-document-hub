@@ -240,7 +240,9 @@ Size: M | Owner: Operations + Security | Reviewers: Product, Senior QA, Technica
 
 Entry requires explicit **Gate P3-G4** approval.
 
-Tasks: create/review the dedicated preview GitHub OAuth app, configure the frozen callback, provision preview-only secrets/variables, enable the two-key preview runtime, deploy the exact approved commit, and reconcile Pages/D1/provider state without printing secret values.
+Tasks: create/review the dedicated preview GitHub OAuth app, configure the frozen callback, provision preview-only secrets/variables, deploy the private Preview Rate Limit Worker and Preview-only Pages Service Binding, enable the two-key preview runtime, deploy the exact approved commit, and reconcile Pages/D1/provider state without printing secret values.
+
+Corrective Gate **P3-G4B** authorizes the private Rate Limit Worker and Service Binding after Wrangler proved that Pages projects do not support a direct `ratelimits` binding. The correction preserves the frozen 6/60 burst policy and 20/600 authoritative D1 policy; it does not authorize a public Worker route, production binding, raw source identifier transfer, or collaboration/business routes.
 
 Acceptance: preview app and cookie are unique; stable callback and exact origin match; only designated synthetic identities are permitted; production has zero D1/OAuth/session bindings and identity remains disabled; GitHub Pages remains static.
 

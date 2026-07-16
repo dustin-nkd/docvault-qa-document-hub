@@ -18,6 +18,8 @@
   },
   "include": [
     "worker-configuration.d.ts",
+    "workers/identity-burst-configuration.d.ts",
+    "workers/**/*.ts",
     "functions/_lib/**/*.mjs",
     "tests/helpers/runtime-dependencies.mjs",
     "tests/cloudflare/**/*.ts",

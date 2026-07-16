@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "docvault-identity-burst-preview",
+  "main": "./workers/identity-burst-limiter.ts",
+  "compatibility_date": "2026-07-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  "ratelimits": [
+    {
+      "name": "AUTH_BURST_LIMITER",
+      "namespace_id": "1010",
+      "simple": {
+        "limit": 6,
+        "period": 60
+      }
+    }
+  ]
+}

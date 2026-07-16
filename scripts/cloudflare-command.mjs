@@ -3,7 +3,8 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { collectCloudflareToolchainState, validateCloudflareToolchainState } from './cloudflare-toolchain-policy.mjs';
-import { parseWranglerConfig, validateWranglerConfig } from './cloudflare-wrangler-policy.mjs';
+import { parseWranglerConfig, validateBurstWorkerConfig, validateGeneratedBurstWorkerTypes,
+    validateWranglerConfig } from './cloudflare-wrangler-policy.mjs';
 import { validateCompiledWorkerArtifact, validateProductionSourceGraph } from './cloudflare-production-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -12,6 +13,8 @@ const wranglerBin = path.join(root, 'node_modules/wrangler/bin/wrangler.js');
 const typescriptBin = path.join(root, 'node_modules/typescript/bin/tsc');
 const vitestBin = path.join(root, 'node_modules/vitest/vitest.mjs');
 const configPath = path.join(root, 'wrangler.jsonc');
+const burstConfigPath = path.join(root, 'wrangler.identity-burst.jsonc');
+const burstTypesPath = path.join(root, 'workers/identity-burst-configuration.d.ts');
 const functionsPath = path.join(root, 'functions');
 
 const runNodeTool = (entrypoint, args) => {
@@ -38,6 +41,12 @@ const validateConfig = () => {
     console.log('  Preview D1: one approved binding; production bindings: none');
 };
 
+const validateBurstConfig = () => {
+    const { config, source } = parseWranglerConfig(burstConfigPath);
+    validateBurstWorkerConfig(config, source, state.toolchain.compatibility_date);
+    console.log('Preview burst-limiter Worker configuration policy passed');
+};
+
 const command = process.argv[2];
 validateCloudflareToolchainState(state);
 
@@ -61,6 +70,19 @@ if (command === 'toolchain-check') {
     validateConfig();
     if (!fs.existsSync(configPath)) process.exit(1);
     runNodeTool(wranglerBin, ['types', 'worker-configuration.d.ts', '--check']);
+} else if (command === 'burst-config-check') {
+    validateBurstConfig();
+} else if (command === 'burst-types-generate') {
+    validateBurstConfig();
+    runNodeTool(wranglerBin, ['types', burstTypesPath, '--config', burstConfigPath, '--include-runtime', 'false']);
+} else if (command === 'burst-types-check') {
+    validateBurstConfig();
+    runNodeTool(wranglerBin, ['types', burstTypesPath, '--config', burstConfigPath,
+        '--include-runtime', 'false', '--check']);
+    validateGeneratedBurstWorkerTypes(fs.readFileSync(burstTypesPath, 'utf8'));
+} else if (command === 'burst-build') {
+    validateBurstConfig();
+    runNodeTool(wranglerBin, ['deploy', '--config', burstConfigPath, '--dry-run', '--outdir', '.wrangler/identity-burst-build']);
 } else if (command === 'pages-dev') {
     requireFoundationFiles();
     validateConfig();

@@ -15,14 +15,10 @@
   },
   "env": {
     "preview": {
-      "ratelimits": [
+      "services": [
         {
-          "name": "AUTH_BURST_LIMITER",
-          "namespace_id": "1010",
-          "simple": {
-            "limit": 6,
-            "period": 60
-          }
+          "binding": "AUTH_BURST_SERVICE",
+          "service": "docvault-identity-burst-preview"
         }
       ],
       "d1_databases": [

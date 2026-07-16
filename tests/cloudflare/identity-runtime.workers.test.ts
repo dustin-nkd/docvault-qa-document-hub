@@ -29,7 +29,7 @@ function runtimeBindings(overrides: Record<string, unknown> = {}): object {
         OAUTH_TRANSACTION_KEY: keyring('oauth', 1), SESSION_TOKEN_PEPPER: keyring('session', 2),
         CSRF_TOKEN_KEY: keyring('csrf', 3), RATE_LIMIT_KEY: keyring('rate', 4),
         PREVIEW_ALLOWED_GITHUB_SUBJECTS: SUBJECT,
-        COLLAB_DB: env.COLLAB_DB, AUTH_BURST_LIMITER: { limit: async () => ({ success: true }) },
+        COLLAB_DB: env.COLLAB_DB, AUTH_BURST_SERVICE: { limit: async () => ({ success: true }) },
         ...overrides
     };
 }
@@ -94,6 +94,28 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         expect(authorization.searchParams.get('code_challenge_method')).toBe('S256');
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM oauth_transactions')
             .first<number>('count')).toBe(1);
+    });
+
+    it('sends only the HMAC digest through the Preview service binding and fails closed on response drift', async () => {
+        let captured: Request | undefined;
+        const service = { fetch: async (input: Request) => {
+            captured = input;
+            return new Response('{"success":true}', {
+                status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }
+            });
+        } };
+        const response = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
+            method: 'POST', body: JSON.stringify({ purpose: 'sign_in' })
+        }), runtimeBindings({ AUTH_BURST_SERVICE: service }), dependencies());
+        expect(response?.status).toBe(201);
+        expect(captured?.method).toBe('POST');
+        expect(new URL(captured?.url ?? '').pathname).toBe('/v1/limit');
+        expect(await captured?.json()).toEqual({ key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
+        expect(await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
+            method: 'POST', body: JSON.stringify({ purpose: 'sign_in' })
+        }), runtimeBindings({ AUTH_BURST_SERVICE: {
+            fetch: async () => new Response('{"success":true,"extra":true}', { status: 200 })
+        } }), dependencies())).toMatchObject({ status: 429 });
     });
 
     it('completes login only for an allowlisted numeric subject and issues the isolated host cookie', async () => {

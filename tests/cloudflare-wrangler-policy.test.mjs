@@ -5,6 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
     parseWranglerConfig,
+    validateBurstWorkerConfig,
+    validateGeneratedBurstWorkerTypes,
     validateDashboardToWranglerDiff,
     validateGeneratedWorkerTypes,
     validateWranglerConfig
@@ -12,6 +14,7 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const parsed = parseWranglerConfig(path.join(root, 'wrangler.jsonc'));
+const burst = parseWranglerConfig(path.join(root, 'wrangler.identity-burst.jsonc'));
 const baseline = JSON.parse(fs.readFileSync(path.join(root, 'config/cloudflare/pages-project-baseline.json'), 'utf8'));
 const transition = JSON.parse(fs.readFileSync(path.join(root, 'config/cloudflare/pages-wrangler-diff.json'), 'utf8'));
 const clone = (value) => structuredClone(value);
@@ -58,6 +61,25 @@ test('Pages Wrangler config rejects remote bindings, resource identifiers, and p
 test('Wrangler-generated Env types contain reviewed variables and preview D1 only', () => {
     const generated = fs.readFileSync(path.join(root, 'worker-configuration.d.ts'), 'utf8');
     assert.equal(validateGeneratedWorkerTypes(generated), true);
+});
+
+test('Preview burst Worker locks its private route boundary and generated RateLimit binding', () => {
+    assert.equal(validateBurstWorkerConfig(burst.config, burst.source), true);
+    assert.equal(validateGeneratedBurstWorkerTypes(
+        fs.readFileSync(path.join(root, 'workers/identity-burst-configuration.d.ts'), 'utf8')), true);
+});
+
+test('Preview burst Worker rejects public exposure, authority drift, and extra bindings', () => {
+    for (const mutate of [
+        (config) => { config.workers_dev = true; },
+        (config) => { config.routes = ['example.com/*']; },
+        (config) => { config.ratelimits[0].simple.limit = 7; },
+        (config) => { config.vars = { UNSAFE: 'value' }; }
+    ]) {
+        const config = clone(burst.config);
+        mutate(config);
+        assert.throws(() => validateBurstWorkerConfig(config, JSON.stringify(config)));
+    }
 });
 
 test('dashboard-to-Wrangler transition is explicit, approved, and contains no remote binding', () => {

@@ -8,6 +8,10 @@ export const approvedPreviewD1 = {
     migrations_dir: 'migrations/collaboration',
     migrations_table: 'd1_migrations'
 };
+export const approvedPreviewBurstService = {
+    binding: 'AUTH_BURST_SERVICE',
+    service: 'docvault-identity-burst-preview'
+};
 
 export const expectedEnvironmentVars = {
     local: {
@@ -64,12 +68,12 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
     assert(JSON.stringify(config.compatibility_flags) === '["nodejs_compat"]', 'Wrangler must use only nodejs_compat');
 
     exactKeys(config.env, ['preview', 'production'], 'wrangler.env');
-    exactKeys(config.env.preview, ['d1_databases', 'ratelimits', 'vars'], 'wrangler.env.preview');
+    exactKeys(config.env.preview, ['d1_databases', 'services', 'vars'], 'wrangler.env.preview');
     exactKeys(config.env.production, ['vars'], 'wrangler.env.production');
     assert(JSON.stringify(config.env.preview.d1_databases) === JSON.stringify([approvedPreviewD1]), 'Preview D1 binding drifted');
-    assert(JSON.stringify(config.env.preview.ratelimits) === JSON.stringify([{
-        name: 'AUTH_BURST_LIMITER', namespace_id: '1010', simple: { limit: 6, period: 60 }
-    }]), 'Preview rate-limit binding drifted');
+    assert(JSON.stringify(config.env.preview.services) === JSON.stringify([approvedPreviewBurstService]),
+        'Preview burst-limiter service binding drifted');
+    assert(!config.services && !config.env.production.services, 'Burst-limiter service escaped Preview');
     for (const [environment, vars] of [
         ['local', config.vars],
         ['preview', config.env.preview.vars],
@@ -91,7 +95,6 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
         /\br2_buckets\b/i,
         /\bdurable_objects\b/i,
         /\bhyperdrive\b/i,
-        /\bservices\b/i,
         /\bqueues\b/i,
         /\bsecret(?:s)?\b/i,
         /\btoken\b/i,
@@ -108,8 +111,12 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
 export function withoutApprovedPreviewD1(config) {
     assert(JSON.stringify(config?.env?.preview?.d1_databases) === JSON.stringify([approvedPreviewD1]), 'Approved preview D1 binding is missing or drifted');
     assert(!config.d1_databases && !config.env?.production?.d1_databases, 'D1 binding escaped the preview environment');
+    assert(JSON.stringify(config?.env?.preview?.services) === JSON.stringify([approvedPreviewBurstService]),
+        'Approved preview burst service binding is missing or drifted');
+    assert(!config.services && !config.env?.production?.services, 'Burst service binding escaped the preview environment');
     const historical = structuredClone(config);
     delete historical.env.preview.d1_databases;
+    delete historical.env.preview.services;
     return historical;
 }
 
@@ -131,8 +138,36 @@ export function validateGeneratedWorkerTypes(source) {
         assert(!envBlock.includes(prohibited), `Generated Env unexpectedly contains ${prohibited}`);
     }
     assert(source.includes('COLLAB_DB: D1Database'), 'Generated types are missing the approved preview D1 binding');
-    assert(source.includes('AUTH_BURST_LIMITER: RateLimit'), 'Generated types are missing the preview rate-limit binding');
+    assert(source.includes('AUTH_BURST_SERVICE: Fetcher'), 'Generated types are missing the preview burst service binding');
+    assert(!source.includes('AUTH_BURST_LIMITER'), 'Pages types unexpectedly contain the Worker rate-limit binding');
     assert(!/\b(?:GITHUB_OAUTH|SESSION_TOKEN|OAUTH_TRANSACTION_KEY|CSRF_TOKEN_KEY|RATE_LIMIT_KEY|PREVIEW_ALLOWED_GITHUB_SUBJECTS|CURSOR_SIGNING)\b/.test(source), 'Generated types contain a secret');
+    return true;
+}
+
+export function validateBurstWorkerConfig(config, source, compatibilityDate = '2026-07-15') {
+    exactKeys(config, ['$schema', 'name', 'main', 'compatibility_date', 'compatibility_flags',
+        'workers_dev', 'observability', 'ratelimits'], 'identity burst Worker');
+    assert(config.$schema === './node_modules/wrangler/config-schema.json', 'Burst Worker schema reference drifted');
+    assert(config.name === approvedPreviewBurstService.service, 'Burst Worker name drifted');
+    assert(config.main === './workers/identity-burst-limiter.ts', 'Burst Worker entrypoint drifted');
+    assert(config.compatibility_date === compatibilityDate, 'Burst Worker compatibility date drifted');
+    assert(JSON.stringify(config.compatibility_flags) === '["nodejs_compat"]', 'Burst Worker flags drifted');
+    assert(config.workers_dev === false, 'Burst Worker must not expose a workers.dev route');
+    assert(JSON.stringify(config.observability) === JSON.stringify({ enabled: true, head_sampling_rate: 0.1 }),
+        'Burst Worker observability drifted');
+    assert(JSON.stringify(config.ratelimits) === JSON.stringify([{
+        name: 'AUTH_BURST_LIMITER', namespace_id: '1010', simple: { limit: 6, period: 60 }
+    }]), 'Burst Worker rate-limit binding drifted');
+    assert(!/\b(?:vars|env|routes|route|services|d1_databases|kv_namespaces|r2_buckets|durable_objects|secret|token)\b/i
+        .test(source), 'Burst Worker config contains an unauthorized exposure, binding, variable, or secret');
+    return true;
+}
+
+export function validateGeneratedBurstWorkerTypes(source) {
+    assert(/interface\s+Env\s*\{/.test(source), 'Burst Worker Env interface is missing');
+    assert(source.includes('AUTH_BURST_LIMITER: RateLimit'), 'Burst Worker RateLimit binding type is missing');
+    assert(!/\b(?:COLLAB_DB|AUTH_BURST_SERVICE|GITHUB_OAUTH|SESSION_TOKEN|OAUTH_TRANSACTION|CSRF_TOKEN|RATE_LIMIT_KEY)\b/
+        .test(source), 'Burst Worker types contain an unauthorized binding or secret');
     return true;
 }
 
