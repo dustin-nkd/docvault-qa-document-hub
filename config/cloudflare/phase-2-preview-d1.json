@@ -21,7 +21,7 @@
     "project_name": "docvault-qa-document-hub",
     "environment": "preview",
     "name": "COLLAB_DB",
-    "configuration_authority": "cloudflare-pages-preview-deployment-config",
+    "configuration_authority": "wrangler-env-preview",
     "production_binding_count": 0
   },
   "migration": {

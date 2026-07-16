@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { withoutApprovedPreviewD1 } from './cloudflare-wrangler-policy.mjs';
 
 const assert = (condition, message) => {
     if (!condition) throw new Error(message);
@@ -73,7 +74,7 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     assert(manifest.environment_policy?.local === 'authorized-disposable-only', 'Local migration policy drifted');
     assert(manifest.environment_policy?.preview === 'prohibited-before-P2-G3', 'Preview migration policy drifted');
     assert(manifest.environment_policy?.production === 'prohibited-through-Phase-2', 'Production migration policy drifted');
-    assert(!/d1_databases|database_id|preview_database_id/i.test(JSON.stringify(wrangler)), 'Remote D1 binding or identifier is present');
+    assert(!/d1_databases|database_id|preview_database_id/i.test(JSON.stringify(withoutApprovedPreviewD1(wrangler))), 'An unapproved remote D1 binding or identifier is present');
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
 
     const entries = manifest.entries || [];

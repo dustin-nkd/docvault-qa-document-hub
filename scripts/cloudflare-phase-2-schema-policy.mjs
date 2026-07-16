@@ -61,7 +61,7 @@ export function validatePhase2SchemaFreeze({ freeze, schemaDocument, governanceD
 
     const boundary = freeze.environment_boundary || {};
     assert(Object.values(boundary).every(value => value === false), 'CF-P2-001 must not authorize remote D1 or collaboration');
-    assert(!containsKey(wrangler, REMOTE_BINDING_KEYS), 'Wrangler contains a remote binding during CF-P2-001');
+    assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_BINDING_KEYS), 'Wrangler contains an unapproved remote binding');
 
     const tables = freeze.tables || [];
     assert(sameSet(tables.map(table => table.name), Object.keys(REQUIRED_TABLE_COLUMNS)), 'Canonical table inventory drifted');
@@ -108,3 +108,4 @@ export function validatePhase2SchemaFreeze({ freeze, schemaDocument, governanceD
 }
 
 export { REQUIRED_MIGRATIONS, REQUIRED_PROHIBITIONS, REQUIRED_TABLE_COLUMNS };
+import { withoutApprovedPreviewD1 } from './cloudflare-wrangler-policy.mjs';

@@ -35,7 +35,7 @@ const validateConfig = () => {
     console.log('Cloudflare Wrangler configuration policy passed');
     console.log('  Environments: local, preview, production');
     console.log('  Collaboration: disabled in every environment');
-    console.log('  Remote bindings: none');
+    console.log('  Preview D1: one approved binding; production bindings: none');
 };
 
 const command = process.argv[2];

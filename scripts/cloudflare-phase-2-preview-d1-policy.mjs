@@ -17,7 +17,7 @@ export function validatePhase2PreviewD1({ preview, manifest, wrangler, apiSource
     assert(preview.binding?.project_name === 'docvault-qa-document-hub'
         && preview.binding.environment === 'preview'
         && preview.binding.name === 'COLLAB_DB'
-        && preview.binding.configuration_authority === 'cloudflare-pages-preview-deployment-config'
+        && preview.binding.configuration_authority === 'wrangler-env-preview'
         && preview.binding.production_binding_count === 0, 'Preview-only binding boundary drifted');
     assert(preview.migration?.directory === 'migrations/collaboration'
         && preview.migration.table === 'd1_migrations'
@@ -39,7 +39,10 @@ export function validatePhase2PreviewD1({ preview, manifest, wrangler, apiSource
         && preview.environment_boundary.real_user_data_allowed === false, 'Environment isolation drifted');
     assert(preview.p0_p1_exceptions?.length === 0, 'CF-P2-007 contains a P0/P1 exception');
 
-    assert(!/d1_databases|database_id|COLLAB_DB/i.test(JSON.stringify(wrangler)), 'Production source Wrangler contains preview D1 authority');
+    assert(wrangler.env?.preview?.d1_databases?.length === 1
+        && wrangler.env.preview.d1_databases[0].binding === 'COLLAB_DB'
+        && wrangler.env.preview.d1_databases[0].database_id === preview.resource.database_id
+        && !wrangler.d1_databases && !wrangler.env?.production?.d1_databases, 'Wrangler preview-only D1 authority drifted');
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');

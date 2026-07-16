@@ -17,9 +17,13 @@ test('Workers Vitest harness is local-only, disposable, and network denied', () 
     assert.doesNotMatch(config, /database_id|databaseId|remote\s*:\s*true|CLOUDFLARE_API_TOKEN/);
 });
 
-test('production Wrangler configuration contains no test D1 binding or remote resource ID', () => {
-    const source = read('wrangler.jsonc');
-    assert.doesNotMatch(source, /COLLAB_DB|d1_databases|database_id|preview_database_id|remote\s*:\s*true/);
+test('production Wrangler configuration contains only the reviewed preview D1 binding', () => {
+    const config = JSON.parse(read('wrangler.jsonc'));
+    assert.equal(config.env.preview.d1_databases.length, 1);
+    assert.equal(config.env.preview.d1_databases[0].binding, 'COLLAB_DB');
+    assert.equal(config.d1_databases, undefined);
+    assert.equal(config.env.production.d1_databases, undefined);
+    assert.doesNotMatch(read('wrangler.jsonc'), /preview_database_id|remote\s*:\s*true/);
 });
 
 test('disposable harness stays isolated from reviewed Foundation migrations and local state', () => {
@@ -29,5 +33,5 @@ test('disposable harness stays isolated from reviewed Foundation migrations and 
     assert.match(read('.gitignore'), /^\.wrangler\/$/m);
     assert.equal(fs.existsSync(path.join(root, 'migrations/collaboration')), true);
     assert.equal(fs.existsSync(path.join(root, 'migrations/manifest.json')), true);
-    assert.doesNotMatch(read('wrangler.jsonc'), /migrations_dir|d1_databases/);
+    assert.match(read('wrangler.jsonc'), /"migrations_dir": "migrations\/collaboration"/);
 });

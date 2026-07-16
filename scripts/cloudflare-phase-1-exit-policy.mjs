@@ -91,7 +91,7 @@ export function validatePhase1ExitGate({
     assert((manifest.production_boundary?.remote_binding_names || []).length === 0, 'Exit manifest contains a remote binding');
     const states = [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars];
     assert(states.every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Wrangler no longer fails closed in every environment');
-    assert(!containsKey(wrangler, REMOTE_BINDING_KEYS), 'Wrangler contains a remote binding');
+    assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_BINDING_KEYS), 'Wrangler contains an unapproved remote binding');
     assert((configurationDiff.remote_binding_names?.preview || []).length === 0
         && (configurationDiff.remote_binding_names?.production || []).length === 0, 'Reviewed configuration diff contains a remote binding');
 
@@ -110,3 +110,4 @@ export function validatePhase1ExitGate({
 }
 
 export { REQUIRED_STORIES };
+import { withoutApprovedPreviewD1 } from './cloudflare-wrangler-policy.mjs';

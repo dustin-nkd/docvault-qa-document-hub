@@ -55,7 +55,7 @@ test('Pages Wrangler config rejects remote bindings, resource identifiers, and p
     }
 });
 
-test('Wrangler-generated Env types contain only reviewed non-secret variables', () => {
+test('Wrangler-generated Env types contain reviewed variables and preview D1 only', () => {
     const generated = fs.readFileSync(path.join(root, 'worker-configuration.d.ts'), 'utf8');
     assert.equal(validateGeneratedWorkerTypes(generated), true);
 });

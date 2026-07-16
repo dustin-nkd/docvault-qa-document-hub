@@ -22,7 +22,7 @@ export function validatePhase2SecurityRecipes({ foundation, recipeSource, idempo
         'membership.change', 'envelope.provision', 'document.update', 'rotation.commit']), 'Recipe inventory drifted');
     assert((foundation.race_matrix || []).length === 7, 'Race matrix is incomplete');
     assert(Object.values(foundation.environment_boundary || {}).every(value => value === false), 'CF-P2-005 expanded runtime authority');
-    assert(!containsKey(wrangler, REMOTE_KEYS), 'Remote binding exists during CF-P2-005');
+    assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_KEYS), 'An unapproved remote binding exists');
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
@@ -58,3 +58,4 @@ export function validatePhase2SecurityRecipes({ foundation, recipeSource, idempo
     }
     return true;
 }
+import { withoutApprovedPreviewD1 } from './cloudflare-wrangler-policy.mjs';

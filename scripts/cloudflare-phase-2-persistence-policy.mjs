@@ -20,7 +20,7 @@ export function validatePhase2PersistenceFoundation({ foundation, sources, apiSo
         && foundation.gate_authorization.approved_at === '2026-07-16'
         && foundation.gate_authorization.authorized_story === 'CF-P2-004', 'P2-G2 authorization drifted');
     assert(Object.values(foundation.environment_boundary || {}).every(value => value === false), 'CF-P2-004 must not authorize remote D1 or collaboration');
-    assert(!containsKey(wrangler, REMOTE_BINDING_KEYS), 'Wrangler contains a remote binding during CF-P2-004');
+    assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_BINDING_KEYS), 'Wrangler contains an unapproved remote binding');
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
@@ -64,3 +64,4 @@ export function validatePhase2PersistenceFoundation({ foundation, sources, apiSo
     }
     return true;
 }
+import { withoutApprovedPreviewD1 } from './cloudflare-wrangler-policy.mjs';

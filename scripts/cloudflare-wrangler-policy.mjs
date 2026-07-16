@@ -1,6 +1,13 @@
 import fs from 'node:fs';
 
 export const canonicalProductionOrigin = 'https://docvault-qa-document-hub.pages.dev';
+export const approvedPreviewD1 = {
+    binding: 'COLLAB_DB',
+    database_name: 'docvault-collab-preview',
+    database_id: '0454359c-d663-409e-8962-951f173efb79',
+    migrations_dir: 'migrations/collaboration',
+    migrations_table: 'd1_migrations'
+};
 
 export const expectedEnvironmentVars = {
     local: {
@@ -54,8 +61,9 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
     assert(JSON.stringify(config.compatibility_flags) === '["nodejs_compat"]', 'Wrangler must use only nodejs_compat');
 
     exactKeys(config.env, ['preview', 'production'], 'wrangler.env');
-    exactKeys(config.env.preview, ['vars'], 'wrangler.env.preview');
+    exactKeys(config.env.preview, ['d1_databases', 'vars'], 'wrangler.env.preview');
     exactKeys(config.env.production, ['vars'], 'wrangler.env.production');
+    assert(JSON.stringify(config.env.preview.d1_databases) === JSON.stringify([approvedPreviewD1]), 'Preview D1 binding drifted');
     for (const [environment, vars] of [
         ['local', config.vars],
         ['preview', config.env.preview.vars],
@@ -70,8 +78,6 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
 
     const prohibited = [
         /\baccount_id\b/i,
-        /\bdatabase_id\b/i,
-        /\bd1_databases\b/i,
         /\bkv_namespaces\b/i,
         /\br2_buckets\b/i,
         /\bdurable_objects\b/i,
@@ -85,8 +91,17 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
         /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i,
         /\b[0-9a-f]{32}\b/i
     ];
-    assert(!prohibited.some((pattern) => pattern.test(source)), 'Wrangler config contains a prohibited binding, resource identifier, secret, or placeholder');
+    const sourceWithoutApprovedId = source.replace(approvedPreviewD1.database_id, '');
+    assert(!prohibited.some((pattern) => pattern.test(sourceWithoutApprovedId)), 'Wrangler config contains a prohibited binding, resource identifier, secret, or placeholder');
     return true;
+}
+
+export function withoutApprovedPreviewD1(config) {
+    assert(JSON.stringify(config?.env?.preview?.d1_databases) === JSON.stringify([approvedPreviewD1]), 'Approved preview D1 binding is missing or drifted');
+    assert(!config.d1_databases && !config.env?.production?.d1_databases, 'D1 binding escaped the preview environment');
+    const historical = structuredClone(config);
+    delete historical.env.preview.d1_databases;
+    return historical;
 }
 
 export function validateGeneratedWorkerTypes(source) {
@@ -102,10 +117,11 @@ export function validateGeneratedWorkerTypes(source) {
     }
     const envBlock = source.match(/interface\s+__BaseEnv_Env\s*\{([\s\S]*?)\n\}/)?.[1] || '';
     assert(envBlock, 'Generated base Env interface is missing');
-    for (const prohibited of ['D1Database', 'KVNamespace', 'R2Bucket', 'DurableObjectNamespace']) {
+    for (const prohibited of ['KVNamespace', 'R2Bucket', 'DurableObjectNamespace']) {
         assert(!envBlock.includes(prohibited), `Generated Env unexpectedly contains ${prohibited}`);
     }
-    assert(!/\b(?:COLLAB_DB|GITHUB_OAUTH|SESSION_TOKEN|CURSOR_SIGNING)\b/.test(source), 'Generated types contain a future binding or secret');
+    assert(source.includes('COLLAB_DB: D1Database'), 'Generated types are missing the approved preview D1 binding');
+    assert(!/\b(?:GITHUB_OAUTH|SESSION_TOKEN|CURSOR_SIGNING)\b/.test(source), 'Generated types contain a future secret');
     return true;
 }
 

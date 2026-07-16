@@ -62,7 +62,7 @@ export function validatePhase2LocalReadiness({ readiness, querySource, migration
         && readiness.gate_candidate.authorized_story === 'CF-P2-004', 'P2-G2 approval provenance drifted');
     assert(sameSet(readiness.gate_candidate.required_reviewers || [], ['Security Reviewer', 'Technical Lead', 'Senior QA']), 'P2-G2 reviewer inventory drifted');
     assert(Object.values(readiness.environment_boundary || {}).every(value => value === false), 'CF-P2-003 must not authorize remote D1 or collaboration');
-    assert(!containsKey(wrangler, REMOTE_BINDING_KEYS), 'Wrangler contains a remote binding during CF-P2-003');
+    assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_BINDING_KEYS), 'Wrangler contains an unapproved remote binding');
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
 
     assert(readiness.representative_workload?.documents === 10000, 'Representative document scale drifted');
@@ -105,3 +105,4 @@ export function validatePhase2LocalReadiness({ readiness, querySource, migration
     }
     return true;
 }
+import { withoutApprovedPreviewD1 } from './cloudflare-wrangler-policy.mjs';

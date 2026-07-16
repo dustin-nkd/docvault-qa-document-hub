@@ -36,7 +36,7 @@ export function validatePhase2QualityMatrix({ quality, manifest, migrationSource
     assert(quality.privacy_surfaces.length === 7 && quality.p0_p1_exceptions.length === 0
         && quality.open_regressions.length === 0, 'Privacy or severity gate is incomplete');
     assert(Object.values(quality.environment_boundary || {}).every(value => value === false), 'CF-P2-006 expanded remote authority');
-    assert(!containsKey(wrangler, REMOTE_KEYS), 'Remote binding exists during CF-P2-006');
+    assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_KEYS), 'An unapproved remote binding exists');
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false'
         && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
@@ -74,3 +74,4 @@ export function validatePhase2QualityMatrix({ quality, manifest, migrationSource
     }
     return true;
 }
+import { withoutApprovedPreviewD1 } from './cloudflare-wrangler-policy.mjs';
