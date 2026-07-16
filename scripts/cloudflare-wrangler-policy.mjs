@@ -26,7 +26,8 @@ export const expectedEnvironmentVars = {
         ORIGIN_POLICY_MODE: 'preview',
         CANONICAL_PRODUCTION_ORIGIN: canonicalProductionOrigin,
         COLLABORATION_ENABLED: 'false',
-        IDENTITY_RUNTIME_MODE: 'preview-only'
+        IDENTITY_RUNTIME_MODE: 'preview-only',
+        GITHUB_OAUTH_CLIENT_ID: 'Ov23liI50K0wBmEGu7bH'
     },
     production: {
         APP_ENV: 'production',
@@ -140,7 +141,9 @@ export function validateGeneratedWorkerTypes(source) {
     assert(source.includes('COLLAB_DB: D1Database'), 'Generated types are missing the approved preview D1 binding');
     assert(source.includes('AUTH_BURST_SERVICE: Fetcher'), 'Generated types are missing the preview burst service binding');
     assert(!source.includes('AUTH_BURST_LIMITER'), 'Pages types unexpectedly contain the Worker rate-limit binding');
-    assert(!/\b(?:GITHUB_OAUTH|SESSION_TOKEN|OAUTH_TRANSACTION_KEY|CSRF_TOKEN_KEY|RATE_LIMIT_KEY|PREVIEW_ALLOWED_GITHUB_SUBJECTS|CURSOR_SIGNING)\b/.test(source), 'Generated types contain a secret');
+    assert(source.includes('GITHUB_OAUTH_CLIENT_ID: "Ov23liI50K0wBmEGu7bH"'),
+        'Generated types are missing the Preview public OAuth client ID');
+    assert(!/\b(?:GITHUB_OAUTH_CLIENT_SECRET|SESSION_TOKEN|OAUTH_TRANSACTION_KEY|CSRF_TOKEN_KEY|RATE_LIMIT_KEY|PREVIEW_ALLOWED_GITHUB_SUBJECTS|CURSOR_SIGNING)\b/.test(source), 'Generated types contain a secret');
     return true;
 }
 
