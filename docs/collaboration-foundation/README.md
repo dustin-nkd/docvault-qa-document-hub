@@ -68,6 +68,7 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Cloudflare toolchain control](phase-1-cloudflare-toolchain.md) — `CF-P1-002` exact dependencies, portable commands, pinned CI, and review lifecycle
 - [Reviewed Pages Wrangler configuration](phase-1-wrangler-configuration.md) — `CF-P1-003` environment isolation, generated types, and source-of-truth transition
 - [Phase 1 exit report](phase-1-exit-report.md) — Gate P1 evidence, cross-functional review, and constrained Phase 2 recommendation
+- [Phase 2 D1 schema and persistence sprint](phase-2-sprint.md) — proposed story sequence, migration architecture, non-production resource gates, recovery, and Gate P2 evidence
 
 ## Review ownership
 

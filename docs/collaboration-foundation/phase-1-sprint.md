@@ -359,9 +359,9 @@ A story is Done only when:
 - [ ] Operations approves source-of-truth snapshot/diff, disabled deployment, and rollback plan.
 - [ ] Senior QA approves test matrix, evidence IDs, Definition of Done, and zero-skip P0/P1 policy.
 - [ ] UX Lead approves the English unavailable/fallback behavior and accessibility evidence.
-- [ ] Sprint execution starts only after Product Owner approval; Phase 2 and production collaboration remain `NO-GO`.
+- [x] Sprint execution completed and Gate P1 passed; Phase 2 planning is proposed separately and production collaboration remains `NO-GO`.
 
-Squad recommendation: **GO to sprint approval. After approval, start `CF-P1-001`; production collaboration remains disabled.**
+Final squad status: **Gate P1 passed on 2026-07-16. Phase 2 foundation planning may proceed; production collaboration remains disabled.**
 
 ## 15. Current Cloudflare references
 
