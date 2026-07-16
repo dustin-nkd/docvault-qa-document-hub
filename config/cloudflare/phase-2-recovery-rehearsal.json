@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P2",
+  "story": "CF-P2-008",
+  "status": "PASS",
+  "executed_at": "2026-07-16",
+  "gate_authorization": {
+    "id": "P2-G4",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P2-008"
+  },
+  "shared_preview": {
+    "database_name": "docvault-collab-preview",
+    "bookmark_sha256": "4f9bda7d980294def41c153e40e8a839f83f1c4bdddd6b3aeb3a2d63b8d68a85",
+    "bookmark_access": "read-only",
+    "restore_attempts": 0,
+    "schema_version": 9,
+    "entity_rows_after_rehearsal": 0
+  },
+  "recovery_resource": {
+    "database_name": "docvault-collab-recovery-p2-008",
+    "location": "APAC",
+    "read_replication": "disabled",
+    "synthetic_data_only": true,
+    "deleted": true,
+    "remaining_name_matches": 0,
+    "binding_count": 0
+  },
+  "recovery": {
+    "schema_version": 9,
+    "migration_count": 9,
+    "baseline_bookmark_sha256": "51ed962ce86c137f6c572a430557e05b612a2b20ad9ac2b0257aec51480fb26e",
+    "undo_bookmark_sha256": "178e2ae9a0641196ce6bb1737c1eb14a66bb956d58d6f691c1d73226360f97f8",
+    "restore_duration_ms": 3791,
+    "recovery_gap": "one committed synthetic mutation after the baseline bookmark",
+    "abort_condition": "stop restore verification and keep collaboration disabled on any invariant mismatch",
+    "undo_strategy": "use the returned previous bookmark only on the disposable database",
+    "export_import_required": false,
+    "export_import_reason": "native Time Travel restored the complete encrypted fixture and all invariants",
+    "schema_downgrade_attempts": 0,
+    "foreign_key_violations": 0
+  },
+  "restored_invariants": {
+    "ownership": true,
+    "membership": true,
+    "key_and_envelope_references": true,
+    "document_revision_continuity": true,
+    "idempotency_uniqueness": true,
+    "audit_ordering": true,
+    "ciphertext_bytes_and_digests": true,
+    "mutated_revision_rows": 0,
+    "mutated_audit_rows": 0
+  },
+  "runtime_compatibility": {
+    "feature_disablement_precedes_rollback": true,
+    "current_commit": "061c498",
+    "previous_commit": "df609a0",
+    "current_disabled_api_status": 503,
+    "previous_disabled_api_status": 503,
+    "disabled_api_cache_control": "no-store, private",
+    "cloudflare_guest_status": 200,
+    "github_pages_guest_status": 200,
+    "schema_downgrade_required": false
+  },
+  "environment_boundary": {
+    "production_restore_attempts": 0,
+    "production_d1_bound": false,
+    "shared_preview_restore_attempts": 0,
+    "collaboration_enabled": false,
+    "personal_vault_unchanged": true
+  },
+  "p0_p1_exceptions": [],
+  "evidence": ["CF-EV-P2-OPS-002", "CF-EV-P2-OPS-003", "CF-EV-P2-E2E-001", "CF-EV-P2-SEC-008"]
+}

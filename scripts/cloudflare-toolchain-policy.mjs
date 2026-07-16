@@ -18,7 +18,8 @@ export const cloudflareScripts = {
     'cf:phase2:persistence:check': 'node scripts/check-cloudflare-phase-2-persistence.mjs',
     'cf:phase2:recipes:check': 'node scripts/check-cloudflare-phase-2-security-recipes.mjs',
     'cf:phase2:quality:check': 'node scripts/check-cloudflare-phase-2-quality-matrix.mjs',
-    'cf:phase2:preview:check': 'node scripts/check-cloudflare-phase-2-preview-d1.mjs'
+    'cf:phase2:preview:check': 'node scripts/check-cloudflare-phase-2-preview-d1.mjs',
+    'cf:phase2:recovery:check': 'node scripts/check-cloudflare-phase-2-recovery.mjs'
 };
 
 const assert = (condition, message) => {

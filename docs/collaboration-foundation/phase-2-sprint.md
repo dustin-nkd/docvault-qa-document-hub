@@ -302,6 +302,8 @@ Acceptance:
 
 Gate P2-G5: recovery and rollback evidence must pass before Phase 2 exit assembly.
 
+Execution result (2026-07-16): **PASS**. Gate `P2-G4` authorized the `CF-P2-008` recovery rehearsal. Operations read a shared-preview bookmark without restoring that database, then migrated and seeded one disposable APAC D1 with encrypted synthetic data. A controlled mutation was reversed by Time Travel in 3,791 ms; ownership, membership, key/envelope references, revision continuity, idempotency, audit ordering, ciphertext bytes, schema 9, and foreign keys all passed. Current and preceding disabled runtimes both returned the fail-closed `503` contract without a schema downgrade. The disposable database was deleted with zero remaining name matches or bindings; production was untouched and collaboration remains disabled. Gate `P2-G5` review is next.
+
 ### `CF-P2-009` — Assemble Gate P2 evidence and Phase 3 handoff
 
 Size: S | Owner: Senior QA + Product Owner | Reviewers: Security, Operations, Privacy, Technical Lead, UX
