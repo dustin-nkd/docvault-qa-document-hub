@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **ACTIVE — `CF-P3-002` PASS; awaiting Product Owner approval at Gate P3-G2**
+Status: **ACTIVE — `CF-P3-003` PASS; awaiting Product Owner approval at Gate P3-G2A**
 
 Sprint ID: `CF-P3-S01`
 
@@ -176,6 +176,8 @@ Acceptance: exactly one concurrent callback can consume a transaction; expired, 
 
 Evidence: `CF-EV-P3-UT-002`, `CF-EV-P3-INT-001`, `CF-EV-P3-SEC-003`.
 
+Execution result (2026-07-16): **PASS**. The isolated service and typed D1 repository implement a ten-minute server-time lifecycle, digest-only state lookup across active/previous keys, an AAD-bound encrypted verifier context, exact preview callback binding, guarded single-use consume, and capped retention cleanup. Eight Workers-runtime tests prove one winner under concurrent consume, replay rejection, exact expiry, unknown/tampered/substituted inputs, fail-closed key ambiguity, cleanup safety, fault boundaries, and protected-value non-echo. Existing schema version 9 is unchanged; no route, binding, secret, remote resource, user, session, identity runtime, or collaboration capability changed.
+
 Gate P3-G2A authorizes `CF-P3-004` only.
 
 ### `CF-P3-004` — Implement GitHub adapter, numeric identity, and atomic callback
@@ -326,6 +328,6 @@ A story is Done only when acceptance criteria and all mapped evidence pass, char
 
 ## 11. Current recommendation
 
-Cross-functional recommendation: **Approve Gate P3-G0 and authorize `CF-P3-001` only.**
+Cross-functional recommendation: **Approve Gate P3-G2A and authorize `CF-P3-004` only.**
 
-This starts specification freeze and platform verification. It does not provision OAuth, enable preview identity, or change production.
+This authorizes the bounded GitHub adapter, numeric identity normalization, and atomic callback story. It does not provision OAuth, enable preview identity, or change production.

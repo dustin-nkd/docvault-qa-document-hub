@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P3",
+  "story": "CF-P3-003",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P3-G2",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P3-003",
+    "next_gate": "P3-G2A",
+    "next_story": "CF-P3-004"
+  },
+  "scope": {
+    "isolated_runtime_modules_added": 2,
+    "identity_route_calls": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "user_or_session_writes": 0,
+    "identity_enabled": false,
+    "collaboration_enabled": false,
+    "business_routes_enabled": false
+  },
+  "lifecycle": {
+    "ttl_seconds": 600,
+    "state_storage": "hmac-sha256-digest-only",
+    "verifier_context_storage": "aes-256-gcm-envelope",
+    "lookup_consistency": "first-primary",
+    "consume": "compare-and-set-pending-unexpired",
+    "key_rotation": "active-plus-previous-fail-closed-on-ambiguity",
+    "callback_binding": "exact-preview-origin-and-fixed-path",
+    "cleanup_maximum_rows": 100,
+    "terminal_retention_seconds": 86400,
+    "external_error_profile": "invalid-or-unavailable-without-enumeration"
+  },
+  "fault_checkpoints": [
+    "oauth.create.before-insert",
+    "oauth.lookup.after-read",
+    "oauth.consume.before-cas",
+    "oauth.cleanup.before-batch"
+  ],
+  "source_files": [
+    "functions/_lib/identity/oauth-envelope.ts",
+    "functions/_lib/identity/oauth-transaction-repository.ts",
+    "functions/_lib/identity/oauth-transaction-service.ts",
+    "functions/_lib/identity/index.ts"
+  ],
+  "workers_test_file": "tests/cloudflare/oauth-transaction-lifecycle.workers.test.ts",
+  "workers_test_count": 8,
+  "negative_coverage": [
+    "concurrent-consume",
+    "replay",
+    "exact-expiry-boundary",
+    "unknown-state",
+    "wrong-origin",
+    "wrong-purpose",
+    "callback-substitution",
+    "corrupt-envelope",
+    "ambiguous-key-rotation-match",
+    "bounded-cleanup",
+    "fault-injection",
+    "protected-value-non-echo"
+  ],
+  "evidence": [
+    "CF-EV-P3-UT-002",
+    "CF-EV-P3-INT-001",
+    "CF-EV-P3-SEC-003"
+  ],
+  "next_decision": {
+    "gate": "P3-G2A",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P3-004-only",
+    "remote_changes_authorized": false
+  }
+}

@@ -41,17 +41,17 @@ export function validatePhase3IdentityPrimitives({ manifest, sprintManifest, spr
     }
     assert(scope.isolated_runtime_modules_added === 6, 'Identity primitive module inventory drifted');
 
-    assert(sprintManifest.authorization?.gate === 'P3-G1'
+    assert(sprintManifest.authorization?.gate === 'P3-G2'
         && sprintManifest.authorization.decision === 'APPROVED'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-002', 'Sprint authorization drifted');
+        && sprintManifest.authorization.authorized_story === 'CF-P3-003', 'Sprint authorization drifted');
     const stories = sprintManifest.stories || [];
-    assert(stories.filter(story => ['CF-P3-001', 'CF-P3-002'].includes(story.id))
+    assert(stories.filter(story => ['CF-P3-001', 'CF-P3-002', 'CF-P3-003'].includes(story.id))
         .every(story => story.status === 'PASS')
-        && stories.filter(story => !['CF-P3-001', 'CF-P3-002'].includes(story.id))
+        && stories.filter(story => !['CF-P3-001', 'CF-P3-002', 'CF-P3-003'].includes(story.id))
             .every(story => story.status === 'PLANNED'), 'Sprint story disposition drifted');
-    assert(/^Status: \*\*ACTIVE — `CF-P3-002` PASS; awaiting Product Owner approval at Gate P3-G2\*\*$/m.test(sprintSource),
+    assert(/^Status: \*\*ACTIVE — `CF-P3-003` PASS; awaiting Product Owner approval at Gate P3-G2A\*\*$/m.test(sprintSource),
         'Sprint status text drifted');
-    assert(/^Status: \*\*Contract frozen; `CF-P3-002` PASS; awaiting Gate P3-G2 approval\*\*$/m.test(contractSource),
+    assert(/^Status: \*\*Contract frozen; `CF-P3-003` PASS; awaiting Gate P3-G2A approval\*\*$/m.test(contractSource),
         'Contract execution status drifted');
 
     assert(sameSet(manifest.source_files || [], SOURCES)
@@ -103,7 +103,7 @@ export function validatePhase3IdentityPrimitives({ manifest, sprintManifest, spr
     }
 
     assert(!routeSource.includes("_lib/identity") && !routeSource.includes('resolveIdentityRuntime'),
-        'Identity primitives were wired to a route before CF-P3-003');
+        'Identity primitives were wired to a route before CF-P3-004');
     assert(migrationManifest.entries?.length === 9, 'CF-P3-002 changed the approved migration set');
     assert(!wrangler.ratelimits && !wrangler.secrets && !wrangler.d1_databases
         && !wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits

@@ -17,6 +17,6 @@ validatePhase3SprintPlan({
 });
 
 console.log('Cloudflare Phase 3 sprint plan passed');
-console.log('  Stories: CF-P3-001 and CF-P3-002 PASS; eight planned; P3-G2 pending');
+console.log('  Stories: CF-P3-001 through CF-P3-003 PASS; seven planned; P3-G2A pending');
 console.log('  Identity runtime: preview-only after explicit P3-G4');
 console.log('  Production/GitHub Pages identity and collaboration: disabled');

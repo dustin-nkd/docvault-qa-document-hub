@@ -1,6 +1,6 @@
 # Phase 3 identity and session implementation contract
 
-Status: **Contract frozen; `CF-P3-002` PASS; awaiting Gate P3-G2 approval**
+Status: **Contract frozen; `CF-P3-003` PASS; awaiting Gate P3-G2A approval**
 
 Date: 2026-07-16
 
@@ -264,3 +264,7 @@ Gate P3-G1 reviewers must explicitly accept:
 7. authorization of `CF-P3-002` only, with zero remote changes.
 
 Recommendation: **APPROVE Gate P3-G1 and authorize `CF-P3-002` only.**
+
+## 12. Implementation progress
+
+`CF-P3-002` and `CF-P3-003` now pass their executable gates. The single-use transaction lifecycle conforms to this frozen contract using existing schema version 9, with evidence `CF-EV-P3-UT-002`, `CF-EV-P3-INT-001`, and `CF-EV-P3-SEC-003`. No HTTP route, provider adapter, user/session authority, binding, secret, or remote resource is active. The next decision is Gate P3-G2A for `CF-P3-004` only.

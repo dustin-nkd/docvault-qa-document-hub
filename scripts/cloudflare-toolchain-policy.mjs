@@ -23,7 +23,8 @@ export const cloudflareScripts = {
     'cf:phase2:exit:check': 'node scripts/check-cloudflare-phase-2-exit.mjs',
     'cf:phase3:sprint:check': 'node scripts/check-cloudflare-phase-3-sprint.mjs',
     'cf:phase3:contract:check': 'node scripts/check-cloudflare-phase-3-contract.mjs',
-    'cf:phase3:primitives:check': 'node scripts/check-cloudflare-phase-3-primitives.mjs'
+    'cf:phase3:primitives:check': 'node scripts/check-cloudflare-phase-3-primitives.mjs',
+    'cf:phase3:oauth:check': 'node scripts/check-cloudflare-phase-3-oauth.mjs'
 };
 
 const assert = (condition, message) => {

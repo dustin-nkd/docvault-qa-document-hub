@@ -2,7 +2,7 @@ import {
     concatBytes, decodeBase64Url, decodeUtf8, encodeBase64Url, IdentityPrimitiveError, uint32, utf8
 } from './encoding';
 import {
-    deriveIdentityKey, generateOpaqueToken, IDENTITY_KEY_LABELS, type IdentityKeyring,
+    deriveIdentityKey, generateOpaqueToken, hmacSign, IDENTITY_KEY_LABELS, type IdentityKeyring,
     type RandomBytesSource, PLATFORM_RANDOM, signWithKeyring
 } from './crypto';
 import { normalizeReturnPath } from './return-path';
@@ -159,4 +159,18 @@ export async function digestOAuthState(keyring: IdentityKeyring, state: string):
     keyId: string; digest: Uint8Array;
 }> {
     return signWithKeyring(keyring, IDENTITY_KEY_LABELS.oauthState, decodeBase64Url(state, 32));
+}
+
+export async function digestOAuthStateCandidates(keyring: IdentityKeyring, state: string): Promise<readonly {
+    keyId: string; digest: Uint8Array;
+}[]> {
+    const stateBytes = decodeBase64Url(state, 32);
+    const candidates = [];
+    for (const [keyId, rawKey] of keyring.keys) {
+        candidates.push({
+            keyId,
+            digest: await hmacSign(await deriveIdentityKey(rawKey, IDENTITY_KEY_LABELS.oauthState), stateBytes)
+        });
+    }
+    return candidates;
 }

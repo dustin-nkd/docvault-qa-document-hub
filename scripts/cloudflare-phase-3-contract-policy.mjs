@@ -43,15 +43,16 @@ export function validatePhase3ContractFreeze({ manifest, sprintManifest, sprintS
     }
 
     assert(sprintManifest.status === 'ACTIVE'
-        && sprintManifest.authorization?.gate === 'P3-G1'
+        && sprintManifest.authorization?.gate === 'P3-G2'
         && sprintManifest.authorization.decision === 'APPROVED'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-002'
+        && sprintManifest.authorization.authorized_story === 'CF-P3-003'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-001')?.status === 'PASS'
         && sprintManifest.stories?.find(story => story.id === 'CF-P3-002')?.status === 'PASS'
-        && sprintManifest.stories.filter(story => !['CF-P3-001', 'CF-P3-002'].includes(story.id))
+        && sprintManifest.stories?.find(story => story.id === 'CF-P3-003')?.status === 'PASS'
+        && sprintManifest.stories.filter(story => !['CF-P3-001', 'CF-P3-002', 'CF-P3-003'].includes(story.id))
             .every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
-    assert(/^Status: \*\*ACTIVE — `CF-P3-002` PASS; awaiting Product Owner approval at Gate P3-G2\*\*$/m.test(sprintSource), 'Sprint status text drifted');
-    assert(/^Status: \*\*Contract frozen; `CF-P3-002` PASS; awaiting Gate P3-G2 approval\*\*$/m.test(contractSource), 'Contract status text drifted');
+    assert(/^Status: \*\*ACTIVE — `CF-P3-003` PASS; awaiting Product Owner approval at Gate P3-G2A\*\*$/m.test(sprintSource), 'Sprint status text drifted');
+    assert(/^Status: \*\*Contract frozen; `CF-P3-003` PASS; awaiting Gate P3-G2A approval\*\*$/m.test(contractSource), 'Contract status text drifted');
 
     const observations = manifest.platform_observations || {};
     assert(observations.cloudflare_pages?.project === branchControl.project_name
