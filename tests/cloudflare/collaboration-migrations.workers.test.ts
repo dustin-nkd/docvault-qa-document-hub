@@ -58,7 +58,7 @@ describe('CF-P2-002 immutable Foundation migrations', () => {
         await seedFoundation();
     });
 
-    it('applies all six migrations once and exposes schema version six', async () => {
+    it('applies all seven migrations once and exposes schema version seven', async () => {
         const ledger = await env.COLLAB_DB.prepare(
             'SELECT name FROM collaboration_migrations ORDER BY id'
         ).all<{ name: string }>();
@@ -75,9 +75,9 @@ describe('CF-P2-002 immutable Foundation migrations', () => {
             migration_set_digest: string;
         }>();
         expect(metadata).toEqual({
-            schema_version: 6,
+            schema_version: 7,
             minimum_runtime_schema: 1,
-            maximum_runtime_schema: 6,
+            maximum_runtime_schema: 7,
             migration_set_digest: '8FB7AFD3E0D5DA2FE756D2AE7A252A6BF3273A4846C726E407053A28A9EFBDF8'
         });
     });
@@ -106,7 +106,7 @@ describe('CF-P2-002 immutable Foundation migrations', () => {
         const count = await env.COLLAB_DB.prepare(
             'SELECT COUNT(*) AS count FROM collaboration_migrations'
         ).first<number>('count');
-        expect(count).toBe(6);
+        expect(count).toBe(7);
     });
 
     it('enforces strict types, foreign keys, pending-target uniqueness, and one current key version', async () => {

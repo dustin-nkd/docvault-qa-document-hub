@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P2",
+  "story": "CF-P2-003",
+  "status": "PASS",
+  "approved_start": "2026-07-16",
+  "gate_candidate": {
+    "id": "P2-G2",
+    "decision": "REVIEW_REQUIRED",
+    "required_reviewers": ["Security Reviewer", "Technical Lead", "Senior QA"]
+  },
+  "environment_boundary": {
+    "remote_d1_created": false,
+    "remote_d1_bound": false,
+    "production_d1_allowed": false,
+    "collaboration_enabled": false
+  },
+  "representative_workload": {
+    "documents": 10000,
+    "revisions_per_hot_document": 50,
+    "maximum_page_size": 100
+  },
+  "constraint_domains": [
+    "identity", "session", "workspace", "invitation", "device", "key_version",
+    "key_envelope", "document_revision", "idempotency", "audit", "retention_hold"
+  ],
+  "approved_queries": [
+    "session-by-token", "membership-by-workspace-user", "memberships-by-user",
+    "invitations-by-workspace-expiry", "devices-by-user-state",
+    "key-versions-by-workspace", "key-envelopes-by-target",
+    "document-by-workspace-id", "documents-by-workspace-state",
+    "revisions-by-workspace-time", "mutation-result-by-scope",
+    "audit-by-workspace-sequence", "retention-holds-by-workspace"
+  ],
+  "required_indexes": [
+    "idx_memberships_user_state_workspace",
+    "idx_invitations_workspace_state_expiry_id",
+    "idx_devices_user_state_id",
+    "idx_workspace_key_versions_state_version",
+    "idx_workspace_key_envelopes_target_keyset",
+    "idx_document_revisions_workspace_time_revision",
+    "idx_mutation_results_expiry_id",
+    "idx_retention_holds_workspace_status_expiry_id"
+  ],
+  "tenant_guard_triggers": [
+    "invitations_tenant_guard_insert", "invitations_tenant_guard_update",
+    "memberships_workspace_immutable", "invitations_workspace_immutable",
+    "workspace_key_versions_tenant_guard", "workspace_key_versions_sequence_guard",
+    "workspace_key_versions_workspace_immutable", "workspaces_current_key_guard",
+    "workspace_key_envelopes_tenant_guard", "workspace_key_envelopes_workspace_immutable",
+    "documents_tenant_guard", "documents_workspace_immutable",
+    "document_revisions_tenant_guard", "mutation_results_tenant_guard",
+    "mutation_results_workspace_immutable", "audit_events_tenant_guard",
+    "retention_holds_tenant_guard", "retention_holds_workspace_immutable",
+    "workspaces_id_immutable"
+  ],
+  "evidence": ["CF-EV-P2-INT-002", "CF-EV-P2-PERF-001", "CF-EV-P2-SEC-003"]
+}

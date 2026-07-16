@@ -1,4 +1,4 @@
-export const COLLABORATION_SCHEMA_VERSION = 6 as const;
+export const COLLABORATION_SCHEMA_VERSION = 7 as const;
 export const COLLABORATION_MINIMUM_RUNTIME_SCHEMA = 1 as const;
 
 export type D1Blob = ArrayBuffer;

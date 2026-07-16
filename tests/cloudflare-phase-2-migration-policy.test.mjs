@@ -61,7 +61,7 @@ test('CF-P2-002 typed row contracts cover every frozen table without unsafe doub
     const source = read('functions/_lib/collaboration-schema.ts');
     const freeze = actualInput().freeze;
     assert.doesNotMatch(source, /as\s+unknown\s+as|:\s*any\b|<any>/);
-    assert.match(source, /COLLABORATION_SCHEMA_VERSION\s*=\s*6\s+as const/);
+    assert.match(source, /COLLABORATION_SCHEMA_VERSION\s*=\s*7\s+as const/);
     assert.match(source, /type CollaborationWriteResult = D1Result/);
     for (const table of freeze.tables) assert.match(source, new RegExp(`\\b${table.name}:`), `${table.name} lacks a typed row map`);
 });

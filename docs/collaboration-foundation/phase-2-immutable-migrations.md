@@ -12,7 +12,7 @@ Reviewers: Technical Lead, Security Reviewer, Senior QA
 
 ## 1. Delivered boundary
 
-Six additive, immutable SQL migrations now implement the Gate P2-G1 schema freeze under `migrations/collaboration/`. They create one logical schema-control table and 14 entity tables with strict SQLite typing, checks, foreign keys, unique/partial indexes, explicit non-cascading deletion behavior, and append-only revision/audit triggers.
+Six additive, immutable SQL migrations implement the Gate P2-G1 schema freeze under `migrations/collaboration/`. CF-P2-003 subsequently adds forward-only migration 0007 for tenant guards and stable keyset indexes without editing those initial files. Together they create/protect one logical schema-control table and 14 entity tables with strict SQLite typing, checks, foreign keys, unique/partial indexes, explicit non-cascading deletion behavior, and append-only revision/audit triggers.
 
 The implementation remains local-only. `wrangler.jsonc` still contains no D1 binding, resource identifier, or migration directory. No remote database was created, bound, queried, migrated, restored, or deleted. Collaboration remains disabled in every environment.
 
@@ -28,6 +28,7 @@ Current Cloudflare behavior was verified against the official documentation for 
 | 0004 | `0004_1023ca4a6280_documents.sql` | `documents`, `document_revisions`, `mutation_results` |
 | 0005 | `0005_bc3cdc6742da_audit_retention.sql` | `audit_events`, `retention_holds` |
 | 0006 | `0006_ab9c79c46bad_invariants_indexes.sql` | Cross-table indexes and append-only triggers |
+| 0007 | `0007_a19e57b5f793_tenant_scope_indexes.sql` | Forward-only tenant guards and stable keyset indexes (`CF-P2-003`) |
 
 The 12-character filename component is the prefix of SHA-256 over UTF-8/LF-normalized SQL. [`migrations/manifest.json`](../../migrations/manifest.json) stores the full hash, normalized byte count, previous-entry hash, table ownership, reviewers, compatibility, validation, rollback, privacy, and traceability metadata.
 
@@ -40,8 +41,8 @@ The 12-character filename component is the prefix of SHA-256 over UTF-8/LF-norma
 - Domain history uses `ON DELETE RESTRICT`; normal application deletion cannot cascade revisions, audit, keys, or membership history.
 - Pending invitation target uniqueness and one-current-key-version are partial unique indexes.
 - `document_revisions` and `audit_events` reject update/delete; corrections are new audit rows.
-- Every migration runs one `PRAGMA foreign_key_check` and advances `schema_metadata` through version 6.
-- The final compatibility record is schema `6`, supported logical window `1..6`, with the frozen migration-set digest.
+- Every migration runs one `PRAGMA foreign_key_check` and advances `schema_metadata` through version 7.
+- The final compatibility record is schema `7`, supported logical window `1..7`, with the frozen migration-set digest.
 
 Last-Owner, authorization, role ceilings, key-version `current+1`, document CAS, and exact audit-with-domain-write behavior remain guarded repository recipes assigned to `CF-P2-003` through `CF-P2-005`; this story does not claim a table constraint can replace live authority checks.
 

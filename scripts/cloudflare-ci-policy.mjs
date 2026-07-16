@@ -12,7 +12,7 @@ export function validateCloudflareCiBoundary(packageJson, workflow) {
     const scripts = packageJson.scripts || {};
     assert(scripts.check === 'npm run check:base && npm run check:cloudflare', 'The release check must compose base and Cloudflare gates');
     assert(scripts['check:base'] === 'node scripts/quality-check.mjs && npm run check:functions && npm test', 'The base quality gate drifted');
-    assert(scripts['check:cloudflare'] === 'npm run cf:toolchain:check && npm run cf:config:check && npm run cf:types:check && npm run test:collab:unit && npm run cf:test && npm run cf:rollback:rehearse && npm run cf:pages:dry-run && npm run cf:phase1:check && npm run cf:phase2:schema:check && npm run cf:phase2:migrations:check', 'The Cloudflare release gate is incomplete or out of order');
+    assert(scripts['check:cloudflare'] === 'npm run cf:toolchain:check && npm run cf:config:check && npm run cf:types:check && npm run test:collab:unit && npm run cf:test && npm run cf:rollback:rehearse && npm run cf:pages:dry-run && npm run cf:phase1:check && npm run cf:phase2:schema:check && npm run cf:phase2:migrations:check && npm run cf:phase2:readiness:check', 'The Cloudflare release gate is incomplete or out of order');
     assert(scripts['check:deployment-boundary'] === 'node scripts/check-deployment-boundary.mjs', 'The deployment artifact gate drifted');
     assert(!/\|\|\s*true|--passWithNoTests|continue-on-error/i.test(Object.values(scripts).join('\n')), 'A required release gate can be bypassed');
     assert(/fetch-depth:\s*0/.test(workflow), 'Full Git history is required for rollback-target verification');

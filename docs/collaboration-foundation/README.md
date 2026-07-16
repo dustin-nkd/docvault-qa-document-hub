@@ -72,6 +72,7 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Phase 2 schema inventory freeze](phase-2-schema-freeze.md) — `CF-P2-001` canonical tables, columns, relationships, invariants, ownership, and Gate P2-G1 disposition
 - [Phase 2 migration governance](phase-2-migration-governance.md) — immutable naming/hash/manifest, compatibility, correction, validation, and unknown-history policy
 - [Phase 2 immutable Foundation migrations](phase-2-immutable-migrations.md) — `CF-P2-002` SQL, manifest/hash chain, strict schema, typed rows, local D1 evidence, and remote denial
+- [Phase 2 tenant constraints and index plans](phase-2-tenant-constraints-index-plans.md) — `CF-P2-003` tenant guards, keyset contracts, representative query plans, and P2-G2 candidate evidence
 
 ## Review ownership
 

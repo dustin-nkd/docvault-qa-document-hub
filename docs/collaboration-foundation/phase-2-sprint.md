@@ -188,6 +188,8 @@ Acceptance:
 
 Gate P2-G2: local schema/constraint/query-plan evidence must pass before persistence helpers merge.
 
+Execution result (2026-07-16): **PASS** for `CF-P2-003`; Gate `P2-G2` remains **REVIEW_REQUIRED** pending explicit sign-off. Evidence: `CF-EV-P2-INT-002`, `CF-EV-P2-PERF-001`, `CF-EV-P2-SEC-003`.
+
 ### `CF-P2-004` — Build typed persistence and atomic batch primitives
 
 Size: L | Owner: Senior Developer | Reviewers: Technical Lead, Security, Senior QA

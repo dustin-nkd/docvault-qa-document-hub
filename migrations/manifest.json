@@ -149,6 +149,30 @@
       "backfill": "none",
       "rollback_class": "compatible-code-rollback",
       "privacy": "schema-only-no-fixtures-no-protected-values"
+    },
+    {
+      "sequence": 7,
+      "filename": "0007_a19e57b5f793_tenant_scope_indexes.sql",
+      "slug": "tenant_scope_indexes",
+      "story": "CF-P2-003",
+      "sha256": "a19e57b5f7932ba68abdc5d71b950cf3f141fecb56774f91e64cc9e7982701e8",
+      "normalized_bytes": 6256,
+      "previous_sha256": "ab9c79c46bad778abd1140272024a594fdcc43f6550890aa1fbe98e23d385b38",
+      "owner": "Persistence Core",
+      "reviewers": ["Technical Lead", "Security Reviewer", "Senior QA", "Operations"],
+      "created_at": "2026-07-16",
+      "contract_version": "CF-P2-schema-freeze-v1",
+      "change_class": "additive-index-and-tenant-guard",
+      "tables": [],
+      "requirements": ["CF-RBAC-001", "CF-INV-001", "CF-DEV-003", "CF-KEY-003", "CF-DOC-002", "CF-SYNC-002", "CF-AUD-002"],
+      "threats": ["T04", "T15", "T16", "T19", "T20"],
+      "risks": ["R03", "R13", "R16", "R19"],
+      "validations": ["schema-version-seven", "foreign-keys", "tenant-guard-triggers", "keyset-query-indexes", "explain-query-plan", "privacy-canary"],
+      "compatibility": {"minimum_runtime_schema": 1, "maximum_runtime_schema": 7},
+      "runtime_class": "bounded-index-and-trigger-expansion",
+      "backfill": "none",
+      "rollback_class": "compatible-code-rollback",
+      "privacy": "schema-only-no-fixtures-no-protected-values"
     }
   ]
 }
