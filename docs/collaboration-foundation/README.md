@@ -1,8 +1,8 @@
 # Collaboration Foundation
 
-Status: Phase 3 identity/session sprint proposed at Gate P3-G0; no implementation or remote change is authorized; collaboration activation remains NO-GO
+Status: Phase 3 active; `CF-P3-001` contract freeze passed; Gate P3-G1 is pending and collaboration activation remains NO-GO
 
-Sprint: `CF-P3-S01` — ten gated identity/session stories; Gate P3-G0 pending
+Sprint: `CF-P3-S01` — `CF-P3-001` PASS; no remote identity resource; Gate P3-G1 pending
 
 Language: English for all repository artifacts
 
@@ -79,7 +79,8 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - `CF-P2-007` preview D1 state is machine-checked in `config/cloudflare/phase-2-preview-d1.json`; production remains unbound and collaboration remains disabled
 - `CF-P2-008` recovery rehearsal is machine-checked in `config/cloudflare/phase-2-recovery-rehearsal.json`; the disposable D1 was restored, verified, and deleted without touching shared preview or production
 - [Phase 2 exit report](phase-2-exit-report.md) — nine stories, 25 evidence records, remote reconciliation, and constrained Phase 3 identity/session recommendation
-- [Phase 3 identity and sessions sprint](phase-3-sprint.md) — ten gated stories covering contract freeze, OAuth, sessions, CSRF, abuse controls, isolated preview verification, and Phase 4 handoff; Gate P3-G0 is pending
+- [Phase 3 identity and sessions sprint](phase-3-sprint.md) — ten gated stories covering contract freeze, OAuth, sessions, CSRF, abuse controls, isolated preview verification, and Phase 4 handoff; `CF-P3-001` passed and Gate P3-G1 is pending
+- [Phase 3 identity/session implementation contract](phase-3-identity-session-contract.md) — `CF-P3-001` OAuth, session, CSRF, preview isolation, rate-control, error, rollback, and evidence freeze; Gate P3-G1 pending
 
 ## Review ownership
 

@@ -26,7 +26,7 @@ test('Phase 3 plan freezes scope, gates, traceability, security, and environment
 
 test('Phase 3 plan rejects premature authorization, production identity, route expansion, and collaboration activation', () => {
     for (const mutate of [
-        input => { input.manifest.authorization.decision = 'APPROVED'; },
+        input => { input.manifest.authorization.decision = 'PENDING'; },
         input => { input.manifest.boundaries.production_identity_enabled = true; },
         input => { input.manifest.route_scope.push('POST /api/v1/workspaces'); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },

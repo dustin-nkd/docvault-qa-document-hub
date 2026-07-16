@@ -29,3 +29,4 @@ import './cloudflare-phase-2-preview-d1-policy.test.mjs';
 import './cloudflare-phase-2-recovery-policy.test.mjs';
 import './cloudflare-phase-2-exit.test.mjs';
 import './cloudflare-phase-3-sprint-policy.test.mjs';
+import './cloudflare-phase-3-contract-policy.test.mjs';

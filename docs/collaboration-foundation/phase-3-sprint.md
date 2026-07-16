@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **PROPOSED — awaiting Product Owner approval at Gate P3-G0**
+Status: **ACTIVE — `CF-P3-001` PASS; awaiting Product Owner approval at Gate P3-G1**
 
 Sprint ID: `CF-P3-S01`
 
@@ -147,6 +147,8 @@ Tasks:
 Acceptance: no unresolved schema/key/rate-limit/callback decision; no remote change; all requirements, threats, risks, owners, and evidence are mapped.
 
 Evidence: `CF-EV-P3-STA-001`, `CF-EV-P3-SEC-001`.
+
+Execution result (2026-07-16): **PASS**. The canonical implementation profile is [`phase-3-identity-session-contract.md`](phase-3-identity-session-contract.md), backed by `config/cloudflare/phase-3-contract-freeze.json`. It freezes domain-separated OAuth/session/CSRF keys, safe return paths, callback atomicity, exact errors, the dedicated preview branch/app/cookie boundary, and a hybrid rate design. Current Wrangler supports only 10/60-second binding periods, so a reviewed forward-only operational rate-window migration is assigned to `CF-P3-007`; no migration, runtime, secret, provider app, configuration, or remote state changed in this story.
 
 Gate P3-G1 approves the frozen design and authorizes `CF-P3-002` only.
 

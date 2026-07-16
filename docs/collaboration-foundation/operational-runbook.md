@@ -27,10 +27,13 @@ The future Pages Functions configuration must declare and type-check these logic
 | `ORIGIN_POLICY_MODE` | Non-secret variable | Environment-specific local, preview, or production origin policy |
 | `CANONICAL_PRODUCTION_ORIGIN` | Non-secret variable | Stable canonical production origin; not a preview-origin allow-list |
 | `COLLABORATION_ENABLED` | Non-secret variable | Exact string `false` until a separately approved rollout phase |
+| `IDENTITY_RUNTIME_MODE` | Non-secret variable | Exact identity mode: `disabled`, local test only, or the approved preview-only runtime |
 | `GITHUB_OAUTH_CLIENT_ID` | Non-secret variable | Environment-specific OAuth application |
 | `GITHUB_OAUTH_CLIENT_SECRET` | Secret | OAuth code exchange |
 | `SESSION_TOKEN_PEPPER` | Secret | Domain-separated session-token digest protection |
 | `OAUTH_TRANSACTION_KEY` | Secret | OAuth transaction state protection where required by the API contract |
+| `CSRF_TOKEN_KEY` | Secret | Independent session-bound synchronizer-token protection |
+| `RATE_LIMIT_KEY` | Secret | Window-scoped, non-reversible auth source discriminator; raw IP is never retained |
 | `CURSOR_SIGNING_KEY` | Secret | Opaque pagination cursor authentication |
 
 Rules:
@@ -40,6 +43,8 @@ Rules:
 - Configuration validation fails closed when a required binding, origin, or secret is absent or malformed.
 - Generated binding types are refreshed and checked whenever configuration changes.
 - The repository uses a reviewed `wrangler.jsonc`; compatibility-date changes are explicit pull-request changes with regression evidence.
+- Phase 3 key values use the reviewed versioned keyring format in [`phase-3-identity-session-contract.md`](phase-3-identity-session-contract.md); key purposes remain independent through bindings and domain separation.
+- Preview identity secrets are not provisioned while Pages preview branch controls include `*`. Gate P3-G4 must first restrict preview builds to the approved `codex-cf-p3-preview` branch and reconcile the stable callback alias.
 
 ## 3. Required release evidence
 

@@ -3,7 +3,7 @@
   "phase": "CF-P3",
   "sprint": "CF-P3-S01",
   "title": "Identity and sessions",
-  "status": "PROPOSED",
+  "status": "ACTIVE",
   "planned_window": {
     "start": "2026-07-17",
     "end": "2026-08-06",
@@ -12,8 +12,8 @@
   },
   "authorization": {
     "gate": "P3-G0",
-    "decision": "PENDING",
-    "authorized_story": null
+    "decision": "APPROVED",
+    "authorized_story": "CF-P3-001"
   },
   "entry": {
     "phase_2_exit": "PASS",
@@ -69,7 +69,7 @@
       "id": "CF-P3-001",
       "title": "Freeze identity/session implementation contract and platform decisions",
       "size": "M",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P3-G0",
       "exit_gate": "P3-G1",
       "owners": ["Technical Lead", "Senior QA"],

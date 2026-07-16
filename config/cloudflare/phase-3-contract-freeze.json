@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P3",
+  "story": "CF-P3-001",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P3-G0",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P3-001",
+    "next_gate": "P3-G1",
+    "next_story": "CF-P3-002"
+  },
+  "scope": {
+    "contract_and_platform_freeze_only": true,
+    "runtime_code_changes": 0,
+    "schema_migrations_added": 0,
+    "remote_writes": 0,
+    "oauth_apps_created": 0,
+    "secrets_created_or_changed": 0,
+    "identity_enabled": false,
+    "collaboration_enabled": false,
+    "business_routes_enabled": false
+  },
+  "platform_observations": {
+    "checked_on": "2026-07-16",
+    "cloudflare_pages": {
+      "project": "docvault-qa-document-hub",
+      "source": "github",
+      "production_branch": "main",
+      "production_d1_bindings": 0,
+      "preview_d1_bindings": ["COLLAB_DB"],
+      "preview_branch_setting": "custom",
+      "preview_branch_includes": ["*"],
+      "preview_branch_excludes": ["gh-pages"],
+      "branch_alias_format": "<normalized-branch>.<project>.pages.dev",
+      "secrets_are_preview_environment_wide": true
+    },
+    "wrangler": {
+      "version": "4.111.0",
+      "rate_limit_binding": "GA",
+      "supported_simple_period_seconds": [10, 60],
+      "rate_limit_binding_cannot_express_600_second_window": true,
+      "named_environment_bindings_are_not_inherited": true
+    },
+    "github_oauth": {
+      "flow": "authorization-code",
+      "pkce_method": "S256",
+      "temporary_code_lifetime_seconds": 600,
+      "identity_endpoint": "GET https://api.github.com/user",
+      "stable_identity_field": "id",
+      "mutable_identity_fields": ["login", "email"]
+    }
+  },
+  "environment_contract": {
+    "local": {
+      "identity_mode": "local-test-only",
+      "database": "disposable-schema-9-d1",
+      "oauth_adapter": "deterministic-injected-no-network",
+      "rate_limit_adapter": "deterministic-injected"
+    },
+    "preview": {
+      "identity_mode_before_P3_G4": "disabled",
+      "identity_mode_after_P3_G4": "preview-only",
+      "branch": "codex-cf-p3-preview",
+      "origin": "https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev",
+      "callback": "https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev/api/v1/oauth/github/callback",
+      "required_branch_control_includes": ["codex-cf-p3-preview"],
+      "required_branch_control_excludes": ["gh-pages"],
+      "oauth_app": "dedicated-preview-only",
+      "data": "designated-synthetic-identities-only"
+    },
+    "production": {
+      "identity_mode": "disabled",
+      "d1_bindings": 0,
+      "oauth_or_session_secrets": 0,
+      "collaboration_enabled": false
+    },
+    "github_pages": {
+      "identity_mode": "absent",
+      "api": "absent",
+      "collaboration": "absent"
+    },
+    "enable_predicate": [
+      "APP_ENV=preview",
+      "IDENTITY_RUNTIME_MODE=preview-only",
+      "request.origin=approved-preview-origin",
+      "COLLAB_DB=present",
+      "all-preview-identity-secrets=present",
+      "COLLABORATION_ENABLED=false"
+    ]
+  },
+  "route_contract": [
+    {
+      "method": "POST",
+      "path": "/api/v1/oauth/github/transactions",
+      "auth": "public-exact-origin",
+      "csrf": "not-required-for-sign-in; required-live-session-for-reauthenticate",
+      "success": 201,
+      "cache": "no-store-private"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/oauth/github/callback",
+      "auth": "single-use-oauth-transaction",
+      "csrf": "state-and-pkce-protected-protocol-exception",
+      "success": 303,
+      "cache": "no-store-private"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/session",
+      "auth": "optional-session",
+      "csrf": "issues-session-bound-token-when-authenticated",
+      "success": 200,
+      "cache": "no-store-private"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/session/logout",
+      "auth": "live-session",
+      "csrf": "exact-origin-and-session-bound-token",
+      "success": 204,
+      "cache": "no-store-private"
+    }
+  ],
+  "oauth_contract": {
+    "authorize_endpoint": "https://github.com/login/oauth/authorize",
+    "token_endpoint": "https://github.com/login/oauth/access_token",
+    "identity_endpoint": "https://api.github.com/user",
+    "requested_scopes": [],
+    "state": {
+      "random_bytes": 32,
+      "encoding": "base64url-no-padding",
+      "encoded_length": 43,
+      "storage": "domain-separated-hmac-sha256-digest-only"
+    },
+    "pkce": {
+      "verifier_random_bytes": 64,
+      "verifier_encoding": "base64url-no-padding",
+      "verifier_encoded_length": 86,
+      "challenge": "base64url-no-padding(sha256(ascii(verifier)))",
+      "method": "S256"
+    },
+    "transaction_ttl_seconds": 600,
+    "transaction_envelope": {
+      "binary_format": "version-byte(1)|key-id-length(1)|key-id|iv(12)|ciphertext|gcm-tag(16)",
+      "algorithm": "AES-256-GCM",
+      "plaintext_encoding": "utf8-json-exact-property-order-no-extra-fields",
+      "payload": ["verifier", "purpose", "returnPath", "initiatingSessionId", "initiatingUserId"],
+      "aad_encoding": "versioned-length-prefixed-utf8-tuple",
+      "aad": ["transactionId", "callbackOrigin", "callbackPath", "createdAt", "expiresAt"],
+      "maximum_bytes": 4096
+    },
+    "callback_atomic_batch": [
+      "compare-and-set-pending-transaction-to-consumed",
+      "upsert-user-by-provider-and-numeric-subject",
+      "revoke-predecessor-session-when-applicable",
+      "insert-successor-session"
+    ],
+    "provider_token_storage": "prohibited",
+    "provider_token_lifetime": "request-memory-until-GET-user-completes",
+    "reauthentication": {
+      "creation_requires": ["live-session", "exact-origin", "session-csrf"],
+      "callback_requires": "same-numeric-provider-subject",
+      "result": "rotate-session-and-refresh-authenticated-at"
+    },
+    "provider_resilience": {
+      "token_exchange_timeout_ms": 5000,
+      "identity_lookup_timeout_ms": 5000,
+      "overall_provider_budget_ms": 8000,
+      "token_exchange_automatic_retries": 0,
+      "identity_lookup_retries": 1,
+      "identity_lookup_retry_statuses": [429, 502, 503, 504],
+      "maximum_retry_delay_ms": 1000
+    }
+  },
+  "return_path_contract": {
+    "default": "/",
+    "maximum_utf8_bytes": 512,
+    "must_start_with": "/",
+    "must_not_start_with": "//",
+    "allow_query": true,
+    "allow_fragment": false,
+    "reject": [
+      "scheme-or-host",
+      "userinfo",
+      "backslash-or-percent-encoded-backslash",
+      "ascii-control-or-percent-encoded-control",
+      "invalid-percent-encoding",
+      "oauth-or-capability-query-keys"
+    ],
+    "forbidden_query_keys_case_insensitive": ["code", "state", "token", "access_token", "invite", "invitation"],
+    "normalization": "parse-against-approved-origin; require-exact-origin; persist-pathname-plus-search"
+  },
+  "key_contract": {
+    "secret_encoding": "versioned-json-keyring-with-base64url-32-byte-keys",
+    "keyring_schema": {
+      "version": 1,
+      "active_key_id": "1-32 lowercase a-z0-9_- characters",
+      "keys": "one or two unique id/key entries; active id must exist",
+      "key": "43-character base64url-no-padding decoding to 32 bytes",
+      "unknown_fields": "rejected"
+    },
+    "maximum_keys_per_ring": 2,
+    "derivation": {
+      "algorithm": "HKDF-SHA-256",
+      "salt": "SHA-256(UTF8(docvault:key-derivation-salt:v1))",
+      "output_bytes": 32
+    },
+    "oauth_transaction_key": {
+      "binding": "OAUTH_TRANSACTION_KEY",
+      "derived_labels": ["docvault:oauth-state-hmac:v1", "docvault:oauth-envelope-aead:v1"]
+    },
+    "session_token_pepper": {
+      "binding": "SESSION_TOKEN_PEPPER",
+      "derived_label": "docvault:session-token-hmac:v1",
+      "planned_overlap_max_seconds": 604800,
+      "emergency_rotation": "revoke-all-old-sessions-and-remove-previous-key"
+    },
+    "csrf_token_key": {
+      "binding": "CSRF_TOKEN_KEY",
+      "derived_label": "docvault:csrf-token-hmac:v1"
+    },
+    "rate_limit_key": {
+      "binding": "RATE_LIMIT_KEY",
+      "derived_label": "docvault:auth-rate-window-hmac:v1"
+    },
+    "comparison": "crypto.subtle.verify-hmac-no-direct-secret-string-comparison"
+  },
+  "session_contract": {
+    "token_random_bytes": 32,
+    "token_encoding": "base64url-no-padding",
+    "d1_storage": "hmac-sha256-digest-only",
+    "cookie_preview": "__Host-docvault-preview-session",
+    "cookie_production_reserved": "__Host-docvault-session",
+    "cookie_attributes": ["Secure", "HttpOnly", "SameSite=Lax", "Path=/", "no-Domain"],
+    "idle_seconds": 43200,
+    "absolute_seconds": 604800,
+    "recent_auth_seconds": 900,
+    "last_seen_write_coalesce_seconds": 300,
+    "rotation_events": ["login", "reauthentication", "old-pepper-match", "fixation-risk", "security-change"],
+    "logout_order": ["revoke-d1-session", "expire-browser-cookie"],
+    "csrf": {
+      "raw_token_storage": "browser-memory-only",
+      "d1_storage": "none",
+      "derivation_input": "raw-session-token",
+      "verification": "exact-origin-then-hmac-verify",
+      "rotation": "with-session-or-csrf-key"
+    }
+  },
+  "rate_limit_contract": {
+    "edge_burst_shield": {
+      "binding": "AUTH_BURST_LIMITER",
+      "limit": 6,
+      "period_seconds": 60,
+      "key": "hmac-rate-key(route-family|600-second-window|cloudflare-source-ip)",
+      "authoritative_for_10_minute_budget": false
+    },
+    "authoritative_oauth_window": {
+      "limit": 20,
+      "period_seconds": 600,
+      "storage": "future-forward-only-d1-auth-rate-windows-table",
+      "source_ip_storage": "never; store-window-scoped-hmac-only",
+      "source_ip_authority": "Cloudflare-provided CF-Connecting-IP in deployed preview; injected adapter locally",
+      "retention_seconds": 1200,
+      "migration_story": "CF-P3-007",
+      "migration_requires_gate": "P3-G3"
+    },
+    "decision": "hybrid-edge-burst-plus-d1-authoritative-window",
+    "process_local_limiter": "prohibited",
+    "silent_schema_change": "prohibited"
+  },
+  "error_contract": {
+    "transaction_post": ["VALIDATION_FAILED", "CSRF_REJECTED", "RATE_LIMITED", "COLLABORATION_UNAVAILABLE"],
+    "callback": "always-303-for-expected-provider-or-transaction-failure-to-generic-same-origin-result",
+    "session_get_invalid_or_absent": "200-authenticated-false-and-expire-invalid-cookie",
+    "logout_invalid_or_expired": "401-then-expire-cookie",
+    "logout_valid": "204-after-revoke",
+    "provider_errors": "never-forward-code-message-description-uri-or-token",
+    "callback_result": "non-authoritative-random-fragment-marker-consumed-by-history-replaceState",
+    "response_headers": ["Cache-Control:no-store,private", "Pragma:no-cache", "Referrer-Policy:no-referrer", "X-Content-Type-Options:nosniff"]
+  },
+  "evidence": ["CF-EV-P3-STA-001", "CF-EV-P3-SEC-001"],
+  "next_decision": {
+    "gate": "P3-G1",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P3-002-only",
+    "remote_changes_authorized": false
+  }
+}

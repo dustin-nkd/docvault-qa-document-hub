@@ -18,10 +18,10 @@ const tableIds = (source, prefix) => new Set(source.split(/\r?\n/)
 
 export function validatePhase3SprintPlan({ manifest, sprintSource, traceability, threatModel, riskRegister, wrangler }) {
     assert(manifest?.schema_version === 1 && manifest.phase === 'CF-P3' && manifest.sprint === 'CF-P3-S01', 'Unsupported Phase 3 sprint plan');
-    assert(manifest.status === 'PROPOSED', 'Phase 3 sprint must remain proposed until Gate P3-G0');
+    assert(manifest.status === 'ACTIVE', 'Phase 3 sprint must be active after Gate P3-G0');
     assert(manifest.authorization?.gate === 'P3-G0'
-        && manifest.authorization.decision === 'PENDING'
-        && manifest.authorization.authorized_story === null, 'P3-G0 authorization drifted');
+        && manifest.authorization.decision === 'APPROVED'
+        && manifest.authorization.authorized_story === 'CF-P3-001', 'P3-G0 authorization drifted');
     assert(manifest.entry?.phase_2_exit === 'PASS'
         && manifest.entry.identity_session_implementation === 'GO'
         && manifest.entry.collaboration_activation === 'NO-GO'
@@ -43,7 +43,8 @@ export function validatePhase3SprintPlan({ manifest, sprintSource, traceability,
     const threatIds = tableIds(threatModel, 'T');
     const riskIds = tableIds(riskRegister, 'R');
     for (const story of stories) {
-        assert(story.status === 'PLANNED' && story.owners?.length && story.reviewers?.length, `${story.id} lacks planned ownership`);
+        assert(story.status === (story.id === 'CF-P3-001' ? 'PASS' : 'PLANNED')
+            && story.owners?.length && story.reviewers?.length, `${story.id} status or ownership drifted`);
         assert(new Set([...story.owners, ...story.reviewers]).has('Senior QA'), `${story.id} lacks Senior QA accountability`);
         assert(story.requirements?.length && story.threats?.length && story.risks?.length && story.evidence?.length, `${story.id} lacks traceability`);
         for (const id of story.requirements) assert(requirementIds.has(id), `${story.id} references unknown requirement ${id}`);
@@ -74,7 +75,7 @@ export function validatePhase3SprintPlan({ manifest, sprintSource, traceability,
     }
     assert(quality.authenticated_read_p95_ms === 300 && quality.authenticated_write_p95_ms === 500, 'Phase 3 performance budget drifted');
 
-    assert(/^Status: \*\*PROPOSED — awaiting Product Owner approval at Gate P3-G0\*\*$/m.test(sprintSource), 'Sprint document status drifted');
+    assert(/^Status: \*\*ACTIVE — `CF-P3-001` PASS; awaiting Product Owner approval at Gate P3-G1\*\*$/m.test(sprintSource), 'Sprint document status drifted');
     for (const id of STORY_IDS) assert(sprintSource.includes(`### \`${id}\``), `Sprint document lacks ${id}`);
     for (const phrase of ['production D1 binding', 'collaboration activation', 'GitHub Pages', 'deployed test bypass']) {
         assert(sprintSource.toLowerCase().includes(phrase.toLowerCase()), `Sprint document lacks boundary: ${phrase}`);
