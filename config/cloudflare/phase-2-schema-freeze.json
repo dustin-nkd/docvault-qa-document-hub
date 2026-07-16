@@ -6,7 +6,9 @@
   "frozen_at": "2026-07-16",
   "gate": {
     "id": "P2-G1",
-    "decision": "REVIEW_REQUIRED",
+    "decision": "PASS",
+    "approved_at": "2026-07-16",
+    "authorized_story": "CF-P2-002",
     "required_reviewers": [
       "Product Owner",
       "Security Reviewer",

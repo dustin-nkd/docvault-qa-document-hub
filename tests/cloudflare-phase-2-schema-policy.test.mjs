@@ -17,8 +17,7 @@ function actualInput() {
         evidenceSources: Object.fromEntries(fs.readdirSync(evidenceDirectory)
             .filter(name => /^CF-EV-P2-(STA|SEC)-001\.md$/.test(name))
             .map(name => [name.replace(/\.md$/, ''), fs.readFileSync(path.join(evidenceDirectory, name), 'utf8')])),
-        wrangler: JSON.parse(read('wrangler.jsonc')),
-        migrationDirectoryExists: false
+        wrangler: JSON.parse(read('wrangler.jsonc'))
     };
 }
 
@@ -40,12 +39,12 @@ test('CF-P2-001 rejects table, column, migration, prohibition, and evidence drif
     }
 });
 
-test('CF-P2-001 rejects premature SQL, remote binding, activation, and gate approval', () => {
+test('CF-P2-001 rejects remote binding, activation, and authorization drift', () => {
     const cases = [
-        input => { input.migrationDirectoryExists = true; },
         input => { input.wrangler.d1_databases = [{ binding: 'COLLAB_DB', database_id: 'forbidden' }]; },
         input => { input.freeze.environment_boundary.collaboration_enabled = true; },
-        input => { input.freeze.gate.decision = 'PASS'; }
+        input => { input.freeze.gate.decision = 'REVIEW_REQUIRED'; },
+        input => { input.freeze.gate.authorized_story = 'CF-P2-003'; }
     ];
     for (const mutate of cases) {
         const input = actualInput();

@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const migrationsPath = path.join(root, 'tests', 'cloudflare', 'migrations');
+const collaborationMigrationsPath = path.join(root, 'migrations', 'collaboration');
 
 export default defineConfig({
     plugins: [
@@ -16,6 +17,7 @@ export default defineConfig({
             miniflare: {
                 bindings: {
                     TEST_MIGRATIONS: await readD1Migrations(migrationsPath),
+                    COLLAB_MIGRATIONS: await readD1Migrations(collaborationMigrationsPath),
                     TEST_RUNTIME: 'workers-vitest-local'
                 },
                 d1Databases: ['COLLAB_DB'],

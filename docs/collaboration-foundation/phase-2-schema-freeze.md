@@ -1,6 +1,6 @@
 # CF-P2-001 schema inventory freeze
 
-Status: PASS; awaiting Gate P2-G1 cross-functional approval
+Status: PASS; Gate P2-G1 approved on 2026-07-16
 
 Date: 2026-07-16
 
@@ -119,4 +119,4 @@ The official client must reject Credential documents before collaboration encryp
 
 Story implementation and local static evidence: **PASS**.
 
-Gate decision: **REVIEW REQUIRED**. No SQL implementation may begin until Product, Security, Technical Lead, Operations, and Senior QA approve this freeze. Approval does not authorize a remote D1 resource.
+Gate decision: **PASS on 2026-07-16**. Product approved `CF-P2-002` local migration implementation. This approval does not authorize a remote D1 resource, binding, migration, data, or collaboration activation.

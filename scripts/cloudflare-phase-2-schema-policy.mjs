@@ -52,16 +52,16 @@ const containsKey = (value, keys) => {
     return Object.values(value).some(child => containsKey(child, keys));
 };
 
-export function validatePhase2SchemaFreeze({ freeze, schemaDocument, governanceDocument, evidenceSources, wrangler, migrationDirectoryExists }) {
+export function validatePhase2SchemaFreeze({ freeze, schemaDocument, governanceDocument, evidenceSources, wrangler }) {
     assert(freeze?.schema_version === 1 && freeze.phase === 'CF-P2' && freeze.story === 'CF-P2-001', 'Unsupported Phase 2 schema freeze');
     assert(freeze.status === 'PASS', 'CF-P2-001 must pass before Gate P2-G1 review');
-    assert(freeze.gate?.id === 'P2-G1' && freeze.gate?.decision === 'REVIEW_REQUIRED', 'Gate P2-G1 must remain review-required');
+    assert(freeze.gate?.id === 'P2-G1' && freeze.gate?.decision === 'PASS', 'Gate P2-G1 approval drifted');
+    assert(freeze.gate?.approved_at === '2026-07-16' && freeze.gate?.authorized_story === 'CF-P2-002', 'Gate P2-G1 authorization is incomplete');
     assert(sameSet(freeze.gate.required_reviewers || [], ['Product Owner', 'Security Reviewer', 'Technical Lead', 'Operations', 'Senior QA']), 'Gate P2-G1 reviewer inventory drifted');
 
     const boundary = freeze.environment_boundary || {};
     assert(Object.values(boundary).every(value => value === false), 'CF-P2-001 must not authorize remote D1 or collaboration');
     assert(!containsKey(wrangler, REMOTE_BINDING_KEYS), 'Wrangler contains a remote binding during CF-P2-001');
-    assert(!migrationDirectoryExists, 'CF-P2-001 must not create executable collaboration migrations');
 
     const tables = freeze.tables || [];
     assert(sameSet(tables.map(table => table.name), Object.keys(REQUIRED_TABLE_COLUMNS)), 'Canonical table inventory drifted');
@@ -88,7 +88,7 @@ export function validatePhase2SchemaFreeze({ freeze, schemaDocument, governanceD
     assert(same(freeze.evidence, ['CF-EV-P2-STA-001', 'CF-EV-P2-SEC-001']), 'CF-P2-001 evidence inventory drifted');
 
     for (const source of [schemaDocument, governanceDocument]) {
-        assert(/^Status: PASS; awaiting Gate P2-G1/m.test(source), 'A CF-P2-001 contract is not PASS and awaiting review');
+        assert(/^Status: PASS; Gate P2-G1 approved on 2026-07-16/m.test(source), 'A CF-P2-001 contract does not record Gate P2-G1 approval');
         assert(source.includes('no migration SQL') || source.includes('does not create that directory or any SQL file'), 'Contract does not preserve the no-SQL boundary');
         assert(source.includes('collaboration remains disabled') || source.includes('collaboration remains disabled.'), 'Contract does not preserve disabled collaboration');
     }

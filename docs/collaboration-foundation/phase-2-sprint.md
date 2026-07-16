@@ -149,6 +149,8 @@ Gate P2-G1: Product, Security, Technical Lead, Operations, and Senior QA approve
 
 Size: XL | Owner: Senior Developer | Reviewers: Technical Lead, Security, Senior QA
 
+Execution: **PASS on 2026-07-16.** Six hashed additive migrations, manifest/hash gate, typed D1 row contracts, local real-D1 constraints, reapply, integrity, append-only, and privacy evidence passed. Remote D1 remains absent.
+
 Tasks:
 
 1. Implement `0001` through `0006` with strict SQLite types, checks, foreign keys, unique/partial indexes, and explicit deletion behavior.

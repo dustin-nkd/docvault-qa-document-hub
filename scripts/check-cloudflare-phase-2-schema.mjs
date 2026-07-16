@@ -15,13 +15,12 @@ validatePhase2SchemaFreeze({
     schemaDocument: read('docs/collaboration-foundation/phase-2-schema-freeze.md'),
     governanceDocument: read('docs/collaboration-foundation/phase-2-migration-governance.md'),
     evidenceSources,
-    wrangler: JSON.parse(read('wrangler.jsonc')),
-    migrationDirectoryExists: fs.existsSync(path.join(root, 'migrations/collaboration'))
+    wrangler: JSON.parse(read('wrangler.jsonc'))
 });
 
 console.log('Cloudflare Phase 2 schema freeze gate passed');
 console.log('  Tables: 1 control + 14 entity tables frozen');
 console.log('  Initial migrations: 6 governed expansion entries');
 console.log('  Prohibited patterns: 10 fail-closed policies');
-console.log('  Remote D1, binding, SQL migrations, and collaboration: absent');
-console.log('  Gate P2-G1: review required');
+console.log('  Remote D1, binding, and collaboration: absent; local CF-P2-002 migrations authorized');
+console.log('  Gate P2-G1: PASS; CF-P2-002 authorized');

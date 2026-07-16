@@ -5,6 +5,7 @@ declare global {
         interface Env {
             COLLAB_DB: D1Database;
             TEST_MIGRATIONS: D1Migration[];
+            COLLAB_MIGRATIONS: D1Migration[];
             TEST_RUNTIME: 'workers-vitest-local';
         }
     }

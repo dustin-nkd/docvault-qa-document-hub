@@ -22,10 +22,12 @@ test('production Wrangler configuration contains no test D1 binding or remote re
     assert.doesNotMatch(source, /COLLAB_DB|d1_databases|database_id|preview_database_id|remote\s*:\s*true/);
 });
 
-test('disposable migration is test-scoped and cannot persist in repository state', () => {
+test('disposable harness stays isolated from reviewed Foundation migrations and local state', () => {
     const migration = read('tests/cloudflare/migrations/0001_test_harness.sql');
     assert.match(migration, /disposable test harness only/i);
     assert.match(migration, /CREATE TABLE harness_records/);
     assert.match(read('.gitignore'), /^\.wrangler\/$/m);
-    assert.equal(fs.existsSync(path.join(root, 'migrations')), false);
+    assert.equal(fs.existsSync(path.join(root, 'migrations/collaboration')), true);
+    assert.equal(fs.existsSync(path.join(root, 'migrations/manifest.json')), true);
+    assert.doesNotMatch(read('wrangler.jsonc'), /migrations_dir|d1_databases/);
 });

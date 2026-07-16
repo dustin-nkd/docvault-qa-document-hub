@@ -12,7 +12,8 @@ export const cloudflareScripts = {
     'cf:functions:build': 'node scripts/cloudflare-command.mjs functions-build',
     'cf:pages:dry-run': 'node scripts/cloudflare-command.mjs pages-dry-run',
     'cf:phase1:check': 'node scripts/check-cloudflare-phase-1-exit.mjs',
-    'cf:phase2:schema:check': 'node scripts/check-cloudflare-phase-2-schema.mjs'
+    'cf:phase2:schema:check': 'node scripts/check-cloudflare-phase-2-schema.mjs',
+    'cf:phase2:migrations:check': 'node scripts/check-cloudflare-phase-2-migrations.mjs'
 };
 
 const assert = (condition, message) => {

@@ -1,6 +1,6 @@
 # CF-P2-001 migration governance
 
-Status: PASS; awaiting Gate P2-G1 approval
+Status: PASS; Gate P2-G1 approved on 2026-07-16
 
 Date: 2026-07-16
 
