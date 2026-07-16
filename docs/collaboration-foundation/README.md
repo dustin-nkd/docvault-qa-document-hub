@@ -1,8 +1,8 @@
 # Collaboration Foundation
 
-Status: Phase 1 complete; Gate P1 passed; controlled Phase 2 implementation recommended while collaboration activation remains NO-GO
+Status: Phase 2 complete; Gate P2 evidence passed; Phase 3 identity/session implementation recommended while collaboration activation remains NO-GO
 
-Sprint: Phase 1 disabled foundation complete — Phase 2 implementation handoff ready
+Sprint: Phase 2 D1 schema and persistence complete — Phase 3 identity/session handoff ready
 
 Language: English for all repository artifacts
 
@@ -78,6 +78,7 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - [Phase 2 quality matrix](phase-2-quality-matrix.md) — `CF-P2-006` migration compatibility, bounded retention, privacy scans, representative scale, and Gate P2-G2B evidence
 - `CF-P2-007` preview D1 state is machine-checked in `config/cloudflare/phase-2-preview-d1.json`; production remains unbound and collaboration remains disabled
 - `CF-P2-008` recovery rehearsal is machine-checked in `config/cloudflare/phase-2-recovery-rehearsal.json`; the disposable D1 was restored, verified, and deleted without touching shared preview or production
+- [Phase 2 exit report](phase-2-exit-report.md) — nine stories, 25 evidence records, remote reconciliation, and constrained Phase 3 identity/session recommendation
 
 ## Review ownership
 
