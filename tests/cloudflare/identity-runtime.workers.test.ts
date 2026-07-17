@@ -61,6 +61,19 @@ function request(path: string, init: RequestInit = {}): Request {
     return new Request(`${ORIGIN}${path}`, { ...init, headers });
 }
 
+function sessionToken(response: Response | null): string {
+    const cookie = response?.headers.get('Set-Cookie') ?? '';
+    const match = cookie.match(/__Host-docvault-preview-session=([^;]+)/);
+    if (!match?.[1]) throw new Error('SESSION_COOKIE_MISSING');
+    return match[1];
+}
+
+function authenticatedRequest(path: string, token: string, init: RequestInit = {}): Request {
+    const headers = new Headers(init.headers);
+    headers.set('Cookie', `__Host-docvault-preview-session=${token}`);
+    return request(path, { ...init, headers });
+}
+
 describe('CF-P3-008 isolated preview identity runtime', () => {
     beforeAll(async () => {
         await applyD1Migrations(env.COLLAB_DB, env.COLLAB_MIGRATIONS, 'identity_runtime_migrations');
@@ -163,5 +176,69 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         expect(callback?.headers.has('Set-Cookie')).toBe(false);
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM users').first<number>('count')).toBe(0);
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM sessions').first<number>('count')).toBe(0);
+    });
+
+    it('completes sign-in, session, reauthentication rotation, replay rejection, and logout as one runtime flow', async () => {
+        const deps = dependencies();
+        const signIn = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
+            method: 'POST', body: JSON.stringify({ purpose: 'sign_in', returnPath: '/?guest=1' })
+        }), runtimeBindings(), deps);
+        const signInBody = await signIn?.json<{ authorizationUrl: string }>();
+        const signInState = new URL(signInBody?.authorizationUrl ?? '').searchParams.get('state');
+        const signInCallback = await handleIdentityRuntime(request(
+            `/api/v1/oauth/github/callback?code=sign-in-code&state=${signInState}`), runtimeBindings(), deps);
+        expect(signInCallback?.status).toBe(303);
+        const firstToken = sessionToken(signInCallback ?? null);
+
+        const firstSession = await handleIdentityRuntime(authenticatedRequest('/api/v1/session', firstToken),
+            runtimeBindings(), deps);
+        expect(firstSession?.status).toBe(200);
+        const firstBody = await firstSession?.json<{ authenticated: boolean; csrfToken: string }>();
+        expect(firstBody).toMatchObject({ authenticated: true, csrfToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
+
+        const reauthenticate = await handleIdentityRuntime(authenticatedRequest(
+            '/api/v1/oauth/github/transactions', firstToken, {
+                method: 'POST', headers: { 'X-CSRF-Token': firstBody?.csrfToken ?? '' },
+                body: JSON.stringify({ purpose: 'reauthenticate', returnPath: '/?guest=1' })
+            }), runtimeBindings(), deps);
+        expect(reauthenticate?.status).toBe(201);
+        const reauthBody = await reauthenticate?.json<{ authorizationUrl: string }>();
+        const reauthState = new URL(reauthBody?.authorizationUrl ?? '').searchParams.get('state');
+        const reauthCallback = await handleIdentityRuntime(request(
+            `/api/v1/oauth/github/callback?code=reauth-code&state=${reauthState}`), runtimeBindings(), deps);
+        expect(reauthCallback?.status).toBe(303);
+        const secondToken = sessionToken(reauthCallback ?? null);
+        expect(secondToken).not.toBe(firstToken);
+
+        const oldSession = await handleIdentityRuntime(authenticatedRequest('/api/v1/session', firstToken),
+            runtimeBindings(), deps);
+        expect(await oldSession?.json()).toEqual({ authenticated: false });
+        expect(oldSession?.headers.get('Set-Cookie')).toContain('Max-Age=0');
+
+        const replay = await handleIdentityRuntime(request(
+            `/api/v1/oauth/github/callback?code=replay-code&state=${reauthState}`), runtimeBindings(), deps);
+        expect(replay?.status).toBe(303);
+        expect(replay?.headers.get('Location')).toMatch(/#auth-result=unavailable-/);
+        expect(replay?.headers.has('Set-Cookie')).toBe(false);
+
+        const secondSession = await handleIdentityRuntime(authenticatedRequest('/api/v1/session', secondToken),
+            runtimeBindings(), deps);
+        const secondBody = await secondSession?.json<{ authenticated: boolean; csrfToken: string }>();
+        expect(secondBody).toMatchObject({ authenticated: true, csrfToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
+        const logout = await handleIdentityRuntime(authenticatedRequest('/api/v1/session/logout', secondToken, {
+            method: 'POST', headers: { 'X-CSRF-Token': secondBody?.csrfToken ?? '' }, body: '{}'
+        }), runtimeBindings(), deps);
+        expect(logout?.status).toBe(204);
+        expect(logout?.headers.get('Set-Cookie')).toContain('Max-Age=0');
+        expect(await handleIdentityRuntime(authenticatedRequest('/api/v1/session', secondToken),
+            runtimeBindings(), deps).then(response => response?.json())).toEqual({ authenticated: false });
+
+        const state = await env.COLLAB_DB.prepare(
+            `SELECT
+                (SELECT COUNT(*) FROM users) AS users,
+                (SELECT COUNT(*) FROM sessions WHERE revoked_at IS NULL) AS live_sessions,
+                (SELECT COUNT(*) FROM oauth_transactions WHERE status = 'pending') AS pending_transactions`
+        ).first<Record<string, number>>();
+        expect(state).toMatchObject({ users: 1, live_sessions: 0, pending_transactions: 0 });
     });
 });
