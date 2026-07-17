@@ -46,12 +46,28 @@ export interface GitHubOAuthAdapter {
     resolveIdentity(input: GitHubOAuthResolutionInput): Promise<GitHubIdentity>;
 }
 
+export type GitHubOAuthFailureCategory = 'credentials_rejected' | 'redirect_rejected'
+    | 'verification_rejected' | 'identity_rejected' | 'unavailable';
+
 export class GitHubOAuthAdapterError extends Error {
     readonly code = 'GITHUB_OAUTH_UNAVAILABLE' as const;
+    declare readonly category: GitHubOAuthFailureCategory;
 
-    constructor() {
+    constructor(category: GitHubOAuthFailureCategory = 'unavailable') {
         super('GITHUB_OAUTH_UNAVAILABLE');
         this.name = 'GitHubOAuthAdapterError';
+        Object.defineProperty(this, 'category', { value: category, enumerable: false });
+    }
+}
+
+function tokenFailureCategory(payload: Record<string, unknown>): GitHubOAuthFailureCategory | null {
+    if (typeof payload.error !== 'string') return null;
+    switch (payload.error) {
+        case 'incorrect_client_credentials': return 'credentials_rejected';
+        case 'redirect_uri_mismatch': return 'redirect_rejected';
+        case 'bad_verification_code': return 'verification_rejected';
+        case 'unverified_user_email': return 'identity_rejected';
+        default: return 'unavailable';
     }
 }
 
@@ -198,8 +214,10 @@ async function exchangeCode(configuration: GitHubOAuthConfiguration, input: GitH
             code_verifier: input.pkceVerifier
         }).toString()
     }, remainingTimeout(deadline, dependencies.clock));
-    if (response.status !== 200) throw new GitHubOAuthAdapterError();
     const payload = await readBoundedJson(response);
+    const failureCategory = tokenFailureCategory(payload);
+    if (failureCategory !== null) throw new GitHubOAuthAdapterError(failureCategory);
+    if (response.status !== 200) throw new GitHubOAuthAdapterError();
     if (serverTime(dependencies.clock) >= deadline) throw new GitHubOAuthAdapterError();
     if (typeof payload.access_token !== 'string' || !/^[A-Za-z0-9_.-]{1,1024}$/.test(payload.access_token)
         || payload.token_type !== 'bearer') {
@@ -251,7 +269,8 @@ export function createGitHubOAuthAdapter(configuration: GitHubOAuthConfiguration
                 const deadline = serverTime(dependencies.clock) + OVERALL_BUDGET_MS;
                 const accessToken = await exchangeCode(exactConfiguration, input, deadline, dependencies);
                 return await fetchIdentity(accessToken, deadline, dependencies);
-            } catch {
+            } catch (error) {
+                if (error instanceof GitHubOAuthAdapterError) throw error;
                 throw new GitHubOAuthAdapterError();
             }
         }

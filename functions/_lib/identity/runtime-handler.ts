@@ -8,7 +8,7 @@ import {
     type IdentityEnvironmentInput,
     type IdentityRuntimeConfiguration
 } from './environment';
-import { createGitHubOAuthAdapter, type GitHubOAuthAdapter } from './github-oauth-adapter';
+import { createGitHubOAuthAdapter, GitHubOAuthAdapterError, type GitHubOAuthAdapter } from './github-oauth-adapter';
 import { completeOAuthCallback, OAuthCallbackError, type OAuthCallbackCheckpoint } from './oauth-callback-service';
 import { createOAuthTransaction, type OAuthTransactionCheckpoint } from './oauth-transaction-service';
 import {
@@ -184,7 +184,7 @@ function guardedProvider(provider: GitHubOAuthAdapter, subjects: ReadonlySet<str
     return Object.freeze({
         async resolveIdentity(input: Parameters<GitHubOAuthAdapter['resolveIdentity']>[0]) {
             const identity = await provider.resolveIdentity(input);
-            if (!subjects.has(identity.providerSubject)) throw new Error('GITHUB_OAUTH_UNAVAILABLE');
+            if (!subjects.has(identity.providerSubject)) throw new GitHubOAuthAdapterError('identity_rejected');
             return identity;
         }
     });

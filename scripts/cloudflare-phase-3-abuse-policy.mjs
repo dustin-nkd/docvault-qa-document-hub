@@ -73,10 +73,11 @@ export function validatePhase3AbusePolicy({ manifest, sprintManifest, sourceFile
         && entry.filename === manifest.migration && same(entry.tables, ['auth_rate_windows'])
         && migrationSource.includes('CREATE TABLE auth_rate_windows')
         && migrationSource.includes('schema_version = 10'), 'Authorized migration drifted');
-    assert(manifest.workers_test_count === 8 && (workersTestSource.match(/\bit\s*\(/g) || []).length === 8,
+    assert(manifest.workers_test_count === 9 && (workersTestSource.match(/\bit\s*\(/g) || []).length === 9,
         'Workers abuse test inventory drifted');
     for (const phrase of ['twenty attempts', 'fails closed', 'raw discriminators', 'bounded batch',
-        'low-cardinality', 'attacker-controlled', 'short-circuits', 'without replaying']) {
+        'low-cardinality', 'attacker-controlled', 'privacy-safe provider outcome categories',
+        'short-circuits', 'without replaying']) {
         assert(workersTestSource.includes(phrase), `Required abuse coverage missing: ${phrase}`);
     }
 

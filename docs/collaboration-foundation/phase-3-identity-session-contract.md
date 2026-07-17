@@ -217,7 +217,7 @@ The planned table contains only `key_digest`, fixed route family, aligned window
 | Logout with invalid/expired session | `401`, then expire cookie |
 | Logout success | Revoke then `204` |
 
-All identity responses include no-store/private cache policy, no-referrer, nosniff, approved CSP, and a server request ID. Allow-listed structured logs contain route template, method, coarse outcome, latency, environment, and request ID only—never bodies, queries, cookies, raw/digested state, PKCE, provider tokens, session/CSRF values, IP/digest, SQL, stack, login, email, name, or avatar.
+All identity responses include no-store/private cache policy, no-referrer, nosniff, approved CSP, and a server request ID. Allow-listed structured logs contain route template, method, a closed coarse outcome, latency, environment, and request ID only—never bodies, queries, cookies, raw/digested state, PKCE, provider tokens, session/CSRF values, IP/digest, SQL, stack, login, email, name, or avatar. Provider failures may distinguish rejected credentials, redirect, verification, identity, or general availability; provider error descriptions and URIs are never retained or logged.
 
 ## 9. Key and secret inventory
 

@@ -60,7 +60,7 @@
     "functions/_lib/identity/index.ts"
   ],
   "workers_test_file": "tests/cloudflare/oauth-callback.workers.test.ts",
-  "workers_test_count": 10,
+  "workers_test_count": 11,
   "negative_coverage": [
     "token-exchange-no-retry",
     "identity-single-bounded-retry",

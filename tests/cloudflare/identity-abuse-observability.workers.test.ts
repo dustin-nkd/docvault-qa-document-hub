@@ -104,6 +104,22 @@ describe('CF-P3-007 abuse controls and privacy-safe operations', () => {
         expect(() => createIdentityOperationalEvent(extraDimension)).toThrow('IDENTITY_OBSERVABILITY_INVALID');
     });
 
+    it('accepts only the closed privacy-safe provider outcome categories', () => {
+        for (const outcome of ['provider_credentials_rejected', 'provider_redirect_rejected',
+            'provider_verification_rejected', 'provider_identity_rejected'] as const) {
+            expect(createIdentityOperationalEvent({
+                requestId: '11111111-1111-4111-8111-111111111111',
+                route: '/api/v1/oauth/github/callback', method: 'GET', outcome,
+                status: 303, latencyMs: 1, environment: 'preview'
+            }).outcome).toBe(outcome);
+        }
+        expect(() => createIdentityOperationalEvent({
+            requestId: '11111111-1111-4111-8111-111111111111',
+            route: '/api/v1/oauth/github/callback', method: 'GET',
+            outcome: 'provider_attacker_controlled' as never, status: 303, latencyMs: 1, environment: 'preview'
+        })).toThrow('IDENTITY_OBSERVABILITY_INVALID');
+    });
+
     it('short-circuits provider calls while open and preserves generic errors', async () => {
         let providerCalls = 0;
         const provider: GitHubOAuthAdapter = { resolveIdentity: async () => {

@@ -46,7 +46,7 @@
   },
   "migration": "0010_1e1759754601_auth_rate_windows.sql",
   "workers_test_file": "tests/cloudflare/identity-abuse-observability.workers.test.ts",
-  "workers_test_count": 8,
+  "workers_test_count": 9,
   "evidence": ["CF-EV-P3-INT-004", "CF-EV-P3-PERF-001", "CF-EV-P3-SEC-007", "CF-EV-P3-OPS-001"],
   "next_decision": {
     "gate": "P3-G3A",

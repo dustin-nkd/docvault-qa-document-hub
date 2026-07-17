@@ -1,6 +1,6 @@
 import { openAuthorizationSession, type AuthorizationSessionSource } from '../persistence/authorization-session';
 import { digestSessionToken, generateOpaqueToken, type IdentityKeyring } from './crypto';
-import type { GitHubOAuthAdapter } from './github-oauth-adapter';
+import { GitHubOAuthAdapterError, type GitHubOAuthAdapter } from './github-oauth-adapter';
 import { commitOAuthCallback, type OAuthCallbackCommitResult } from './oauth-callback-repository';
 import {
     OAUTH_TRANSACTION_CONSTANTS,
@@ -42,12 +42,24 @@ export interface CompletedOAuthCallback extends OAuthCallbackCommitResult {
 
 export class OAuthCallbackError extends Error {
     readonly code = 'OAUTH_CALLBACK_FAILED' as const;
-    declare readonly outcome: 'rejected' | 'provider_unavailable' | 'internal_error';
+    declare readonly outcome: 'rejected' | 'provider_credentials_rejected' | 'provider_redirect_rejected'
+        | 'provider_verification_rejected' | 'provider_identity_rejected' | 'provider_unavailable' | 'internal_error';
 
-    constructor(outcome: 'rejected' | 'provider_unavailable' | 'internal_error' = 'internal_error') {
+    constructor(outcome: OAuthCallbackError['outcome'] = 'internal_error') {
         super('OAUTH_CALLBACK_FAILED');
         this.name = 'OAuthCallbackError';
         Object.defineProperty(this, 'outcome', { value: outcome, enumerable: false });
+    }
+}
+
+function providerOutcome(error: unknown): OAuthCallbackError['outcome'] {
+    if (!(error instanceof GitHubOAuthAdapterError)) return 'provider_unavailable';
+    switch (error.category) {
+        case 'credentials_rejected': return 'provider_credentials_rejected';
+        case 'redirect_rejected': return 'provider_redirect_rejected';
+        case 'verification_rejected': return 'provider_verification_rejected';
+        case 'identity_rejected': return 'provider_identity_rejected';
+        default: return 'provider_unavailable';
     }
 }
 
@@ -114,7 +126,8 @@ export async function completeOAuthCallback(database: AuthorizationSessionSource
             purpose: validated.purpose,
             returnPath: validated.returnPath
         });
-    } catch {
+    } catch (error) {
+        if (outcome === 'provider_unavailable') outcome = providerOutcome(error);
         throw new OAuthCallbackError(outcome);
     }
 }

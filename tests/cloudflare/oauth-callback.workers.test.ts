@@ -223,6 +223,32 @@ describe('CF-P3-004 GitHub provider adapter', () => {
             expect(calls).toBeLessThanOrEqual(2);
         }
     });
+
+    it('classifies only the closed GitHub token error codes without retaining provider descriptions', async () => {
+        const cases = [
+            ['incorrect_client_credentials', 'credentials_rejected'],
+            ['redirect_uri_mismatch', 'redirect_rejected'],
+            ['bad_verification_code', 'verification_rejected'],
+            ['unverified_user_email', 'identity_rejected'],
+            ['future_provider_error', 'unavailable']
+        ] as const;
+        for (const [providerError, category] of cases) {
+            const adapter = createGitHubOAuthAdapter({ clientId: 'client-id', clientSecret: 'client-secret' }, {
+                transport: { async request() { return json({ error: providerError,
+                    error_description: 'provider-description-canary', error_uri: 'https://provider.test/canary' }); } },
+                clock: { now: () => 1_900_000_300_000 }, random: random(4), sleep: { wait: async () => {} }
+            });
+            let failure: unknown;
+            try {
+                await adapter.resolveIdentity({ code: 'code', redirectUri: GITHUB_OAUTH_CONSTANTS.callbackUri,
+                    pkceVerifier: encodeBase64Url(new Uint8Array(64).fill(12)) });
+            } catch (error) {
+                failure = error;
+            }
+            expect(failure).toMatchObject({ code: 'GITHUB_OAUTH_UNAVAILABLE', category });
+            expect(JSON.stringify(failure)).not.toMatch(/provider-description-canary|provider\.test/);
+        }
+    });
 });
 
 describe('CF-P3-004 atomic callback authority', () => {
