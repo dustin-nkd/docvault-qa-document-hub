@@ -36,7 +36,7 @@
         "CANONICAL_PRODUCTION_ORIGIN": "https://docvault-qa-document-hub.pages.dev",
         "COLLABORATION_ENABLED": "false",
         "IDENTITY_RUNTIME_MODE": "preview-only",
-        "GITHUB_OAUTH_CLIENT_ID": "Ov23liT50K0wBmEGu7bH"
+        "GITHUB_OAUTH_CLIENT_ID": "Ov23liT50KOwBmEGu7bH"
       }
     },
     "production": {
