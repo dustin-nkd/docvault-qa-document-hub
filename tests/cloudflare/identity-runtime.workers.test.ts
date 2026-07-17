@@ -178,6 +178,28 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM sessions').first<number>('count')).toBe(0);
     });
 
+    it('records a coarse provider outcome while keeping the callback redirect generic', async () => {
+        const events: Array<{ outcome: string; status: number }> = [];
+        const creator = dependencies();
+        const transaction = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
+            method: 'POST', body: JSON.stringify({ purpose: 'sign_in' })
+        }), runtimeBindings(), creator);
+        const created = await transaction?.json<{ authorizationUrl: string }>();
+        const state = new URL(created?.authorizationUrl ?? '').searchParams.get('state');
+        const failing = {
+            ...dependencies(),
+            provider: () => ({ resolveIdentity: async () => { throw new Error('provider-canary'); } }),
+            events: { emit: (event: { outcome: string; status: number }) => { events.push(event); } }
+        } as IdentityRuntimeDependencies;
+        const callback = await handleIdentityRuntime(request(
+            `/api/v1/oauth/github/callback?code=synthetic-code&state=${state}`), runtimeBindings(), failing);
+        expect(callback?.status).toBe(303);
+        expect(callback?.headers.get('Location')).toMatch(/#auth-result=unavailable-/);
+        expect(callback?.headers.has('Set-Cookie')).toBe(false);
+        expect(events.at(-1)).toMatchObject({ outcome: 'provider_unavailable', status: 303 });
+        expect(JSON.stringify(events)).not.toContain('provider-canary');
+    });
+
     it('completes sign-in, session, reauthentication rotation, replay rejection, and logout as one runtime flow', async () => {
         const deps = dependencies();
         const signIn = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {

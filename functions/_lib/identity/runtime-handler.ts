@@ -9,7 +9,7 @@ import {
     type IdentityRuntimeConfiguration
 } from './environment';
 import { createGitHubOAuthAdapter, type GitHubOAuthAdapter } from './github-oauth-adapter';
-import { completeOAuthCallback, type OAuthCallbackCheckpoint } from './oauth-callback-service';
+import { completeOAuthCallback, OAuthCallbackError, type OAuthCallbackCheckpoint } from './oauth-callback-service';
 import { createOAuthTransaction, type OAuthTransactionCheckpoint } from './oauth-transaction-service';
 import {
     createIdentityOperationalEvent,
@@ -207,7 +207,8 @@ async function rate(database: AuthorizationSessionSource, runtime: IdentityRunti
 }
 
 async function handleEnabled(request: Request, runtime: IdentityRuntimeConfiguration & { enabled: true },
-    env: IdentityRuntimeBindings, dependencies: IdentityRuntimeDependencies, requestId: string): Promise<Response> {
+    env: IdentityRuntimeBindings, dependencies: IdentityRuntimeDependencies, requestId: string,
+    operational: { outcome: IdentityOutcome }): Promise<Response> {
     const database = env.COLLAB_DB;
     if (!database) throw new Error('IDENTITY_CONFIGURATION_INVALID');
     const policy = enforceIdentityRequestPolicy(request, IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin);
@@ -234,7 +235,9 @@ async function handleEnabled(request: Request, runtime: IdentityRuntimeConfigura
             headers.set('Set-Cookie', serializeSessionCookie(runtime.cookieName, result.sessionToken,
                 result.absoluteExpiresAt));
             return new Response(null, { status: 303, headers });
-        } catch {
+        } catch (error) {
+            operational.outcome = error instanceof IdentityRateLimitError ? 'rate_limited'
+                : error instanceof OAuthCallbackError ? error.outcome : 'internal_error';
             headers.delete('Content-Type');
             headers.set('Location', callbackRedirect(returnPath, false));
             return new Response(null, { status: 303, headers });
@@ -324,19 +327,19 @@ export async function handleIdentityRuntime(request: Request, source: object,
     const requestId = dependencies.ids.uuid();
     if (!UUID_V4.test(requestId)) return errorResponse(new Error(), crypto.randomUUID(), runtime.cookieName);
     const startedAt = dependencies.clock.now();
-    let outcome: IdentityOutcome = 'success';
+    const operational: { outcome: IdentityOutcome } = { outcome: 'success' };
     let response: Response;
     try {
-        response = await handleEnabled(request, runtime, env, dependencies, requestId);
-        if (response.status >= 400) outcome = 'rejected';
+        response = await handleEnabled(request, runtime, env, dependencies, requestId, operational);
+        if (response.status >= 400 && operational.outcome === 'success') operational.outcome = 'rejected';
     } catch (error) {
-        outcome = error instanceof IdentityRateLimitError ? 'rate_limited'
+        operational.outcome = error instanceof IdentityRateLimitError ? 'rate_limited'
             : error instanceof IdentityRequestPolicyError ? 'rejected' : 'internal_error';
         response = errorResponse(error, requestId, runtime.cookieName);
     }
     try {
         await dependencies.events.emit(createIdentityOperationalEvent({ requestId,
-            route: routeTemplate(request), method: request.method as 'GET' | 'POST', outcome,
+            route: routeTemplate(request), method: request.method as 'GET' | 'POST', outcome: operational.outcome,
             status: response.status, latencyMs: Math.min(30_000, Math.max(0, dependencies.clock.now() - startedAt)),
             environment: 'preview' }));
     } catch { /* Observability cannot alter authentication authority or disclose request data. */ }

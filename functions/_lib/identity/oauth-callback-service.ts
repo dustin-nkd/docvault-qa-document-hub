@@ -42,10 +42,12 @@ export interface CompletedOAuthCallback extends OAuthCallbackCommitResult {
 
 export class OAuthCallbackError extends Error {
     readonly code = 'OAUTH_CALLBACK_FAILED' as const;
+    declare readonly outcome: 'rejected' | 'provider_unavailable' | 'internal_error';
 
-    constructor() {
+    constructor(outcome: 'rejected' | 'provider_unavailable' | 'internal_error' = 'internal_error') {
         super('OAUTH_CALLBACK_FAILED');
         this.name = 'OAuthCallbackError';
+        Object.defineProperty(this, 'outcome', { value: outcome, enumerable: false });
     }
 }
 
@@ -69,6 +71,7 @@ function bytesBuffer(bytes: Uint8Array): ArrayBuffer {
 
 export async function completeOAuthCallback(database: AuthorizationSessionSource,
     input: CompleteOAuthCallbackInput, dependencies: OAuthCallbackDependencies): Promise<CompletedOAuthCallback> {
+    let outcome: OAuthCallbackError['outcome'] = 'rejected';
     try {
         const validated = await validateOAuthTransactionForCallback(database, {
             keyring: input.oauthTransactionKey,
@@ -77,6 +80,7 @@ export async function completeOAuthCallback(database: AuthorizationSessionSource
         }, dependencies);
         const context = validatedOAuthCallbackContext(validated);
         await dependencies.failures.checkpoint('oauth.callback.before-provider');
+        outcome = 'provider_unavailable';
         const identity = await input.provider.resolveIdentity({
             code: input.code,
             redirectUri: `${OAUTH_TRANSACTION_CONSTANTS.callbackOrigin}${OAUTH_TRANSACTION_CONSTANTS.callbackPath}`,
@@ -84,6 +88,7 @@ export async function completeOAuthCallback(database: AuthorizationSessionSource
         });
         await dependencies.failures.checkpoint('oauth.callback.after-provider');
 
+        outcome = 'internal_error';
         const committedAt = serverTime(dependencies);
         const candidateUserId = uuid(dependencies);
         const sessionId = uuid(dependencies);
@@ -110,7 +115,7 @@ export async function completeOAuthCallback(database: AuthorizationSessionSource
             returnPath: validated.returnPath
         });
     } catch {
-        throw new OAuthCallbackError();
+        throw new OAuthCallbackError(outcome);
     }
 }
 
