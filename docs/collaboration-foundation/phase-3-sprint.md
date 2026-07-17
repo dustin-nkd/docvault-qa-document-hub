@@ -1,6 +1,6 @@
 # Phase 3 sprint — Identity and sessions
 
-Status: **ACTIVE — `CF-P3-007` PASS; awaiting Product Owner approval at Gate P3-G3A**
+Status: **ACTIVE — `CF-P3-008` PASS; awaiting Product Owner approval at Gate P3-G4A**
 
 Sprint ID: `CF-P3-S01`
 
@@ -245,6 +245,8 @@ Tasks: create/review the dedicated preview GitHub OAuth app, configure the froze
 Corrective Gate **P3-G4B** authorizes the private Rate Limit Worker and Service Binding after Wrangler proved that Pages projects do not support a direct `ratelimits` binding. The correction preserves the frozen 6/60 burst policy and 20/600 authoritative D1 policy; it does not authorize a public Worker route, production binding, raw source identifier transfer, or collaboration/business routes.
 
 Acceptance: preview app and cookie are unique; stable callback and exact origin match; only designated synthetic identities are permitted; production has zero D1/OAuth/session bindings and identity remains disabled; GitHub Pages remains static.
+
+Disposition: **PASS**. The Preview alias serves the four-route identity shell, the private Worker has no public target, its 6/60 Rate Limit binding is an eventually-consistent early shield, and D1 remains the authoritative 20/600 control. Live provisioning checks returned Preview session `200`, wrong Origin `403`, business route `404`, Production session `503`, and GitHub Pages session `404`. Synthetic OAuth/rate rows were purged; users, sessions, OAuth transactions, rate windows, workspaces, and documents all returned to zero.
 
 Evidence: `CF-EV-P3-OPS-002`, `CF-EV-P3-SEC-008`.
 

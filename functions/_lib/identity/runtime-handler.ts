@@ -75,28 +75,31 @@ function limiterBinding(source: object): IdentityBurstLimiter | undefined {
     if (!('AUTH_BURST_SERVICE' in source)) return undefined;
     const value = Reflect.get(source, 'AUTH_BURST_SERVICE');
     if (typeof value !== 'object' || value === null) return undefined;
-    if ('limit' in value && typeof Reflect.get(value, 'limit') === 'function') return value as IdentityBurstLimiter;
-    if (!('fetch' in value) || typeof Reflect.get(value, 'fetch') !== 'function') return undefined;
-    const service = value as { fetch(request: Request): Promise<Response> };
-    return Object.freeze({
-        async limit(options: { readonly key: string }): Promise<{ readonly success: boolean }> {
-            const response = await service.fetch(new Request('https://identity-burst.internal/v1/limit', {
-                method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({ key: options.key })
-            }));
-            const length = response.headers.get('Content-Length');
-            if (length !== null && (!/^\d{1,3}$/.test(length) || Number(length) > 64)) throw new Error('RATE_LIMIT_UNAVAILABLE');
-            const text = await response.text();
-            if (new TextEncoder().encode(text).byteLength > 64 || response.status !== 200) throw new Error('RATE_LIMIT_UNAVAILABLE');
-            let result: unknown;
-            try { result = JSON.parse(text); } catch { throw new Error('RATE_LIMIT_UNAVAILABLE'); }
-            if (typeof result !== 'object' || result === null || Array.isArray(result)
-                || Object.keys(result).length !== 1 || typeof Reflect.get(result, 'success') !== 'boolean') {
-                throw new Error('RATE_LIMIT_UNAVAILABLE');
+    const fetch = Reflect.get(value, 'fetch');
+    if (typeof fetch === 'function') {
+        const service = value as { fetch(request: Request): Promise<Response> };
+        return Object.freeze({
+            async limit(options: { readonly key: string }): Promise<{ readonly success: boolean }> {
+                const response = await service.fetch(new Request('https://identity-burst.internal/v1/limit', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({ key: options.key })
+                }));
+                const length = response.headers.get('Content-Length');
+                if (length !== null && (!/^\d{1,3}$/.test(length) || Number(length) > 64)) throw new Error('RATE_LIMIT_UNAVAILABLE');
+                const text = await response.text();
+                if (new TextEncoder().encode(text).byteLength > 64 || response.status !== 200) throw new Error('RATE_LIMIT_UNAVAILABLE');
+                let result: unknown;
+                try { result = JSON.parse(text); } catch { throw new Error('RATE_LIMIT_UNAVAILABLE'); }
+                if (typeof result !== 'object' || result === null || Array.isArray(result)
+                    || Object.keys(result).length !== 1 || typeof Reflect.get(result, 'success') !== 'boolean') {
+                    throw new Error('RATE_LIMIT_UNAVAILABLE');
+                }
+                return Object.freeze({ success: Reflect.get(result, 'success') as boolean });
             }
-            return Object.freeze({ success: Reflect.get(result, 'success') as boolean });
-        }
-    });
+        });
+    }
+    if ('limit' in value && typeof Reflect.get(value, 'limit') === 'function') return value as IdentityBurstLimiter;
+    return undefined;
 }
 
 function bindings(source: object): IdentityRuntimeBindings {

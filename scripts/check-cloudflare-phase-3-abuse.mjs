@@ -23,4 +23,4 @@ validatePhase3AbusePolicy({
 
 console.log('Cloudflare Phase 3 abuse/observability gate passed');
 console.log('  CF-P3-007: PASS; atomic D1 tiers, safe events, bounded provider resilience');
-console.log('  Gate P3-G3A: pending; remote changes remain unauthorized');
+console.log('  Historical abuse gate preserved; CF-P3-008 now PASS');

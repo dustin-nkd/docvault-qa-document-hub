@@ -18,8 +18,8 @@ export function validatePhase3AbusePolicy({ manifest, sprintManifest, sourceFile
         && manifest.gate_authorization.decision === 'APPROVED'
         && manifest.gate_authorization.authorized_story === 'CF-P3-007'
         && manifest.gate_authorization.next_gate === 'P3-G3A', 'P3-G3 authorization drifted');
-    assert(sprintManifest.authorization?.gate === 'P3-G3'
-        && sprintManifest.authorization.authorized_story === 'CF-P3-007'
+    assert(sprintManifest.authorization?.gate === 'P3-G4B'
+        && sprintManifest.authorization.authorized_story === 'CF-P3-008'
         && sprintManifest.stories.find(story => story.id === 'CF-P3-007')?.status === 'PASS',
     'Sprint disposition drifted');
 

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P3",
+  "story": "CF-P3-008",
+  "status": "PASS",
+  "authorization": {
+    "gate": "P3-G4B",
+    "decision": "APPROVED",
+    "next_gate": "P3-G4A",
+    "next_story": "CF-P3-009"
+  },
+  "preview": {
+    "runtime_mode": "preview-only",
+    "d1_binding": "COLLAB_DB",
+    "service_binding": "AUTH_BURST_SERVICE",
+    "private_worker": "docvault-identity-burst-preview",
+    "public_worker_targets": 0,
+    "designated_synthetic_identities_only": true,
+    "business_routes_enabled": false,
+    "collaboration_enabled": false
+  },
+  "rate_control": {
+    "edge_limit": 6,
+    "edge_period_seconds": 60,
+    "edge_semantics": "per-location-permissive-eventually-consistent-early-shield",
+    "authoritative_d1_limit": 20,
+    "authoritative_d1_period_seconds": 600,
+    "failure_mode": "fail-closed-generic-429"
+  },
+  "live_boundary_results": {
+    "preview_session": 200,
+    "wrong_origin_transaction": 403,
+    "preview_business_route": 404,
+    "production_session": 503,
+    "github_pages_session": 404,
+    "preview_transaction_success_observed": true,
+    "service_binding_invocation_observed": true
+  },
+  "cleanup_counts": {
+    "users": 0,
+    "sessions": 0,
+    "oauth_transactions": 0,
+    "auth_rate_windows": 0,
+    "workspaces": 0,
+    "documents": 0
+  },
+  "production": {
+    "identity_enabled": false,
+    "d1_bindings": 0,
+    "burst_service_bindings": 0,
+    "identity_secrets": 0,
+    "collaboration_enabled": false
+  },
+  "github_pages": {
+    "identity_enabled": false,
+    "collaboration_enabled": false
+  },
+  "evidence": ["CF-EV-P3-OPS-002", "CF-EV-P3-SEC-008"],
+  "next_decision": {
+    "gate": "P3-G4A",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P3-009-only",
+    "collaboration_activation": "NO-GO"
+  }
+}

@@ -118,6 +118,21 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         } }), dependencies())).toMatchObject({ status: 429 });
     });
 
+    it('prefers the Fetcher contract when a service binding also exposes RPC-shaped methods', async () => {
+        let fetchCalls = 0;
+        const response = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
+            method: 'POST', body: JSON.stringify({ purpose: 'sign_in' })
+        }), runtimeBindings({ AUTH_BURST_SERVICE: {
+            fetch: async () => {
+                fetchCalls += 1;
+                return new Response('{"success":true}', { status: 200 });
+            },
+            limit: async () => { throw new Error('RPC_SHOULD_NOT_BE_USED'); }
+        } }), dependencies());
+        expect(response?.status).toBe(201);
+        expect(fetchCalls).toBe(1);
+    });
+
     it('completes login only for an allowlisted numeric subject and issues the isolated host cookie', async () => {
         const deps = dependencies();
         const transaction = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
