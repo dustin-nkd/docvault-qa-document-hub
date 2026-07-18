@@ -13,6 +13,17 @@ export const approvedPreviewBurstService = {
     service: 'docvault-identity-burst-preview'
 };
 
+export const approvedPagesObservability = {
+    enabled: true,
+    head_sampling_rate: 1,
+    logs: {
+        enabled: true,
+        head_sampling_rate: 1,
+        invocation_logs: false,
+        persist: true
+    }
+};
+
 export const expectedEnvironmentVars = {
     local: {
         APP_ENV: 'local',
@@ -60,13 +71,15 @@ export function parseWranglerConfig(filePath) {
 export function validateWranglerConfig(config, source, compatibilityDate = '2026-07-15') {
     exactKeys(config, [
         '$schema', 'name', 'pages_build_output_dir', 'compatibility_date',
-        'compatibility_flags', 'vars', 'env'
+        'compatibility_flags', 'observability', 'vars', 'env'
     ], 'wrangler');
     assert(config.$schema === './node_modules/wrangler/config-schema.json', 'Wrangler schema reference drifted');
     assert(config.name === 'docvault-qa-document-hub', 'Wrangler project name drifted');
     assert(config.pages_build_output_dir === './_site', 'Wrangler Pages output must remain ./_site');
     assert(config.compatibility_date === compatibilityDate, 'Wrangler compatibility date drifted');
     assert(JSON.stringify(config.compatibility_flags) === '["nodejs_compat"]', 'Wrangler must use only nodejs_compat');
+    assert(JSON.stringify(config.observability) === JSON.stringify(approvedPagesObservability),
+        'Pages observability must persist only reviewed structured logs');
 
     exactKeys(config.env, ['preview', 'production'], 'wrangler.env');
     exactKeys(config.env.preview, ['d1_databases', 'services', 'vars'], 'wrangler.env.preview');
