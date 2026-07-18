@@ -82,11 +82,12 @@ export function validatePhase4PreviewApi({ manifest, prerequisite, sourceFiles,
         [handler, cursor, resolver].join('\n')), 'Prohibited Preview implementation pattern');
 
     assert(manifest.workers_test_file === 'tests/cloudflare/preview-api-integration.workers.test.ts'
-        && manifest.workers_test_count === 3
-        && (workersTestSource.match(/\bit\s*\(/g) || []).length === 3,
+        && manifest.workers_test_count === 4
+        && (workersTestSource.match(/\bit\s*\(/g) || []).length === 4,
     'Preview Workers test inventory drifted');
     for (const phrase of ['exact isolated Preview runtime', 'fails closed on authentication',
-        'workspace, opaque pagination, invitation, acceptance, and revocation']) {
+        'workspace, opaque pagination, invitation, acceptance, and revocation',
+        'authenticated control-plane reads inside the Phase 4 local p95 budget']) {
         assert(workersTestSource.includes(phrase), `Preview test coverage missing: ${phrase}`);
     }
 

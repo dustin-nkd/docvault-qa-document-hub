@@ -43,3 +43,4 @@ import './cloudflare-phase-4-invitation-lifecycle-policy.test.mjs';
 import './cloudflare-phase-4-membership-administration-policy.test.mjs';
 import './cloudflare-phase-4-audit-scoped-reads-policy.test.mjs';
 import './cloudflare-phase-4-preview-api-policy.test.mjs';
+import './cloudflare-phase-4-exit-policy.test.mjs';

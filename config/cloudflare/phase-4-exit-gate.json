@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P4",
+  "story": "CF-P4-008",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P4-G7",
+    "decision": "APPROVED",
+    "approved_at": "2026-07-18",
+    "authorized_story": "CF-P4-008"
+  },
+  "reviewed_at": "2026-07-18",
+  "review_due": "2026-10-18",
+  "decision": {
+    "phase_4_preview_control_plane": "GO",
+    "phase_5_device_keys_and_e2ee": "GO",
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_business_routes": "NO-GO"
+  },
+  "schema_inventory": {
+    "schema_version": 10,
+    "migration_count": 10,
+    "migration_set_digest": "8fb7afd3e0d5da2fe756d2ae7a252a6bf3273a4846c726e407053a28a9efbdf8",
+    "minimum_runtime_schema": 1,
+    "maximum_runtime_schema": 10,
+    "pending_remote_migrations": 0,
+    "destructive_or_down_migrations": 0
+  },
+  "remote_boundary": {
+    "checked_at": "2026-07-18T10:59:36Z",
+    "preview_database_name": "docvault-collab-preview",
+    "preview_binding_name": "COLLAB_DB",
+    "preview_schema_version": 10,
+    "preview_business_entity_rows": 0,
+    "preview_operational_control_rows": 2,
+    "preview_foreign_key_violations": 0,
+    "production_d1_bindings": 0,
+    "production_collaboration_data": "absent-no-storage-binding",
+    "collaboration_enabled": "false",
+    "preview_unauthenticated_mutation_status": 401,
+    "production_disabled_shell_status": 503,
+    "github_pages_api_status": 405
+  },
+  "recovery": {
+    "mode": "read-only-compatible-rollback-rehearsal",
+    "time_travel_available": true,
+    "time_travel_bookmark_sha256": "f13907beaf51c2e7708e461ae7f814148011580c73fee8872ff70dbf9d16e1cc",
+    "shared_preview_restore_executed": false,
+    "shared_preview_writes": 0,
+    "current_runtime_schema": 10,
+    "previous_runtime_schema": 10,
+    "previous_runtime_commit": "17404420c55753f690f2005e0fd427b910741a12",
+    "previous_deployment_status": 403,
+    "result": "PASS"
+  },
+  "verified_deployments": {
+    "verified_baseline_commit": "eaf57435a2bf3e89cbe0e471da8c2d76500eadec",
+    "github_actions_run_id": 29641152282,
+    "cloudflare_production_deployment_id": "2c6fc40d-583f-4cbf-97cd-f30744e0400a",
+    "cloudflare_preview_deployment_id": "748a595b-6d00-4ada-91f3-7c8a19d7ac25",
+    "compatible_previous_deployment_id": "05a555b9-bc21-4e73-83b3-61b3ab7efe47"
+  },
+  "quality": {
+    "node_tests_passed": 179,
+    "workers_d1_tests_passed": 156,
+    "authenticated_local_read_p95_budget_ms": 250,
+    "preview_boundary_probe_samples": 10,
+    "preview_boundary_probe_p95_ms": 235,
+    "browser_regression": "PASS",
+    "artifact_boundary": "PASS",
+    "dependency_vulnerabilities": 0,
+    "p0_p1_skipped": [],
+    "p0_p1_quarantined": [],
+    "disabled_cases": [],
+    "accepted_flakiness": [],
+    "secret_or_privacy_canary_matches": [],
+    "unexpected_side_effects": [],
+    "open_p0_p1_defects": [],
+    "cross_tenant_bypasses": [],
+    "csrf_bypasses": [],
+    "replay_successes": [],
+    "revocation_bypasses": [],
+    "incompatible_schema_runtime_pairs": [],
+    "unowned_or_expired_critical_high_risks": []
+  },
+  "dependency_inventory": {
+    "@cloudflare/vitest-pool-workers": "0.18.5",
+    "@types/node": "22.20.1",
+    "autoprefixer": "^10.5.0",
+    "playwright": "^1.61.1",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^3.4.19",
+    "typescript": "7.0.2",
+    "vite": "^8.1.0",
+    "vitest": "4.1.10",
+    "wrangler": "4.111.0"
+  },
+  "known_limitations": [
+    "Production has no collaboration D1 binding and all collaboration flags remain false.",
+    "The GitHub Pages fallback remains static and has no collaboration API authority.",
+    "Phase 4 exposes control-plane routes only on the isolated Preview origin.",
+    "Device enrollment, workspace key envelopes, encrypted documents, revisions, sync, and conflict handling remain Phase 5 scope.",
+    "Authenticated business-route performance is characterized in disposable local D1; remote Preview measurement requires a real user session and no test-only bypass is permitted.",
+    "D1 Time Travel was verified read-only; restoring the shared Preview database was intentionally not executed because restore overwrites database state. Boundary requests may advance bounded rate-limit counters but cannot create collaboration business data without authentication."
+  ],
+  "stories": [
+    {"id":"CF-P4-001","status":"PASS","owners":["Product Owner","Technical Lead"],"reviewers":["Security Reviewer","Senior QA"],"requirements":["PHASE-4-CONTRACT"],"risks":["R03","R04","R12","R17"],"evidence":["CF-EV-P4-STA-001","CF-EV-P4-SEC-001"]},
+    {"id":"CF-P4-002","status":"PASS","owners":["Senior Developer"],"reviewers":["Technical Lead","Security Reviewer","Senior QA"],"requirements":["CF-WS-001","CF-AUD-001"],"risks":["R03","R13","R18"],"evidence":["CF-EV-P4-INT-001","CF-EV-P4-SEC-002","CF-EV-P4-QA-001"]},
+    {"id":"CF-P4-003","status":"PASS","owners":["Technical Lead","Senior Developer"],"reviewers":["Security Reviewer","Senior QA"],"requirements":["CF-RBAC-001","CF-RBAC-003"],"risks":["R03","R13"],"evidence":["CF-EV-P4-UT-001","CF-EV-P4-INT-002","CF-EV-P4-SEC-003"]},
+    {"id":"CF-P4-004","status":"PASS","owners":["Senior Developer","Security Reviewer"],"reviewers":["Product Owner","Senior QA"],"requirements":["CF-INV-001","CF-INV-004"],"risks":["R04","R16","R20","R21"],"evidence":["CF-EV-P4-UT-002","CF-EV-P4-INT-003","CF-EV-P4-SEC-004","CF-EV-P4-QA-002"]},
+    {"id":"CF-P4-005","status":"PASS","owners":["Senior Developer"],"reviewers":["Technical Lead","Security Reviewer","Senior QA"],"requirements":["CF-RBAC-003","CF-AUD-001"],"risks":["R03","R10","R13"],"evidence":["CF-EV-P4-UT-003","CF-EV-P4-INT-004","CF-EV-P4-SEC-005","CF-EV-P4-QA-003"]},
+    {"id":"CF-P4-006","status":"PASS","owners":["Senior Developer","Privacy Reviewer"],"reviewers":["Security Reviewer","Senior QA"],"requirements":["CF-AUD-001","CF-AUD-003"],"risks":["R03","R12","R16","R21"],"evidence":["CF-EV-P4-UT-004","CF-EV-P4-INT-005","CF-EV-P4-SEC-006","CF-EV-P4-QA-004"]},
+    {"id":"CF-P4-007","status":"PASS","owners":["Senior Developer","Operations"],"reviewers":["Technical Lead","Security Reviewer","Senior QA"],"requirements":["CF-OPS-002","CF-OPS-004"],"risks":["R02","R03","R15","R16","R17","R21"],"evidence":["CF-EV-P4-INT-006","CF-EV-P4-SEC-007","CF-EV-P4-QA-005","CF-EV-P4-OPS-001"]},
+    {"id":"CF-P4-008","status":"PASS","owners":["Senior QA","Product Owner","Operations"],"reviewers":["Technical Lead","Security Reviewer","Privacy Reviewer","UX Lead"],"requirements":["ALL-PHASE-4-OBLIGATIONS"],"risks":["R01","R02","R03","R04","R05","R06","R07","R08","R09","R10","R11","R12","R13","R14","R15","R16","R17","R18","R19","R20","R21","R22"],"evidence":["CF-EV-P4-QA-006","CF-EV-P4-SEC-008","CF-EV-P4-OPS-002","CF-EV-P4-STA-002"]}
+  ]
+}

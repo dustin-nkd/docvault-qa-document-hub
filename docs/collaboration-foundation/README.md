@@ -88,6 +88,8 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 - `config/cloudflare/phase-3-request-policy.json` — machine-enforced `CF-P3-006` four-route, Origin, CSRF, CORS, cache, Service Worker, and disabled-boundary record
 
 - [Phase 4 Preview API integration](phase-4-preview-api-integration.md) — `CF-P4-007` connects eleven reviewed control-plane operations to the isolated Preview runtime while production and GitHub Pages remain disabled
+- [Phase 4 exit report](phase-4-exit-report.md) — `CF-P4-008` reconciles all story evidence, quality, security, schema, remote boundaries, and read-only recovery before the Phase 5 handoff
+- [Phase 5 handoff](phase-5-handoff.md) — ordered device-key, E2EE, encrypted-revision, sync, recovery, and Preview-integration scope; Production remains disabled
 
 ## Review ownership
 

@@ -204,4 +204,26 @@ describe('CF-P4-007 preview collaboration API integration', () => {
             idempotency: crypto.randomUUID(), body: {}
         }))?.status).toBe(204);
     });
+
+    it('keeps authenticated control-plane reads inside the Phase 4 local p95 budget', async () => {
+        const created = await api('/api/v1/workspaces', {
+            method: 'POST', token: OWNER_TOKEN, device: OWNER_DEVICE,
+            idempotency: crypto.randomUUID(), body: { displayName: 'Phase 4 performance baseline' }
+        });
+        expect(created?.status).toBe(201);
+        const body = await created?.json<{ data: { workspaceId: string } }>();
+        const workspaceId = body?.data.workspaceId ?? '';
+        const samples: number[] = [];
+        for (let index = 0; index < 20; index += 1) {
+            const startedAt = performance.now();
+            const response = await api(`/api/v1/workspaces/${workspaceId}/members?limit=50`, {
+                token: OWNER_TOKEN
+            });
+            samples.push(performance.now() - startedAt);
+            expect(response?.status).toBe(200);
+        }
+        samples.sort((left, right) => left - right);
+        const p95 = samples[Math.ceil(samples.length * 0.95) - 1] ?? Number.POSITIVE_INFINITY;
+        expect(p95).toBeLessThan(250);
+    });
 });

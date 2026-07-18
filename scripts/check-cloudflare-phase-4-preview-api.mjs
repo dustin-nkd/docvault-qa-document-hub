@@ -20,5 +20,5 @@ validatePhase4PreviewApi({
 });
 
 console.log('Cloudflare Phase 4 Preview API integration gate passed');
-console.log('  CF-P4-007: PASS; Preview operations: 11; Workers tests: 3');
+console.log('  CF-P4-007: PASS; Preview operations: 11; Workers tests: 4');
 console.log('  Production/GitHub Pages activation, migrations, and remote D1 mutations: zero');

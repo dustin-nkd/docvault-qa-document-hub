@@ -70,7 +70,7 @@
     "collaboration_enabled": false
   },
   "workers_test_file": "tests/cloudflare/preview-api-integration.workers.test.ts",
-  "workers_test_count": 3,
+  "workers_test_count": 4,
   "evidence": ["CF-EV-P4-INT-006", "CF-EV-P4-SEC-007", "CF-EV-P4-QA-005", "CF-EV-P4-OPS-001"],
   "next_decision": {
     "gate": "P4-G7",
