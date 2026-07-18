@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P4",
+  "story": "CF-P4-003",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P4-G2",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P4-003",
+    "next_gate": "P4-G3",
+    "next_story": "CF-P4-004"
+  },
+  "policy": {
+    "version": "rbac-v1",
+    "default": "deny",
+    "actions": [
+      "workspace.read-status", "workspace.read", "document.read", "document.write",
+      "document.copy-in", "member.list", "invitation.list", "invitation.create",
+      "invitation.revoke", "membership.change-role", "membership.remove",
+      "ownership.transfer", "device.manage-own", "device.revoke-other",
+      "envelope.provision", "audit.read", "workspace.export", "workspace.delete"
+    ],
+    "roles": ["owner", "admin", "editor", "viewer"],
+    "membership_states": ["active", "pending_key", "removed"],
+    "principal_states": ["active", "pending_key", "removed", "revoked_device", "non_member", "guest", "unauthenticated"],
+    "pending_key_allowlist": ["workspace.read-status", "device.manage-own"],
+    "lifecycle_denylist": ["workspace.export", "workspace.delete"],
+    "non_enumerating_scopes": ["other-workspace", "missing", "deleted", "malformed"]
+  },
+  "authority": {
+    "source": "live-d1-first-primary",
+    "actor": "authenticated-user-id",
+    "workspace_scope": "exact-membership-join",
+    "role_and_state": "server-derived",
+    "device_and_key_readiness": "server-derived",
+    "client_authority_fields": 0,
+    "cached_authority": false
+  },
+  "invariants": [
+    "deny-unknown-actions", "admin-editor-viewer-ceiling", "no-direct-owner-assignment",
+    "recent-auth-ownership-transfer", "last-owner-preserved", "pending-key-no-protected-content",
+    "revoked-device-no-device-bound-action", "cross-tenant-non-enumeration",
+    "export-delete-deny-closed"
+  ],
+  "scope": {
+    "routes_added": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "production_identity_enabled": false,
+    "preview_business_routes_enabled": false,
+    "collaboration_enabled": false
+  },
+  "workers_test_file": "tests/cloudflare/central-rbac-policy.workers.test.ts",
+  "workers_test_count": 8,
+  "evidence": ["CF-EV-P4-UT-001", "CF-EV-P4-INT-002", "CF-EV-P4-SEC-003"],
+  "next_decision": {
+    "gate": "P4-G3",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P4-004-only",
+    "remote_changes_authorized": false
+  }
+}
