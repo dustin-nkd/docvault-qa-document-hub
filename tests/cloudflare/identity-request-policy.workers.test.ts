@@ -262,6 +262,7 @@ describe('CF-P3-006 identity request policy', () => {
     it('locks no-store security headers and never reflects CORS', () => {
         const headers = identityResponseHeaders('req_policy');
         expect(headers.get('Cache-Control')).toBe('no-store, private');
+        expect(headers.get('Strict-Transport-Security')).toBe('max-age=31536000; includeSubDomains');
         expect(headers.get('Referrer-Policy')).toBe('no-referrer');
         expect(headers.get('X-Content-Type-Options')).toBe('nosniff');
         expect(headers.get('X-Request-ID')).toBe('req_policy');

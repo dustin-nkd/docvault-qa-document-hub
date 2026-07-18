@@ -35,6 +35,7 @@ const readError = async response => {
     assert.match(body.meta.requestId, /^req_[0-9a-f-]{36}$/);
     assert.equal(response.headers.get('X-Request-ID'), body.meta.requestId);
     assert.equal(response.headers.get('Cache-Control'), 'no-store, private');
+    assert.equal(response.headers.get('Strict-Transport-Security'), 'max-age=31536000; includeSubDomains');
     assert.equal(response.headers.get('Pragma'), 'no-cache');
     assert.equal(response.headers.get('Expires'), '0');
     assert.equal(response.headers.get('Access-Control-Allow-Origin'), null);
@@ -46,6 +47,7 @@ test('disabled API shell returns a versioned no-store 503 without business dispa
     assert.equal(response.status, 503);
     assert.equal((await readError(response)).code, 'COLLABORATION_UNAVAILABLE');
     assert.equal(response.headers.get('Cache-Control'), 'no-store, private');
+    assert.equal(response.headers.get('Strict-Transport-Security'), 'max-age=31536000; includeSubDomains');
     assert.equal(response.headers.get('Content-Type'), 'application/json; charset=utf-8');
     assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
     assert.match(response.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
