@@ -47,17 +47,6 @@ export const SECURITY_RECIPE_CONTRACTS: Readonly<Record<SecurityMutationOperatio
             `INSERT INTO memberships (workspace_id, user_id, role, state, invited_by,
               accepted_by, removed_by, created_at, activated_at, removed_at, role_version)
              VALUES (?, ?, 'owner', 'active', NULL, ?, NULL, ?, ?, NULL, 1)`,
-            `INSERT INTO workspace_key_versions (workspace_id, key_version, suite, state,
-              rotation_reason, created_by_device_id, created_by_user_id, created_at,
-              committed_at, retired_at)
-             VALUES (?, 1, 'P256-HKDF-SHA256-A256GCM-v1', 'current', 'initial_create',
-                     ?, ?, ?, ?, NULL)`,
-            `INSERT INTO workspace_key_envelopes (id, workspace_id, key_version,
-              target_user_id, target_device_id, target_fingerprint, wrapper_user_id,
-              wrapper_device_id, suite, ephemeral_public_jwk, hkdf_salt, nonce,
-              ciphertext, aad_digest, created_at, revoked_at)
-             VALUES (?, ?, 1, ?, ?, ?, ?, ?, 'P256-HKDF-SHA256-A256GCM-v1',
-                     ?, ?, ?, ?, ?, ?, NULL)`
         ], auditEvent: 'workspace.created', auditTarget: 'workspace'
     },
     'invitation.accept': {

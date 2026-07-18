@@ -54,10 +54,7 @@ function workspaceBindings(fingerprint = blob(32, 5)): RecipeBindings {
             fingerprint, '{"workspaceId":"33333333-3333-4333-8333-333333333333"}', 10, 1000],
         domain: [
             [ID.workspace, 'Synthetic workspace', null, ID.owner, 10, 10],
-            [ID.workspace, ID.owner, ID.owner, 10, 10],
-            [ID.workspace, ID.ownerDevice, ID.owner, 10, 10],
-            [ID.envelope, ID.workspace, ID.owner, ID.ownerDevice, blob(32, 2), ID.owner,
-                ID.ownerDevice, publicJwk, blob(32, 3), blob(12, 4), blob(48, 5), blob(32, 6), 10]
+            [ID.workspace, ID.owner, ID.owner, 10, 10]
         ],
         audit: audit(ID.event, ID.workspace, ID.owner, ID.ownerDevice, ID.workspace, ID.request, 10),
         result: [ID.guard]
@@ -102,6 +99,10 @@ describe('CF-P2-005 security mutation recipes', () => {
             .bind(ID.workspace).first<number>('count')).toBe(1);
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM audit_events WHERE workspace_id = ?')
             .bind(ID.workspace).first<number>('count')).toBe(1);
+        expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM workspace_key_versions WHERE workspace_id = ?')
+            .bind(ID.workspace).first<number>('count')).toBe(0);
+        expect(await env.COLLAB_DB.prepare('SELECT current_key_version FROM workspaces WHERE id = ?')
+            .bind(ID.workspace).first<number>('current_key_version')).toBe(1);
     });
 
     it('rejects reused fingerprints and revoked replay authority without side effects', async () => {
@@ -185,6 +186,13 @@ describe('CF-P2-005 security mutation recipes', () => {
     });
 
     it('allows one envelope provision winner and activates readiness exactly once', async () => {
+        await env.COLLAB_DB.prepare(
+            `INSERT INTO workspace_key_versions (workspace_id, key_version, suite, state,
+              rotation_reason, created_by_device_id, created_by_user_id, created_at,
+              committed_at, retired_at)
+             VALUES (?, 1, 'P256-HKDF-SHA256-A256GCM-v1', 'current', 'initial_provision',
+                     ?, ?, 49, 49, NULL)`
+        ).bind(ID.workspace, ID.ownerDevice, ID.owner).run();
         const make = (suffix: string, fill: number) => {
             const guard = `17${suffix.repeat(6)}-1717-4717-8717-${suffix.repeat(12)}`;
             const mutation = `18${suffix.repeat(6)}-1818-4818-8818-${suffix.repeat(12)}`;

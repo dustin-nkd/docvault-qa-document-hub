@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P4",
+  "story": "CF-P4-002",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P4-G1",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P4-002",
+    "next_gate": "P4-G2",
+    "next_story": "CF-P4-003"
+  },
+  "batch_contract": {
+    "statement_count": 5,
+    "ordered_roles": ["guard", "workspace", "owner_membership", "audit", "result"],
+    "workspace_rows": 1,
+    "active_owner_rows": 1,
+    "audit_rows": 1,
+    "initial_key_version_placeholder": 1,
+    "workspace_key_version_rows": 0,
+    "workspace_key_envelope_rows": 0
+  },
+  "authority": {
+    "actor_user": "server-verified-active-user",
+    "actor_device": "server-verified-active-own-device",
+    "role": "server-owned-owner",
+    "membership_state": "server-owned-active",
+    "server_time": "trusted-runtime-input",
+    "client_authority_fields": 0
+  },
+  "idempotency": {
+    "ledger": "transition_guards",
+    "binding": ["actor_user_id", "actor_device_id", "workspace_id", "operation", "client_mutation_id"],
+    "request_fingerprint_bytes": 32,
+    "same_request_replay": "original-result",
+    "different_request_same_workspace": "single-winner"
+  },
+  "validation": {
+    "uuid": "lowercase-v4",
+    "display_name_code_points": {"minimum": 1, "maximum": 80},
+    "description_envelope_bytes": {"nullable": true, "minimum": 18, "maximum": 8192},
+    "control_characters": "prohibited"
+  },
+  "scope": {
+    "routes_added": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "production_identity_enabled": false,
+    "preview_business_routes_enabled": false,
+    "collaboration_enabled": false
+  },
+  "workers_test_file": "tests/cloudflare/workspace-bootstrap.workers.test.ts",
+  "workers_test_count": 5,
+  "evidence": ["CF-EV-P4-INT-001", "CF-EV-P4-SEC-002", "CF-EV-P4-QA-001"],
+  "next_decision": {
+    "gate": "P4-G2",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P4-003-only",
+    "remote_changes_authorized": false
+  }
+}
