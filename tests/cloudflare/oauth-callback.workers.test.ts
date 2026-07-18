@@ -230,7 +230,7 @@ describe('CF-P3-004 GitHub provider adapter', () => {
             ['redirect_uri_mismatch', 'redirect_rejected'],
             ['bad_verification_code', 'verification_rejected'],
             ['unverified_user_email', 'identity_rejected'],
-            ['future_provider_error', 'unavailable']
+            ['future_provider_error', 'token_rejected']
         ] as const;
         for (const [providerError, category] of cases) {
             const adapter = createGitHubOAuthAdapter({ clientId: 'client-id', clientSecret: 'client-secret' }, {

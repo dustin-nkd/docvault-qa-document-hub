@@ -43,7 +43,8 @@ export interface CompletedOAuthCallback extends OAuthCallbackCommitResult {
 export class OAuthCallbackError extends Error {
     readonly code = 'OAUTH_CALLBACK_FAILED' as const;
     declare readonly outcome: 'rejected' | 'provider_credentials_rejected' | 'provider_redirect_rejected'
-        | 'provider_verification_rejected' | 'provider_identity_rejected' | 'provider_unavailable' | 'internal_error';
+        | 'provider_verification_rejected' | 'provider_token_rejected' | 'provider_token_response_rejected'
+        | 'provider_identity_rejected' | 'provider_unavailable' | 'internal_error';
 
     constructor(outcome: OAuthCallbackError['outcome'] = 'internal_error') {
         super('OAUTH_CALLBACK_FAILED');
@@ -58,6 +59,8 @@ function providerOutcome(error: unknown): OAuthCallbackError['outcome'] {
         case 'credentials_rejected': return 'provider_credentials_rejected';
         case 'redirect_rejected': return 'provider_redirect_rejected';
         case 'verification_rejected': return 'provider_verification_rejected';
+        case 'token_rejected': return 'provider_token_rejected';
+        case 'token_response_rejected': return 'provider_token_response_rejected';
         case 'identity_rejected': return 'provider_identity_rejected';
         default: return 'provider_unavailable';
     }

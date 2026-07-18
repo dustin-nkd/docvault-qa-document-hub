@@ -201,7 +201,7 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         expect(JSON.stringify(events)).not.toContain('provider-canary');
     });
 
-    it('records a closed verification outcome without changing the generic callback response', async () => {
+    it('records a closed token-response outcome without changing the generic callback response', async () => {
         const events: Array<{ outcome: string; status: number }> = [];
         const creator = dependencies();
         const transaction = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
@@ -212,7 +212,7 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         const failing = {
             ...dependencies(),
             provider: () => ({ resolveIdentity: async () => {
-                throw new GitHubOAuthAdapterError('verification_rejected');
+                throw new GitHubOAuthAdapterError('token_response_rejected');
             } }),
             events: { emit: (event: { outcome: string; status: number }) => { events.push(event); } }
         } as IdentityRuntimeDependencies;
@@ -221,7 +221,7 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         expect(callback?.status).toBe(303);
         expect(callback?.headers.get('Location')).toMatch(/#auth-result=unavailable-/);
         expect(callback?.headers.has('Set-Cookie')).toBe(false);
-        expect(events.at(-1)).toMatchObject({ outcome: 'provider_verification_rejected', status: 303 });
+        expect(events.at(-1)).toMatchObject({ outcome: 'provider_token_response_rejected', status: 303 });
     });
 
     it('completes sign-in, session, reauthentication rotation, replay rejection, and logout as one runtime flow', async () => {

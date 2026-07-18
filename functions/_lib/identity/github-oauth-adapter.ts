@@ -47,7 +47,8 @@ export interface GitHubOAuthAdapter {
 }
 
 export type GitHubOAuthFailureCategory = 'credentials_rejected' | 'redirect_rejected'
-    | 'verification_rejected' | 'identity_rejected' | 'unavailable';
+    | 'verification_rejected' | 'token_rejected' | 'token_response_rejected'
+    | 'identity_rejected' | 'unavailable';
 
 export class GitHubOAuthAdapterError extends Error {
     readonly code = 'GITHUB_OAUTH_UNAVAILABLE' as const;
@@ -67,7 +68,7 @@ function tokenFailureCategory(payload: Record<string, unknown>): GitHubOAuthFail
         case 'redirect_uri_mismatch': return 'redirect_rejected';
         case 'bad_verification_code': return 'verification_rejected';
         case 'unverified_user_email': return 'identity_rejected';
-        default: return 'unavailable';
+        default: return 'token_rejected';
     }
 }
 
@@ -214,14 +215,19 @@ async function exchangeCode(configuration: GitHubOAuthConfiguration, input: GitH
             code_verifier: input.pkceVerifier
         }).toString()
     }, remainingTimeout(deadline, dependencies.clock));
-    const payload = await readBoundedJson(response);
+    let payload: Record<string, unknown>;
+    try {
+        payload = await readBoundedJson(response);
+    } catch {
+        throw new GitHubOAuthAdapterError('token_response_rejected');
+    }
     const failureCategory = tokenFailureCategory(payload);
     if (failureCategory !== null) throw new GitHubOAuthAdapterError(failureCategory);
-    if (response.status !== 200) throw new GitHubOAuthAdapterError();
+    if (response.status !== 200) throw new GitHubOAuthAdapterError('token_rejected');
     if (serverTime(dependencies.clock) >= deadline) throw new GitHubOAuthAdapterError();
     if (typeof payload.access_token !== 'string' || !/^[A-Za-z0-9_.-]{1,1024}$/.test(payload.access_token)
         || payload.token_type !== 'bearer') {
-        throw new GitHubOAuthAdapterError();
+        throw new GitHubOAuthAdapterError('token_response_rejected');
     }
     return payload.access_token;
 }
@@ -239,12 +245,17 @@ async function fetchIdentity(accessToken: string, deadline: number,
             }
         }, remainingTimeout(deadline, dependencies.clock));
         if (response.status === 200) {
-            const result = normalizeIdentity(await readBoundedJson(response));
+            let result: GitHubIdentity;
+            try {
+                result = normalizeIdentity(await readBoundedJson(response));
+            } catch {
+                throw new GitHubOAuthAdapterError('identity_rejected');
+            }
             if (serverTime(dependencies.clock) >= deadline) throw new GitHubOAuthAdapterError();
             return result;
         }
         if (attempt !== 0 || !RETRYABLE_IDENTITY_STATUSES.has(response.status)) {
-            throw new GitHubOAuthAdapterError();
+            throw new GitHubOAuthAdapterError('identity_rejected');
         }
         const delay = retryDelay(response, dependencies);
         if (serverTime(dependencies.clock) + delay >= deadline) throw new GitHubOAuthAdapterError();

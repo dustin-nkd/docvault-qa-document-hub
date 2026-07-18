@@ -17,8 +17,9 @@ export function withProviderCircuit(provider: GitHubOAuthAdapter, circuit: Provi
                 const identity = await provider.resolveIdentity(input);
                 await circuit.record('success');
                 return identity;
-            } catch {
+            } catch (error) {
                 try { await circuit.record('failure'); } catch { /* keep provider error generic */ }
+                if (error instanceof GitHubOAuthAdapterError) throw error;
                 throw new GitHubOAuthAdapterError();
             }
         }

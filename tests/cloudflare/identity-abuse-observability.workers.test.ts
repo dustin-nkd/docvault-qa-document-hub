@@ -106,7 +106,8 @@ describe('CF-P3-007 abuse controls and privacy-safe operations', () => {
 
     it('accepts only the closed privacy-safe provider outcome categories', () => {
         for (const outcome of ['provider_credentials_rejected', 'provider_redirect_rejected',
-            'provider_verification_rejected', 'provider_identity_rejected'] as const) {
+            'provider_verification_rejected', 'provider_token_rejected',
+            'provider_token_response_rejected', 'provider_identity_rejected'] as const) {
             expect(createIdentityOperationalEvent({
                 requestId: '11111111-1111-4111-8111-111111111111',
                 route: '/api/v1/oauth/github/callback', method: 'GET', outcome,
@@ -133,6 +134,16 @@ describe('CF-P3-007 abuse controls and privacy-safe operations', () => {
             code: 'code', redirectUri: 'https://example.test/callback', pkceVerifier: 'verifier'
         })).rejects.toBeInstanceOf(GitHubOAuthAdapterError);
         expect(providerCalls).toBe(0);
+
+        const closedCircuit: ProviderCircuit = {
+            beforeRequest: async () => 'closed', record: async () => undefined
+        };
+        const classified: GitHubOAuthAdapter = { resolveIdentity: async () => {
+            throw new GitHubOAuthAdapterError('token_response_rejected');
+        } };
+        await expect(withProviderCircuit(classified, closedCircuit).resolveIdentity({
+            code: 'code', redirectUri: 'https://example.test/callback', pkceVerifier: 'verifier'
+        })).rejects.toMatchObject({ category: 'token_response_rejected' });
     });
 
     it('records provider success/failure without replaying a request', async () => {
