@@ -54,16 +54,22 @@ export const SECURITY_RECIPE_CONTRACTS: Readonly<Record<SecurityMutationOperatio
         guard: `INSERT INTO transition_guards (id, actor_user_id, actor_device_id, workspace_id,
           operation, client_mutation_id, request_fingerprint, invitation_id, credential_digest,
           http_status, result_json, created_at, expires_at, authority_guard)
-         VALUES (?, ?, ?, ?, 'invitation.accept', ?, ?, ?, ?, 200, ?, ?, ?, 1)`,
+         VALUES (?, ?, ?, ?, 'invitation.accept', ?, ?, ?, ?, 201, ?, ?, ?, 1)`,
         domain: [
             `UPDATE invitations SET state = 'accepted', accepted_by = ?, accepted_at = ?
              WHERE id = ? AND workspace_id = ? AND state = 'pending'
                AND target_provider_subject = (SELECT provider_subject FROM users WHERE id = ?)
-               AND token_digest = ? AND expires_at >= ?`,
+               AND token_digest = ? AND expires_at > ?`,
             `INSERT INTO memberships (workspace_id, user_id, role, state, invited_by,
               accepted_by, removed_by, created_at, activated_at, removed_at, role_version)
              SELECT ?, ?, offered_role, 'pending_key', invited_by, ?, NULL, ?, NULL, NULL, 1
-             FROM invitations WHERE id = ? AND state = 'accepted'`
+             FROM invitations WHERE id = ? AND state = 'accepted'
+             ON CONFLICT(workspace_id, user_id) DO UPDATE SET
+               role = excluded.role, state = 'pending_key', invited_by = excluded.invited_by,
+               accepted_by = excluded.accepted_by, removed_by = NULL,
+               created_at = excluded.created_at, activated_at = NULL, removed_at = NULL,
+               role_version = memberships.role_version + 1
+             WHERE memberships.state = 'removed'`
         ], auditEvent: 'invitation.accepted', auditTarget: 'invitation'
     },
     'invitation.replace': {
