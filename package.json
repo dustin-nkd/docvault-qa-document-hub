@@ -49,6 +49,7 @@
     "cf:phase3:abuse:check": "node scripts/check-cloudflare-phase-3-abuse.mjs",
     "cf:phase3:preview-identity:check": "node scripts/check-cloudflare-phase-3-preview-identity.mjs",
     "cf:phase3:exit:check": "node scripts/check-cloudflare-phase-3-exit.mjs",
+    "cf:phase4:contract:check": "node scripts/check-cloudflare-phase-4-contract.mjs",
     "test": "node --test --test-reporter=spec tests/run.mjs",
     "test:collab:unit": "node --test tests/runtime-dependencies.test.mjs tests/api-shell.test.mjs tests/cloudflare-production-policy.test.mjs",
     "test:e2e": "node tests/browser-smoke.mjs",
