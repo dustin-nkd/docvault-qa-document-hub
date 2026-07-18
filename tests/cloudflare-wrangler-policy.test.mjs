@@ -73,6 +73,7 @@ test('Preview burst Worker rejects public exposure, authority drift, and extra b
     for (const mutate of [
         (config) => { config.workers_dev = true; },
         (config) => { config.routes = ['example.com/*']; },
+        (config) => { config.observability.head_sampling_rate = 0.1; },
         (config) => { config.ratelimits[0].simple.limit = 7; },
         (config) => { config.vars = { UNSAFE: 'value' }; }
     ]) {

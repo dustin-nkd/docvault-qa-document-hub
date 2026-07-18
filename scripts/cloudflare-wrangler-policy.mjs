@@ -156,7 +156,7 @@ export function validateBurstWorkerConfig(config, source, compatibilityDate = '2
     assert(config.compatibility_date === compatibilityDate, 'Burst Worker compatibility date drifted');
     assert(JSON.stringify(config.compatibility_flags) === '["nodejs_compat"]', 'Burst Worker flags drifted');
     assert(config.workers_dev === false, 'Burst Worker must not expose a workers.dev route');
-    assert(JSON.stringify(config.observability) === JSON.stringify({ enabled: true, head_sampling_rate: 0.1 }),
+    assert(JSON.stringify(config.observability) === JSON.stringify({ enabled: true, head_sampling_rate: 1 }),
         'Burst Worker observability drifted');
     assert(JSON.stringify(config.ratelimits) === JSON.stringify([{
         name: 'AUTH_BURST_LIMITER', namespace_id: '1010', simple: { limit: 6, period: 60 }
