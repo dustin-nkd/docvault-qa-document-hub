@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const manifest = JSON.parse(read('config/cloudflare/phase-3-exit-gate.json'));
+const wrangler = JSON.parse(read('wrangler.jsonc'));
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+assert(manifest.phase === 'CF-P3' && manifest.story === 'CF-P3-010' && manifest.status === 'PASS', 'Phase 3 exit manifest drifted');
+assert(manifest.gate_authorization?.id === 'P3-G5' && manifest.gate_authorization.decision === 'APPROVED', 'P3-G5 authorization drifted');
+assert(manifest.decision?.phase_3_identity_preview === 'GO' && manifest.decision?.phase_4_collaboration_implementation === 'GO' && manifest.decision?.collaboration_activation === 'NO-GO' && manifest.decision?.production_identity === 'NO-GO', 'Phase 3 decision boundary drifted');
+assert(manifest.deferred_to_phase_4?.length === 2 && manifest.deferred_to_phase_4.every(value => /Phase 4/.test(value)), 'Deferred Phase 4 obligations drifted');
+assert(Object.values(manifest.quality || {}).every(value => value === 0), 'Phase 3 quality exception is not zero');
+assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars].every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Production or collaboration boundary drifted');
+const directory = path.join(root, 'docs/collaboration-foundation/evidence/phase-3');
+for (const id of manifest.evidence) { const source = read(`docs/collaboration-foundation/evidence/phase-3/${id}.md`); assert(source.startsWith(`# ${id} `) && /^Status: PASS$/m.test(source), `${id} is not PASS`); }
+const report = read('docs/collaboration-foundation/phase-3-exit-report.md');
+assert(/^Status: PASS$/m.test(report) && report.includes('Phase 4 collaboration implementation: `GO`') && report.includes('Collaboration activation: `NO-GO`'), 'Phase 3 exit report drifted');
+console.log('Cloudflare Phase 3 exit gate passed');
+console.log('  Preview identity: GO; Phase 4 collaboration implementation: GO');
+console.log('  Production identity and collaboration activation: NO-GO');

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P3",
+  "story": "CF-P3-010",
+  "status": "PASS",
+  "gate_authorization": { "id": "P3-G5", "decision": "APPROVED", "authorized_story": "CF-P3-010" },
+  "decision": {
+    "phase_3_identity_preview": "GO",
+    "phase_4_collaboration_implementation": "GO",
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO"
+  },
+  "deferred_to_phase_4": [
+    "Browser reauthentication and logout UX require the Phase 4 identity entrypoint.",
+    "Authenticated business read/write p95 requires Phase 4 collaboration routes; no test-only route is permitted."
+  ],
+  "evidence": ["CF-EV-P3-E2E-001", "CF-EV-P3-INT-005", "CF-EV-P3-PERF-002", "CF-EV-P3-SEC-009", "CF-EV-P3-OPS-003", "CF-EV-P3-OPS-004"],
+  "quality": { "p0_p1_skips": 0, "accepted_flakiness": 0, "secret_or_token_log_matches": 0, "replay_successes": 0, "csrf_bypasses": 0, "revocation_bypasses": 0 },
+  "remote_boundary": { "preview_identity": "enabled-synthetic-only", "preview_entity_rows_after_cleanup": 0, "production_d1_bindings": 0, "production_identity": "disabled", "github_pages_api": "absent", "collaboration_enabled": "false" }
+}
