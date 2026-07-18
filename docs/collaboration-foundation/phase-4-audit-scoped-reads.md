@@ -16,4 +16,4 @@ The implementation adds no route, migration, Wrangler binding, remote write, or 
 
 Evidence: `CF-EV-P4-UT-004`, `CF-EV-P4-INT-005`, `CF-EV-P4-SEC-006`, and `CF-EV-P4-QA-004`.
 
-Next decision: `P4-G6` may authorize `CF-P4-007` only: assemble the Phase 4 exit evidence and Phase 5 handoff.
+Gate amendment: `P4-G6` authorized `CF-P4-007` as the isolated Preview API integration. Phase 4 exit evidence and the Phase 5 handoff move to `CF-P4-008` behind `P4-G7`.

@@ -60,7 +60,8 @@ function relativeImports(source) {
 
 function resolveSourceImport(fromFile, specifier) {
     const candidate = path.resolve(path.dirname(fromFile), specifier);
-    for (const resolved of [candidate, `${candidate}.ts`, `${candidate}.mjs`]) {
+    for (const resolved of [candidate, `${candidate}.ts`, `${candidate}.mjs`,
+        path.join(candidate, 'index.ts'), path.join(candidate, 'index.mjs')]) {
         if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) return resolved;
     }
     return candidate;

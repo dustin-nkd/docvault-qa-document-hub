@@ -9,7 +9,8 @@ export const IDENTITY_KEY_LABELS = Object.freeze({
     oauthEnvelope: 'docvault:oauth-envelope-aead:v1',
     sessionToken: 'docvault:session-token-hmac:v1',
     csrfToken: 'docvault:csrf-token-hmac:v1',
-    rateLimit: 'docvault:rate-limit-hmac:v1'
+    rateLimit: 'docvault:rate-limit-hmac:v1',
+    controlPlaneCursor: 'docvault:collaboration-control-plane-cursor:v1'
 } as const);
 
 export interface IdentityKeyring {

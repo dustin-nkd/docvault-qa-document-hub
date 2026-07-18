@@ -69,7 +69,7 @@ export function validatePhase4InvitationLifecycle({ manifest, prerequisite, sour
     }
     for (const control of ["redirect: 'manual'", 'AbortController', 'MAXIMUM_RESPONSE_BYTES = 8_192',
         'REQUEST_TIMEOUT_MS = 5_000', 'providerSubject: String(value.id)',
-        'Authorization: `Bearer ${configuration.accessToken}`']) {
+        'headers.Authorization = `Bearer ${configuration.accessToken}`']) {
         assert(provider.includes(control), `Invitation provider control missing: ${control}`);
     }
     for (const control of ['authorizeWorkspaceAction', "'invitation.create'", "'invitation.revoke'",

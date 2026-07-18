@@ -15,7 +15,7 @@ export interface InvitationIdentityResolver {
 }
 
 export interface GitHubInvitationResolverConfiguration {
-    readonly accessToken: string;
+    readonly accessToken?: string;
 }
 
 export interface GitHubInvitationResolverDependencies {
@@ -93,22 +93,26 @@ export function createGitHubInvitationResolver(
     configuration: GitHubInvitationResolverConfiguration,
     dependencies: GitHubInvitationResolverDependencies = PLATFORM_GITHUB_INVITATION_DEPENDENCIES
 ): InvitationIdentityResolver {
-    if (typeof configuration.accessToken !== 'string' || configuration.accessToken.length < 1
-        || configuration.accessToken.length > 512 || /[\u0000-\u0020\u007f]/.test(configuration.accessToken)) {
+    if (configuration.accessToken !== undefined
+        && (typeof configuration.accessToken !== 'string' || configuration.accessToken.length < 1
+            || configuration.accessToken.length > 512 || /[\u0000-\u0020\u007f]/.test(configuration.accessToken))) {
         throw new InvitationProviderError('INVITATION_PROVIDER_UNAVAILABLE');
     }
     return Object.freeze({
         async resolveLogin(input: string): Promise<ResolvedInvitationIdentity> {
             const login = normalizeGitHubLogin(input);
             let response: Response;
+            const headers: Record<string, string> = {
+                Accept: 'application/vnd.github+json',
+                'User-Agent': 'DocVault-QA-Document-Hub',
+                'X-GitHub-Api-Version': API_VERSION
+            };
+            if (configuration.accessToken !== undefined) {
+                headers.Authorization = `Bearer ${configuration.accessToken}`;
+            }
             try {
                 response = await dependencies.request(`${GITHUB_API}/users/${encodeURIComponent(login)}`, {
-                    method: 'GET', redirect: 'manual', headers: {
-                        Accept: 'application/vnd.github+json',
-                        Authorization: `Bearer ${configuration.accessToken}`,
-                        'User-Agent': 'DocVault-QA-Document-Hub',
-                        'X-GitHub-Api-Version': API_VERSION
-                    }
+                    method: 'GET', redirect: 'manual', headers
                 }, REQUEST_TIMEOUT_MS);
             } catch {
                 throw new InvitationProviderError('INVITATION_PROVIDER_UNAVAILABLE');
