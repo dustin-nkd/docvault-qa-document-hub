@@ -1,7 +1,9 @@
 # CF-P5-001 — E2EE key-foundation contract freeze
 
-Status: PASS  
-Entry: P5-G0 APPROVED  
+Status: PASS
+
+Entry: P5-G0 APPROVED
+
 Exit recommendation: P5-G1 APPROVE CF-P5-002 ONLY
 
 ## Frozen decisions
