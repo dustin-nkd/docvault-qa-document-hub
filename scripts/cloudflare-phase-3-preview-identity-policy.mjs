@@ -41,8 +41,10 @@ export function validatePhase3PreviewIdentityPolicy({ manifest, sprint, wrangler
     assert(runtimeSource.includes("Reflect.get(value, 'fetch')")
         && runtimeSource.indexOf("Reflect.get(value, 'fetch')") < runtimeSource.indexOf("'limit' in value"),
     'Service Fetcher must be preferred over RPC-shaped methods');
-    assert(workerSource.includes('env.AUTH_BURST_LIMITER') && !workerSource.includes('console.'),
-        'Private Worker boundary or logging drifted');
+    assert(workerSource.includes('env.AUTH_BURST_LIMITER') && workerSource.includes("'/v1/observe'")
+        && workerSource.includes('console.log(JSON.stringify(event))')
+        && !/console\.log\([^\n]*request|console\.log\([^\n]*headers/i.test(workerSource),
+    'Private Worker boundary or safe relay logging drifted');
 
     assert(same(manifest.live_boundary_results, {
         preview_session: 200, wrong_origin_transaction: 403, preview_business_route: 404,

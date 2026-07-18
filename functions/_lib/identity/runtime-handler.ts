@@ -14,7 +14,7 @@ import { createOAuthTransaction, type OAuthTransactionCheckpoint } from './oauth
 import {
     createIdentityOperationalEvent,
     PLATFORM_IDENTITY_EVENT_SINK,
-    type IdentityOutcome,
+    type IdentityEventSink, type IdentityOperationalEvent, type IdentityOutcome,
     type IdentityRouteTemplate
 } from './observability';
 import {
@@ -35,6 +35,7 @@ const SUBJECT = /^[1-9][0-9]{0,19}$/;
 interface IdentityRuntimeBindings extends IdentityEnvironmentInput {
     readonly COLLAB_DB?: AuthorizationSessionSource;
     readonly AUTH_BURST_SERVICE?: IdentityBurstLimiter;
+    readonly AUTH_EVENT_RELAY?: IdentityEventSink;
     readonly PREVIEW_ALLOWED_GITHUB_SUBJECTS?: string;
 }
 
@@ -45,7 +46,7 @@ export interface IdentityRuntimeDependencies {
     readonly failures: { checkpoint(name: OAuthTransactionCheckpoint | OAuthCallbackCheckpoint |
         SessionLifecycleCheckpoint): void | Promise<void> };
     readonly provider: (configuration: { readonly clientId: string; readonly clientSecret: string }) => GitHubOAuthAdapter;
-    readonly events: typeof PLATFORM_IDENTITY_EVENT_SINK;
+    readonly events: IdentityEventSink;
 }
 
 const PLATFORM_IDENTITY_RUNTIME_DEPENDENCIES: IdentityRuntimeDependencies = Object.freeze({
@@ -71,13 +72,17 @@ function databaseBinding(source: object): AuthorizationSessionSource | undefined
         ? value as AuthorizationSessionSource : undefined;
 }
 
-function limiterBinding(source: object): IdentityBurstLimiter | undefined {
+function internalServiceBinding(source: object): { fetch(request: Request): Promise<Response> } | undefined {
     if (!('AUTH_BURST_SERVICE' in source)) return undefined;
     const value = Reflect.get(source, 'AUTH_BURST_SERVICE');
     if (typeof value !== 'object' || value === null) return undefined;
     const fetch = Reflect.get(value, 'fetch');
-    if (typeof fetch === 'function') {
-        const service = value as { fetch(request: Request): Promise<Response> };
+    return typeof fetch === 'function' ? value as { fetch(request: Request): Promise<Response> } : undefined;
+}
+
+function limiterBinding(source: object): IdentityBurstLimiter | undefined {
+    const service = internalServiceBinding(source);
+    if (service) {
         return Object.freeze({
             async limit(options: { readonly key: string }): Promise<{ readonly success: boolean }> {
                 const response = await service.fetch(new Request('https://identity-burst.internal/v1/limit', {
@@ -98,8 +103,27 @@ function limiterBinding(source: object): IdentityBurstLimiter | undefined {
             }
         });
     }
-    if ('limit' in value && typeof Reflect.get(value, 'limit') === 'function') return value as IdentityBurstLimiter;
+    const value = Reflect.get(source, 'AUTH_BURST_SERVICE');
+    if (typeof value === 'object' && value !== null && 'limit' in value && typeof Reflect.get(value, 'limit') === 'function') {
+        return value as IdentityBurstLimiter;
+    }
     return undefined;
+}
+
+function eventRelayBinding(source: object): IdentityEventSink | undefined {
+    const service = internalServiceBinding(source);
+    if (!service) return undefined;
+    return Object.freeze({
+        async emit(event: IdentityOperationalEvent) {
+            const response = await service.fetch(new Request('https://identity-burst.internal/v1/observe', {
+                method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify(createIdentityOperationalEvent(event))
+            }));
+            if (response.status !== 204 || response.headers.get('Content-Length') !== null) {
+                throw new Error('IDENTITY_OBSERVABILITY_UNAVAILABLE');
+            }
+        }
+    });
 }
 
 function bindings(source: object): IdentityRuntimeBindings {
@@ -115,7 +139,8 @@ function bindings(source: object): IdentityRuntimeBindings {
         RATE_LIMIT_KEY: stringBinding(source, 'RATE_LIMIT_KEY'),
         PREVIEW_ALLOWED_GITHUB_SUBJECTS: stringBinding(source, 'PREVIEW_ALLOWED_GITHUB_SUBJECTS'),
         COLLAB_DB: databaseBinding(source),
-        AUTH_BURST_SERVICE: limiterBinding(source)
+        AUTH_BURST_SERVICE: limiterBinding(source),
+        AUTH_EVENT_RELAY: eventRelayBinding(source)
     });
 }
 
@@ -337,12 +362,12 @@ export async function handleIdentityRuntime(request: Request, source: object,
             : error instanceof IdentityRequestPolicyError ? 'rejected' : 'internal_error';
         response = errorResponse(error, requestId, runtime.cookieName);
     }
-    try {
-        await dependencies.events.emit(createIdentityOperationalEvent({ requestId,
-            route: routeTemplate(request), method: request.method as 'GET' | 'POST', outcome: operational.outcome,
-            status: response.status, latencyMs: Math.min(30_000, Math.max(0, dependencies.clock.now() - startedAt)),
-            environment: 'preview' }));
-    } catch { /* Observability cannot alter authentication authority or disclose request data. */ }
+    const event = createIdentityOperationalEvent({ requestId,
+        route: routeTemplate(request), method: request.method as 'GET' | 'POST', outcome: operational.outcome,
+        status: response.status, latencyMs: Math.min(30_000, Math.max(0, dependencies.clock.now() - startedAt)),
+        environment: 'preview' });
+    try { await dependencies.events.emit(event); } catch { /* Observability cannot alter authentication authority. */ }
+    try { await env.AUTH_EVENT_RELAY?.emit(event); } catch { /* Relay failure cannot alter authentication authority. */ }
     return response;
 }
 

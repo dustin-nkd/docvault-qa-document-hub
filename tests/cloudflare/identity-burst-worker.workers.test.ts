@@ -38,4 +38,20 @@ describe('CF-P3-G4B preview burst limiter Worker', () => {
         expect(response.status).toBe(503);
         expect(await response.text()).toBe('{"error":"UNAVAILABLE"}');
     });
+
+    it('relays only an exact reviewed operational event to the private worker log', async () => {
+        const event = {
+            requestId: '00000000-0000-4000-8000-000000000001', route: '/api/v1/session', method: 'GET',
+            outcome: 'success', status: 200, latencyMs: 1, environment: 'preview'
+        };
+        const response = await handleIdentityBurst(new Request('https://identity-burst.internal/v1/observe', {
+            method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(event)
+        }), { limit: vi.fn() });
+        expect(response.status).toBe(204);
+        expect(await response.text()).toBe('');
+        expect((await handleIdentityBurst(new Request('https://identity-burst.internal/v1/observe', {
+            method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
+            body: JSON.stringify({ ...event, code: 'not-allowed' })
+        }), { limit: vi.fn() })).status).toBe(400);
+    });
 });

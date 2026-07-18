@@ -111,9 +111,12 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
     });
 
     it('sends only the HMAC digest through the Preview service binding and fails closed on response drift', async () => {
-        let captured: Request | undefined;
+        const captured: Request[] = [];
         const service = { fetch: async (input: Request) => {
-            captured = input;
+            captured.push(input);
+            if (new URL(input.url).pathname === '/v1/observe') {
+                return new Response(null, { status: 204 });
+            }
             return new Response('{"success":true}', {
                 status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' }
             });
@@ -122,9 +125,14 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
             method: 'POST', body: JSON.stringify({ purpose: 'sign_in' })
         }), runtimeBindings({ AUTH_BURST_SERVICE: service }), dependencies());
         expect(response?.status).toBe(201);
-        expect(captured?.method).toBe('POST');
-        expect(new URL(captured?.url ?? '').pathname).toBe('/v1/limit');
-        expect(await captured?.json()).toEqual({ key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
+        expect(captured).toHaveLength(2);
+        expect(captured[0]?.method).toBe('POST');
+        expect(new URL(captured[0]?.url ?? '').pathname).toBe('/v1/limit');
+        expect(await captured[0]?.json()).toEqual({ key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
+        expect(new URL(captured[1]?.url ?? '').pathname).toBe('/v1/observe');
+        expect(Object.keys(await captured[1]?.json() ?? {}).sort()).toEqual([
+            'environment', 'latencyMs', 'method', 'outcome', 'requestId', 'route', 'status'
+        ]);
         expect(await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
             method: 'POST', body: JSON.stringify({ purpose: 'sign_in' })
         }), runtimeBindings({ AUTH_BURST_SERVICE: {
@@ -137,14 +145,15 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         const response = await handleIdentityRuntime(request('/api/v1/oauth/github/transactions', {
             method: 'POST', body: JSON.stringify({ purpose: 'sign_in' })
         }), runtimeBindings({ AUTH_BURST_SERVICE: {
-            fetch: async () => {
+            fetch: async (input: Request) => {
                 fetchCalls += 1;
+                if (new URL(input.url).pathname === '/v1/observe') return new Response(null, { status: 204 });
                 return new Response('{"success":true}', { status: 200 });
             },
             limit: async () => { throw new Error('RPC_SHOULD_NOT_BE_USED'); }
         } }), dependencies());
         expect(response?.status).toBe(201);
-        expect(fetchCalls).toBe(1);
+        expect(fetchCalls).toBe(2);
     });
 
     it('completes login only for an allowlisted numeric subject and issues the isolated host cookie', async () => {
