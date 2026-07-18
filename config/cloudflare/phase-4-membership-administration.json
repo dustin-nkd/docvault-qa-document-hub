@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P4",
+  "story": "CF-P4-005",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P4-G4",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P4-005",
+    "next_gate": "P4-G5",
+    "next_story": "CF-P4-006"
+  },
+  "operations": ["list-members", "change-role", "remove-member", "transfer-ownership"],
+  "authority": {
+    "policy": "rbac-v1-live-d1",
+    "owner_role_changes": ["admin", "editor", "viewer"],
+    "admin_role_changes": ["editor", "viewer"],
+    "direct_owner_assignment": false,
+    "ownership_transfer_recent_auth_minutes": 15,
+    "ownership_transfer_confirmation": "TRANSFER_OWNERSHIP",
+    "ownership_transfer_target": "active-and-key-ready",
+    "client_authority_fields": 0
+  },
+  "removal_effects": [
+    "membership-removed",
+    "matching-pending-invitation-revoked",
+    "workspace-key-envelopes-revoked",
+    "workspace-rotation-required",
+    "next-request-denied",
+    "one-audit-event"
+  ],
+  "invariants": [
+    "live-authority-before-every-operation",
+    "authority-repeated-inside-write-batch",
+    "role-version-compare-and-swap",
+    "owner-role-changes-use-dedicated-transfer",
+    "admin-cannot-affect-admin-or-owner",
+    "self-removal-denied",
+    "ownership-transfer-is-atomic",
+    "at-least-one-owner-always-remains",
+    "mutation-replay-is-single-result-single-audit",
+    "audit-failure-rolls-back-every-domain-write",
+    "member-list-is-bounded-and-keyset-paginated",
+    "no-document-or-cryptographic-secret-metadata-returned"
+  ],
+  "scope": {
+    "routes_added": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "production_identity_enabled": false,
+    "preview_business_routes_enabled": false,
+    "collaboration_enabled": false
+  },
+  "workers_test_file": "tests/cloudflare/membership-administration.workers.test.ts",
+  "workers_test_count": 8,
+  "evidence": ["CF-EV-P4-UT-003", "CF-EV-P4-INT-004", "CF-EV-P4-SEC-005", "CF-EV-P4-QA-003"],
+  "next_decision": {
+    "gate": "P4-G5",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P4-006-only",
+    "remote_changes_authorized": false
+  }
+}

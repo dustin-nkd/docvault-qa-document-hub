@@ -40,3 +40,4 @@ import './cloudflare-phase-3-preview-identity-policy.test.mjs';
 import './cloudflare-phase-4-workspace-bootstrap-policy.test.mjs';
 import './cloudflare-phase-4-central-rbac-policy.test.mjs';
 import './cloudflare-phase-4-invitation-lifecycle-policy.test.mjs';
+import './cloudflare-phase-4-membership-administration-policy.test.mjs';
