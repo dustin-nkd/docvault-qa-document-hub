@@ -100,7 +100,7 @@
     "Production has no collaboration D1 binding and all collaboration flags remain false.",
     "The GitHub Pages fallback remains static and has no collaboration API authority.",
     "Phase 4 exposes control-plane routes only on the isolated Preview origin.",
-    "Device enrollment, workspace key envelopes, encrypted documents, revisions, sync, and conflict handling remain Phase 5 scope.",
+    "Device enrollment, workspace key envelopes, rotation, and no-escrow recovery remain Phase 5 scope; encrypted documents, revisions, conflicts, and sync remain Phase 6 scope.",
     "Authenticated business-route performance is characterized in disposable local D1; remote Preview measurement requires a real user session and no test-only bypass is permitted.",
     "D1 Time Travel was verified read-only; restoring the shared Preview database was intentionally not executed because restore overwrites database state. Boundary requests may advance bounded rate-limit counters but cannot create collaboration business data without authentication."
   ],

@@ -21,6 +21,6 @@ Recovery was rehearsed without destructive action. D1 Time Travel availability w
 
 The completed qualification passed 179 Node tests and 156 Workers/D1 tests, Functions typecheck, dependency audit with zero vulnerabilities, browser regression, artifact allowlist, rollback, and deployment-boundary gates. Authenticated control-plane reads carry a 250 ms local D1 p95 budget; the ten-sample remote unauthenticated Preview boundary p95 was 235 ms. No test-only authentication or production bypass was introduced.
 
-Known remaining work is explicitly Phase 5: device enrollment, protected local private keys, workspace key versions and envelopes, encrypted documents and revisions, conflict-safe sync, and their Preview UI/API integration. These are prerequisites to any activation decision.
+Known remaining work is sequenced explicitly: Phase 5 delivers device enrollment, protected local private keys, workspace key versions/envelopes, rotation, no-escrow recovery, and their isolated Preview qualification. Phase 6 retains encrypted documents, revisions, conflicts, and sync. Both phases remain prerequisites to any activation decision.
 
 Cross-functional sign-off: Product Owner, Senior QA, Security Reviewer, Operations, Privacy Reviewer, UX Lead, and Technical Lead approve the Phase 5 implementation handoff while retaining the Production and collaboration activation NO-GO.

@@ -89,7 +89,8 @@ Gate G4 / Phase 0 Exit was approved by the Product Owner on 2026-07-15.
 
 - [Phase 4 Preview API integration](phase-4-preview-api-integration.md) — `CF-P4-007` connects eleven reviewed control-plane operations to the isolated Preview runtime while production and GitHub Pages remain disabled
 - [Phase 4 exit report](phase-4-exit-report.md) — `CF-P4-008` reconciles all story evidence, quality, security, schema, remote boundaries, and read-only recovery before the Phase 5 handoff
-- [Phase 5 handoff](phase-5-handoff.md) — ordered device-key, E2EE, encrypted-revision, sync, recovery, and Preview-integration scope; Production remains disabled
+- [Phase 5 handoff](phase-5-handoff.md) — corrected key-only scope for device keys, workspace envelopes, rotation/recovery, and Preview qualification; documents/revisions/sync remain Phase 6
+- [Phase 5 E2EE key-foundation sprint](phase-5-sprint.md) — eight gated stories for canonical crypto, protected device keys, device authority, workspace envelopes, rotation/recovery, isolated Preview qualification, and Phase 6 handoff
 
 ## Review ownership
 

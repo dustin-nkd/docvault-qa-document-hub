@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "sprint": "CF-P5-S01",
+  "title": "E2EE key foundation",
+  "status": "READY_FOR_APPROVAL",
+  "planned_window": {
+    "start": "2026-07-20",
+    "end": "2026-08-14",
+    "working_days": 20,
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "authorization": {
+    "gate": "P5-G0",
+    "decision": "PENDING",
+    "authorizes_on_approval": "CF-P5-001-only"
+  },
+  "entry": {
+    "phase_4_exit": "PASS",
+    "phase_5_device_keys_and_e2ee": "GO",
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_business_routes": "NO-GO",
+    "preview_schema_version": 10,
+    "preview_business_entity_rows": 0,
+    "production_d1_bindings": 0
+  },
+  "scope_reconciliation": {
+    "decision": "phase-5-is-device-and-workspace-key-foundation-only",
+    "authority": "explicit-user-scope-plus-approved-implementation-plan",
+    "phase_5_in_scope": [
+      "canonical-crypto-and-independent-vectors",
+      "browser-device-private-key-protection",
+      "device-registration-inventory-and-revocation",
+      "workspace-key-bootstrap-and-device-envelopes",
+      "key-readiness-provisioning-and-rotation",
+      "no-escrow-recovery-and-terminal-loss",
+      "isolated-preview-key-foundation-integration"
+    ],
+    "deferred_to_phase_6": [
+      "document-ciphertext-envelopes",
+      "encrypted-document-crud-and-revisions",
+      "conflicts-and-tombstones",
+      "encrypted-offline-outbox-and-sync"
+    ],
+    "deferred_to_phase_7": [
+      "complete-collaboration-document-ux",
+      "personal-to-workspace-copy",
+      "full-accessibility-release-matrix"
+    ]
+  },
+  "boundaries": {
+    "production_d1_bindings": 0,
+    "production_identity_enabled": false,
+    "production_business_routes_enabled": false,
+    "production_key_routes_enabled": false,
+    "github_pages_collaboration_enabled": false,
+    "collaboration_enabled": false,
+    "preview_key_routes_enabled_before_P5_G4": false,
+    "document_routes_enabled": false,
+    "sync_routes_enabled": false,
+    "server_plaintext_key_path_allowed": false,
+    "server_escrow_or_unlock_reset_allowed": false,
+    "recovery_artifact_allowed": false,
+    "deployed_test_bypass_allowed": false,
+    "real_customer_data_allowed": false,
+    "shared_preview_restore_allowed": false
+  },
+  "security_contract": {
+    "canonical_json": "RFC8785-JCS",
+    "binary_encoding": "RFC4648-base64url-unpadded-canonical",
+    "device_suite": "P256-ECDH-v1",
+    "private_key_kdf": "PBKDF2-HMAC-SHA256-v1",
+    "private_key_kdf_iterations": 600000,
+    "private_key_envelope": "A256GCM-v1",
+    "workspace_key_suite": "P256-HKDF-SHA256-A256GCM-v1",
+    "workspace_dek_bytes": 32,
+    "aes_gcm_nonce_bytes": 12,
+    "aes_gcm_tag_bytes": 16,
+    "hkdf_salt_bytes": 32,
+    "device_private_key_persistence": "encrypted-pkcs8-envelope-only-in-indexeddb",
+    "unlocked_private_key": "non-extractable-deriveBits-only",
+    "workspace_plaintext_key_server_visibility": "prohibited",
+    "server_escrow": "prohibited",
+    "algorithm_negotiation_or_plaintext_fallback": "prohibited"
+  },
+  "schema_decisions_required_at_P5_G1": [
+    "close-first-provisioner-gap-between-workspace-key-version-placeholder-and-creator-envelope",
+    "prove-wrapper-holds-unrevoked-current-version-envelope-in-dedicated-provision-recipe",
+    "freeze-rotation-id-and-eligible-device-snapshot-persistence",
+    "select-schema-10-sufficiency-or-separately-gated-forward-only-migration"
+  ],
+  "route_scope": {
+    "status": "not-authorized-until-CF-P5-001-freeze-and-later-gates",
+    "authorized_routes": [],
+    "planned_operation_families": [
+      "device-register-list-revoke",
+      "canonical-provisioning-target-read",
+      "current-device-envelope-read",
+      "workspace-key-envelope-provision",
+      "workspace-key-rotation-start-status-commit"
+    ]
+  },
+  "stories": [
+    {
+      "id": "CF-P5-001",
+      "title": "Freeze key-foundation contract, vector plan, and schema decisions",
+      "size": "M",
+      "status": "PLANNED",
+      "entry_gate": "P5-G0",
+      "exit_gate": "P5-G1",
+      "owners": ["Product Owner", "Technical Lead", "Senior QA"],
+      "reviewers": ["Security Reviewer", "Operations", "Privacy Reviewer", "UX Lead"],
+      "requirements": ["CF-DEV-001", "CF-DEV-002", "CF-DEV-003", "CF-DEV-004", "CF-INV-005", "CF-KEY-001", "CF-KEY-002", "CF-KEY-003", "CF-KEY-004", "CF-KEY-005", "CF-KEY-006", "CF-OPS-003", "CF-NFR-004"],
+      "threats": ["T06", "T07", "T08", "T09", "T10", "T13", "T16", "T19", "T21"],
+      "risks": ["R03", "R05", "R06", "R07", "R09", "R10", "R11", "R16", "R17", "R18", "R19", "R21"],
+      "evidence": ["CF-EV-P5-STA-001", "CF-EV-P5-SEC-001"]
+    },
+    {
+      "id": "CF-P5-002",
+      "title": "Implement canonical crypto primitives and independent immutable vectors",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P5-G1",
+      "exit_gate": "P5-G2",
+      "owners": ["Senior Developer"],
+      "reviewers": ["Security Reviewer", "Senior QA", "Technical Lead"],
+      "requirements": ["CF-DEV-001", "CF-KEY-001", "CF-KEY-002", "CF-NFR-004"],
+      "threats": ["T07", "T08", "T10", "T21"],
+      "risks": ["R05", "R07", "R11", "R21"],
+      "evidence": ["CF-EV-P5-UT-001", "CF-EV-P5-VEC-001", "CF-EV-P5-SEC-002"]
+    },
+    {
+      "id": "CF-P5-003",
+      "title": "Implement protected browser device-key lifecycle",
+      "size": "XL",
+      "status": "PLANNED",
+      "entry_gate": "P5-G2",
+      "exit_gate": "P5-G2A",
+      "owners": ["Senior Developer", "UX Lead"],
+      "reviewers": ["Security Reviewer", "Senior QA", "Privacy Reviewer", "Technical Lead"],
+      "requirements": ["CF-DEV-001", "CF-DEV-002", "CF-DEV-004", "CF-NFR-002", "CF-NFR-004"],
+      "threats": ["T09", "T10", "T13", "T16"],
+      "risks": ["R06", "R07", "R09", "R11", "R16"],
+      "evidence": ["CF-EV-P5-UT-002", "CF-EV-P5-E2E-001", "CF-EV-P5-SEC-003", "CF-EV-P5-PERF-001"]
+    },
+    {
+      "id": "CF-P5-004",
+      "title": "Implement device registration, inventory, and revocation services",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P5-G2A",
+      "exit_gate": "P5-G2B",
+      "owners": ["Senior Developer"],
+      "reviewers": ["Security Reviewer", "Senior QA", "Technical Lead", "Operations"],
+      "requirements": ["CF-DEV-001", "CF-DEV-003", "CF-AUD-002"],
+      "threats": ["T07", "T12", "T16", "T21"],
+      "risks": ["R03", "R05", "R13", "R16", "R21"],
+      "evidence": ["CF-EV-P5-UT-003", "CF-EV-P5-INT-001", "CF-EV-P5-SEC-004", "CF-EV-P5-QA-001"]
+    },
+    {
+      "id": "CF-P5-005",
+      "title": "Implement workspace key bootstrap, envelopes, and readiness",
+      "size": "XL",
+      "status": "PLANNED",
+      "entry_gate": "P5-G2B",
+      "exit_gate": "P5-G2C",
+      "owners": ["Senior Developer", "Security Reviewer"],
+      "reviewers": ["Product Owner", "Senior QA", "Technical Lead", "Privacy Reviewer"],
+      "requirements": ["CF-WS-001", "CF-INV-005", "CF-KEY-001", "CF-KEY-002", "CF-KEY-003", "CF-KEY-005", "CF-KEY-006"],
+      "threats": ["T06", "T07", "T08", "T09", "T10", "T16", "T21"],
+      "risks": ["R03", "R05", "R07", "R09", "R13", "R16", "R18", "R21"],
+      "evidence": ["CF-EV-P5-UT-004", "CF-EV-P5-INT-002", "CF-EV-P5-SEC-005", "CF-EV-P5-QA-002"]
+    },
+    {
+      "id": "CF-P5-006",
+      "title": "Implement monotonic rotation and no-escrow recovery",
+      "size": "XL",
+      "status": "PLANNED",
+      "entry_gate": "P5-G2C",
+      "exit_gate": "P5-G3",
+      "owners": ["Senior Developer", "Product Owner", "Operations"],
+      "reviewers": ["Security Reviewer", "Senior QA", "Technical Lead", "UX Lead"],
+      "requirements": ["CF-DEV-003", "CF-DEV-004", "CF-KEY-003", "CF-KEY-004", "CF-KEY-005", "CF-KEY-006", "CF-OPS-003"],
+      "threats": ["T06", "T07", "T08", "T09", "T12", "T16", "T19"],
+      "risks": ["R05", "R09", "R10", "R13", "R16", "R17", "R18"],
+      "evidence": ["CF-EV-P5-UT-005", "CF-EV-P5-INT-003", "CF-EV-P5-E2E-002", "CF-EV-P5-SEC-006", "CF-EV-P5-OPS-001"]
+    },
+    {
+      "id": "CF-P5-007",
+      "title": "Integrate and qualify isolated Preview key foundation",
+      "size": "XL",
+      "status": "PLANNED",
+      "entry_gate": "P5-G3",
+      "remote_authorization_gate": "P5-G4",
+      "exit_gate": "P5-G4A",
+      "owners": ["Senior QA", "Operations", "Senior Developer"],
+      "reviewers": ["Security Reviewer", "Product Owner", "Technical Lead", "Privacy Reviewer", "UX Lead"],
+      "requirements": ["CF-DEV-001", "CF-DEV-002", "CF-DEV-003", "CF-DEV-004", "CF-INV-005", "CF-KEY-001", "CF-KEY-002", "CF-KEY-003", "CF-KEY-004", "CF-KEY-005", "CF-KEY-006", "CF-AUD-002", "CF-NFR-001", "CF-NFR-002", "CF-NFR-004"],
+      "threats": ["T06", "T07", "T08", "T09", "T10", "T13", "T16", "T18", "T19", "T21"],
+      "risks": ["R03", "R05", "R06", "R07", "R09", "R10", "R11", "R15", "R16", "R17", "R19", "R21", "R22"],
+      "evidence": ["CF-EV-P5-E2E-003", "CF-EV-P5-PERF-002", "CF-EV-P5-SEC-007", "CF-EV-P5-OPS-002", "CF-EV-P5-QA-003"]
+    },
+    {
+      "id": "CF-P5-008",
+      "title": "Assemble Phase 5 exit and Phase 6 handoff",
+      "size": "M",
+      "status": "PLANNED",
+      "entry_gate": "P5-G4A",
+      "exit_gate": "P5-G5",
+      "owners": ["Senior QA", "Product Owner", "Technical Lead"],
+      "reviewers": ["Security Reviewer", "Operations", "Privacy Reviewer", "UX Lead"],
+      "requirements": ["CF-DEV-001", "CF-DEV-002", "CF-DEV-003", "CF-DEV-004", "CF-KEY-001", "CF-KEY-002", "CF-KEY-003", "CF-KEY-004", "CF-KEY-005", "CF-KEY-006", "CF-OPS-003", "CF-NFR-004"],
+      "threats": ["T06", "T07", "T08", "T09", "T10", "T13", "T16", "T19", "T21"],
+      "risks": ["R03", "R05", "R06", "R07", "R09", "R10", "R11", "R16", "R17", "R18", "R19", "R21"],
+      "evidence": ["CF-EV-P5-QA-004", "CF-EV-P5-SEC-008", "CF-EV-P5-OPS-003", "CF-EV-P5-STA-002"]
+    }
+  ],
+  "quality_budgets": {
+    "p0_p1_skips": 0,
+    "p0_p1_quarantines": 0,
+    "accepted_flakiness": 0,
+    "open_p0_p1_defects": 0,
+    "prohibited_material_canary_matches": 0,
+    "crypto_downgrade_or_plaintext_fallback_successes": 0,
+    "cross_binding_unwrap_successes": 0,
+    "unauthorized_provisioning_successes": 0,
+    "revoked_device_future_envelope_successes": 0,
+    "nonce_salt_or_ephemeral_key_reuse_in_100_trials": 0,
+    "positive_and_negative_vector_agreement_percent": 100,
+    "pbkdf2_600k_p95_ms": 1500,
+    "pbkdf2_600k_max_ms": 2500,
+    "device_protect_or_unlock_p95_ms": 2000,
+    "workspace_wrap_or_unwrap_p95_ms": 250,
+    "provision_25_devices_p95_ms": 3000,
+    "preview_read_p95_ms": 300,
+    "preview_write_p95_ms": 500,
+    "personal_guest_eager_phase5_crypto_bytes": 0,
+    "lazy_phase5_crypto_chunk_gzip_kib": 50,
+    "total_collaboration_startup_gzip_kib": 75,
+    "dependency_critical_high_vulnerabilities": 0
+  },
+  "recovery_contract": {
+    "alternate_key_ready_owner_or_admin_provisioning": "required",
+    "all_provisioners_lost": "terminal-cryptographic-loss",
+    "operator_or_server_key_recovery": "prohibited",
+    "d1_restore_scope": "ciphertext-and-metadata-only-never-plaintext-key-recovery",
+    "shared_preview_time_travel": "read-only-bookmark-fingerprint-only",
+    "shared_preview_restore": "prohibited-without-separate-destructive-approval",
+    "disposable_d1_restore_rehearsal": "required-before-P5-exit",
+    "rollback_rule": "preserve-monotonic-key-version-and-envelope-history"
+  }
+}
