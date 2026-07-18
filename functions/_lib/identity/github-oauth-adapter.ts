@@ -47,7 +47,7 @@ export interface GitHubOAuthAdapter {
 }
 
 export type GitHubOAuthFailureCategory = 'credentials_rejected' | 'redirect_rejected'
-    | 'verification_rejected' | 'token_rejected' | 'token_response_rejected'
+    | 'verification_rejected' | 'token_transport_unavailable' | 'token_rejected' | 'token_response_rejected'
     | 'identity_rejected' | 'unavailable';
 
 export class GitHubOAuthAdapterError extends Error {
@@ -200,21 +200,26 @@ function retryDelay(response: Response, dependencies: GitHubOAuthAdapterDependen
 
 async function exchangeCode(configuration: GitHubOAuthConfiguration, input: GitHubOAuthResolutionInput,
     deadline: number, dependencies: GitHubOAuthAdapterDependencies): Promise<string> {
-    const response = await dependencies.transport.request(TOKEN_ENDPOINT, {
-        method: 'POST', redirect: 'error',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'DocVault-QA-Document-Hub'
-        },
-        body: new URLSearchParams({
-            client_id: configuration.clientId,
-            client_secret: configuration.clientSecret,
-            code: input.code,
-            redirect_uri: input.redirectUri,
-            code_verifier: input.pkceVerifier
-        }).toString()
-    }, remainingTimeout(deadline, dependencies.clock));
+    let response: Response;
+    try {
+        response = await dependencies.transport.request(TOKEN_ENDPOINT, {
+            method: 'POST', redirect: 'error',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'DocVault-QA-Document-Hub'
+            },
+            body: new URLSearchParams({
+                client_id: configuration.clientId,
+                client_secret: configuration.clientSecret,
+                code: input.code,
+                redirect_uri: input.redirectUri,
+                code_verifier: input.pkceVerifier
+            }).toString()
+        }, remainingTimeout(deadline, dependencies.clock));
+    } catch {
+        throw new GitHubOAuthAdapterError('token_transport_unavailable');
+    }
     let payload: Record<string, unknown>;
     try {
         payload = await readBoundedJson(response);

@@ -222,6 +222,13 @@ describe('CF-P3-004 GitHub provider adapter', () => {
                 .rejects.toMatchObject({ code: 'GITHUB_OAUTH_UNAVAILABLE' });
             expect(calls).toBeLessThanOrEqual(2);
         }
+        const transportFailure = createGitHubOAuthAdapter({ clientId: 'client-id', clientSecret: 'client-secret' }, {
+            transport: { async request() { throw new Error('transport-canary'); } },
+            clock: { now: () => 1_900_000_250_000 }, random: random(3), sleep: { wait: async () => {} }
+        });
+        await expect(transportFailure.resolveIdentity({ code: 'code', redirectUri: GITHUB_OAUTH_CONSTANTS.callbackUri,
+            pkceVerifier: encodeBase64Url(new Uint8Array(64).fill(11)) }))
+            .rejects.toMatchObject({ category: 'token_transport_unavailable' });
     });
 
     it('classifies only the closed GitHub token error codes without retaining provider descriptions', async () => {

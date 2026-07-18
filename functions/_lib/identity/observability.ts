@@ -1,7 +1,8 @@
 export type IdentityRouteTemplate = '/api/v1/oauth/github/transactions' |
     '/api/v1/oauth/github/callback' | '/api/v1/session' | '/api/v1/session/logout';
 export type IdentityOutcome = 'success' | 'rejected' | 'rate_limited' | 'provider_credentials_rejected'
-    | 'provider_redirect_rejected' | 'provider_verification_rejected' | 'provider_token_rejected'
+    | 'provider_redirect_rejected' | 'provider_verification_rejected' | 'provider_token_transport_unavailable'
+    | 'provider_token_rejected'
     | 'provider_token_response_rejected' | 'provider_identity_rejected'
     | 'provider_unavailable' | 'internal_error';
 
@@ -22,8 +23,8 @@ const ROUTES = new Set<IdentityRouteTemplate>(['/api/v1/oauth/github/transaction
     '/api/v1/oauth/github/callback', '/api/v1/session', '/api/v1/session/logout']);
 const OUTCOMES = new Set<IdentityOutcome>(['success', 'rejected', 'rate_limited',
     'provider_credentials_rejected', 'provider_redirect_rejected', 'provider_verification_rejected',
-    'provider_token_rejected', 'provider_token_response_rejected', 'provider_identity_rejected',
-    'provider_unavailable', 'internal_error']);
+    'provider_token_transport_unavailable', 'provider_token_rejected', 'provider_token_response_rejected',
+    'provider_identity_rejected', 'provider_unavailable', 'internal_error']);
 
 export function createIdentityOperationalEvent(event: IdentityOperationalEvent): IdentityOperationalEvent {
     if (Object.keys(event).length !== 7 || !REQUEST_ID.test(event.requestId) || !ROUTES.has(event.route)

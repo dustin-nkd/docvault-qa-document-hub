@@ -106,7 +106,7 @@ describe('CF-P3-007 abuse controls and privacy-safe operations', () => {
 
     it('accepts only the closed privacy-safe provider outcome categories', () => {
         for (const outcome of ['provider_credentials_rejected', 'provider_redirect_rejected',
-            'provider_verification_rejected', 'provider_token_rejected',
+            'provider_verification_rejected', 'provider_token_transport_unavailable', 'provider_token_rejected',
             'provider_token_response_rejected', 'provider_identity_rejected'] as const) {
             expect(createIdentityOperationalEvent({
                 requestId: '11111111-1111-4111-8111-111111111111',
