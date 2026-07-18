@@ -52,7 +52,8 @@ export function validatePhase4MembershipAdministration({ manifest, prerequisite,
         'role_version = role_version + 1', "state = 'removed'", "state = 'revoked'",
         'workspace_key_envelopes SET revoked_at', "state = 'rotating'",
         "confirmation !== 'TRANSFER_OWNERSHIP'", 'RECENT_AUTHENTICATION_MS',
-        "eventType: string", 'executeGuardedBatch', 'equalFingerprint']) {
+        'eventType: Extract<AuditEventType', 'assertAuditWriteShape',
+        'executeGuardedBatch', 'equalFingerprint']) {
         assert(service.includes(control), `Membership control missing: ${control}`);
     }
     const removeGuard = service.indexOf("'membership.remove', target");

@@ -7,6 +7,7 @@ import {
     type GuardedBatchStatement,
     type StoredMutationResult
 } from '../persistence';
+import { assertAuditWriteShape, type AuditEventType } from '../audit/event-registry';
 import { authorizeWorkspaceAction, type MembershipState, type WorkspaceRole } from '../rbac';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -247,8 +248,10 @@ function resultStatement(database: D1Database, mutationResultId: string): Guarde
     ).bind(mutationResultId) };
 }
 
-function auditStatement(database: D1Database, input: MutationBase, eventType: string,
+function auditStatement(database: D1Database, input: MutationBase, eventType: Extract<AuditEventType,
+    'membership.role_changed' | 'membership.removed' | 'ownership.transferred'>,
     metadata: string): GuardedBatchStatement {
+    assertAuditWriteShape(eventType, 'membership', metadata);
     return {
         role: 'audit', expectedChanges: 1,
         statement: database.prepare(

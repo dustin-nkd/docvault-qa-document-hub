@@ -1,4 +1,5 @@
 import { PLATFORM_RANDOM, type RandomBytesSource } from '../identity/crypto';
+import { assertAuditWriteShape, type AuditEventType } from '../audit/event-registry';
 import {
     PersistenceError,
     buildInvitationAcceptRecipe,
@@ -264,9 +265,10 @@ async function resolveReplay(
 function auditStatement(
     database: D1Database,
     input: InvitationMutationBase,
-    eventType: 'invitation.created' | 'invitation.replaced' | 'invitation.revoked',
+    eventType: Extract<AuditEventType, 'invitation.created' | 'invitation.replaced' | 'invitation.revoked'>,
     invitationId: string
 ): D1PreparedStatement {
+    assertAuditWriteShape(eventType, 'invitation', '{}');
     return database.prepare(
         `INSERT INTO audit_events (event_id, schema_version, workspace_id, event_type,
           outcome, reason_code, actor_user_id, actor_device_id, target_type, target_id,
@@ -281,7 +283,7 @@ function invitationMutationRecipe(
     input: InvitationMutationBase,
     guard: D1PreparedStatement,
     domain: readonly D1PreparedStatement[],
-    eventType: 'invitation.created' | 'invitation.replaced' | 'invitation.revoked',
+    eventType: Extract<AuditEventType, 'invitation.created' | 'invitation.replaced' | 'invitation.revoked'>,
     invitationId: string
 ): GuardedBatchRecipe<StoredMutationResult> {
     const statements: GuardedBatchStatement[] = [

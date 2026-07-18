@@ -1,3 +1,4 @@
+import { assertAuditWriteShape, type AuditEventType, type AuditTargetType } from '../audit/event-registry';
 import type { GuardedBatchRecipe, GuardedBatchStatement } from './atomic-batch';
 import { PersistenceError } from './repository';
 
@@ -29,8 +30,8 @@ interface RecipeContract {
     readonly ledger: 'mutation_results' | 'transition_guards';
     readonly guard: string;
     readonly domain: readonly string[];
-    readonly auditEvent: string;
-    readonly auditTarget: 'workspace' | 'invitation' | 'membership' | 'key_envelope' | 'document' | 'key_version';
+    readonly auditEvent: AuditEventType;
+    readonly auditTarget: AuditTargetType;
 }
 
 export const SECURITY_RECIPE_CONTRACTS: Readonly<Record<SecurityMutationOperation, RecipeContract>> = Object.freeze({
@@ -199,6 +200,7 @@ export function buildSecurityMutationRecipe(
     if (bindings.domain.length !== contract.domain.length) {
         throw new PersistenceError('PERSISTENCE_INTEGRITY');
     }
+    assertAuditWriteShape(contract.auditEvent, contract.auditTarget, '{}');
     const statements: GuardedBatchStatement[] = [
         { role: 'guard', statement: database.prepare(contract.guard).bind(...bindings.guard), expectedChanges: 1 },
         ...contract.domain.map((sql, index) => ({

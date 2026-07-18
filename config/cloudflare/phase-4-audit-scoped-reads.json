@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P4",
+  "story": "CF-P4-006",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P4-G5",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P4-006",
+    "next_gate": "P4-G6",
+    "next_story": "CF-P4-007"
+  },
+  "operations": ["list-audit-events", "filter-audit-events", "page-audit-events"],
+  "authority": {
+    "policy": "rbac-v1-live-d1",
+    "allowed_roles": ["owner", "admin"],
+    "denied_roles": ["editor", "viewer"],
+    "authorization_repeated_per_page": true,
+    "non_enumerating_cross_tenant_denial": true,
+    "client_authority_fields": 0
+  },
+  "pagination": {
+    "order": ["server_time-desc", "sequence-desc"],
+    "default_limit": 50,
+    "maximum_limit": 100,
+    "cursor_ttl_minutes": 15,
+    "cursor_integrity": "hmac-sha256",
+    "cursor_bindings": ["route", "environment", "workspace", "event-type", "occurred-from", "occurred-to", "position"]
+  },
+  "privacy": {
+    "event_registry": "closed-versioned-allow-list",
+    "schema_version": 8,
+    "raw_metadata_returned": false,
+    "content_search_supported": false,
+    "unknown_event_behavior": "fail-entire-page-closed"
+  },
+  "invariants": [
+    "workspace-scope-is-present-in-every-query",
+    "live-authority-before-cursor-verification",
+    "live-authority-before-every-page",
+    "stable-keyset-order-has-no-gaps-or-duplicates",
+    "next-cursor-is-null-at-the-exact-end",
+    "cursor-cannot-cross-workspace-filter-or-environment",
+    "audit-writers-must-use-the-shared-registry",
+    "only-approved-before-and-after-fields-are-projected",
+    "unknown-or-privacy-unsafe-record-fails-the-whole-page",
+    "no-document-content-or-cryptographic-secret-metadata-returned"
+  ],
+  "scope": {
+    "routes_added": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "production_identity_enabled": false,
+    "preview_business_routes_enabled": false,
+    "collaboration_enabled": false
+  },
+  "workers_test_file": "tests/cloudflare/audit-scoped-reads.workers.test.ts",
+  "workers_test_count": 8,
+  "evidence": ["CF-EV-P4-UT-004", "CF-EV-P4-INT-005", "CF-EV-P4-SEC-006", "CF-EV-P4-QA-004"],
+  "next_decision": {
+    "gate": "P4-G6",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P4-007-only",
+    "remote_changes_authorized": false
+  }
+}
