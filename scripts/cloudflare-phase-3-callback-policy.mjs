@@ -65,14 +65,14 @@ export function validatePhase3OAuthCallback({ manifest, sprintManifest, sprintSo
         && provider.identity_retries === 1 && sameSet(provider.retry_statuses || [], [429, 502, 503, 504])
         && provider.request_timeout_ms === 5000 && provider.overall_budget_ms === 8000
         && provider.maximum_retry_delay_ms === 1000 && provider.maximum_response_bytes === 16384
-        && provider.redirect_policy === 'error' && provider.provider_token_storage === 'prohibited',
+        && provider.redirect_policy === 'manual-reject' && provider.provider_token_storage === 'prohibited',
     'GitHub provider profile drifted');
     for (const phrase of ["const TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'",
         "const IDENTITY_ENDPOINT = 'https://api.github.com/user'", "const GITHUB_API_VERSION = '2026-03-10'",
         'const REQUEST_TIMEOUT_MS = 5_000', 'const OVERALL_BUDGET_MS = 8_000',
         'const MAXIMUM_RETRY_DELAY_MS = 1_000',
         'const RETRYABLE_IDENTITY_STATUSES = new Set([429, 502, 503, 504])',
-        'const MAXIMUM_RESPONSE_BYTES = 16_384', "redirect: 'error'", 'new URLSearchParams',
+        'const MAXIMUM_RESPONSE_BYTES = 16_384', "redirect: 'manual'", 'new URLSearchParams',
         'response.body.getReader()', 'await response.body.cancel()', 'Number.isSafeInteger(value.id)']) {
         assert(adapter.includes(phrase), `GitHub adapter control missing: ${phrase}`);
     }
@@ -97,7 +97,7 @@ export function validatePhase3OAuthCallback({ manifest, sprintManifest, sprintSo
         && service.includes('openAuthorizationSession(database)'), 'Atomic authority controls weakened');
 
     assert(manifest.workers_test_file === 'tests/cloudflare/oauth-callback.workers.test.ts'
-        && manifest.workers_test_count === 11 && (workersTestSource.match(/\bit\s*\(/g) || []).length === 11,
+        && manifest.workers_test_count === 12 && (workersTestSource.match(/\bit\s*\(/g) || []).length === 12,
     'Workers callback test inventory drifted');
     for (const phrase of ['never returns the provider token', 'eight-second provider budget',
         'non-numeric responses', 'closed GitHub token error codes', 'mutable login changes', 'exactly one concurrent callback',

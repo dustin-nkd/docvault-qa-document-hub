@@ -203,7 +203,10 @@ async function exchangeCode(configuration: GitHubOAuthConfiguration, input: GitH
     let response: Response;
     try {
         response = await dependencies.transport.request(TOKEN_ENDPOINT, {
-            method: 'POST', redirect: 'error',
+            // Never follow a cross-origin redirect with the OAuth client secret.
+            // `manual` lets the adapter reject a 3xx deterministically instead of
+            // turning it into a transport exception in the Workers runtime.
+            method: 'POST', redirect: 'manual',
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -219,6 +222,10 @@ async function exchangeCode(configuration: GitHubOAuthConfiguration, input: GitH
         }, remainingTimeout(deadline, dependencies.clock));
     } catch {
         throw new GitHubOAuthAdapterError('token_transport_unavailable');
+    }
+    if (response.status >= 300 && response.status < 400) {
+        try { await response.body?.cancel(); } catch { /* No provider body is trusted on redirects. */ }
+        throw new GitHubOAuthAdapterError('token_rejected');
     }
     let payload: Record<string, unknown>;
     try {
@@ -241,7 +248,8 @@ async function fetchIdentity(accessToken: string, deadline: number,
     dependencies: GitHubOAuthAdapterDependencies): Promise<GitHubIdentity> {
     for (let attempt = 0; attempt < 2; attempt += 1) {
         const response = await dependencies.transport.request(IDENTITY_ENDPOINT, {
-            method: 'GET', redirect: 'error',
+            // Do not forward the bearer token to a redirect destination.
+            method: 'GET', redirect: 'manual',
             headers: {
                 Accept: 'application/vnd.github+json',
                 Authorization: `Bearer ${accessToken}`,

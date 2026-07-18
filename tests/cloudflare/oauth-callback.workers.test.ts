@@ -172,7 +172,25 @@ describe('CF-P3-004 GitHub provider adapter', () => {
         expect(calls[0].url).not.toContain('client-secret-canary');
         expect(new Headers(calls[1].init.headers).get('Authorization')).toBe('Bearer provider-token-canary');
         expect(new Headers(calls[1].init.headers).get('X-GitHub-Api-Version')).toBe('2026-03-10');
-        expect(calls.every(call => call.init.redirect === 'error')).toBe(true);
+        expect(calls.every(call => call.init.redirect === 'manual')).toBe(true);
+    });
+
+    it('rejects a token-endpoint redirect without forwarding OAuth credentials', async () => {
+        const calls: { url: string; init: RequestInit }[] = [];
+        const adapter = createGitHubOAuthAdapter({ clientId: 'client-id', clientSecret: 'client-secret' }, {
+            transport: { async request(url, init) {
+                calls.push({ url, init });
+                return new Response(null, { status: 302, headers: { Location: 'https://untrusted.example/' } });
+            } },
+            clock: { now: () => 1_900_000_050_000 }, random: random(1), sleep: { wait: async () => {} }
+        });
+        await expect(adapter.resolveIdentity({
+            code: 'code', redirectUri: GITHUB_OAUTH_CONSTANTS.callbackUri,
+            pkceVerifier: encodeBase64Url(new Uint8Array(64).fill(9))
+        })).rejects.toMatchObject({ category: 'token_rejected' });
+        expect(calls).toHaveLength(1);
+        expect(calls[0].url).toBe(GITHUB_OAUTH_CONSTANTS.tokenEndpoint);
+        expect(calls[0].init.redirect).toBe('manual');
     });
 
     it('retries identity once with a capped delay inside the eight-second provider budget', async () => {

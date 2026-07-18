@@ -35,7 +35,7 @@
     "overall_budget_ms": 8000,
     "maximum_retry_delay_ms": 1000,
     "maximum_response_bytes": 16384,
-    "redirect_policy": "error",
+    "redirect_policy": "manual-reject",
     "stable_identity": "provider-plus-positive-safe-decimal-github-id",
     "display_metadata": ["login", "name", "avatar_url"],
     "provider_token_storage": "prohibited"
@@ -60,7 +60,7 @@
     "functions/_lib/identity/index.ts"
   ],
   "workers_test_file": "tests/cloudflare/oauth-callback.workers.test.ts",
-  "workers_test_count": 11,
+  "workers_test_count": 12,
   "negative_coverage": [
     "token-exchange-no-retry",
     "identity-single-bounded-retry",
