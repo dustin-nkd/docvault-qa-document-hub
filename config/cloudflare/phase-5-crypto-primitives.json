@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "story": "CF-P5-002",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P5-G1",
+    "decision": "APPROVED",
+    "authorized_story": "CF-P5-002",
+    "next_gate": "P5-G2",
+    "next_story": "CF-P5-003"
+  },
+  "scope": {
+    "isolated_runtime_modules_added": 4,
+    "runtime_route_calls": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "preview_deploy_authorized": false,
+    "production_identity_enabled": false,
+    "collaboration_enabled": false
+  },
+  "implementation": {
+    "runtime": "cloudflare-workers-web-crypto",
+    "canonical_json": "RFC8785-JCS-strict-I-JSON",
+    "binary_encoding": "RFC4648-base64url-unpadded-canonical",
+    "public_key": "exact-six-field-on-curve-P256-JWK",
+    "fingerprint": "base64url-SHA256-JCS-public-JWK",
+    "local_private_key": "PBKDF2-HMAC-SHA256-600000-A256GCM-bound-AAD",
+    "unlocked_private_key": "non-extractable-ECDH-deriveBits-only",
+    "workspace_wrap": "ephemeral-non-extractable-P256-ECDH-HKDF-SHA256-A256GCM",
+    "random": "crypto-getRandomValues-only",
+    "fallback": "none-fail-closed"
+  },
+  "source_files": [
+    "functions/_lib/e2ee/errors.ts",
+    "functions/_lib/e2ee/canonical.ts",
+    "functions/_lib/e2ee/jwk.ts",
+    "functions/_lib/e2ee/primitives.ts"
+  ],
+  "vector_manifest": {
+    "path": "tests/fixtures/cloudflare/phase-5-crypto-vectors.json",
+    "version": "CF-CRYPTO-V1",
+    "classification": "synthetic-only",
+    "families": 6,
+    "cases": 30,
+    "workers_runtime_cases": 10,
+    "independent_node_oracle_cases": 3,
+    "agreement_percent": 100,
+    "mutable": false
+  },
+  "negative_coverage": [
+    "noncanonical-base64url", "invalid-uuid-and-integer", "private-or-unknown-JWK-field",
+    "malformed-or-off-curve-P256-point", "wrong-unlock-secret", "private-envelope-AAD-substitution",
+    "private-envelope-ciphertext-tag-tamper", "PBKDF2-iteration-downgrade", "target-fingerprint-substitution",
+    "workspace-target-wrapper-version-substitution", "workspace-ciphertext-tag-tamper"
+  ],
+  "evidence": ["CF-EV-P5-UT-001", "CF-EV-P5-VEC-001", "CF-EV-P5-SEC-002"],
+  "next_decision": {
+    "gate": "P5-G2",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P5-003-only",
+    "remote_changes_authorized": false
+  }
+}

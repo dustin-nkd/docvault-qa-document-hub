@@ -6,7 +6,8 @@
   "approved_entry_gate": "P5-G0",
   "next_gate": {
     "id": "P5-G1",
-    "decision": "PENDING",
+    "decision": "APPROVED",
+    "approved_on": "2026-07-18",
     "authorizes_on_approval": "CF-P5-002-only"
   },
   "scope": {

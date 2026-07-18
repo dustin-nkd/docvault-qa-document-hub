@@ -11,10 +11,11 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P5-G0",
+    "gate": "P5-G1",
     "decision": "APPROVED",
     "approved_on": "2026-07-18",
-    "authorizes_on_approval": "CF-P5-001-only"
+    "authorized_story": "CF-P5-002",
+    "next_gate": "P5-G2"
   },
   "entry": {
     "phase_4_exit": "PASS",
@@ -121,7 +122,7 @@
       "id": "CF-P5-002",
       "title": "Implement canonical crypto primitives and independent immutable vectors",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P5-G1",
       "exit_gate": "P5-G2",
       "owners": ["Senior Developer"],

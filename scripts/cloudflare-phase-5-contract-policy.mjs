@@ -10,7 +10,8 @@ export function validatePhase5ContractFreeze({ contract, sprint, apiContract, sc
         && contract.story === 'CF-P5-001' && contract.status === 'PASS', 'CF-P5-001 identity/status drifted');
     assert(sprint.status === 'ACTIVE' && sprint.authorization?.decision === 'APPROVED'
         && sprint.stories?.[0]?.status === 'PASS', 'P5-G0/story state drifted');
-    assert(contract.next_gate?.id === 'P5-G1' && contract.next_gate.decision === 'PENDING'
+    assert(contract.next_gate?.id === 'P5-G1' && contract.next_gate.decision === 'APPROVED'
+        && contract.next_gate.approved_on === '2026-07-18'
         && contract.next_gate.authorizes_on_approval === 'CF-P5-002-only', 'P5-G1 ceiling drifted');
 
     const bootstrap = contract.first_provisioner || {};

@@ -23,4 +23,4 @@ validatePhase5ContractFreeze({
 console.log('Cloudflare CF-P5-001 contract freeze passed');
 console.log('  Bootstrap: stateless intent then atomic workspace/key/envelope creation');
 console.log('  Rotation: additive sequence 11 required, not authorized or created');
-console.log('  Next: P5-G1 may authorize CF-P5-002 only');
+console.log('  P5-G1 approved; historical CF-P5-001 contract remains frozen');
