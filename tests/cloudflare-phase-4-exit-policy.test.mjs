@@ -54,7 +54,7 @@ test('CF-P4-008 rejects destructive recovery, incompatible rollback, expired rev
         input => { input.manifest.recovery.shared_preview_restore_executed = true; },
         input => { input.manifest.recovery.previous_runtime_schema = 9; },
         input => { input.asOf = new Date('2026-10-19T00:00:00Z'); },
-        input => { input.handoff = input.handoff.replace('CF-P5-001', 'missing-story'); }
+        input => { input.handoff = input.handoff.replaceAll('CF-P5-001', 'missing-story'); }
     ]) {
         const input = actualInput(); mutate(input);
         assert.throws(() => validatePhase4Exit(input));

@@ -103,6 +103,14 @@ Columns: `id`, `workspace_id`, `key_version`, target user/device/fingerprint, wr
 
 Unique `(workspace_id, key_version, target_device_id)`. Foreign keys bind workspace version, target device/user, and wrapper device/user. Strict lengths and algorithm identifiers follow `crypto-contract.md`. No plaintext DEK is stored.
 
+### 3.9.1 Phase 5 additive rotation expansion (frozen, not yet applied)
+
+Schema 10 cannot represent the API contract's rotation identifier and immutable eligible-device snapshot. Phase 5 therefore requires a separately authorized, forward-only sequence-11 additive migration. Until that gate is approved, these objects are design-only and no migration or remote write is authorized.
+
+`workspace_key_rotations` records opaque rotation ID, workspace, consecutive from/to key versions, initiating user/device, bounded reason, state (`preparing`, `committed`, `aborted`), eligibility digest/count, staged count, and authoritative timestamps. A partial unique index permits at most one `preparing` rotation per workspace.
+
+`workspace_key_rotation_targets` records the immutable snapshot under `(rotation_id, target_device_id)`: workspace, target user/device/fingerprint, and state (`pending`, `staged`, `excluded`). Starting rotation atomically creates the preparing key-version row, rotation row, and target snapshot. Staged envelopes use the existing `workspace_key_envelopes` table for the preparing version. Commit reloads live authority, requires the current version and complete unchanged snapshot, and atomically advances the workspace version; abort revokes staged envelopes and never changes the current version. Eligibility changes require abort/restart, never silent snapshot mutation.
+
 ### 3.10 `documents`
 
 Columns: `id`, `workspace_id`, `current_revision`, `current_key_version`, `current_ciphertext_digest`, `ciphertext_bytes`, `envelope_version`, `state` (`active`, `tombstoned`), creator ID, server created/updated/tombstoned times.

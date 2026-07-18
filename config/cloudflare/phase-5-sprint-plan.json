@@ -3,7 +3,7 @@
   "phase": "CF-P5",
   "sprint": "CF-P5-S01",
   "title": "E2EE key foundation",
-  "status": "READY_FOR_APPROVAL",
+  "status": "ACTIVE",
   "planned_window": {
     "start": "2026-07-20",
     "end": "2026-08-14",
@@ -12,7 +12,8 @@
   },
   "authorization": {
     "gate": "P5-G0",
-    "decision": "PENDING",
+    "decision": "APPROVED",
+    "approved_on": "2026-07-18",
     "authorizes_on_approval": "CF-P5-001-only"
   },
   "entry": {
@@ -106,7 +107,7 @@
       "id": "CF-P5-001",
       "title": "Freeze key-foundation contract, vector plan, and schema decisions",
       "size": "M",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P5-G0",
       "exit_gate": "P5-G1",
       "owners": ["Product Owner", "Technical Lead", "Senior QA"],
@@ -178,6 +179,7 @@
       "size": "XL",
       "status": "PLANNED",
       "entry_gate": "P5-G2C",
+      "conditional_migration_gate": "P5-G2C-M",
       "exit_gate": "P5-G3",
       "owners": ["Senior Developer", "Product Owner", "Operations"],
       "reviewers": ["Security Reviewer", "Senior QA", "Technical Lead", "UX Lead"],

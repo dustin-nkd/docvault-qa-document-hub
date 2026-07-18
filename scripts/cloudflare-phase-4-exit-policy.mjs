@@ -121,7 +121,7 @@ export function validatePhase4Exit({ manifest, evidenceSources, storyContracts, 
         'Privacy Reviewer', 'UX Lead', 'Technical Lead']) {
         assert(exitReport.includes(reviewer), `Exit report lacks ${reviewer} sign-off`);
     }
-    assert(/^Status: READY$/m.test(handoff) && handoff.includes('CF-P5-001')
+    assert(/^Status: (?:READY|ACTIVE\b.*)$/m.test(handoff) && handoff.includes('CF-P5-001')
         && handoff.includes('Production remains disabled'), 'Phase 5 handoff drifted');
     return true;
 }

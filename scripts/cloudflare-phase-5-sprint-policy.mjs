@@ -3,7 +3,7 @@ const assert = (condition, message) => {
 };
 
 export const STORY_IDS = Array.from({ length: 8 }, (_, index) => `CF-P5-${String(index + 1).padStart(3, '0')}`);
-export const GATE_SEQUENCE = ['P5-G0', 'P5-G1', 'P5-G2', 'P5-G2A', 'P5-G2B', 'P5-G2C', 'P5-G3', 'P5-G4', 'P5-G4A', 'P5-G5'];
+export const GATE_SEQUENCE = ['P5-G0', 'P5-G1', 'P5-G2', 'P5-G2A', 'P5-G2B', 'P5-G2C', 'P5-G2C-M', 'P5-G3', 'P5-G4', 'P5-G4A', 'P5-G5'];
 
 const sameSet = (actual, expected) => JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort());
 const tableIds = (source, prefix) => new Set(source.split(/\r?\n/)
@@ -15,9 +15,10 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
     assert(manifest?.schema_version === 1 && manifest.phase === 'CF-P5'
         && manifest.sprint === 'CF-P5-S01' && manifest.title === 'E2EE key foundation',
     'Unsupported Phase 5 sprint plan');
-    assert(manifest.status === 'READY_FOR_APPROVAL'
+    assert(manifest.status === 'ACTIVE'
         && manifest.authorization?.gate === 'P5-G0'
-        && manifest.authorization.decision === 'PENDING'
+        && manifest.authorization.decision === 'APPROVED'
+        && manifest.authorization.approved_on === '2026-07-18'
         && manifest.authorization.authorizes_on_approval === 'CF-P5-001-only',
     'P5-G0 authorization boundary drifted');
     assert(manifest.planned_window?.working_days === 20
@@ -90,8 +91,8 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
     const threats = tableIds(threatModel, 'T');
     const risks = tableIds(riskRegister, 'R');
     const evidence = [];
-    for (const story of stories) {
-        assert(story.status === 'PLANNED' && story.owners?.length > 0 && story.reviewers?.length > 0,
+    for (const [index, story] of stories.entries()) {
+        assert(story.status === (index === 0 ? 'PASS' : 'PLANNED') && story.owners?.length > 0 && story.reviewers?.length > 0,
             `${story.id} status or ownership drifted`);
         assert(new Set([...story.owners, ...story.reviewers]).has('Senior QA'),
             `${story.id} lacks Senior QA accountability`);
@@ -104,6 +105,7 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
     }
     assert(new Set(evidence).size === evidence.length, 'Phase 5 evidence IDs must belong to one story');
     assert(stories[0].entry_gate === 'P5-G0' && stories[0].exit_gate === 'P5-G1'
+        && stories[5].conditional_migration_gate === 'P5-G2C-M'
         && stories[6].remote_authorization_gate === 'P5-G4'
         && stories[7].exit_gate === 'P5-G5', 'Phase 5 gate sequence drifted');
 

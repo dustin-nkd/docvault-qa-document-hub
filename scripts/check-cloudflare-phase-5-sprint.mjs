@@ -21,6 +21,6 @@ validatePhase5SprintPlan({
 });
 
 console.log('Cloudflare Phase 5 sprint plan passed');
-console.log('  CF-P5-S01: eight key-foundation stories; P5-G0 pending');
+console.log('  CF-P5-S01: active; CF-P5-001 PASS; P5-G1 pending');
 console.log('  Encrypted documents/revisions/sync: deferred to Phase 6');
 console.log('  Production identity, D1, key routes, and collaboration activation: NO-GO');

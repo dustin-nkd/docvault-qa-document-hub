@@ -12,7 +12,7 @@ Required reviewers: Security Reviewer, Operations, Privacy Reviewer; UX Lead for
 
 ## 1. Sprint decision and authorization boundary
 
-Phase 4 is PASS and authorizes planning for device keys and E2EE. `P5-G0` is still pending. Approving `P5-G0` authorizes `CF-P5-001` only; it does not authorize a migration, runtime route, remote D1 write, Preview deployment, Production binding, Production identity, or collaboration activation. Every later story requires its preceding gate, and remote Preview integration requires the separate `P5-G4` authorization.
+Phase 4 is PASS. `P5-G0` was approved on 2026-07-18 and authorized `CF-P5-001` only. `CF-P5-001` is PASS; `P5-G1` is pending and may authorize `CF-P5-002` only. No migration, runtime route, remote D1 write, Preview deployment, Production binding, Production identity, or collaboration activation is authorized. Every later story requires its preceding gate, and remote Preview integration requires the separate `P5-G4` authorization.
 
 This sprint resolves a planning conflict explicitly. The approved implementation roadmap defines Phase 5 as device/workspace-key foundation and Phase 6 as encrypted documents, revisions, conflicts, and sync. The earlier Phase 5 handoff accidentally pulled those Phase 6 domains forward. The user's explicit “E2EE key foundation” scope and the implementation roadmap are now controlling: Phase 5 is key-only. Document ciphertext, document CRUD/revisions, conflicts, tombstones, offline outbox, and sync remain Phase 6. Full collaboration document UX and Personal-to-workspace copy remain Phase 7.
 
@@ -181,7 +181,7 @@ P5-G0 sprint approval
   -> CF-P5-008 exit/Phase 6 handoff -> P5-G5
 ```
 
-Any schema change inserts a separately approved conditional gate after `P5-G1`; it never inherits authority from sprint approval.
+The frozen sequence-11 additive rotation migration requires separately approved conditional Gate `P5-G2C-M` before `CF-P5-006` may create it locally. It never inherits authority from sprint approval; remote Preview apply still requires `P5-G4`.
 
 ## 7. Quality and performance budgets
 

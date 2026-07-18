@@ -127,6 +127,7 @@ Legend: `Public` still requires exact-origin and rate controls. Roles imply acti
 | `POST /api/v1/devices` | Session | IK | `201` | Register caller's public device identity |
 | `DELETE /api/v1/devices/{deviceId}` | Own device, or Owner/Admin ceiling | IK | `204` | Revoke; another-user revoke requires recent auth and ADR-003 ceiling |
 | `GET /api/v1/workspaces` | Session | None | `200` | List caller's non-removed memberships and readiness |
+| `POST /api/v1/workspaces/bootstrap-intents` | Session + active own device | IK | `200` | Deterministically prepare the opaque workspace ID and creator-envelope binding; no D1 mutation |
 | `POST /api/v1/workspaces` | Session + active own device | IK | `201` | Atomic workspace/Owner/key v1/initial envelope/audit creation |
 | `GET /api/v1/workspaces/{workspaceId}` | Member including `pending_key` | None | `200` | Workspace summary and caller readiness; no protected description without key-ready client |
 | `GET /api/v1/workspaces/{workspaceId}/members` | Active member | None | `200` | Paginated members; approved server-visible fields only |
@@ -197,6 +198,10 @@ Callback query accepts exactly provider `code` and `state` (or allow-listed prov
 | `ownerDeviceId` | Caller's active device ID |
 | `initialKeyVersion` | Integer, exactly `1` |
 | `initialKeyEnvelope` | `KeyEnvelope`, bound to creator/owner device and version 1 |
+
+`WorkspaceBootstrapIntentRequest` contains exactly `displayName`, optional `encryptedDescription`, and `ownerDeviceId`. The server derives the same opaque `workspaceId` from the live user/device and `Idempotency-Key` that the final create will use, and returns `{ workspaceId, initialKeyVersion:1, ownerDeviceId, ownerFingerprint }`. It stores nothing and creates no workspace, membership, key, envelope, audit event, or mutation result. The response is `no-store`; replay with the same live authority and key is deterministic.
+
+The client generates the workspace DEK and creator envelope only after receiving this binding. The final `POST /workspaces` uses the same `Idempotency-Key`, exact request fields above, and the returned binding. One D1 batch creates the mutation guard, workspace, active Owner membership, current key-version row, creator envelope, audit event, and deterministic result. Any mismatch or failure creates none of them. The server never generates, receives, logs, or recovers the plaintext DEK.
 
 `WorkspaceView`: `{ workspaceId, displayName, encryptedDescription?, lifecycleState, currentKeyVersion, createdAt, updatedAt, callerMembership }`.
 

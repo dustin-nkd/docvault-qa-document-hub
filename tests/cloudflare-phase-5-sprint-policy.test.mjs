@@ -29,7 +29,7 @@ test('Phase 5 plan freezes key-only scope, gates, traceability, crypto, recovery
 
 test('Phase 5 plan rejects premature authorization, Phase 6 scope pull-forward, production, and route activation', () => {
     for (const mutate of [
-        input => { input.manifest.authorization.decision = 'APPROVED'; },
+        input => { input.manifest.authorization.decision = 'PENDING'; },
         input => { input.manifest.scope_reconciliation.deferred_to_phase_6.pop(); },
         input => { input.manifest.boundaries.document_routes_enabled = true; },
         input => { input.manifest.route_scope.authorized_routes.push('POST /api/v1/devices'); },

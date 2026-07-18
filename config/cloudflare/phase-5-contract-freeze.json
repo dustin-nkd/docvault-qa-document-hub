@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "story": "CF-P5-001",
+  "status": "PASS",
+  "approved_entry_gate": "P5-G0",
+  "next_gate": {
+    "id": "P5-G1",
+    "decision": "PENDING",
+    "authorizes_on_approval": "CF-P5-002-only"
+  },
+  "scope": {
+    "included": ["canonical-crypto", "device-key-protection", "device-registry", "workspace-key-bootstrap", "envelope-provisioning", "rotation", "no-escrow-recovery"],
+    "deferred_to_phase_6": ["document-ciphertext", "document-revisions", "conflicts", "offline-outbox", "sync"]
+  },
+  "first_provisioner": {
+    "decision": "stateless-deterministic-bootstrap-intent-then-atomic-create",
+    "prepare_route": "POST /api/v1/workspaces/bootstrap-intents",
+    "prepare_persists_rows": false,
+    "workspace_id_binding": ["live-user", "active-owner-device", "idempotency-key"],
+    "final_route": "POST /api/v1/workspaces",
+    "atomic_rows": ["mutation_results", "workspaces", "memberships", "workspace_key_versions", "workspace_key_envelopes", "audit_events"],
+    "initial_key_version": 1,
+    "server_plaintext_dek": "prohibited",
+    "partial_workspace_state": "prohibited"
+  },
+  "provisioning_authority": {
+    "wrapper_roles": ["owner", "admin"],
+    "wrapper_membership": "active",
+    "wrapper_device": "active-owned-by-live-actor",
+    "wrapper_current_envelope": "unrevoked-same-workspace-and-current-version-required",
+    "target": "active-device-with-current-canonical-fingerprint-in-authorized-target-membership",
+    "compare_and_set": ["workspace-current-version", "target-fingerprint", "target-device-state", "wrapper-envelope-state"],
+    "readiness_source": "server-derived-only",
+    "mutation": "guard-envelope-readiness-audit-result-one-batch"
+  },
+  "rotation_schema": {
+    "schema_10_sufficient": false,
+    "migration_required": true,
+    "planned_sequence": 11,
+    "migration_type": "forward-only-additive",
+    "migration_authorized": false,
+    "remote_apply_authorized": false,
+    "authorization_gate": "P5-G2C-M",
+    "tables": {
+      "workspace_key_rotations": ["id", "workspace_id", "from_key_version", "to_key_version", "initiator_user_id", "initiator_device_id", "reason", "state", "eligibility_digest", "eligible_count", "staged_count", "created_at", "expires_at", "committed_at", "aborted_at"],
+      "workspace_key_rotation_targets": ["rotation_id", "workspace_id", "target_user_id", "target_device_id", "target_fingerprint", "state"]
+    },
+    "invariants": ["one-preparing-rotation-per-workspace", "to-version-equals-current-plus-one", "eligible-snapshot-immutable", "snapshot-change-requires-abort-restart", "commit-reloads-live-authority", "abort-never-advances-current-version", "staged-envelopes-never-become-current-before-commit"]
+  },
+  "vector_contract": {
+    "manifest_version": "CF-CRYPTO-V1",
+    "source_classification": "synthetic-only",
+    "immutable_after_gate": "P5-G1",
+    "independent_oracle_required": true,
+    "agreement_percent": 100,
+    "families": [
+      {"id":"CANON","cases":["CANON-JCS-001","CANON-B64U-001","CANON-B64U-NEG-001","CANON-UUID-NEG-001","CANON-INT-NEG-001"]},
+      {"id":"JWK","cases":["JWK-P256-001","JWK-FP-001","JWK-PRIVATE-NEG-001","JWK-UNKNOWN-NEG-001","JWK-OFFCURVE-NEG-001"]},
+      {"id":"LOCAL","cases":["LOCAL-PBKDF2-001","LOCAL-PKCS8-001","LOCAL-SECRET-NEG-001","LOCAL-AAD-NEG-001","LOCAL-ITER-NEG-001"]},
+      {"id":"WRAP","cases":["WRAP-ECDH-001","WRAP-AAD-NEG-001","WRAP-TARGET-NEG-001","WRAP-WRAPPER-NEG-001","WRAP-TAG-NEG-001"]},
+      {"id":"LIFECYCLE","cases":["LIFE-PENDING-001","LIFE-REVOKED-001","LIFE-ROTATE-001","LIFE-INTERRUPT-001","LIFE-NOESCROW-001"]},
+      {"id":"CANARY","cases":["CANARY-API-001","CANARY-D1-001","CANARY-IDB-001","CANARY-LOG-001","CANARY-ARTIFACT-001"]}
+    ],
+    "fixture_fields": ["id", "purpose", "contractVersion", "producer", "input", "safeBinaryHex", "expectedCanonicalUtf8", "expectedSha256", "expectedResultOrError", "sourceClassification"],
+    "output_bytes_frozen_by": "CF-P5-002-before-product-primitive-merge"
+  },
+  "performance_profiles": [
+    {"id":"desktop-chromium-current","required":true},
+    {"id":"desktop-firefox-current","required":true},
+    {"id":"desktop-webkit-current","required":true},
+    {"id":"slowest-supported-profile","required":true}
+  ],
+  "budgets_ms": {
+    "pbkdf2_600k_p95": 1500,
+    "pbkdf2_600k_max": 2500,
+    "device_protect_unlock_p95": 2000,
+    "workspace_wrap_unwrap_p95": 250
+  },
+  "authorization_boundary": {
+    "migration_created": false,
+    "runtime_route_created": false,
+    "remote_d1_write": false,
+    "preview_deploy": false,
+    "production_binding": false,
+    "production_identity": false,
+    "collaboration_activation": false
+  }
+}
