@@ -12,7 +12,7 @@ Required reviewers: Security Reviewer, Operations, Privacy Reviewer; UX Lead for
 
 ## 1. Sprint decision and authorization boundary
 
-Phase 4 is PASS. `P5-G0` and `P5-G1` were approved on 2026-07-18. `CF-P5-001` and `CF-P5-002` are PASS; `P5-G2` is pending and may authorize `CF-P5-003` only. No migration, runtime route, remote D1 write, Preview deployment, Production binding, Production identity, or collaboration activation is authorized. Every later story requires its preceding gate, and remote Preview integration requires the separate `P5-G4` authorization.
+Phase 4 is PASS. `P5-G0`, `P5-G1`, and `P5-G2` were approved on 2026-07-18. `CF-P5-001` through `CF-P5-003` are PASS; `P5-G2A` is pending and may authorize `CF-P5-004` only. No migration, runtime route, remote D1 write, Preview deployment, Production binding, Production identity, or collaboration activation is authorized. Every later story requires its preceding gate, and remote Preview integration requires the separate `P5-G4` authorization.
 
 This sprint resolves a planning conflict explicitly. The approved implementation roadmap defines Phase 5 as device/workspace-key foundation and Phase 6 as encrypted documents, revisions, conflicts, and sync. The earlier Phase 5 handoff accidentally pulled those Phase 6 domains forward. The user's explicit “E2EE key foundation” scope and the implementation roadmap are now controlling: Phase 5 is key-only. Document ciphertext, document CRUD/revisions, conflicts, tombstones, offline outbox, and sync remain Phase 6. Full collaboration document UX and Personal-to-workspace copy remain Phase 7.
 

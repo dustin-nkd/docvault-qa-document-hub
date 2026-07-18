@@ -37,8 +37,8 @@ jobs:
       - name: Verify deployment artifact boundary
         run: npm run check:deployment-boundary
 
-      - name: Install Chromium for browser regression tests
-        run: npx playwright install --with-deps chromium
+      - name: Install supported browsers for regression tests
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run browser regression suite
         run: npm run test:e2e

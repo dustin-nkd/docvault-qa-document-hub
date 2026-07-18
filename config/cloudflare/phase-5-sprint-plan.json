@@ -11,11 +11,11 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P5-G1",
+    "gate": "P5-G2",
     "decision": "APPROVED",
     "approved_on": "2026-07-18",
-    "authorized_story": "CF-P5-002",
-    "next_gate": "P5-G2"
+    "authorized_story": "CF-P5-003",
+    "next_gate": "P5-G2A"
   },
   "entry": {
     "phase_4_exit": "PASS",
@@ -136,7 +136,7 @@
       "id": "CF-P5-003",
       "title": "Implement protected browser device-key lifecycle",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P5-G2",
       "exit_gate": "P5-G2A",
       "owners": ["Senior Developer", "UX Lead"],

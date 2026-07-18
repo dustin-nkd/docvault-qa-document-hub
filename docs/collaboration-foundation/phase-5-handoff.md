@@ -1,6 +1,6 @@
 # Collaboration Foundation Phase 5 handoff
 
-Status: ACTIVE — CF-P5-001 and CF-P5-002 PASS; P5-G2 PENDING
+Status: ACTIVE — CF-P5-001 through CF-P5-003 PASS; P5-G2A PENDING
 
 ## Objective
 

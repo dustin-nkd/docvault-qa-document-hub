@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "story": "CF-P5-003",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P5-G2",
+    "decision": "APPROVED",
+    "approved_on": "2026-07-18",
+    "authorized_story": "CF-P5-003",
+    "next_gate": "P5-G2A"
+  },
+  "implementation": {
+    "runtime": "secure-context-browser-web-crypto-and-indexeddb",
+    "device_pair": "extractable-P256-ECDH-during-enrollment-only",
+    "persistent_value": "exact-four-field-encrypted-private-key-envelope-only",
+    "local_protection": "PBKDF2-HMAC-SHA256-600000-A256GCM-bound-AAD",
+    "unlocked_key": "non-extractable-private-CryptoKey-deriveBits-only",
+    "pair_integrity": "bidirectional-ephemeral-ECDH-proof",
+    "storage_namespace": "environment-plus-immutable-user-and-device",
+    "auto_lock": ["visibility-hidden", "pagehide", "beforeunload", "freeze"],
+    "explicit_lock": ["manual", "logout", "account-change", "workspace-change", "membership-loss", "device-revocation"],
+    "fallback": "none-fail-closed-export-free-guidance"
+  },
+  "browser_matrix": {
+    "required": ["chromium", "firefox", "webkit"],
+    "real_web_crypto": true,
+    "real_indexeddb": true,
+    "wrong_secret_and_binding_error": "LOCAL_UNLOCK_FAILED",
+    "pbkdf2_600k_max_ms": 2500,
+    "protect_or_unlock_target_ms": 2000
+  },
+  "scope": {
+    "isolated_browser_modules_added": 1,
+    "runtime_route_calls": 0,
+    "schema_migrations_added": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "preview_deploy_authorized": false,
+    "production_identity_enabled": false,
+    "collaboration_enabled": false,
+    "personal_guest_eager_phase5_crypto_bytes": 0
+  },
+  "evidence": [
+    "CF-EV-P5-UT-002",
+    "CF-EV-P5-E2E-001",
+    "CF-EV-P5-SEC-003",
+    "CF-EV-P5-PERF-001"
+  ],
+  "next_decision": {
+    "gate": "P5-G2A",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P5-004-only",
+    "remote_changes_authorized": false
+  }
+}
