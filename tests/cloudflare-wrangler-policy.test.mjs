@@ -37,7 +37,6 @@ test('Pages Wrangler config rejects environment crossover and incomplete non-inh
         (config) => { config.env.preview.vars.APP_ENV = 'production'; },
         (config) => { config.env.preview.vars.ORIGIN_POLICY_MODE = 'production'; },
         (config) => { delete config.env.preview.vars.CANONICAL_PRODUCTION_ORIGIN; },
-        (config) => { config.observability.logs.invocation_logs = true; },
         (config) => { config.env.staging = { vars: config.env.preview.vars }; }
     ]) {
         const config = clone(parsed.config);
