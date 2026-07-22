@@ -9,7 +9,9 @@ dependency audit, deployment artifact and rollback boundaries, and every
 Cloudflare Phase 1 through Phase 5 policy gate. `CF-P5-001` through `CF-P5-007`
 remain PASS, and Production collaboration remains disabled.
 
-This record remains pending because the authorized Preview authority retirement,
-post-transition remote verification, final rerun, and seven cross-functional
-sign-offs have not completed. No P0/P1 skip, quarantine, accepted flake, or open
-P0/P1 defect is introduced by the exit assembly.
+The authorized Preview authority retirement and post-transition remote
+verification are complete with zero active authority and zero foreign-key
+violations. The post-edit authoritative gate passed on 2026-07-23 in 56.5
+seconds. This record remains pending only on the seven cross-functional
+sign-offs. No P0/P1 skip, quarantine, accepted flake, or open P0/P1 defect is
+introduced by the exit assembly.

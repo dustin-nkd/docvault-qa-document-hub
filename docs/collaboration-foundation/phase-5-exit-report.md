@@ -1,15 +1,14 @@
 # Collaboration Foundation Phase 5 exit report
 
-Status: **DRAFT — assembly complete; PENDING final remote reconciliation (owned by Codex) and cross-functional sign-off**
+Status: **DRAFT — remote reconciliation complete; PENDING cross-functional sign-off**
 
 Story: `CF-P5-008`
 Authorization: `P5-G5` (not yet granted)
 
 > This document was assembled to scaffold the Phase 5 exit. Every claim below
-> that could be verified from the repository and read-only remote inspection is
-> recorded as fact. The two items that remain open — final isolated Preview D1
-> reconciliation and the seven cross-functional sign-offs — are called out
-> explicitly in sections 6 and 7 and are **not** marked complete. Do not treat
+> that could be verified from the repository and remote qualification is
+> recorded as fact. The final isolated Preview D1 reconciliation is complete;
+> the seven cross-functional sign-offs remain open in section 7. Do not treat
 > this report as a passed exit until those sections close.
 
 ## 1. Decision (proposed, pending sign-off)
@@ -59,8 +58,8 @@ policy gates (`scripts/check-cloudflare-phase-5-*.mjs`), which report
   disabled with zero D1 bindings.
 - The full `npm run check` / `check:cloudflare` chain wires every Phase 3/4/5
   policy check plus the Node, Workers/D1, Functions typecheck, dependency audit,
-  browser regression, artifact, rollback, and deployment-boundary gates. Rerun
-  it as the authoritative local exit gate before granting `P5-G5`.
+  browser regression, artifact, rollback, and deployment-boundary gates. The
+  post-reconciliation gate passed on 2026-07-23 in 56.5 seconds.
 
 ## 4. Evidence inventory
 
@@ -68,9 +67,9 @@ policy gates (`scripts/check-cloudflare-phase-5-*.mjs`), which report
 `docs/collaboration-foundation/evidence/phase-5/` covering STA, UT, VEC, INT,
 E2E, SEC, PERF, OPS, and QA layers (see the mapping in section 2). The four
 `CF-P5-008` records — `CF-EV-P5-QA-004`, `CF-EV-P5-SEC-008`,
-`CF-EV-P5-OPS-003`, and `CF-EV-P5-STA-002` — are written as pending records.
-They preserve the verified baseline and identify the exact remote reconciliation
-and human sign-off conditions that still block PASS.
+`CF-EV-P5-OPS-003`, and `CF-EV-P5-STA-002` — are written. OPS-003 is PASS after
+the authorized remote reconciliation; QA-004, SEC-008, and STA-002 remain
+pending only on the required review and `P5-G5` decisions.
 
 ## 5. Cryptographic and boundary posture
 
@@ -87,21 +86,22 @@ and human sign-off conditions that still block PASS.
 - Dependency audit resolves to zero vulnerabilities after the reviewed `sharp`
   0.35.3 override (SEC-007).
 
-## 6. OPEN — final remote reconciliation (owned by Codex)
+## 6. CLOSED — final remote reconciliation
 
-**This section blocks `P5-G5`.** A read-only inspection of the isolated Preview
+An initial read-only inspection of the isolated Preview
 D1 (`docvault-collab-preview`, `0454359c-d663-409e-8962-951f173efb79`) during
 exit assembly found leftover synthetic rows from a recent qualification journey:
 
 | table/state | observed | exit expectation |
 |---|---:|---|
-| active users | 1 | 0; retain the deactivated identity row |
+| active users | 0 | 0; one deactivated identity row retained |
 | active sessions | 0 | 0; retain the revoked session journal row |
 | pending OAuth transactions | 0 | 0; retain the consumed transaction row under retention policy |
-| active workspaces | 1 | 0; retain the deleted workspace tombstone |
-| active memberships | 1 | 0; retain the removed membership authorization episode |
-| active devices | 1 | 0; retain the revoked device and immutable device journals |
-| unrevoked workspace-key envelopes | 2 | 0; retain revoked encrypted envelopes |
+| active workspaces | 0 | 0; one deleted workspace tombstone retained |
+| active memberships | 0 | 0; one removed membership authorization episode retained |
+| active devices | 0 | 0; one revoked device and immutable device journals retained |
+| current workspace-key versions | 0 | 0; two retired versions retained |
+| unrevoked workspace-key envelopes | 0 | 0; two revoked encrypted envelopes retained |
 | workspace-key versions / rotations | 2 / 1 | append-only history — retained |
 | audit events / device audit events | 4 / 1 | append-only history — retained |
 | documents / document_revisions | 0 / 0 | 0 (Phase 6 scope) |
@@ -116,10 +116,15 @@ workspace, and deactivates the user while retaining every required historical
 row. The zero-authority state and zero foreign-key violations must then be
 re-verified before this exit can claim reconciliation.
 
-This reconciliation changes remote Preview security state and requires explicit
-destructive-operation authorization under the Phase 5 sprint. No remote mutation
-was performed during exit assembly. `CF-EV-P5-OPS-003` records the verified
-before-state, the reviewed transition plan, and the pending authorization.
+The Product Owner explicitly authorized this destructive Preview reconciliation
+on 2026-07-23. A disposable Workers D1 rehearsal passed before one atomic remote
+batch revoked the envelopes and device, retired the current key, removed the
+membership, tombstoned the workspace, and deactivated the user. The batch used
+no `DELETE`, performed no restore, and preserved every parent and append-only
+history row. Post-write verification confirmed schema 12, zero active authority,
+zero Phase 6 document rows, and zero foreign-key violations. The pre/post
+Time Travel bookmark fingerprints are recorded in `CF-EV-P5-OPS-003`; raw
+bookmarks are intentionally omitted.
 
 ## 7. OPEN — cross-functional sign-off
 
@@ -141,14 +146,10 @@ self-issued by this assembly.
 
 ## 8. Remaining work to close Phase 5
 
-1. After explicit destructive-operation authorization, Codex retires the
-   isolated Preview qualification authority in place and re-verifies section 6.
-2. Promote the four pending `CF-P5-008` evidence records to PASS after their
-   recorded remote and review conditions are satisfied.
-3. The authoritative `npm run check` gate passed on 2026-07-22 in 59.8 seconds;
-   rerun it after the authorized remote reconciliation and final evidence edit.
-4. Collect the seven sign-offs (section 7) and set this report to PASS under
+1. Promote QA-004, SEC-008, and STA-002 to PASS after their recorded review and
+   sign-off conditions are satisfied; OPS-003 is complete.
+2. Collect the seven sign-offs (section 7) and set this report to PASS under
    `P5-G5`.
-5. Publish the Phase 6 handoff ([`phase-6-handoff.md`](phase-6-handoff.md)) as
+3. Publish the Phase 6 handoff ([`phase-6-handoff.md`](phase-6-handoff.md)) as
    the controlling entry contract for encrypted documents, revisions, conflicts,
    and sync.

@@ -10,10 +10,9 @@ Remote read-only inspection found zero active sessions, pending OAuth
 transactions, rate windows, documents, document revisions, and foreign-key
 violations.
 
-One active qualification user/workspace/membership/device and two unrevoked
-encrypted envelopes remain in isolated Preview. Physical deletion would violate
-the intended append-only security history and restrictive foreign keys. The
-pending controlled reconciliation revokes or retires this authority in place,
-retains the encrypted and privacy-safe journals, performs no restore, and adds no
-plaintext or secret evidence. PASS requires post-transition verification plus
-Security Reviewer and Privacy Reviewer sign-off.
+The authorized controlled reconciliation revoked or retired all qualification
+authority in place, retained the encrypted and privacy-safe journals, performed
+no restore or physical deletion, and added no plaintext or secret evidence.
+Post-transition verification found zero active authority, live envelopes,
+current keys, Phase 6 document rows, and foreign-key violations. PASS now
+requires Security Reviewer and Privacy Reviewer sign-off.
