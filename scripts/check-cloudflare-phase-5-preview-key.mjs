@@ -22,6 +22,6 @@ validatePhase5PreviewKeyFoundation({
         read(`docs/collaboration-foundation/evidence/phase-5/${id}.md`)]))
 });
 
-console.log('CF-P5-007 local Preview key foundation preflight passed');
-console.log('  Remote changes: 0; checked-in route mode: disabled');
-console.log('  Next decision: P5-G4 remote Preview authorization');
+console.log('CF-P5-007 P5-G4 remote qualification preflight passed');
+console.log('  Remote changes: 0; Preview route mode: preview-only; Production: disabled');
+console.log('  Next decision: P5-G4A after remote evidence');

@@ -16,13 +16,13 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
         && manifest.sprint === 'CF-P5-S01' && manifest.title === 'E2EE key foundation',
     'Unsupported Phase 5 sprint plan');
     assert(manifest.status === 'ACTIVE'
-        && manifest.authorization?.gate === 'P5-G3'
+        && manifest.authorization?.gate === 'P5-G4'
         && manifest.authorization.decision === 'APPROVED'
         && manifest.authorization.approved_on === '2026-07-22'
         && manifest.authorization.authorized_story === 'CF-P5-007'
-        && manifest.authorization.remote_changes_authorized === false
-        && manifest.authorization.next_gate === 'P5-G4',
-    'P5-G3 authorization boundary drifted');
+        && manifest.authorization.remote_changes_authorized === true
+        && manifest.authorization.next_gate === 'P5-G4A',
+    'P5-G4 authorization boundary drifted');
     assert(manifest.planned_window?.working_days === 20
         && manifest.planned_window.timezone === 'Asia/Ho_Chi_Minh', 'Phase 5 sprint window drifted');
     assert(phase4Exit?.phase === 'CF-P4' && phase4Exit.story === 'CF-P4-008'

@@ -17,7 +17,7 @@ export function validatePhase5Primitives({ manifest, sprint, contractFreeze, sou
         && manifest.gate_authorization.authorized_story === 'CF-P5-002'
         && manifest.gate_authorization.next_gate === 'P5-G2'
         && manifest.gate_authorization.next_story === 'CF-P5-003', 'P5-G1 authorization drifted');
-    assert(['P5-G1', 'P5-G2', 'P5-G2A-M', 'P5-G2B', 'P5-G2C-M', 'P5-G3'].includes(sprint.authorization?.gate)
+    assert(['P5-G1', 'P5-G2', 'P5-G2A-M', 'P5-G2B', 'P5-G2C-M', 'P5-G3', 'P5-G4'].includes(sprint.authorization?.gate)
         && sprint.stories?.[0]?.status === 'PASS' && sprint.stories?.[1]?.status === 'PASS',
     'Historical primitive disposition drifted');
 

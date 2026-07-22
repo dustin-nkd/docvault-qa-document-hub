@@ -7,17 +7,17 @@ export const EVIDENCE = ['CF-EV-P5-E2E-003', 'CF-EV-P5-PERF-002', 'CF-EV-P5-SEC-
 export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler, migrationManifest,
     handlerSource, querySource, apiSource, cursorSource, workersTest, reportSource, evidenceSources }) {
     assert(manifest?.phase === 'CF-P5' && manifest.story === 'CF-P5-007'
-        && manifest.status === 'READY_FOR_P5_G4', 'CF-P5-007 preflight status drifted');
+        && manifest.status === 'REMOTE_QUALIFICATION_IN_PROGRESS', 'CF-P5-007 qualification status drifted');
     assert(manifest.gate_authorization?.entry_gate === 'P5-G3'
         && manifest.gate_authorization.decision === 'APPROVED'
         && manifest.gate_authorization.local_integration_authorized === true
         && manifest.gate_authorization.remote_authorization_gate === 'P5-G4'
-        && manifest.gate_authorization.remote_changes_authorized === false
-        && manifest.gate_authorization.exit_gate === 'P5-G4A', 'P5-G3 authorization ceiling drifted');
-    assert(sprint.authorization?.gate === 'P5-G3'
+        && manifest.gate_authorization.remote_changes_authorized === true
+        && manifest.gate_authorization.exit_gate === 'P5-G4A', 'P5-G4 authorization boundary drifted');
+    assert(sprint.authorization?.gate === 'P5-G4'
         && sprint.authorization.authorized_story === 'CF-P5-007'
-        && sprint.authorization.remote_changes_authorized === false
-        && sprint.authorization.next_gate === 'P5-G4'
+        && sprint.authorization.remote_changes_authorized === true
+        && sprint.authorization.next_gate === 'P5-G4A'
         && sprint.stories?.slice(0, 6).every(story => story.status === 'PASS')
         && sprint.stories?.[6]?.status === 'IN_PROGRESS'
         && sprint.stories?.[7]?.status === 'PLANNED', 'Sprint disposition drifted');
@@ -25,9 +25,10 @@ export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler,
     assert(migrationManifest.entries?.length === 12
         && migrationManifest.entries[10]?.story === 'CF-P5-004'
         && migrationManifest.entries[11]?.story === 'CF-P5-006', 'Local migration inventory drifted');
-    const environments = [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars];
-    assert(environments.every(vars => vars?.KEY_FOUNDATION_MODE === 'disabled'),
-        'Checked-in key route mode must fail closed everywhere');
+    assert(wrangler.vars?.KEY_FOUNDATION_MODE === 'disabled'
+        && wrangler.env?.preview?.vars?.KEY_FOUNDATION_MODE === 'preview-only'
+        && wrangler.env?.production?.vars?.KEY_FOUNDATION_MODE === 'disabled',
+        'Checked-in key route environment boundary drifted');
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
         && wrangler.env?.production?.vars?.IDENTITY_RUNTIME_MODE === 'disabled', 'Production isolation drifted');
 
@@ -64,7 +65,7 @@ export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler,
 
     for (const key of ['remote_writes', 'remote_migrations_applied', 'remote_variables_changed',
         'preview_deploys_triggered', 'production_changes', 'secrets_created_or_changed']) {
-        assert(manifest.scope?.[key] === 0, `P5-G3 exceeded remote scope: ${key}`);
+        assert(manifest.scope?.[key] === 0, `P5-G4 pre-mutation scope drifted: ${key}`);
     }
     assert(sameSet(manifest.remote_evidence || [], EVIDENCE)
         && sameSet(Object.keys(evidenceSources), EVIDENCE), 'Remote evidence inventory drifted');
@@ -73,11 +74,11 @@ export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler,
             && /^Status: PENDING P5-G4 REMOTE QUALIFICATION$/m.test(source)
             && !/^Status: PASS$/m.test(source), `${id} was prematurely marked complete`);
     }
-    assert(/^Status: READY FOR P5-G4$/m.test(reportSource)
-        && reportSource.includes('No remote D1 migration')
+    assert(/^Status: REMOTE QUALIFICATION IN PROGRESS$/m.test(reportSource)
+        && reportSource.includes('applying forward-only Preview migrations 11 and 12')
         && reportSource.includes('Production remains out of scope'), 'Preflight report incomplete');
-    assert(manifest.next_decision?.gate === 'P5-G4'
-        && manifest.next_decision.recommendation === 'APPROVE'
+    assert(manifest.next_decision?.gate === 'P5-G4A'
+        && manifest.next_decision.recommendation === 'PENDING_REMOTE_EVIDENCE'
         && manifest.next_decision.production_changes_authorized === false, 'P5-G4 handoff drifted');
     return true;
 }

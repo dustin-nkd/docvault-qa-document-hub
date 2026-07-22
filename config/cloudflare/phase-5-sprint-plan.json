@@ -11,13 +11,13 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P5-G3",
+    "gate": "P5-G4",
     "decision": "APPROVED",
     "approved_on": "2026-07-22",
     "authorized_story": "CF-P5-007",
-    "authorized_change": "local-preview-key-integration-and-qualification-preflight-only",
-    "remote_changes_authorized": false,
-    "next_gate": "P5-G4"
+    "authorized_change": "isolated-preview-schema-apply-key-route-activation-and-remote-qualification",
+    "remote_changes_authorized": true,
+    "next_gate": "P5-G4A"
   },
   "entry": {
     "phase_4_exit": "PASS",

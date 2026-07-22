@@ -27,7 +27,7 @@ export const expectedEnvironmentVars = {
         ORIGIN_POLICY_MODE: 'preview',
         CANONICAL_PRODUCTION_ORIGIN: canonicalProductionOrigin,
         COLLABORATION_ENABLED: 'false',
-        KEY_FOUNDATION_MODE: 'disabled',
+        KEY_FOUNDATION_MODE: 'preview-only',
         IDENTITY_RUNTIME_MODE: 'preview-only',
         GITHUB_OAUTH_CLIENT_ID: 'Ov23liT50KOwBmEGu7bH'
     },
@@ -86,7 +86,8 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
         exactKeys(vars, Object.keys(expectedEnvironmentVars[environment]), `wrangler.${environment}.vars`);
         assert(JSON.stringify(vars) === JSON.stringify(expectedEnvironmentVars[environment]), `${environment} variables drifted`);
         assert(vars.COLLABORATION_ENABLED === 'false', `${environment} collaboration must use the exact disabled string`);
-        assert(vars.KEY_FOUNDATION_MODE === 'disabled', `${environment} key foundation must fail closed`);
+        assert(vars.KEY_FOUNDATION_MODE === (environment === 'preview' ? 'preview-only' : 'disabled'),
+            `${environment} key foundation mode drifted`);
     }
     assert(config.vars.IDENTITY_RUNTIME_MODE === 'disabled'
         && config.env.preview.vars.IDENTITY_RUNTIME_MODE === 'preview-only'
@@ -132,7 +133,7 @@ export function validateGeneratedWorkerTypes(source) {
         ['ORIGIN_POLICY_MODE', ['"local"', '"preview"', '"production"']],
         ['CANONICAL_PRODUCTION_ORIGIN', [`"${canonicalProductionOrigin}"`]],
         ['COLLABORATION_ENABLED', ['"false"']],
-        ['KEY_FOUNDATION_MODE', ['"disabled"']],
+        ['KEY_FOUNDATION_MODE', ['"disabled"', '"preview-only"']],
         ['IDENTITY_RUNTIME_MODE', ['"disabled"', '"preview-only"']]
     ]) {
         assert(new RegExp(`\\b${name}\\b`).test(source), `Generated Env type is missing ${name}`);

@@ -15,7 +15,7 @@ export function validatePhase5Rotation({ manifest, sprint, contract, migrationMa
         && manifest.gate_authorization.authorized_migration === 12
         && manifest.gate_authorization.remote_apply_authorized === false
         && manifest.gate_authorization.next_gate === 'P5-G3', 'P5-G2C/P5-G2C-M authorization drifted');
-    assert(['P5-G2C-M', 'P5-G3'].includes(sprint.authorization?.gate) && ['CF-P5-006', 'CF-P5-007'].includes(sprint.authorization.authorized_story)
+    assert(['P5-G2C-M', 'P5-G3', 'P5-G4'].includes(sprint.authorization?.gate) && ['CF-P5-006', 'CF-P5-007'].includes(sprint.authorization.authorized_story)
         && sprint.stories?.slice(0, 6).every(story => story.status === 'PASS')
         && ['PLANNED','IN_PROGRESS'].includes(sprint.stories?.[6]?.status) && sprint.stories?.[7]?.status === 'PLANNED', 'Sprint disposition drifted');
     assert(contract.rotation_schema?.migration_authorized === true

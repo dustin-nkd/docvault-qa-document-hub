@@ -2,14 +2,14 @@
   "schema_version": 1,
   "phase": "CF-P5",
   "story": "CF-P5-007",
-  "status": "READY_FOR_P5_G4",
+  "status": "REMOTE_QUALIFICATION_IN_PROGRESS",
   "gate_authorization": {
     "entry_gate": "P5-G3",
     "decision": "APPROVED",
     "approved_on": "2026-07-22",
     "local_integration_authorized": true,
     "remote_authorization_gate": "P5-G4",
-    "remote_changes_authorized": false,
+    "remote_changes_authorized": true,
     "exit_gate": "P5-G4A"
   },
   "runtime": {
@@ -17,7 +17,7 @@
     "origin": "https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev",
     "mode_binding": "KEY_FOUNDATION_MODE",
     "checked_in_local_mode": "disabled",
-    "checked_in_preview_mode": "disabled",
+    "checked_in_preview_mode": "preview-only",
     "checked_in_production_mode": "disabled",
     "route_operations": 13,
     "production_d1_bindings": 0,
@@ -28,7 +28,7 @@
   "schema": {
     "local_migration_count": 12,
     "preview_remote_schema_before_P5_G4": 10,
-    "remote_apply_authorized": false,
+    "remote_apply_authorized": true,
     "forward_only_target_sequence": 12
   },
   "qualification": {
@@ -62,9 +62,9 @@
     "secrets_created_or_changed": 0
   },
   "next_decision": {
-    "gate": "P5-G4",
-    "recommendation": "APPROVE",
-    "authorizes": "isolated-preview-schema-apply-key-route-activation-and-remote-qualification",
+    "gate": "P5-G4A",
+    "recommendation": "PENDING_REMOTE_EVIDENCE",
+    "authorizes": "phase-5-preview-key-foundation-exit-review",
     "production_changes_authorized": false
   }
 }
