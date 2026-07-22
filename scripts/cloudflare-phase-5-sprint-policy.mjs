@@ -94,7 +94,7 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
     const risks = tableIds(riskRegister, 'R');
     const evidence = [];
     for (const [index, story] of stories.entries()) {
-        const expectedStatus = index < 6 ? 'PASS' : index === 6 ? 'IN_PROGRESS' : 'PLANNED';
+        const expectedStatus = index < 7 ? 'PASS' : 'PLANNED';
         assert(story.status === expectedStatus && story.owners?.length > 0 && story.reviewers?.length > 0,
             `${story.id} status or ownership drifted`);
         assert(new Set([...story.owners, ...story.reviewers]).has('Senior QA'),

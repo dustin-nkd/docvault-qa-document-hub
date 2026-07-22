@@ -7,7 +7,7 @@ export const EVIDENCE = ['CF-EV-P5-E2E-003', 'CF-EV-P5-PERF-002', 'CF-EV-P5-SEC-
 export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler, migrationManifest,
     handlerSource, querySource, apiSource, cursorSource, workersTest, reportSource, evidenceSources }) {
     assert(manifest?.phase === 'CF-P5' && manifest.story === 'CF-P5-007'
-        && manifest.status === 'REMOTE_QUALIFICATION_IN_PROGRESS', 'CF-P5-007 qualification status drifted');
+        && manifest.status === 'PASS', 'CF-P5-007 qualification status drifted');
     assert(manifest.gate_authorization?.entry_gate === 'P5-G3'
         && manifest.gate_authorization.decision === 'APPROVED'
         && manifest.gate_authorization.local_integration_authorized === true
@@ -19,7 +19,7 @@ export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler,
         && sprint.authorization.remote_changes_authorized === true
         && sprint.authorization.next_gate === 'P5-G4A'
         && sprint.stories?.slice(0, 6).every(story => story.status === 'PASS')
-        && sprint.stories?.[6]?.status === 'IN_PROGRESS'
+        && sprint.stories?.[6]?.status === 'PASS'
         && sprint.stories?.[7]?.status === 'PLANNED', 'Sprint disposition drifted');
 
     assert(migrationManifest.entries?.length === 12
@@ -60,25 +60,44 @@ export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler,
     'Workers Preview key qualification inventory drifted');
     assert(manifest.qualification?.workers_test_count === 3
         && manifest.qualification.preview_read_p95_budget_ms === 300
+        && manifest.qualification.preview_read_p95_observed_ms === 238.7
+        && manifest.qualification.preview_read_samples === 20
+        && manifest.qualification.final_key_version === 2
+        && manifest.qualification.cryptographic_unwrap_v1 === 'PASS'
+        && manifest.qualification.cryptographic_unwrap_v2 === 'PASS'
+        && manifest.qualification.active_sessions_after_cleanup === 0
+        && manifest.qualification.pending_oauth_transactions_after_cleanup === 0
+        && manifest.qualification.rate_windows_after_cleanup === 0
+        && manifest.qualification.dependency_vulnerabilities === 0
+        && manifest.qualification.security_override === 'sharp-0.35.3'
         && manifest.qualification.p0_p1_skips === 0
         && manifest.qualification.accepted_flakes === 0, 'Qualification budget drifted');
 
-    for (const key of ['remote_writes', 'remote_migrations_applied', 'remote_variables_changed',
-        'preview_deploys_triggered', 'production_changes', 'secrets_created_or_changed']) {
-        assert(manifest.scope?.[key] === 0, `P5-G4 pre-mutation scope drifted: ${key}`);
-    }
+    assert(manifest.schema?.preview_remote_schema_after_P5_G4 === 12
+        && manifest.schema.remote_migration_count === 12
+        && manifest.schema.foreign_key_violations === 0
+        && /^[0-9a-f]{64}$/.test(manifest.schema.pre_apply_bookmark_sha256)
+        && /^[0-9a-f]{64}$/.test(manifest.schema.post_apply_bookmark_sha256),
+    'Remote schema evidence drifted');
+    assert(manifest.scope?.remote_writes === 9
+        && manifest.scope.remote_migrations_applied === 2
+        && manifest.scope.remote_variables_changed === 1
+        && manifest.scope.preview_deploys_triggered === 1
+        && manifest.scope.production_changes === 0
+        && manifest.scope.secrets_created_or_changed === 0, 'P5-G4 remote scope drifted');
     assert(sameSet(manifest.remote_evidence || [], EVIDENCE)
         && sameSet(Object.keys(evidenceSources), EVIDENCE), 'Remote evidence inventory drifted');
     for (const [id, source] of Object.entries(evidenceSources)) {
         assert(source.startsWith(`# ${id} `)
-            && /^Status: PENDING P5-G4 REMOTE QUALIFICATION$/m.test(source)
-            && !/^Status: PASS$/m.test(source), `${id} was prematurely marked complete`);
+            && /^Status: PASS$/m.test(source)
+            && !/PENDING P5-G4 REMOTE QUALIFICATION/.test(source), `${id} remote evidence is incomplete`);
     }
-    assert(/^Status: REMOTE QUALIFICATION IN PROGRESS$/m.test(reportSource)
-        && reportSource.includes('applying forward-only Preview migrations 11 and 12')
-        && reportSource.includes('Production remains out of scope'), 'Preflight report incomplete');
+    assert(/^Status: PASS$/m.test(reportSource)
+        && reportSource.includes('Preview advanced forward-only from schema 10 to schema 12')
+        && reportSource.includes('Production remained disabled without a D1 binding')
+        && reportSource.includes('p95 238.7 ms'), 'Remote qualification report incomplete');
     assert(manifest.next_decision?.gate === 'P5-G4A'
-        && manifest.next_decision.recommendation === 'PENDING_REMOTE_EVIDENCE'
+        && manifest.next_decision.recommendation === 'APPROVE'
         && manifest.next_decision.production_changes_authorized === false, 'P5-G4 handoff drifted');
     return true;
 }

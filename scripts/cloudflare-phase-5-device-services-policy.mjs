@@ -15,7 +15,7 @@ export function validatePhase5DeviceServices({ manifest, sprint, migrationManife
         && manifest.gate_authorization.rotation_moved_to_sequence === 12
         && manifest.gate_authorization.next_gate === 'P5-G2B', 'P5-G2A-M authorization drifted');
     assert(sprint.stories?.slice(0, 6).every(story => story.status === 'PASS')
-        && ['PLANNED','IN_PROGRESS'].includes(sprint.stories?.[6]?.status) && sprint.stories?.[7]?.status === 'PLANNED', 'Sprint disposition drifted');
+        && ['PLANNED','IN_PROGRESS','PASS'].includes(sprint.stories?.[6]?.status) && sprint.stories?.[7]?.status === 'PLANNED', 'Sprint disposition drifted');
 
     const entry = migrationManifest.entries?.[10];
     assert(migrationManifest.entries?.length >= 11 && entry?.sequence === 11

@@ -7,6 +7,9 @@
   "engines": {
     "node": ">=22"
   },
+  "overrides": {
+    "sharp": "0.35.3"
+  },
   "scripts": {
     "check": "npm run check:base && npm run check:cloudflare",
     "check:base": "node scripts/quality-check.mjs && npm run check:functions && npm test",

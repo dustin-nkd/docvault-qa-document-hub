@@ -2,7 +2,7 @@
   "schema_version": 1,
   "phase": "CF-P5",
   "story": "CF-P5-007",
-  "status": "REMOTE_QUALIFICATION_IN_PROGRESS",
+  "status": "PASS",
   "gate_authorization": {
     "entry_gate": "P5-G3",
     "decision": "APPROVED",
@@ -29,7 +29,12 @@
     "local_migration_count": 12,
     "preview_remote_schema_before_P5_G4": 10,
     "remote_apply_authorized": true,
-    "forward_only_target_sequence": 12
+    "forward_only_target_sequence": 12,
+    "preview_remote_schema_after_P5_G4": 12,
+    "remote_migration_count": 12,
+    "foreign_key_violations": 0,
+    "pre_apply_bookmark_sha256": "195666c7dc4cc8ff078aa66d31bc091539589809c12f1504c409510c7345b4fe",
+    "post_apply_bookmark_sha256": "8783c73244c4b05553f6dff3c5c17651eb3a1b3491cdf26470c9c6430d6c03ea"
   },
   "qualification": {
     "workers_test_file": "tests/cloudflare/preview-key-foundation.workers.test.ts",
@@ -42,6 +47,21 @@
       "monotonic-rotation-and-commit"
     ],
     "preview_read_p95_budget_ms": 300,
+    "preview_read_p95_observed_ms": 238.7,
+    "preview_read_samples": 20,
+    "browser": "Microsoft Edge",
+    "device_registration_http_status": 201,
+    "workspace_bootstrap_http_status": 201,
+    "current_envelope_read_http_status": 200,
+    "rotation_commit_http_status": 200,
+    "final_key_version": 2,
+    "cryptographic_unwrap_v1": "PASS",
+    "cryptographic_unwrap_v2": "PASS",
+    "active_sessions_after_cleanup": 0,
+    "pending_oauth_transactions_after_cleanup": 0,
+    "rate_windows_after_cleanup": 0,
+    "dependency_vulnerabilities": 0,
+    "security_override": "sharp-0.35.3",
     "p0_p1_skips": 0,
     "accepted_flakes": 0,
     "open_p0_p1_defects": 0
@@ -54,16 +74,16 @@
     "CF-EV-P5-QA-003"
   ],
   "scope": {
-    "remote_writes": 0,
-    "remote_migrations_applied": 0,
-    "remote_variables_changed": 0,
-    "preview_deploys_triggered": 0,
+    "remote_writes": 9,
+    "remote_migrations_applied": 2,
+    "remote_variables_changed": 1,
+    "preview_deploys_triggered": 1,
     "production_changes": 0,
     "secrets_created_or_changed": 0
   },
   "next_decision": {
     "gate": "P5-G4A",
-    "recommendation": "PENDING_REMOTE_EVIDENCE",
+    "recommendation": "APPROVE",
     "authorizes": "phase-5-preview-key-foundation-exit-review",
     "production_changes_authorized": false
   }

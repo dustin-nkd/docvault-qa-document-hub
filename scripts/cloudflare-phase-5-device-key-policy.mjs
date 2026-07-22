@@ -12,7 +12,7 @@ export function validatePhase5DeviceKeyLifecycle({ manifest, sprint, source, bro
         && manifest.gate_authorization.authorized_story === 'CF-P5-003'
         && manifest.gate_authorization.next_gate === 'P5-G2A', 'P5-G2 authorization drifted');
     assert(sprint.stories?.slice(0, 6).every(story => story.status === 'PASS')
-        && ['PLANNED','IN_PROGRESS'].includes(sprint.stories?.[6]?.status) && sprint.stories?.[7]?.status === 'PLANNED', 'Sprint disposition drifted');
+        && ['PLANNED','IN_PROGRESS','PASS'].includes(sprint.stories?.[6]?.status) && sprint.stories?.[7]?.status === 'PLANNED', 'Sprint disposition drifted');
 
     const implementation = manifest.implementation || {};
     assert(implementation.runtime === 'secure-context-browser-web-crypto-and-indexeddb'

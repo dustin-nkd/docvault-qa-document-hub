@@ -195,7 +195,7 @@
       "id": "CF-P5-007",
       "title": "Integrate and qualify isolated Preview key foundation",
       "size": "XL",
-      "status": "IN_PROGRESS",
+      "status": "PASS",
       "entry_gate": "P5-G3",
       "remote_authorization_gate": "P5-G4",
       "exit_gate": "P5-G4A",

@@ -22,6 +22,6 @@ validatePhase5PreviewKeyFoundation({
         read(`docs/collaboration-foundation/evidence/phase-5/${id}.md`)]))
 });
 
-console.log('CF-P5-007 P5-G4 remote qualification preflight passed');
-console.log('  Remote changes: 0; Preview route mode: preview-only; Production: disabled');
-console.log('  Next decision: P5-G4A after remote evidence');
+console.log('CF-P5-007 P5-G4 remote qualification passed');
+console.log('  Preview: schema 12, read p95 238.7 ms; Production: disabled with zero D1 bindings');
+console.log('  Next decision: approve P5-G4A exit review');

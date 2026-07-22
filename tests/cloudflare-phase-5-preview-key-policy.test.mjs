@@ -22,17 +22,17 @@ const input = () => ({
         read(`docs/collaboration-foundation/evidence/phase-5/${id}.md`)]))
 });
 
-test('CF-P5-007 locks the approved isolated Preview activation boundary at P5-G4', () => {
+test('CF-P5-007 locks the completed isolated Preview qualification at P5-G4', () => {
     assert.equal(validatePhase5PreviewKeyFoundation(input()), true);
 });
 
-test('CF-P5-007 rejects activation, production, bypass, migration, and premature evidence drift', () => {
+test('CF-P5-007 rejects activation, production, bypass, migration, and evidence drift', () => {
     for (const [name, mutate] of [
         ['activation', value => { value.wrangler.env.preview.vars.KEY_FOUNDATION_MODE = 'disabled'; }],
         ['production', value => { value.wrangler.env.production.d1_databases = [{}]; }],
         ['bypass', value => { value.handlerSource += '\nconst deployedTestBypass = true;'; }],
         ['migration', value => { value.migrationManifest.entries.push({ sequence: 13 }); }],
-        ['evidence', value => { value.evidenceSources['CF-EV-P5-QA-003'] = '# CF-EV-P5-QA-003 x\n\nStatus: PASS'; }]
+        ['evidence', value => { value.evidenceSources['CF-EV-P5-QA-003'] = '# CF-EV-P5-QA-003 x\n\nStatus: FAIL'; }]
     ]) {
         const value = input(); mutate(value);
         assert.throws(() => validatePhase5PreviewKeyFoundation(value), undefined, name);
