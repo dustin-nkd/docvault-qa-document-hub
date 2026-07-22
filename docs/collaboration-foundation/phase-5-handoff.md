@@ -1,6 +1,6 @@
 # Collaboration Foundation Phase 5 handoff
 
-Status: ACTIVE — CF-P5-001 through CF-P5-003 PASS; P5-G2A PENDING
+Status: ACTIVE — CF-P5-001 through CF-P5-007 PASS; at P5-G4A, CF-P5-008 exit assembly in progress (see [`phase-5-exit-report.md`](phase-5-exit-report.md) and [`phase-6-handoff.md`](phase-6-handoff.md))
 
 ## Objective
 
