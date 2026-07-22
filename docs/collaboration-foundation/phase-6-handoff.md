@@ -94,6 +94,7 @@ collaboration document UX and Personal-to-workspace copy remain Phase 7.
 ## Prerequisite
 
 This handoff becomes controlling only after Phase 5 closes at `P5-G5`: the
-isolated Preview D1 reconciled to its expected zero business state, the four
-`CF-P5-008` evidence records written, and the seven cross-functional sign-offs
-recorded. See [`phase-5-exit-report.md`](phase-5-exit-report.md) sections 6–8.
+isolated Preview D1 reconciled to zero active qualification authority while
+retaining required history, the four `CF-P5-008` evidence records promoted to
+PASS, and the seven cross-functional sign-offs recorded. See
+[`phase-5-exit-report.md`](phase-5-exit-report.md) sections 6–8.
