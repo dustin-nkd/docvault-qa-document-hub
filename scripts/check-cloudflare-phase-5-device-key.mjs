@@ -21,4 +21,4 @@ validatePhase5DeviceKeyLifecycle({
 console.log('Cloudflare CF-P5-003 browser device-key lifecycle gate passed');
 console.log('  Encrypted-only IndexedDB; non-extractable deriveBits key; uniform local failure');
 console.log('  Chromium, Firefox, and WebKit qualification enforced in release E2E');
-console.log('  Routes, migration 11, remote D1, Preview activation, and Production: unchanged');
+console.log('  Historical story scope preserved; current sequence 11 is the later approved CF-P5-004 correction');

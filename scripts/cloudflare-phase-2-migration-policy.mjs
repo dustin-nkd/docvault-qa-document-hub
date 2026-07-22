@@ -78,7 +78,7 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
 
     const entries = manifest.entries || [];
-    assert(entries.length === 10, 'Migration manifest must contain the frozen set and authorized CF-P3-007 expansion');
+    assert(entries.length === 11, 'Migration manifest must include the authorized P5-G2A-M additive correction');
     assert(sameSet(Object.keys(migrationSources), entries.map(entry => entry.filename)), 'Migration files and manifest differ');
     const frozenOwnership = new Map((freeze.migration_sequence || []).map(item => [item.sequence, item.owns]));
     const discoveredTables = {};
@@ -97,9 +97,12 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         } else if (sequence === 9) {
             assert(entry.slug === 'retention_purge_control' && entry.story === 'CF-P2-006'
                 && entry.gate === 'P2-G2B', `Retention correction ${sequence} is not authorized`);
-        } else {
+        } else if (sequence === 10) {
             assert(entry.slug === 'auth_rate_windows' && entry.story === 'CF-P3-007'
                 && entry.gate === 'P3-G3', `Identity abuse-control migration ${sequence} is not authorized`);
+        } else {
+            assert(entry.slug === 'device_operation_journals' && entry.story === 'CF-P5-004'
+                && entry.gate === 'P5-G2A-M', `Device correction migration ${sequence} is not authorized`);
         }
         assert(entry.previous_sha256 === previousSha, `Migration ${sequence} hash chain drifted`);
         assert(new RegExp(`^${String(sequence).padStart(4, '0')}_[a-f0-9]{12}_${entry.slug}\\.sql$`).test(entry.filename), `Migration ${sequence} filename is invalid`);
@@ -110,7 +113,9 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         assert(entry.normalized_bytes === bytes(source), `Migration ${entry.filename} byte count drifted`);
         const expectedTables = sequence === 8 ? ['transition_guards']
             : sequence === 9 ? ['retention_purge_runs']
-                : sequence === 10 ? ['auth_rate_windows'] : (frozenOwnership.get(sequence) || []);
+                : sequence === 10 ? ['auth_rate_windows']
+                    : sequence === 11 ? ['device_mutation_results', 'device_audit_events']
+                        : (frozenOwnership.get(sequence) || []);
         assert(same(entry.tables, expectedTables), `Migration ${entry.filename} table ownership drifted`);
         assert(entry.owner && entry.reviewers?.includes('Senior QA') && entry.reviewers.includes('Security Reviewer'), `Migration ${entry.filename} lacks accountable review`);
         assert(entry.requirements?.length > 0 && entry.threats?.length > 0 && entry.risks?.length > 0 && entry.validations?.length > 0, `Migration ${entry.filename} lacks traceability`);
@@ -139,6 +144,14 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     ];
     frozenColumns.auth_rate_windows = [
         'key_digest', 'route_family', 'window_started_at', 'attempt_count', 'expires_at'
+    ];
+    frozenColumns.device_mutation_results = [
+        'id', 'actor_user_id', 'actor_session_id', 'operation', 'client_mutation_id',
+        'request_fingerprint', 'target_device_id', 'http_status', 'result_json', 'created_at', 'expires_at'
+    ];
+    frozenColumns.device_audit_events = [
+        'sequence', 'event_id', 'schema_version', 'user_id', 'event_type', 'outcome', 'reason_code',
+        'actor_session_id', 'actor_device_id', 'target_device_id', 'request_id', 'server_time', 'metadata_json'
     ];
     assert(sameSet(Object.keys(discoveredTables), Object.keys(frozenColumns)), 'SQL table inventory differs from the schema freeze');
     for (const [table, columns] of Object.entries(frozenColumns)) assert(same(discoveredTables[table], columns), `${table} SQL columns differ from the schema freeze`);

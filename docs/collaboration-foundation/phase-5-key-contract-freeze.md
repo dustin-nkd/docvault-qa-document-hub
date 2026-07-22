@@ -14,7 +14,7 @@ Workspace creation uses a stateless bootstrap intent. The server deterministical
 
 Provisioning authority is not inferred from role alone. A live Owner/Admin wrapper must use an active owned device that already holds an unrevoked envelope for the workspace's current version. Target membership/device/fingerprint and workspace version are reloaded and compare-and-set in the same batch as envelope, derived readiness, audit, and idempotent result. The client cannot write readiness.
 
-Schema 10 is insufficient for safe rotation. A future sequence-11 additive migration will add rotation jobs and immutable target snapshots. The migration is not created or authorized here; `P5-G2C-M` is required before local migration implementation and `P5-G4` remains required before any remote Preview write. Rotation eligibility never mutates silently: changed authority aborts and restarts the job.
+Schema 10 is insufficient for safe rotation. A future sequence-12 additive migration will add rotation jobs and immutable target snapshots. The migration is not created or authorized here; `P5-G2C-M` is required before local migration implementation and `P5-G4` remains required before any remote Preview write. Rotation eligibility never mutates silently: changed authority aborts and restarts the job.
 
 ## Vector freeze
 

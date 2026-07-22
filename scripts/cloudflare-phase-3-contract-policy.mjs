@@ -1,4 +1,4 @@
-﻿const assert = (condition, message) => {
+const assert = (condition, message) => {
     if (!condition) throw new Error(message);
 };
 
@@ -149,7 +149,7 @@ export function validatePhase3ContractFreeze({ manifest, sprintManifest, sprintS
         && rate.authoritative_oauth_window.migration_story === 'CF-P3-007'
         && rate.authoritative_oauth_window.migration_requires_gate === 'P3-G3'
         && rate.process_local_limiter === 'prohibited' && rate.silent_schema_change === 'prohibited', 'Rate-limit decision drifted');
-    assert(migrationManifest.entries?.length === 10
+    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M'
         && migrationManifest.entries[9]?.story === 'CF-P3-007'
         && migrationManifest.entries[9]?.gate === 'P3-G3'
         && JSON.stringify(migrationManifest.entries[9]?.tables) === JSON.stringify(['auth_rate_windows']),

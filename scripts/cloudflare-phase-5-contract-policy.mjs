@@ -35,7 +35,7 @@ export function validatePhase5ContractFreeze({ contract, sprint, apiContract, sc
 
     const rotation = contract.rotation_schema || {};
     assert(rotation.schema_10_sufficient === false && rotation.migration_required === true
-        && rotation.planned_sequence === 11 && rotation.migration_type === 'forward-only-additive'
+        && rotation.planned_sequence === 12 && rotation.migration_type === 'forward-only-additive'
         && rotation.migration_authorized === false && rotation.remote_apply_authorized === false
         && rotation.authorization_gate === 'P5-G2C-M'
         && rotation.tables?.workspace_key_rotations?.length === 15
@@ -43,8 +43,13 @@ export function validatePhase5ContractFreeze({ contract, sprint, apiContract, sc
         && rotation.invariants?.length === 7, 'Rotation persistence decision drifted');
     assert(schemaContract.includes('Phase 5 additive rotation expansion (frozen, not yet applied)')
         && schemaContract.includes('Schema 10 cannot represent'), 'Schema expansion contract missing');
-    assert(migrations.entries?.length === 10 && !migrations.entries.some(item => item.sequence === 11),
-        'Sequence 11 migration was created before authorization');
+    assert(migrations.entries?.length === 11 && migrations.entries[10]?.sequence === 11
+        && migrations.entries[10]?.story === 'CF-P5-004' && migrations.entries[10]?.gate === 'P5-G2A-M',
+        'Migration inventory exceeds the approved device correction');
+    const correction = contract.device_mutation_schema_correction || {};
+    assert(correction.gate === 'P5-G2A-M' && correction.decision === 'APPROVED'
+        && correction.sequence === 11 && correction.rotation_moved_to_sequence === 12
+        && correction.remote_apply_authorized === false, 'Device mutation schema correction drifted');
 
     const vectors = contract.vector_contract || {};
     const families = vectors.families || [];

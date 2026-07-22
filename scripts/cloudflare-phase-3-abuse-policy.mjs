@@ -69,7 +69,7 @@ export function validatePhase3AbusePolicy({ manifest, sprintManifest, sourceFile
         && index.includes("export * from './provider-resilience'"), 'Identity exports drifted');
 
     const entry = migrationManifest.entries?.[9];
-    assert(migrationManifest.entries?.length === 10 && entry?.story === 'CF-P3-007' && entry.gate === 'P3-G3'
+    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M' && entry?.story === 'CF-P3-007' && entry.gate === 'P3-G3'
         && entry.filename === manifest.migration && same(entry.tables, ['auth_rate_windows'])
         && migrationSource.includes('CREATE TABLE auth_rate_windows')
         && migrationSource.includes('schema_version = 10'), 'Authorized migration drifted');

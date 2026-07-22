@@ -211,9 +211,7 @@ describe('CF-P4-003 central deny-by-default RBAC policy', () => {
             actorUserId: ID.user, actingDeviceId: ID.device, workspaceId: ID.workspace,
             action: 'document.read'
         })).toEqual({ allowed: false, code: 'DEVICE_NOT_AUTHORIZED' });
-        await env.COLLAB_DB.prepare(
-            "UPDATE devices SET state = 'active', revoked_at = NULL, revoke_reason = NULL WHERE id = ?"
-        ).bind(ID.device).run();
+
         await env.COLLAB_DB.prepare(
             "UPDATE users SET status = 'deactivated', deactivated_at = 4, updated_at = 4 WHERE id = ?"
         ).bind(ID.user).run();

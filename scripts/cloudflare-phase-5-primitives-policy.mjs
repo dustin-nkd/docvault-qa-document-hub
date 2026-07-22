@@ -17,7 +17,7 @@ export function validatePhase5Primitives({ manifest, sprint, contractFreeze, sou
         && manifest.gate_authorization.authorized_story === 'CF-P5-002'
         && manifest.gate_authorization.next_gate === 'P5-G2'
         && manifest.gate_authorization.next_story === 'CF-P5-003', 'P5-G1 authorization drifted');
-    assert(['P5-G1', 'P5-G2'].includes(sprint.authorization?.gate)
+    assert(['P5-G1', 'P5-G2', 'P5-G2A-M'].includes(sprint.authorization?.gate)
         && sprint.stories?.[0]?.status === 'PASS' && sprint.stories?.[1]?.status === 'PASS',
     'Historical primitive disposition drifted');
 
@@ -80,7 +80,7 @@ export function validatePhase5Primitives({ manifest, sprint, contractFreeze, sou
 
     assert(!routeSource.includes("from '../e2ee") && !routeSource.includes("from '../../e2ee")
         && !routeSource.includes('wrapWorkspaceKey'), 'E2EE primitives became route-reachable');
-    assert(migrationManifest.entries?.length === 10 && !migrationManifest.entries.some(entry => entry.sequence === 11),
+    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M',
         'Unauthorized migration added');
     assert(!wrangler.env?.production?.d1_databases && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false',
         'Production boundary drifted');

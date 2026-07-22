@@ -11,10 +11,10 @@ export function validatePhase5DeviceKeyLifecycle({ manifest, sprint, source, bro
         && manifest.gate_authorization.decision === 'APPROVED'
         && manifest.gate_authorization.authorized_story === 'CF-P5-003'
         && manifest.gate_authorization.next_gate === 'P5-G2A', 'P5-G2 authorization drifted');
-    assert(sprint.authorization?.gate === 'P5-G2' && sprint.authorization.authorized_story === 'CF-P5-003'
-        && sprint.authorization.next_gate === 'P5-G2A'
-        && sprint.stories?.slice(0, 3).every(story => story.status === 'PASS')
-        && sprint.stories?.slice(3).every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
+    assert(sprint.authorization?.gate === 'P5-G2A-M' && sprint.authorization.authorized_story === 'CF-P5-004'
+        && sprint.authorization.next_gate === 'P5-G2B'
+        && sprint.stories?.slice(0, 4).every(story => story.status === 'PASS')
+        && sprint.stories?.slice(4).every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
 
     const implementation = manifest.implementation || {};
     assert(implementation.runtime === 'secure-context-browser-web-crypto-and-indexeddb'
@@ -65,7 +65,7 @@ export function validatePhase5DeviceKeyLifecycle({ manifest, sprint, source, bro
     }
     assert(!indexSource.includes('device-key-lifecycle') && !routeSource.includes('device-key-lifecycle'),
         'Device lifecycle became eager or route-reachable');
-    assert(migrationManifest.entries?.length === 10 && !migrationManifest.entries.some(entry => entry.sequence === 11),
+    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M',
         'Unauthorized migration added');
     assert(!wrangler.env?.production?.d1_databases && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false',
         'Production boundary drifted');

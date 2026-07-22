@@ -103,9 +103,12 @@ Columns: `id`, `workspace_id`, `key_version`, target user/device/fingerprint, wr
 
 Unique `(workspace_id, key_version, target_device_id)`. Foreign keys bind workspace version, target device/user, and wrapper device/user. Strict lengths and algorithm identifiers follow `crypto-contract.md`. No plaintext DEK is stored.
 
+### 3.9.0 Device mutation and audit correction (sequence 11)
+
+Gate `P5-G2A-M` authorizes two additive user/session-scoped journals: `device_mutation_results` for bounded replay and `device_audit_events` for append-only registration/revocation evidence. This avoids fake workspace or pre-existing actor-device dependencies during first-device registration. It adds no private-key field, backfill, remote apply, or route activation. The correction reserves rotation persistence for sequence 12.
 ### 3.9.1 Phase 5 additive rotation expansion (frozen, not yet applied)
 
-Schema 10 cannot represent the API contract's rotation identifier and immutable eligible-device snapshot. Phase 5 therefore requires a separately authorized, forward-only sequence-11 additive migration. Until that gate is approved, these objects are design-only and no migration or remote write is authorized.
+Schema 10 cannot represent the API contract's rotation identifier and immutable eligible-device snapshot. Phase 5 therefore requires a separately authorized, forward-only sequence-12 additive migration. Until that gate is approved, these objects are design-only and no migration or remote write is authorized.
 
 `workspace_key_rotations` records opaque rotation ID, workspace, consecutive from/to key versions, initiating user/device, bounded reason, state (`preparing`, `committed`, `aborted`), eligibility digest/count, staged count, and authoritative timestamps. A partial unique index permits at most one `preparing` rotation per workspace.
 

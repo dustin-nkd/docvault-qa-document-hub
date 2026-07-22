@@ -1,4 +1,4 @@
-﻿const assert = (condition, message) => {
+const assert = (condition, message) => {
     if (!condition) throw new Error(message);
 };
 
@@ -102,7 +102,7 @@ export function validatePhase3IdentityPrimitives({ manifest, sprintManifest, spr
         assert(workersTestSource.includes(phrase), `Security coverage missing: ${phrase}`);
     }
 
-    assert(migrationManifest.entries?.length === 10
+    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M'
         && migrationManifest.entries[9]?.story === 'CF-P3-007'
         && migrationManifest.entries[9]?.gate === 'P3-G3', 'Migration set contains an unauthorized post-story change');
     assert(!wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits

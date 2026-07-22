@@ -35,10 +35,19 @@
     "readiness_source": "server-derived-only",
     "mutation": "guard-envelope-readiness-audit-result-one-batch"
   },
+  "device_mutation_schema_correction": {
+    "gate": "P5-G2A-M",
+    "decision": "APPROVED",
+    "sequence": 11,
+    "migration_type": "forward-only-additive",
+    "tables": ["device_mutation_results", "device_audit_events"],
+    "remote_apply_authorized": false,
+    "rotation_moved_to_sequence": 12
+  },
   "rotation_schema": {
     "schema_10_sufficient": false,
     "migration_required": true,
-    "planned_sequence": 11,
+    "planned_sequence": 12,
     "migration_type": "forward-only-additive",
     "migration_authorized": false,
     "remote_apply_authorized": false,

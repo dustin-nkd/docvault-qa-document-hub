@@ -101,6 +101,20 @@ export interface TransitionGuardRow {
     created_at: number; expires_at: number; authority_guard: 1;
 }
 
+export interface DeviceMutationResultRow {
+    id: string; actor_user_id: string; actor_session_id: string;
+    operation: 'device.register' | 'device.revoke'; client_mutation_id: string;
+    request_fingerprint: D1Blob; target_device_id: string; http_status: number;
+    result_json: string; created_at: number; expires_at: number;
+}
+
+export interface DeviceAuditEventRow {
+    sequence: number; event_id: string; schema_version: 11; user_id: string;
+    event_type: 'device.registered' | 'device.revoked'; outcome: 'success';
+    reason_code: 'registered' | 'user_requested'; actor_session_id: string;
+    actor_device_id: Nullable<string>; target_device_id: string; request_id: string;
+    server_time: number; metadata_json: '{}';
+}
 export interface AuditEventRow {
     sequence: number; event_id: string; schema_version: number; workspace_id: string; event_type: string;
     outcome: 'success' | 'denied' | 'failure' | 'correction'; reason_code: string;
@@ -129,6 +143,7 @@ export interface CollaborationTableRowMap {
     workspace_key_envelopes: WorkspaceKeyEnvelopeRow; documents: DocumentRow;
     document_revisions: DocumentRevisionRow; mutation_results: MutationResultRow;
     transition_guards: TransitionGuardRow;
+    device_mutation_results: DeviceMutationResultRow; device_audit_events: DeviceAuditEventRow;
     audit_events: AuditEventRow; retention_holds: RetentionHoldRow;
     retention_purge_runs: RetentionPurgeRunRow;
 }

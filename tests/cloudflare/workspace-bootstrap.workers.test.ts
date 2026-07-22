@@ -142,8 +142,6 @@ describe('CF-P4-002 atomic workspace bootstrap', () => {
         expect(await count('workspaces', 'id', workspaceId)).toBe(0);
         expect(await count('memberships', 'workspace_id', workspaceId)).toBe(0);
         expect(await count('transition_guards', 'workspace_id', workspaceId)).toBe(0);
-        await env.COLLAB_DB.prepare(
-            "UPDATE devices SET state = 'active', revoked_at = NULL, revoke_reason = NULL WHERE id = ?"
-        ).bind(ID.device).run();
+
     });
 });

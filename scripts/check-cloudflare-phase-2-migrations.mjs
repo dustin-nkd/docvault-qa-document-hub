@@ -18,7 +18,7 @@ validatePhase2Migrations({
 });
 
 console.log('Cloudflare Phase 2 immutable migration gate passed');
-console.log('  Migrations: 6 frozen expansions + 4 approved hashed forward-only migrations');
-console.log('  Schema 10: 18 STRICT tables including the CF-P3-007 rate-window control');
+console.log('  Migrations: 6 frozen expansions + 5 approved hashed forward-only migrations');
+console.log('  Schema 11: 20 STRICT tables including the CF-P5-004 device journals');
 console.log('  Manifest, hash chain, columns, compatibility, append-only, and tenant guards: verified');
 console.log('  Remote D1, binding, fixtures, protected plaintext, and collaboration: absent');

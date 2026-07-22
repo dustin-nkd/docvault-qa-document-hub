@@ -248,6 +248,30 @@
       "backfill": "none",
       "rollback_class": "compatible-code-rollback",
       "privacy": "schema-only-window-scoped-hmac-digest-no-raw-source-or-user-identifier"
-    }
-  ]
+    },
+    {
+      "sequence": 11,
+      "filename": "0011_204e019d5d7c_device_operation_journals.sql",
+      "slug": "device_operation_journals",
+      "story": "CF-P5-004",
+      "gate": "P5-G2A-M",
+      "sha256": "204e019d5d7cddcbbc5b8245c74ad7acab5da20955988a756dc4e200ea985ae9",
+      "normalized_bytes": 5714,
+      "previous_sha256": "1e1759754601bde8ab486753856d39bda7cf48ba43d3952f84b2bb5a1736ca4b",
+      "owner": "Key and Device Repository",
+      "reviewers": ["Product Owner", "Technical Lead", "Security Reviewer", "Senior QA", "Operations", "Privacy Reviewer"],
+      "created_at": "2026-07-22",
+      "contract_version": "CF-P5-device-services-v1-amendment-P5-G2A-M",
+      "change_class": "forward-only-additive-device-mutation-audit-correction",
+      "tables": ["device_mutation_results", "device_audit_events"],
+      "requirements": ["CF-DEV-001", "CF-DEV-003", "CF-AUD-002"],
+      "threats": ["T07", "T12", "T16", "T21"],
+      "risks": ["R03", "R05", "R13", "R16", "R21"],
+      "validations": ["schema-version-eleven", "session-scoped-idempotency", "device-audit-atomicity", "immutable-device-security-identity", "stable-inventory-index", "privacy-canary"],
+      "compatibility": {"minimum_runtime_schema": 1, "maximum_runtime_schema": 11},
+      "runtime_class": "bounded-schema-correction",
+      "backfill": "none",
+      "rollback_class": "compatible-code-rollback",
+      "privacy": "schema-only-public-device-keys-digests-and-allow-listed-events"
+    }  ]
 }

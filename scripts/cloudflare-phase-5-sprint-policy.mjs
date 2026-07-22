@@ -3,7 +3,7 @@ const assert = (condition, message) => {
 };
 
 export const STORY_IDS = Array.from({ length: 8 }, (_, index) => `CF-P5-${String(index + 1).padStart(3, '0')}`);
-export const GATE_SEQUENCE = ['P5-G0', 'P5-G1', 'P5-G2', 'P5-G2A', 'P5-G2B', 'P5-G2C', 'P5-G2C-M', 'P5-G3', 'P5-G4', 'P5-G4A', 'P5-G5'];
+export const GATE_SEQUENCE = ['P5-G0', 'P5-G1', 'P5-G2', 'P5-G2A', 'P5-G2A-M', 'P5-G2B', 'P5-G2C', 'P5-G2C-M', 'P5-G3', 'P5-G4', 'P5-G4A', 'P5-G5'];
 
 const sameSet = (actual, expected) => JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort());
 const tableIds = (source, prefix) => new Set(source.split(/\r?\n/)
@@ -16,12 +16,12 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
         && manifest.sprint === 'CF-P5-S01' && manifest.title === 'E2EE key foundation',
     'Unsupported Phase 5 sprint plan');
     assert(manifest.status === 'ACTIVE'
-        && manifest.authorization?.gate === 'P5-G2'
+        && manifest.authorization?.gate === 'P5-G2A-M'
         && manifest.authorization.decision === 'APPROVED'
-        && manifest.authorization.approved_on === '2026-07-18'
-        && manifest.authorization.authorized_story === 'CF-P5-003'
-        && manifest.authorization.next_gate === 'P5-G2A',
-    'P5-G2 authorization boundary drifted');
+        && manifest.authorization.approved_on === '2026-07-22'
+        && manifest.authorization.authorized_story === 'CF-P5-004'
+        && manifest.authorization.next_gate === 'P5-G2B',
+    'P5-G2A-M authorization boundary drifted');
     assert(manifest.planned_window?.working_days === 20
         && manifest.planned_window.timezone === 'Asia/Ho_Chi_Minh', 'Phase 5 sprint window drifted');
     assert(phase4Exit?.phase === 'CF-P4' && phase4Exit.story === 'CF-P4-008'
@@ -93,7 +93,7 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
     const risks = tableIds(riskRegister, 'R');
     const evidence = [];
     for (const [index, story] of stories.entries()) {
-        assert(story.status === (index < 3 ? 'PASS' : 'PLANNED') && story.owners?.length > 0 && story.reviewers?.length > 0,
+        assert(story.status === (index < 4 ? 'PASS' : 'PLANNED') && story.owners?.length > 0 && story.reviewers?.length > 0,
             `${story.id} status or ownership drifted`);
         assert(new Set([...story.owners, ...story.reviewers]).has('Senior QA'),
             `${story.id} lacks Senior QA accountability`);
@@ -137,7 +137,7 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
         && recovery.rollback_rule === 'preserve-monotonic-key-version-and-envelope-history',
     'Phase 5 recovery contract drifted');
 
-    assert(migrationManifest.entries?.length === 10, 'Sprint planning added an unauthorized migration');
+    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M', 'Sprint planning added an unauthorized migration');
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
         && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
             .every(vars => vars?.COLLABORATION_ENABLED === 'false'),

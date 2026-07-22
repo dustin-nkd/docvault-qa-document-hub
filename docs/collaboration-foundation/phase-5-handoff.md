@@ -19,7 +19,7 @@ Deliver the device and workspace-key foundation for end-to-end encryption on the
 
 ## Entry constraints
 
-- Preserve schema 10 compatibility until a separately approved forward-only migration is required.
+- Sequence 11 is the approved additive device journal correction; remote apply remains prohibited and rotation is reserved for sequence 12.
 - Reuse server-derived identity, central RBAC, scoped repositories, atomic mutation recipes, and privacy-safe audit registry.
 - Never send plaintext document semantics, device private keys, unlock secrets, KEKs, or workspace DEKs to the server.
 - Do not add test-only routes, production secrets, production D1 bindings, or fallback collaboration behavior.

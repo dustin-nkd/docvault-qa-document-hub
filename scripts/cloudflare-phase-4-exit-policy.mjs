@@ -59,7 +59,7 @@ export function validatePhase4Exit({ manifest, evidenceSources, storyContracts, 
     const schema = manifest.schema_inventory || {};
     assert(schema.schema_version === 10 && schema.migration_count === 10
         && schema.migration_set_digest === migrationManifest.migration_set_digest
-        && migrationManifest.entries?.length === 10 && schema.minimum_runtime_schema === 1
+        && migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M' && schema.minimum_runtime_schema === 1
         && schema.maximum_runtime_schema === 10 && schema.pending_remote_migrations === 0
         && schema.destructive_or_down_migrations === 0, 'Phase 4 schema reconciliation drifted');
 

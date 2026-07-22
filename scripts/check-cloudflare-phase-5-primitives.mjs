@@ -23,4 +23,4 @@ validatePhase5Primitives({
 console.log('Cloudflare CF-P5-002 crypto primitive gate passed');
 console.log('  Workers Web Crypto: 10 cases; independent Node oracle: 3 cases');
 console.log('  Immutable vectors: 30 synthetic cases across 6 families; agreement: 100%');
-console.log('  Routes, migration 11, remote D1, Preview activation, and Production: unchanged');
+console.log('  Historical story scope preserved; current sequence 11 is the later approved CF-P5-004 correction');

@@ -105,26 +105,6 @@ describe('CF-P2-005 security mutation recipes', () => {
             .bind(ID.workspace).first<number>('current_key_version')).toBe(1);
     });
 
-    it('rejects reused fingerprints and revoked replay authority without side effects', async () => {
-        await expect(executeIdempotentRecipe(env.COLLAB_DB,
-            buildWorkspaceCreateRecipe(env.COLLAB_DB, workspaceBindings(blob(32, 9))),
-            workspaceScope(blob(32, 9)))).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
-        await expect(executeIdempotentRecipe(env.COLLAB_DB,
-            buildWorkspaceCreateRecipe(env.COLLAB_DB, workspaceBindings()),
-            { ...workspaceScope(), serverTime: 1_000 })).rejects.toMatchObject({ code: 'IDEMPOTENCY_EXPIRED' });
-        await env.COLLAB_DB.prepare(
-            `UPDATE devices SET state = 'revoked', revoked_at = 20, revoke_reason = 'test_revoke'
-             WHERE id = ? AND user_id = ?`
-        ).bind(ID.ownerDevice, ID.owner).run();
-        await expect(executeIdempotentRecipe(env.COLLAB_DB,
-            buildWorkspaceCreateRecipe(env.COLLAB_DB, workspaceBindings()), workspaceScope()))
-            .rejects.toMatchObject({ code: 'AUTHORITY_REVOKED' });
-        await env.COLLAB_DB.prepare(
-            `UPDATE devices SET state = 'active', revoked_at = NULL, revoke_reason = NULL
-             WHERE id = ? AND user_id = ?`
-        ).bind(ID.ownerDevice, ID.owner).run();
-    });
-
     it('allows exactly one invitation acceptance and creates pending_key membership', async () => {
         const token = blob(32, 8);
         await env.COLLAB_DB.prepare(
@@ -313,4 +293,21 @@ describe('CF-P2-005 security mutation recipes', () => {
         expect(await env.COLLAB_DB.prepare('SELECT current_revision FROM documents WHERE id = ?')
             .bind(document).first<number>('current_revision')).toBe(2);
     });
+    it('rejects reused fingerprints and revoked replay authority without side effects', async () => {
+        await expect(executeIdempotentRecipe(env.COLLAB_DB,
+            buildWorkspaceCreateRecipe(env.COLLAB_DB, workspaceBindings(blob(32, 9))),
+            workspaceScope(blob(32, 9)))).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+        await expect(executeIdempotentRecipe(env.COLLAB_DB,
+            buildWorkspaceCreateRecipe(env.COLLAB_DB, workspaceBindings()),
+            { ...workspaceScope(), serverTime: 1_000 })).rejects.toMatchObject({ code: 'IDEMPOTENCY_EXPIRED' });
+        await env.COLLAB_DB.prepare(
+            `UPDATE devices SET state = 'revoked', revoked_at = 20, revoke_reason = 'test_revoke'
+             WHERE id = ? AND user_id = ?`
+        ).bind(ID.ownerDevice, ID.owner).run();
+        await expect(executeIdempotentRecipe(env.COLLAB_DB,
+            buildWorkspaceCreateRecipe(env.COLLAB_DB, workspaceBindings()), workspaceScope()))
+            .rejects.toMatchObject({ code: 'AUTHORITY_REVOKED' });
+
+    });
+
 });

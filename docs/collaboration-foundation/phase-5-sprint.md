@@ -173,6 +173,7 @@ P5-G0 sprint approval
   -> CF-P5-001 contract/vector/schema freeze -> P5-G1
   -> CF-P5-002 canonical crypto + oracle -> P5-G2
   -> CF-P5-003 protected browser device key -> P5-G2A
+  -> explicit P5-G2A-M device journal correction authorization
   -> CF-P5-004 device services -> P5-G2B
   -> CF-P5-005 workspace envelopes/readiness -> P5-G2C
   -> CF-P5-006 rotation/recovery -> P5-G3
@@ -181,7 +182,7 @@ P5-G0 sprint approval
   -> CF-P5-008 exit/Phase 6 handoff -> P5-G5
 ```
 
-The frozen sequence-11 additive rotation migration requires separately approved conditional Gate `P5-G2C-M` before `CF-P5-006` may create it locally. It never inherits authority from sprint approval; remote Preview apply still requires `P5-G4`.
+The frozen sequence-12 additive rotation migration requires separately approved conditional Gate `P5-G2C-M` before `CF-P5-006` may create it locally. It never inherits authority from sprint approval; remote Preview apply still requires `P5-G4`.
 
 ## 7. Quality and performance budgets
 

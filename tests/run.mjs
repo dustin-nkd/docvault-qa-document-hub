@@ -48,3 +48,4 @@ import './cloudflare-phase-5-sprint-policy.test.mjs';
 import './cloudflare-phase-5-reference-vectors.test.mjs';
 import './cloudflare-phase-5-primitives-policy.test.mjs';
 import './cloudflare-phase-5-device-key-policy.test.mjs';
+import './cloudflare-phase-5-device-services-policy.test.mjs';

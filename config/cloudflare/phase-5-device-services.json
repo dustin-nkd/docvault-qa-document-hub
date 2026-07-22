@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "story": "CF-P5-004",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P5-G2A-M",
+    "decision": "APPROVED",
+    "approved_on": "2026-07-22",
+    "authorized_story": "CF-P5-004",
+    "authorized_migration": 11,
+    "rotation_moved_to_sequence": 12,
+    "next_gate": "P5-G2B"
+  },
+  "implementation": {
+    "registration": "strict-public-jwk-server-fingerprint-session-authority-atomic-audit-result",
+    "inventory": "own-user-only-bounded-stable-keyset",
+    "revocation": "active-owned-device-one-way-atomic-audit-result",
+    "idempotency": "user-session-operation-client-mutation-and-constant-time-request-fingerprint",
+    "audit": "allow-listed-append-only-device-events",
+    "private_key_input": "prohibited"
+  },
+  "migration": {
+    "sequence": 11,
+    "slug": "device_operation_journals",
+    "tables": ["device_mutation_results", "device_audit_events"],
+    "remote_apply_authorized": false,
+    "backfill": "none"
+  },
+  "scope": {
+    "runtime_route_calls": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "preview_deploy_authorized": false,
+    "production_identity_enabled": false,
+    "collaboration_enabled": false
+  },
+  "workers_test_count": 8,
+  "evidence": ["CF-EV-P5-UT-003", "CF-EV-P5-INT-001", "CF-EV-P5-SEC-004", "CF-EV-P5-QA-001"],
+  "next_decision": {
+    "gate": "P5-G2B",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P5-005-only",
+    "remote_changes_authorized": false
+  }
+}

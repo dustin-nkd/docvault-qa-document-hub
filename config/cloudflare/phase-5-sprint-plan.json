@@ -11,11 +11,13 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P5-G2",
+    "gate": "P5-G2A-M",
     "decision": "APPROVED",
-    "approved_on": "2026-07-18",
-    "authorized_story": "CF-P5-003",
-    "next_gate": "P5-G2A"
+    "approved_on": "2026-07-22",
+    "authorized_story": "CF-P5-004",
+    "authorized_change": "forward-only-additive-device-mutation-audit-correction",
+    "rotation_sequence": 12,
+    "next_gate": "P5-G2B"
   },
   "entry": {
     "phase_4_exit": "PASS",
@@ -150,7 +152,7 @@
       "id": "CF-P5-004",
       "title": "Implement device registration, inventory, and revocation services",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P5-G2A",
       "exit_gate": "P5-G2B",
       "owners": ["Senior Developer"],
