@@ -48,8 +48,8 @@ function serialize(value: JsonValue, seen: Set<object>): string {
     }
 }
 
-export function canonicalize(value: JsonValue): string {
-    return serialize(value, new Set<object>());
+export function canonicalize(value: unknown): string {
+    return serialize(value as JsonValue, new Set<object>());
 }
 
 export function utf8(value: string): Uint8Array {

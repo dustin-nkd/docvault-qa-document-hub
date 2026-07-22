@@ -5,7 +5,7 @@ const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const CONTEXT = 'docvault:control-plane-cursor:v1:';
 const TTL_MS = 15 * 60 * 1_000;
 const MAXIMUM_LENGTH = 2_048;
-const ROUTES = Object.freeze(['members', 'invitations'] as const);
+const ROUTES = Object.freeze(['members', 'invitations', 'devices', 'workspace-devices'] as const);
 type CursorRoute = typeof ROUTES[number];
 
 interface CursorPayload {
@@ -41,6 +41,14 @@ function validPosition(route: CursorRoute, value: unknown): value is Record<stri
     if (route === 'members') {
         return Object.keys(value).length === 1 && typeof value.userId === 'string'
             && UUID_V4.test(value.userId);
+    }
+    if (route === 'devices') {
+        return Object.keys(value).sort().join('|') === 'createdAt|deviceId'
+            && time(value.createdAt) && typeof value.deviceId === 'string' && UUID_V4.test(value.deviceId);
+    }
+    if (route === 'workspace-devices') {
+        return Object.keys(value).length === 1 && typeof value.deviceId === 'string'
+            && UUID_V4.test(value.deviceId);
     }
     return Object.keys(value).sort().join('|') === 'expiresAt|invitationId'
         && time(value.expiresAt) && typeof value.invitationId === 'string'

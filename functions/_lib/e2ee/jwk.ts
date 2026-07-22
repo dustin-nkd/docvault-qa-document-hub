@@ -17,10 +17,11 @@ export async function parsePublicJwk(value: unknown): Promise<{ jwk: CanonicalPu
     });
     let key: CryptoKey;
     try {
-        key = await crypto.subtle.importKey('jwk', jwk as unknown as JsonWebKey, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
+        const importable: JsonWebKey = { crv: jwk.crv, ext: jwk.ext, key_ops: [], kty: jwk.kty, x: jwk.x, y: jwk.y };
+        key = await crypto.subtle.importKey('jwk', importable, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
     } catch {
         throw new E2eePrimitiveError('CRYPTO_FORMAT_INVALID');
     }
-    const canonical = canonicalize(jwk as unknown as JsonValue);
+    const canonical = canonicalize(jwk);
     return { jwk, key, fingerprint: encodeBase64Url(await sha256(utf8(canonical))) };
 }

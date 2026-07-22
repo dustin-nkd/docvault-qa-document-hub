@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "story": "CF-P5-007",
+  "status": "READY_FOR_P5_G4",
+  "gate_authorization": {
+    "entry_gate": "P5-G3",
+    "decision": "APPROVED",
+    "approved_on": "2026-07-22",
+    "local_integration_authorized": true,
+    "remote_authorization_gate": "P5-G4",
+    "remote_changes_authorized": false,
+    "exit_gate": "P5-G4A"
+  },
+  "runtime": {
+    "handler": "functions/_lib/collaboration/key-runtime-handler.ts",
+    "origin": "https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev",
+    "mode_binding": "KEY_FOUNDATION_MODE",
+    "checked_in_local_mode": "disabled",
+    "checked_in_preview_mode": "disabled",
+    "checked_in_production_mode": "disabled",
+    "route_operations": 13,
+    "production_d1_bindings": 0,
+    "document_routes_enabled": false,
+    "server_plaintext_key_path_allowed": false,
+    "deployed_test_bypass_allowed": false
+  },
+  "schema": {
+    "local_migration_count": 12,
+    "preview_remote_schema_before_P5_G4": 10,
+    "remote_apply_authorized": false,
+    "forward_only_target_sequence": 12
+  },
+  "qualification": {
+    "workers_test_file": "tests/cloudflare/preview-key-foundation.workers.test.ts",
+    "workers_test_count": 3,
+    "journey": [
+      "device-registration",
+      "keyed-workspace-bootstrap",
+      "member-envelope-provisioning",
+      "current-envelope-read-and-unwrap",
+      "monotonic-rotation-and-commit"
+    ],
+    "preview_read_p95_budget_ms": 300,
+    "p0_p1_skips": 0,
+    "accepted_flakes": 0,
+    "open_p0_p1_defects": 0
+  },
+  "remote_evidence": [
+    "CF-EV-P5-E2E-003",
+    "CF-EV-P5-PERF-002",
+    "CF-EV-P5-SEC-007",
+    "CF-EV-P5-OPS-002",
+    "CF-EV-P5-QA-003"
+  ],
+  "scope": {
+    "remote_writes": 0,
+    "remote_migrations_applied": 0,
+    "remote_variables_changed": 0,
+    "preview_deploys_triggered": 0,
+    "production_changes": 0,
+    "secrets_created_or_changed": 0
+  },
+  "next_decision": {
+    "gate": "P5-G4",
+    "recommendation": "APPROVE",
+    "authorizes": "isolated-preview-schema-apply-key-route-activation-and-remote-qualification",
+    "production_changes_authorized": false
+  }
+}

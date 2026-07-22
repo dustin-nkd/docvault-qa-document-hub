@@ -169,7 +169,7 @@ async function snapshot(database: D1Database, workspaceId: string): Promise<read
 async function snapshotDigest(targets: readonly SnapshotTarget[]): Promise<ArrayBuffer> {
     const value = targets.map(target => ({ deviceId: target.deviceId,
         fingerprint: target.fingerprintText, userId: target.userId }));
-    return (await sha256(utf8(canonicalize(value as unknown as JsonValue)))).slice().buffer as ArrayBuffer;
+    return (await sha256(utf8(canonicalize(value)))).slice().buffer as ArrayBuffer;
 }
 async function validateEnvelope(envelope: unknown, expected: { workspaceId: string; targetUserId: string;
     targetDeviceId: string; targetFingerprint: string; wrapperDeviceId: string; keyVersion: number;
@@ -182,11 +182,11 @@ async function validateEnvelope(envelope: unknown, expected: { workspaceId: stri
         || aad.targetFingerprint !== expected.targetFingerprint || aad.wrapperDeviceId !== expected.wrapperDeviceId
         || aad.keyVersion !== expected.keyVersion) fail();
     decodeBase64Url(expected.targetFingerprint, 32, 32); const parsed = await parsePublicJwk(value.ephemeralPublicJwk);
-    return Object.freeze({ ephemeralPublicJwk: canonicalize(parsed.jwk as unknown as JsonValue),
+    return Object.freeze({ ephemeralPublicJwk: canonicalize(parsed.jwk),
         hkdfSalt: decodeBase64Url(String(value.hkdfSalt), 32, 32).slice().buffer as ArrayBuffer,
         nonce: decodeBase64Url(String(value.nonce), 12, 12).slice().buffer as ArrayBuffer,
         ciphertext: decodeBase64Url(String(value.ciphertext), 48, 48).slice().buffer as ArrayBuffer,
-        aadDigest: (await sha256(utf8(canonicalize(aad as unknown as JsonValue)))).slice().buffer as ArrayBuffer });
+        aadDigest: (await sha256(utf8(canonicalize(aad)))).slice().buffer as ArrayBuffer });
 }
 async function batchResult(database: D1Database, statements: readonly D1PreparedStatement[],
     expectedChanges: readonly number[]): Promise<RotationMutationResult> {
@@ -200,7 +200,7 @@ async function batchResult(database: D1Database, statements: readonly D1Prepared
     } catch (error) { throw translatePersistenceError(error); }
 }
 function resultJson(value: Omit<RotationMutationResult, 'httpStatus'>): string {
-    return canonicalize(value as unknown as JsonValue);
+    return canonicalize(value);
 }
 
 export async function startWorkspaceKeyRotation(database: D1Database,

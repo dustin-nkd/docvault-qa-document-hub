@@ -88,6 +88,10 @@ test('CI blocks deployment until all Cloudflare, artifact, and browser gates pas
     withoutRotation.scripts['check:cloudflare'] = withoutRotation.scripts['check:cloudflare']
         .replace(' && npm run cf:phase5:rotation:check', '');
     assert.throws(() => validateCloudflareCiBoundary(withoutRotation, workflow));
+    const withoutPreviewKey = structuredClone(packageJson);
+    withoutPreviewKey.scripts['check:cloudflare'] = withoutPreviewKey.scripts['check:cloudflare']
+        .replace(' && npm run cf:phase5:preview-key:check', '');
+    assert.throws(() => validateCloudflareCiBoundary(withoutPreviewKey, workflow));
     const withoutPhase2Schema = structuredClone(packageJson);
     withoutPhase2Schema.scripts['check:cloudflare'] = withoutPhase2Schema.scripts['check:cloudflare']
         .replace(' && npm run cf:phase2:schema:check', '');

@@ -113,7 +113,7 @@ export async function registerDevice(database: D1Database, input: RegisterDevice
                   created_at, revoked_at, revoke_reason)
                  VALUES (?, ?, ?, ?, ?, 'P256-ECDH-v1', 'active', ?, NULL, NULL)`
             ).bind(input.deviceId, input.actorUserId, input.label,
-                canonicalize(parsed.jwk as unknown as JsonValue), fingerprint, input.serverTime),
+                canonicalize(parsed.jwk), fingerprint, input.serverTime),
             database.prepare(
                 `INSERT INTO device_audit_events (event_id, schema_version, user_id, event_type,
                   outcome, reason_code, actor_session_id, actor_device_id, target_device_id,

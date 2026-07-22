@@ -41,11 +41,12 @@ export function validateProductionHandlerWiring(source) {
     if (!/import\s+\{\s*PLATFORM_DEPENDENCIES\s*\}\s+from\s+['"]\.\.\/\.\.\/_lib\/runtime-dependencies\.mjs['"]/.test(source)) {
         throw new Error('Production handler must import the platform dependency implementation directly');
     }
-    if (!/handleApiRequest\(context\.request,\s*context\.env,\s*PLATFORM_DEPENDENCIES\)/.test(source)) {
-        throw new Error('Production handler must inject only PLATFORM_DEPENDENCIES');
+    for (const handler of ['handlePreviewKeyFoundationApi', 'handleApiRequest']) {
+        const call = new RegExp(handler + '\\(context\\.request,\\s*context\\.env,\\s*PLATFORM_DEPENDENCIES\\)');
+        if (!call.test(source)) throw new Error(handler + ' must inject only PLATFORM_DEPENDENCIES');
     }
     const references = source.match(/PLATFORM_DEPENDENCIES/g) || [];
-    if (references.length !== 2) throw new Error('Production dependency wiring contains an unexpected selector');
+    if (references.length !== 3) throw new Error('Production dependency wiring contains an unexpected selector');
     return true;
 }
 

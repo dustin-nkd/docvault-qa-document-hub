@@ -72,7 +72,7 @@ export async function protectDevicePrivateKey(pkcs8: Uint8Array, aadInput: Devic
     if (salt.byteLength !== 16 || nonce.byteLength !== 12) formatError();
     const key = await deriveKek(unlockSecret, salt);
     const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce,
-        additionalData: utf8(canonicalize(aad as unknown as JsonValue)), tagLength: 128 }, key, pkcs8);
+        additionalData: utf8(canonicalize(aad)), tagLength: 128 }, key, pkcs8);
     return Object.freeze({ aad, ciphertext: encodeBase64Url(new Uint8Array(ciphertext)),
         nonce: encodeBase64Url(nonce), salt: encodeBase64Url(salt) });
 }
@@ -87,7 +87,7 @@ export async function unlockDevicePrivateKey(value: unknown, unlockSecret: Uint8
         if (ciphertext.byteLength < 17) formatError();
         const key = await deriveKek(unlockSecret, salt);
         const pkcs8 = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce,
-            additionalData: utf8(canonicalize(aad as unknown as JsonValue)), tagLength: 128 }, key, ciphertext));
+            additionalData: utf8(canonicalize(aad)), tagLength: 128 }, key, ciphertext));
         if (pkcs8.byteLength < 1 || pkcs8.byteLength > 512) formatError();
         try {
             return await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
@@ -133,7 +133,7 @@ function workspaceInfo(aad: WorkspaceEnvelopeAad): Uint8Array {
 
 async function wrappingKey(privateKey: CryptoKey, publicKey: CryptoKey, salt: Uint8Array,
     aad: WorkspaceEnvelopeAad): Promise<CryptoKey> {
-    const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: publicKey } as unknown as SubtleCryptoDeriveKeyAlgorithm,
+    const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: publicKey } as SubtleCryptoDeriveKeyAlgorithm,
         privateKey, 256));
     let bits: Uint8Array | null = null;
     try {
@@ -159,7 +159,7 @@ export async function wrapWorkspaceKey(dek: Uint8Array, targetPublicJwk: unknown
     if (salt.byteLength !== 32 || nonce.byteLength !== 12) formatError();
     const key = await wrappingKey(pair.privateKey, target.key, salt, aad);
     const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce,
-        additionalData: utf8(canonicalize(aad as unknown as JsonValue)), tagLength: 128 }, key, dek);
+        additionalData: utf8(canonicalize(aad)), tagLength: 128 }, key, dek);
     return Object.freeze({ aad, ciphertext: encodeBase64Url(new Uint8Array(ciphertext)), ephemeralPublicJwk,
         hkdfSalt: encodeBase64Url(salt), nonce: encodeBase64Url(nonce) });
 }
@@ -169,7 +169,7 @@ export async function unwrapWorkspaceKey(value: unknown, targetPrivateKey: Crypt
     try {
         const item = exactObject(value, ['aad', 'ciphertext', 'ephemeralPublicJwk', 'hkdfSalt', 'nonce']);
         const aad = workspaceAad(item.aad); const expected = workspaceAad(expectedAad);
-        if (canonicalize(aad as unknown as JsonValue) !== canonicalize(expected as unknown as JsonValue)) {
+        if (canonicalize(aad) !== canonicalize(expected)) {
             throw new E2eePrimitiveError('CRYPTO_BINDING_MISMATCH');
         }
         const target = await parsePublicJwk(targetPublicJwk);
@@ -180,7 +180,7 @@ export async function unwrapWorkspaceKey(value: unknown, targetPrivateKey: Crypt
         const ciphertext = decodeBase64Url(String(item.ciphertext), 48, 48);
         const key = await wrappingKey(targetPrivateKey, peer.key, salt, aad);
         const dek = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce,
-            additionalData: utf8(canonicalize(aad as unknown as JsonValue)), tagLength: 128 }, key, ciphertext));
+            additionalData: utf8(canonicalize(aad)), tagLength: 128 }, key, ciphertext));
         if (dek.byteLength !== 32) formatError();
         return dek;
     } catch (error) {

@@ -11,13 +11,13 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P5-G2C-M",
+    "gate": "P5-G3",
     "decision": "APPROVED",
     "approved_on": "2026-07-22",
-    "authorized_story": "CF-P5-006",
-    "authorized_change": "forward-only-additive-rotation-migration-and-local-rotation-recovery-services",
-    "rotation_sequence": 12,
-    "next_gate": "P5-G3"
+    "authorized_story": "CF-P5-007",
+    "authorized_change": "local-preview-key-integration-and-qualification-preflight-only",
+    "remote_changes_authorized": false,
+    "next_gate": "P5-G4"
   },
   "entry": {
     "phase_4_exit": "PASS",
@@ -195,7 +195,7 @@
       "id": "CF-P5-007",
       "title": "Integrate and qualify isolated Preview key foundation",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "IN_PROGRESS",
       "entry_gate": "P5-G3",
       "remote_authorization_gate": "P5-G4",
       "exit_gate": "P5-G4A",

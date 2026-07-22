@@ -19,7 +19,16 @@ test('production import graph contains only reviewed Function runtime modules', 
         'functions/_lib/audit/event-registry.ts',
         'functions/_lib/audit/index.ts',
         'functions/_lib/collaboration/control-plane-cursor.ts',
+        'functions/_lib/collaboration/key-runtime-handler.ts',
         'functions/_lib/collaboration/runtime-handler.ts',
+        'functions/_lib/devices/device-repository.ts',
+        'functions/_lib/devices/device-service.ts',
+        'functions/_lib/devices/index.ts',
+        'functions/_lib/e2ee/canonical.ts',
+        'functions/_lib/e2ee/errors.ts',
+        'functions/_lib/e2ee/jwk.ts',
+        'functions/_lib/e2ee/primitives.ts',
+        'functions/_lib/e2ee/workspace-envelope-parser.ts',
         'functions/_lib/identity/abuse-control.ts',
         'functions/_lib/identity/cookies.ts',
         'functions/_lib/identity/crypto.ts',
@@ -56,6 +65,10 @@ test('production import graph contains only reviewed Function runtime modules', 
         'functions/_lib/rbac/policy.ts',
         'functions/_lib/rbac/repository.ts',
         'functions/_lib/runtime-dependencies.mjs',
+        'functions/_lib/workspace-keys/index.ts',
+        'functions/_lib/workspace-keys/preview-key-queries.ts',
+        'functions/_lib/workspace-keys/rotation-service.ts',
+        'functions/_lib/workspace-keys/workspace-key-service.ts',
         'functions/_lib/workspaces/index.ts',
         'functions/_lib/workspaces/workspace-bootstrap.ts',
         'functions/api/v1/[[path]].ts'
@@ -77,8 +90,12 @@ test('source policy rejects bypass selectors, unsafe typing, secret comparison, 
 test('production handler wiring cannot select dependencies from request or environment state', () => {
     const approved = `
         import { handleApiRequest } from '../../_lib/api-shell.mjs';
+        import { handlePreviewKeyFoundationApi } from '../../_lib/collaboration/key-runtime-handler';
         import { PLATFORM_DEPENDENCIES } from '../../_lib/runtime-dependencies.mjs';
-        export const onRequest = context => handleApiRequest(context.request, context.env, PLATFORM_DEPENDENCIES);
+        export const onRequest = context => {
+            const key = handlePreviewKeyFoundationApi(context.request, context.env, PLATFORM_DEPENDENCIES);
+            return key || handleApiRequest(context.request, context.env, PLATFORM_DEPENDENCIES);
+        };
     `;
     assert.equal(validateProductionHandlerWiring(approved), true);
     assert.throws(() => validateProductionHandlerWiring(approved.replace(

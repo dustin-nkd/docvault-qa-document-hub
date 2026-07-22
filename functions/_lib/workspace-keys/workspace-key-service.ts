@@ -1,7 +1,7 @@
 import { canonicalize, decodeBase64Url, encodeBase64Url, exactObject, requireSafeInteger,
     requireUuidV4, sha256, type JsonValue, utf8 } from '../e2ee/canonical';
 import { E2EE, type WorkspaceKeyEnvelope } from '../e2ee/primitives';
-import { parsePublicJwk } from '../e2ee/jwk';
+import { parsePublicJwk, type CanonicalPublicJwk } from '../e2ee/jwk';
 import { PersistenceError, requireCheckedChanges, translatePersistenceError } from '../persistence/repository';
 
 const CONTROL = /[\u0000-\u001f\u007f]/;
@@ -43,7 +43,7 @@ export interface WorkspaceKeyMutationResult {
 }
 export interface ProvisioningTarget {
     readonly userId: string; readonly deviceId: string; readonly fingerprint: string;
-    readonly publicJwk: Readonly<Record<string, unknown>>; readonly keyVersion: number;
+    readonly publicJwk: CanonicalPublicJwk; readonly keyVersion: number;
 }
 interface ValidatedEnvelope {
     readonly ephemeralPublicJwk: string; readonly hkdfSalt: ArrayBuffer;
@@ -110,7 +110,7 @@ function parseResult(row: Record<string, unknown>): WorkspaceKeyMutationResult {
         readiness: 'key_ready', httpStatus: 201 });
 }
 function resultJson(result: Omit<WorkspaceKeyMutationResult, 'httpStatus'>): string {
-    return canonicalize(result as unknown as JsonValue);
+    return canonicalize(result);
 }
 async function replay(database: D1Database, input: MutationContext, workspaceId: string,
     operation: 'workspace.create' | 'envelope.provision'): Promise<WorkspaceKeyMutationResult | null> {
@@ -144,11 +144,11 @@ async function validateEnvelope(envelope: unknown, expected: {
         || aad.wrapperDeviceId !== expected.wrapperDeviceId || aad.keyVersion !== expected.keyVersion) fail();
     decodeBase64Url(expected.targetFingerprint, 32, 32);
     const ephemeral = await parsePublicJwk(value.ephemeralPublicJwk);
-    return Object.freeze({ ephemeralPublicJwk: canonicalize(ephemeral.jwk as unknown as JsonValue),
+    return Object.freeze({ ephemeralPublicJwk: canonicalize(ephemeral.jwk),
         hkdfSalt: decodeBase64Url(String(value.hkdfSalt), 32, 32).slice().buffer as ArrayBuffer,
         nonce: decodeBase64Url(String(value.nonce), 12, 12).slice().buffer as ArrayBuffer,
         ciphertext: decodeBase64Url(String(value.ciphertext), 48, 48).slice().buffer as ArrayBuffer,
-        aadDigest: (await sha256(utf8(canonicalize(aad as unknown as JsonValue)))).slice().buffer as ArrayBuffer });
+        aadDigest: (await sha256(utf8(canonicalize(aad)))).slice().buffer as ArrayBuffer });
 }
 async function executeBatch(database: D1Database, statements: readonly D1PreparedStatement[],
     writes: number): Promise<WorkspaceKeyMutationResult> {
@@ -272,7 +272,7 @@ export async function readProvisioningTarget(database: D1Database, input: LiveCo
         || typeof row.current_key_version !== 'number') throw new PersistenceError('PERSISTENCE_NOT_FOUND');
     return Object.freeze({ userId: input.targetUserId, deviceId: input.targetDeviceId,
         fingerprint: encodeBase64Url(new Uint8Array(blob32(row.fingerprint))),
-        publicJwk: Object.freeze(JSON.parse(row.public_jwk) as Record<string, unknown>),
+        publicJwk: (await parsePublicJwk(JSON.parse(row.public_jwk))).jwk,
         keyVersion: row.current_key_version });
 }
 
