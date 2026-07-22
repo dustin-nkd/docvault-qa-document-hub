@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "story": "CF-P5-006",
+  "status": "PASS",
+  "gate_authorization": {
+    "entry_gate": "P5-G2C",
+    "migration_gate": "P5-G2C-M",
+    "decision": "APPROVED",
+    "approved_on": "2026-07-22",
+    "authorized_migration": 12,
+    "remote_apply_authorized": false,
+    "next_gate": "P5-G3"
+  },
+  "schema": {
+    "filename": "0012_ed26080d9528_workspace_key_rotations.sql",
+    "sha256": "ed26080d952882428297a76b1441ff00e593efb153295c452078e12151890d89",
+    "tables": ["workspace_key_rotations", "workspace_key_rotation_targets"],
+    "forward_only": true,
+    "additive": true,
+    "backfill": "none",
+    "remote_apply_authorized": false
+  },
+  "rotation": {
+    "initiator_role": "owner",
+    "initiator_requires_current_envelope": true,
+    "initiator_requires_recent_authentication": true,
+    "next_version": "current-plus-one",
+    "one_preparing_per_workspace": true,
+    "eligibility_snapshot": "immutable-user-device-fingerprint",
+    "eligible_membership_state": "active",
+    "eligible_device_state": "active",
+    "pending_membership_included": false,
+    "removed_or_revoked_included": false,
+    "complete_envelope_set_required": true,
+    "commit": "atomic-database-guarded",
+    "interruption": "resume-idempotently",
+    "changed_snapshot": "abort-restart-same-n-plus-one",
+    "old_version_new_operations": "denied",
+    "historical_committed_envelopes": "retained-for-currently-authorized-readers"
+  },
+  "recovery": {
+    "only_path": "active-key-ready-owner-or-admin-device-normal-provisioning",
+    "all_provisioners_lost": "terminal-cryptographic-loss",
+    "server_reset": false,
+    "server_escrow": false,
+    "recovery_artifact": false,
+    "operator_key_recovery": false,
+    "d1_restore": "ciphertext-and-metadata-only",
+    "d1_restore_recovers_keys": false
+  },
+  "verification": {
+    "workers_test_file": "tests/cloudflare/workspace-key-rotation.workers.test.ts",
+    "workers_test_count": 9,
+    "concurrent_start_proposals": 20,
+    "p0_p1_skips": 0,
+    "accepted_flakes": 0,
+    "open_p0_p1_defects": 0
+  },
+  "scope": {
+    "runtime_route_calls": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "preview_deploy_authorized": false,
+    "production_binding": false,
+    "collaboration_enabled": false
+  },
+  "evidence": ["CF-EV-P5-UT-005", "CF-EV-P5-INT-003", "CF-EV-P5-E2E-002", "CF-EV-P5-SEC-006", "CF-EV-P5-OPS-001"],
+  "next_decision": {
+    "gate": "P5-G3",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P5-007-local-preparation-only",
+    "remote_authorization_gate": "P5-G4",
+    "remote_changes_authorized": false
+  }
+}

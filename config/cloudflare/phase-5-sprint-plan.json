@@ -11,13 +11,13 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P5-G2B",
+    "gate": "P5-G2C-M",
     "decision": "APPROVED",
     "approved_on": "2026-07-22",
-    "authorized_story": "CF-P5-005",
-    "authorized_change": "workspace-key-bootstrap-envelopes-and-readiness",
+    "authorized_story": "CF-P5-006",
+    "authorized_change": "forward-only-additive-rotation-migration-and-local-rotation-recovery-services",
     "rotation_sequence": 12,
-    "next_gate": "P5-G2C"
+    "next_gate": "P5-G3"
   },
   "entry": {
     "phase_4_exit": "PASS",
@@ -180,7 +180,7 @@
       "id": "CF-P5-006",
       "title": "Implement monotonic rotation and no-escrow recovery",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P5-G2C",
       "conditional_migration_gate": "P5-G2C-M",
       "exit_gate": "P5-G3",

@@ -108,7 +108,7 @@ export function validatePhase3OAuthCallback({ manifest, sprintManifest, sprintSo
 
     assert(!routeSource.includes('completeOAuthCallback') && !routeSource.includes('createGitHubOAuthAdapter'),
         'OAuth callback was routed before CF-P3-006');
-    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M'
+    assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12 && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M' && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M'
         && migrationManifest.entries[9]?.story === 'CF-P3-007'
         && migrationManifest.entries[9]?.gate === 'P3-G3', 'Migration set contains an unauthorized post-story change');
     assert(!wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits

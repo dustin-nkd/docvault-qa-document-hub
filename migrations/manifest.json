@@ -273,5 +273,31 @@
       "backfill": "none",
       "rollback_class": "compatible-code-rollback",
       "privacy": "schema-only-public-device-keys-digests-and-allow-listed-events"
-    }  ]
+    },
+    {
+      "sequence": 12,
+      "filename": "0012_ed26080d9528_workspace_key_rotations.sql",
+      "slug": "workspace_key_rotations",
+      "story": "CF-P5-006",
+      "gate": "P5-G2C-M",
+      "sha256": "ed26080d952882428297a76b1441ff00e593efb153295c452078e12151890d89",
+      "normalized_bytes": 13035,
+      "previous_sha256": "204e019d5d7cddcbbc5b8245c74ad7acab5da20955988a756dc4e200ea985ae9",
+      "owner": "Workspace Key Rotation Repository",
+      "reviewers": ["Product Owner", "Technical Lead", "Security Reviewer", "Senior QA", "Operations", "Privacy Reviewer", "UX Lead"],
+      "created_at": "2026-07-22",
+      "contract_version": "CF-P5-rotation-recovery-v1-amendment-P5-G2C-M",
+      "change_class": "forward-only-additive-monotonic-key-rotation",
+      "tables": ["workspace_key_rotations", "workspace_key_rotation_targets"],
+      "requirements": ["CF-DEV-003", "CF-DEV-004", "CF-KEY-003", "CF-KEY-004", "CF-KEY-005", "CF-KEY-006", "CF-OPS-003"],
+      "threats": ["T06", "T07", "T08", "T09", "T12", "T16", "T19"],
+      "risks": ["R05", "R09", "R10", "R13", "R16", "R17", "R18"],
+      "validations": ["schema-version-twelve", "monotonic-current-plus-one", "one-preparing-rotation", "immutable-eligibility-snapshot", "complete-envelope-commit", "append-only-history", "no-escrow-canary"],
+      "compatibility": {"minimum_runtime_schema": 1, "maximum_runtime_schema": 12},
+      "runtime_class": "bounded-schema-expansion",
+      "backfill": "none",
+      "rollback_class": "compatible-code-rollback-preserve-key-history",
+      "privacy": "schema-only-public-device-bindings-digests-and-allow-listed-security-metadata"
+    }
+  ]
 }

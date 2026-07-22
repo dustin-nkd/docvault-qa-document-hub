@@ -115,6 +115,18 @@ export interface DeviceAuditEventRow {
     actor_device_id: Nullable<string>; target_device_id: string; request_id: string;
     server_time: number; metadata_json: '{}';
 }
+export interface WorkspaceKeyRotationRow {
+    id: string; workspace_id: string; from_key_version: number; to_key_version: number;
+    initiator_user_id: string; initiator_device_id: string; reason: string;
+    state: 'preparing' | 'committed' | 'aborted'; eligibility_digest: D1Blob;
+    eligible_count: number; staged_count: number; created_at: number; expires_at: number;
+    committed_at: Nullable<number>; aborted_at: Nullable<number>;
+}
+
+export interface WorkspaceKeyRotationTargetRow {
+    rotation_id: string; workspace_id: string; target_user_id: string; target_device_id: string;
+    target_fingerprint: D1Blob; state: 'pending' | 'staged' | 'excluded';
+}
 export interface AuditEventRow {
     sequence: number; event_id: string; schema_version: number; workspace_id: string; event_type: string;
     outcome: 'success' | 'denied' | 'failure' | 'correction'; reason_code: string;
@@ -144,6 +156,8 @@ export interface CollaborationTableRowMap {
     document_revisions: DocumentRevisionRow; mutation_results: MutationResultRow;
     transition_guards: TransitionGuardRow;
     device_mutation_results: DeviceMutationResultRow; device_audit_events: DeviceAuditEventRow;
+    workspace_key_rotations: WorkspaceKeyRotationRow;
+    workspace_key_rotation_targets: WorkspaceKeyRotationTargetRow;
     audit_events: AuditEventRow; retention_holds: RetentionHoldRow;
     retention_purge_runs: RetentionPurgeRunRow;
 }

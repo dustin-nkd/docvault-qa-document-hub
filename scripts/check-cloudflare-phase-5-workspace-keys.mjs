@@ -22,4 +22,4 @@ validatePhase5WorkspaceKeys({
 });
 console.log('Cloudflare CF-P5-005 workspace keys gate passed');
 console.log('  Stateless bootstrap, atomic initial envelope, and server-derived readiness are enforced');
-console.log('  Routes, remote D1, migration 12, bindings, secrets, and production remain unchanged');
+console.log('  Migration 12 is a later local-only story; routes, remote D1, bindings, secrets, and production remain unchanged');

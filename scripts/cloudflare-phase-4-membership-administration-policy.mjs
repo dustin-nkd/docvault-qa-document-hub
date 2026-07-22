@@ -81,7 +81,7 @@ export function validatePhase4MembershipAdministration({ manifest, prerequisite,
     assert(!routeSource.includes('_lib/memberships') && !routeSource.includes('changeMemberRole(')
         && !routeSource.includes('transferOwnership('),
     'Membership administration was routed before authorization');
-    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M',
+    assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12 && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M' && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M',
         'CF-P4-005 added an unauthorized migration');
     assert(!wrangler.env?.production?.d1_databases
         && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]

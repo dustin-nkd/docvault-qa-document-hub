@@ -110,7 +110,7 @@ export function validatePhase4InvitationLifecycle({ manifest, prerequisite, sour
     }
     assert(!routeSource.includes('_lib/invitations') && !routeSource.includes('createInvitation(')
         && !routeSource.includes('acceptInvitation('), 'Invitation lifecycle was routed before authorization');
-    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M', 'CF-P4-004 added an unauthorized migration');
+    assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12 && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M' && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M', 'CF-P4-004 added an unauthorized migration');
     assert(!wrangler.env?.production?.d1_databases
         && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
             .every(value => value?.COLLABORATION_ENABLED === 'false'),

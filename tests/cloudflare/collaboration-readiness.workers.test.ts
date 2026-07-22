@@ -163,7 +163,7 @@ describe('CF-P2-003 tenant constraints and query plans', () => {
 
         await expect(env.COLLAB_DB.prepare(
             'UPDATE workspaces SET current_key_version = 2, updated_at = 3 WHERE id = ?'
-        ).bind(IDS.workspaceA).run()).rejects.toThrow(/current key scope/);
+        ).bind(IDS.workspaceA).run()).rejects.toThrow(/current key scope|workspace key rotation commit/);
 
         await expect(env.COLLAB_DB.prepare(
             'UPDATE documents SET workspace_id = ? WHERE id = ? AND workspace_id = ?'

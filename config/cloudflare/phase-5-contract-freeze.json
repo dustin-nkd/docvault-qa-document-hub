@@ -49,9 +49,11 @@
     "migration_required": true,
     "planned_sequence": 12,
     "migration_type": "forward-only-additive",
-    "migration_authorized": false,
+    "migration_authorized": true,
     "remote_apply_authorized": false,
     "authorization_gate": "P5-G2C-M",
+    "authorization_decision": "APPROVED",
+    "authorized_on": "2026-07-22",
     "tables": {
       "workspace_key_rotations": ["id", "workspace_id", "from_key_version", "to_key_version", "initiator_user_id", "initiator_device_id", "reason", "state", "eligibility_digest", "eligible_count", "staged_count", "created_at", "expires_at", "committed_at", "aborted_at"],
       "workspace_key_rotation_targets": ["rotation_id", "workspace_id", "target_user_id", "target_device_id", "target_fingerprint", "state"]

@@ -24,4 +24,4 @@ validatePhase5DeviceServices({
 });
 console.log('Cloudflare CF-P5-004 device services gate passed');
 console.log('  Registration, own inventory, revocation, idempotency, and device audit are atomic');
-console.log('  Migration 11 is local-only; rotation moved to sequence 12; routes and remote D1 unchanged');
+console.log('  Migration 11 is local-only; rotation migration 12 is now local-only; routes and remote D1 unchanged');

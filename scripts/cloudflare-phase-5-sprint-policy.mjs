@@ -16,12 +16,12 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
         && manifest.sprint === 'CF-P5-S01' && manifest.title === 'E2EE key foundation',
     'Unsupported Phase 5 sprint plan');
     assert(manifest.status === 'ACTIVE'
-        && manifest.authorization?.gate === 'P5-G2B'
+        && manifest.authorization?.gate === 'P5-G2C-M'
         && manifest.authorization.decision === 'APPROVED'
         && manifest.authorization.approved_on === '2026-07-22'
-        && manifest.authorization.authorized_story === 'CF-P5-005'
-        && manifest.authorization.next_gate === 'P5-G2C',
-    'P5-G2B authorization boundary drifted');
+        && manifest.authorization.authorized_story === 'CF-P5-006'
+        && manifest.authorization.next_gate === 'P5-G3',
+    'P5-G2C-M authorization boundary drifted');
     assert(manifest.planned_window?.working_days === 20
         && manifest.planned_window.timezone === 'Asia/Ho_Chi_Minh', 'Phase 5 sprint window drifted');
     assert(phase4Exit?.phase === 'CF-P4' && phase4Exit.story === 'CF-P4-008'
@@ -93,7 +93,7 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
     const risks = tableIds(riskRegister, 'R');
     const evidence = [];
     for (const [index, story] of stories.entries()) {
-        assert(story.status === (index < 5 ? 'PASS' : 'PLANNED') && story.owners?.length > 0 && story.reviewers?.length > 0,
+        assert(story.status === (index < 6 ? 'PASS' : 'PLANNED') && story.owners?.length > 0 && story.reviewers?.length > 0,
             `${story.id} status or ownership drifted`);
         assert(new Set([...story.owners, ...story.reviewers]).has('Senior QA'),
             `${story.id} lacks Senior QA accountability`);
@@ -137,7 +137,7 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
         && recovery.rollback_rule === 'preserve-monotonic-key-version-and-envelope-history',
     'Phase 5 recovery contract drifted');
 
-    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M', 'Sprint planning added an unauthorized migration');
+    assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12 && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M', 'Sprint migration inventory exceeds approved P5-G2C-M');
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
         && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
             .every(vars => vars?.COLLABORATION_ENABLED === 'false'),

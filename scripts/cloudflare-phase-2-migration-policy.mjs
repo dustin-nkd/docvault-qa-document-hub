@@ -78,7 +78,7 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
 
     const entries = manifest.entries || [];
-    assert(entries.length === 11, 'Migration manifest must include the authorized P5-G2A-M additive correction');
+    assert(entries.length === 12, 'Migration manifest must include the authorized P5-G2C-M rotation expansion');
     assert(sameSet(Object.keys(migrationSources), entries.map(entry => entry.filename)), 'Migration files and manifest differ');
     const frozenOwnership = new Map((freeze.migration_sequence || []).map(item => [item.sequence, item.owns]));
     const discoveredTables = {};
@@ -100,9 +100,12 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
         } else if (sequence === 10) {
             assert(entry.slug === 'auth_rate_windows' && entry.story === 'CF-P3-007'
                 && entry.gate === 'P3-G3', `Identity abuse-control migration ${sequence} is not authorized`);
-        } else {
+        } else if (sequence === 11) {
             assert(entry.slug === 'device_operation_journals' && entry.story === 'CF-P5-004'
                 && entry.gate === 'P5-G2A-M', `Device correction migration ${sequence} is not authorized`);
+        } else {
+            assert(entry.slug === 'workspace_key_rotations' && entry.story === 'CF-P5-006'
+                && entry.gate === 'P5-G2C-M', `Rotation migration ${sequence} is not authorized`);
         }
         assert(entry.previous_sha256 === previousSha, `Migration ${sequence} hash chain drifted`);
         assert(new RegExp(`^${String(sequence).padStart(4, '0')}_[a-f0-9]{12}_${entry.slug}\\.sql$`).test(entry.filename), `Migration ${sequence} filename is invalid`);
@@ -115,11 +118,14 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
             : sequence === 9 ? ['retention_purge_runs']
                 : sequence === 10 ? ['auth_rate_windows']
                     : sequence === 11 ? ['device_mutation_results', 'device_audit_events']
-                        : (frozenOwnership.get(sequence) || []);
+                        : sequence === 12 ? ['workspace_key_rotations', 'workspace_key_rotation_targets']
+                            : (frozenOwnership.get(sequence) || []);
         assert(same(entry.tables, expectedTables), `Migration ${entry.filename} table ownership drifted`);
         assert(entry.owner && entry.reviewers?.includes('Senior QA') && entry.reviewers.includes('Security Reviewer'), `Migration ${entry.filename} lacks accountable review`);
         assert(entry.requirements?.length > 0 && entry.threats?.length > 0 && entry.risks?.length > 0 && entry.validations?.length > 0, `Migration ${entry.filename} lacks traceability`);
-        assert(entry.backfill === 'none' && entry.rollback_class === 'compatible-code-rollback', `Migration ${entry.filename} is not an additive compatible expansion`);
+        assert(entry.backfill === 'none' && (entry.rollback_class === 'compatible-code-rollback'
+            || sequence === 12 && entry.rollback_class === 'compatible-code-rollback-preserve-key-history'),
+        `Migration ${entry.filename} is not an additive compatible expansion`);
         assert(entry.privacy?.startsWith('schema-only-'), `Migration ${entry.filename} privacy classification drifted`);
         assert((source.match(/PRAGMA\s+foreign_key_check\s*;/gi) || []).length === 1, `Migration ${entry.filename} must finish with one foreign-key check`);
         assert(!/^\s*(?:BEGIN(?:\s+TRANSACTION)?|COMMIT|ROLLBACK)\s*;/im.test(source), `Migration ${entry.filename} contains an interactive transaction`);
@@ -152,6 +158,14 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     frozenColumns.device_audit_events = [
         'sequence', 'event_id', 'schema_version', 'user_id', 'event_type', 'outcome', 'reason_code',
         'actor_session_id', 'actor_device_id', 'target_device_id', 'request_id', 'server_time', 'metadata_json'
+    ];
+    frozenColumns.workspace_key_rotations = [
+        'id', 'workspace_id', 'from_key_version', 'to_key_version', 'initiator_user_id',
+        'initiator_device_id', 'reason', 'state', 'eligibility_digest', 'eligible_count',
+        'staged_count', 'created_at', 'expires_at', 'committed_at', 'aborted_at'
+    ];
+    frozenColumns.workspace_key_rotation_targets = [
+        'rotation_id', 'workspace_id', 'target_user_id', 'target_device_id', 'target_fingerprint', 'state'
     ];
     assert(sameSet(Object.keys(discoveredTables), Object.keys(frozenColumns)), 'SQL table inventory differs from the schema freeze');
     for (const [table, columns] of Object.entries(frozenColumns)) assert(same(discoveredTables[table], columns), `${table} SQL columns differ from the schema freeze`);

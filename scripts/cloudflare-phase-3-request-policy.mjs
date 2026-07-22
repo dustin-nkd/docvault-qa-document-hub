@@ -112,7 +112,7 @@ export function validatePhase3RequestPolicy({ manifest, sprintManifest, sprintSo
 
     assert(!routeSource.includes('authorizeIdentityRequest') && !routeSource.includes('request-policy'),
         'Identity request policy was routed before preview activation');
-    assert(migrationManifest.entries?.length === 11 && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M'
+    assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12 && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M' && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M'
         && migrationManifest.entries[9]?.story === 'CF-P3-007'
         && migrationManifest.entries[9]?.gate === 'P3-G3', 'Migration set contains an unauthorized post-story change');
     assert(!wrangler.env?.production?.d1_databases && !wrangler.env?.production?.ratelimits

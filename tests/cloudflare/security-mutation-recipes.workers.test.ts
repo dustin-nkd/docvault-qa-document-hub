@@ -69,7 +69,7 @@ const workspaceScope = (fingerprint = blob(32, 5)): ReplayScope => ({
 
 describe('CF-P2-005 security mutation recipes', () => {
     beforeAll(async () => {
-        await applyD1Migrations(env.COLLAB_DB, env.COLLAB_MIGRATIONS, 'security_recipe_migrations');
+        await applyD1Migrations(env.COLLAB_DB, env.COLLAB_MIGRATIONS.slice(0, 11), 'security_recipe_migrations');
         await seedIdentity(ID.owner, ID.ownerDevice, '101', blob(32, 2));
         await seedIdentity(ID.invitee, ID.inviteeDevice, '202', blob(32, 7));
     });

@@ -12,10 +12,12 @@ export function validatePhase5WorkspaceKeys({ manifest, sprint, migrationManifes
         && manifest.gate_authorization.decision === 'APPROVED'
         && manifest.gate_authorization.authorized_story === 'CF-P5-005'
         && manifest.gate_authorization.next_gate === 'P5-G2C', 'P5-G2B authorization drifted');
-    assert(sprint.authorization?.gate === 'P5-G2B' && sprint.authorization.authorized_story === 'CF-P5-005'
-        && sprint.stories?.slice(0, 5).every(story => story.status === 'PASS')
-        && sprint.stories?.slice(5).every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
-    assert(migrationManifest.entries?.length === 11 && manifest.schema?.migration_added === false
+    assert(['P5-G2B', 'P5-G2C-M'].includes(sprint.authorization?.gate)
+        && sprint.stories?.slice(0, 6).every(story => story.status === 'PASS')
+        && sprint.stories?.slice(6).every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
+    assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12
+        && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M'
+        && manifest.schema?.migration_added === false
         && manifest.schema.rotation_sequence_reserved === 12
         && manifest.schema.remote_apply_authorized === false, 'Schema authorization drifted');
 
