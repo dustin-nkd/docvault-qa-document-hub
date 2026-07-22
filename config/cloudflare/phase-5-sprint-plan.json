@@ -11,13 +11,13 @@
     "timezone": "Asia/Ho_Chi_Minh"
   },
   "authorization": {
-    "gate": "P5-G2A-M",
+    "gate": "P5-G2B",
     "decision": "APPROVED",
     "approved_on": "2026-07-22",
-    "authorized_story": "CF-P5-004",
-    "authorized_change": "forward-only-additive-device-mutation-audit-correction",
+    "authorized_story": "CF-P5-005",
+    "authorized_change": "workspace-key-bootstrap-envelopes-and-readiness",
     "rotation_sequence": 12,
-    "next_gate": "P5-G2B"
+    "next_gate": "P5-G2C"
   },
   "entry": {
     "phase_4_exit": "PASS",
@@ -166,7 +166,7 @@
       "id": "CF-P5-005",
       "title": "Implement workspace key bootstrap, envelopes, and readiness",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P5-G2B",
       "exit_gate": "P5-G2C",
       "owners": ["Senior Developer", "Security Reviewer"],

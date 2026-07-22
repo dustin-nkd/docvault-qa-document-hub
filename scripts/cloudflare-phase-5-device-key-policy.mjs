@@ -11,10 +11,8 @@ export function validatePhase5DeviceKeyLifecycle({ manifest, sprint, source, bro
         && manifest.gate_authorization.decision === 'APPROVED'
         && manifest.gate_authorization.authorized_story === 'CF-P5-003'
         && manifest.gate_authorization.next_gate === 'P5-G2A', 'P5-G2 authorization drifted');
-    assert(sprint.authorization?.gate === 'P5-G2A-M' && sprint.authorization.authorized_story === 'CF-P5-004'
-        && sprint.authorization.next_gate === 'P5-G2B'
-        && sprint.stories?.slice(0, 4).every(story => story.status === 'PASS')
-        && sprint.stories?.slice(4).every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
+    assert(sprint.stories?.slice(0, 5).every(story => story.status === 'PASS')
+        && sprint.stories?.slice(5).every(story => story.status === 'PLANNED'), 'Sprint disposition drifted');
 
     const implementation = manifest.implementation || {};
     assert(implementation.runtime === 'secure-context-browser-web-crypto-and-indexeddb'

@@ -18,6 +18,12 @@ export const PLATFORM_RANDOM: RandomBytesSource = Object.freeze({
     }
 });
 
+export function generateWorkspaceDek(random: RandomBytesSource = PLATFORM_RANDOM): Uint8Array {
+    const dek = random.bytes(32);
+    if (dek.byteLength !== 32) formatError();
+    return dek;
+}
+
 export const PLATFORM_EPHEMERAL: EphemeralKeySource = Object.freeze({
     async create(): Promise<CryptoKeyPair> {
         return crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']) as Promise<CryptoKeyPair>;

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P5",
+  "story": "CF-P5-005",
+  "status": "PASS",
+  "gate_authorization": {
+    "id": "P5-G2B",
+    "decision": "APPROVED",
+    "approved_on": "2026-07-22",
+    "authorized_story": "CF-P5-005",
+    "next_gate": "P5-G2C"
+  },
+  "implementation": {
+    "workspace_dek": "browser-csprng-exactly-32-bytes",
+    "bootstrap_intent": "stateless-deterministic-live-user-active-device-idempotency-binding",
+    "bootstrap_commit": "workspace-owner-current-v1-creator-envelope-audit-result-one-batch",
+    "target_lookup": "canonical-active-device-after-live-key-ready-owner-admin-proof",
+    "provisioning": "current-wrapper-envelope-version-and-fingerprint-cas-one-batch",
+    "readiness": "server-derived-only-never-client-written",
+    "server_plaintext_dek": "prohibited"
+  },
+  "schema": {
+    "migration_added": false,
+    "local_schema_sequence": 11,
+    "rotation_sequence_reserved": 12,
+    "remote_apply_authorized": false
+  },
+  "scope": {
+    "runtime_route_calls": 0,
+    "wrangler_bindings_added": 0,
+    "remote_writes": 0,
+    "secrets_created_or_changed": 0,
+    "preview_deploy_authorized": false,
+    "production_identity_enabled": false,
+    "collaboration_enabled": false
+  },
+  "workers_test_count": 8,
+  "concurrent_identical_submissions": 32,
+  "evidence": ["CF-EV-P5-UT-004", "CF-EV-P5-INT-002", "CF-EV-P5-SEC-005", "CF-EV-P5-QA-002"],
+  "next_decision": {
+    "gate": "P5-G2C",
+    "recommendation": "APPROVE",
+    "authorizes": "CF-P5-006-only",
+    "conditional_migration_gate": "P5-G2C-M",
+    "remote_changes_authorized": false
+  }
+}

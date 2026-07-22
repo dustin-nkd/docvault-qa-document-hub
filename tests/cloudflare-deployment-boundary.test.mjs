@@ -79,7 +79,11 @@ test('CI blocks deployment until all Cloudflare, artifact, and browser gates pas
     const withoutDeviceServices = structuredClone(packageJson);
     withoutDeviceServices.scripts['check:cloudflare'] = withoutDeviceServices.scripts['check:cloudflare']
         .replace(' && npm run cf:phase5:device-services:check', '');
-    assert.throws(() => validateCloudflareCiBoundary(withoutDeviceServices, workflow));    const withoutPhase2Schema = structuredClone(packageJson);
+    assert.throws(() => validateCloudflareCiBoundary(withoutDeviceServices, workflow));
+    const withoutWorkspaceKeys = structuredClone(packageJson);
+    withoutWorkspaceKeys.scripts['check:cloudflare'] = withoutWorkspaceKeys.scripts['check:cloudflare']
+        .replace(' && npm run cf:phase5:workspace-keys:check', '');
+    assert.throws(() => validateCloudflareCiBoundary(withoutWorkspaceKeys, workflow));    const withoutPhase2Schema = structuredClone(packageJson);
     withoutPhase2Schema.scripts['check:cloudflare'] = withoutPhase2Schema.scripts['check:cloudflare']
         .replace(' && npm run cf:phase2:schema:check', '');
     assert.throws(() => validateCloudflareCiBoundary(withoutPhase2Schema, workflow));
