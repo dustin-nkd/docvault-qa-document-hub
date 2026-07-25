@@ -1,0 +1,32 @@
+{
+  "id": "CF-VEC-P6-ENV-001 / CF-VEC-P6-FPR-001",
+  "note": "Immutable synthetic vectors for the Phase 6 document envelope and canonical request fingerprint. Contains no real key, plaintext, or draft context.",
+  "envelope": {
+    "dek": "AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw",
+    "nonce": "BRAbJjE8R1JdaHN-",
+    "workspaceId": "11111111-1111-4111-8111-111111111111",
+    "documentId": "33333333-3333-4333-8333-333333333333",
+    "keyVersion": 2,
+    "revisionIntent": 5,
+    "envelopeVersion": 1,
+    "plaintextUtf8": "DocVault shared document vector payload",
+    "canonicalAad": "{\"documentId\":\"33333333-3333-4333-8333-333333333333\",\"envelopeVersion\":1,\"keyVersion\":2,\"revisionIntent\":5,\"suite\":\"A256GCM-doc-v1\",\"workspaceId\":\"11111111-1111-4111-8111-111111111111\"}",
+    "envelopeBase64Url": "AQUQGyYxPEdSXWhzftQ0BbsUO00Bt0hQDmNNeiB8mVYn8Xtxgi83qsuD_TVDaxWs7vLQICV5W5mP9gkcZFm4kpjsfBc",
+    "ciphertextBytes": 68,
+    "ciphertextDigestHex": "eca0e361d1b591808a80345291f827aa9f51513c7cdb0b5e3e8d6cf4908d3393"
+  },
+  "fingerprint": {
+    "actorUserId": "44444444-4444-4444-8444-444444444444",
+    "actorDeviceId": "22222222-2222-4222-8222-222222222222",
+    "workspaceId": "11111111-1111-4111-8111-111111111111",
+    "operation": "update",
+    "documentId": "33333333-3333-4333-8333-333333333333",
+    "baseRevision": 4,
+    "keyVersion": 2,
+    "envelopeVersion": 1,
+    "ciphertextDigestBase64Url": "7KDjYdG1kYCKgDRSkfgnqp9RUTx82wtePo1s9JCNM5M",
+    "ciphertextBytes": 68,
+    "canonicalPreimage": "[\"44444444-4444-4444-8444-444444444444\",\"22222222-2222-4222-8222-222222222222\",\"11111111-1111-4111-8111-111111111111\",\"update\",\"33333333-3333-4333-8333-333333333333\",4,2,1,\"7KDjYdG1kYCKgDRSkfgnqp9RUTx82wtePo1s9JCNM5M\",68]",
+    "fingerprintHex": "e4a93d763adee795d3c54831852cfd38efd8b5b0c8ed58ce848351e173b07b18"
+  }
+}

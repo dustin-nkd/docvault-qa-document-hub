@@ -57,3 +57,5 @@ import './cloudflare-phase-6-contract-policy.test.mjs';
 import './personal-vault-characterization.test.mjs';
 import './storage-provider-isolation.test.mjs';
 import './cloudflare-phase-6-provider-policy.test.mjs';
+import './document-envelope.test.mjs';
+import './cloudflare-phase-6-envelope-policy.test.mjs';

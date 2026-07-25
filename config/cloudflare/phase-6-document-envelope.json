@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P6",
+  "story": "CF-P6-003",
+  "status": "PASS",
+  "approved_entry_gate": "P6-G2",
+  "next_gate": "P6-G2A",
+  "authorizes_on_approval": "CF-P6-004",
+  "modules": {
+    "client_envelope": "js/collaboration/document-envelope.js",
+    "server_fingerprint": "functions/_lib/documents/request-fingerprint.ts"
+  },
+  "envelope": {
+    "suite": "A256GCM-doc-v1",
+    "version": 1,
+    "layout": "version(1) || nonce(12) || ciphertext+tag",
+    "nonce_bytes": 12,
+    "tag_bytes": 16,
+    "dek_bytes": 32,
+    "digest_bytes": 32,
+    "digest_algorithm": "SHA-256",
+    "aad_canonicalization": "RFC-8785-JCS",
+    "aad_bindings": ["workspaceId", "documentId", "revisionIntent", "keyVersion", "envelopeVersion"],
+    "min_envelope_bytes": 18,
+    "max_envelope_bytes": 1048576,
+    "max_ciphertext_bytes": 1048000,
+    "bounds_checked_before_crypto": true,
+    "uniform_authentication_failure": true,
+    "nonce_source": "crypto.getRandomValues",
+    "nonce_injection_seam": "tests-only-for-vector-reproducibility"
+  },
+  "fingerprint": {
+    "algorithm": "SHA-256",
+    "digest_bytes": 32,
+    "canonicalization": "ordered JSON array",
+    "ordered_inputs": [
+      "actorUserId", "actorDeviceId", "workspaceId", "operation", "documentId",
+      "baseRevision", "keyVersion", "envelopeVersion", "ciphertextDigest", "ciphertextBytes"
+    ],
+    "contains_plaintext": false,
+    "contains_full_ciphertext": false,
+    "enforces_create_precondition": true
+  },
+  "vectors": {
+    "fixture": "tests/fixtures/cloudflare/phase-6-document-vectors.json",
+    "sets": ["CF-VEC-P6-ENV-001", "CF-VEC-P6-FPR-001"],
+    "agreement_percent": 100,
+    "production_implementation": "WebCrypto",
+    "independent_oracle": "node:crypto",
+    "oracle_shares_code_with_production": false,
+    "contains_real_key_or_plaintext": false,
+    "nonce_uniqueness_trials": 100,
+    "nonce_collisions": 0
+  },
+  "negative_coverage": {
+    "aad_rebindings_tested": ["workspaceId", "documentId", "revisionIntent", "keyVersion"],
+    "wrong_dek": true,
+    "tampered_ciphertext_positions": ["first", "middle", "last"],
+    "flipped_nonce_byte": true,
+    "unsupported_envelope_version": true,
+    "oversize_plaintext": true,
+    "truncated_envelope": true,
+    "fingerprint_single_input_mutations": 8,
+    "fingerprint_input_order_swap": true,
+    "plaintext_canary_absent_from_envelope": true
+  },
+  "tests": {
+    "node": 18,
+    "workers": 8,
+    "total": 26,
+    "result": "PASS"
+  },
+  "authorization_boundary": {
+    "routes_implemented": 0,
+    "migrations_created": 0,
+    "remote_writes": 0,
+    "persistence_implemented": false,
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_d1": "NO-GO"
+  },
+  "evidence": ["CF-EV-P6-UT-002", "CF-EV-P6-VEC-001", "CF-EV-P6-SEC-003"]
+}

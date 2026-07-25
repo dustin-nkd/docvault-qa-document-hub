@@ -185,7 +185,7 @@
       "id": "CF-P6-003",
       "title": "Implement the encrypted document envelope",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P6-G2",
       "exit_gate": "P6-G2A",
       "evidence": [
