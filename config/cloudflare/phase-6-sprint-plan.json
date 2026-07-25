@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P6",
+  "sprint": "CF-P6-S01",
+  "title": "Shared document vertical slice",
+  "status": "PLANNED",
+  "planned_window": {
+    "start": "2026-07-27",
+    "end": "2026-08-28",
+    "working_days": 24,
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "authorization": {
+    "entry_gate": "P6-G0",
+    "decision": "PENDING",
+    "authorized_story_on_approval": "CF-P6-001",
+    "remote_authorization_gate": "P6-G4",
+    "remote_changes_authorized": false,
+    "exit_gate": "P6-G5"
+  },
+  "entry": {
+    "predecessor_phase": "CF-P5",
+    "predecessor_status": "PASS",
+    "predecessor_exit_gate": "P5-G5",
+    "controlling_handoff": "docs/collaboration-foundation/phase-6-handoff.md"
+  },
+  "schema_decision": {
+    "finding": "schema-12-sufficient-no-migration",
+    "verified_against": "isolated Preview D1 live schema",
+    "migration_authorized_by_sprint_approval": false,
+    "required_tables_present": ["documents", "document_revisions", "mutation_results"],
+    "append_only_enforced_by": "PRIMARY KEY (document_id, revision) with CHECK (base_revision = revision - 1)",
+    "idempotency_enforced_by": [
+      "document_revisions UNIQUE (workspace_id, actor_user_id, actor_device_id, client_mutation_id)",
+      "mutation_results UNIQUE (actor_user_id, actor_device_id, workspace_id, operation, client_mutation_id)"
+    ]
+  },
+  "providers": {
+    "contract": "ADR-007",
+    "names": ["PersonalVaultProvider", "CollaborationProvider"],
+    "personal_github_sync_owner": "PersonalVaultProvider",
+    "automatic_personal_upload": "prohibited",
+    "personal_fallback_on_collaboration_failure": "prohibited",
+    "guest_uses_provider": false
+  },
+  "route_scope": {
+    "document_routes_added": 7,
+    "other_routes_added": 0,
+    "viewer_mutation_routes": 0,
+    "routes": [
+      { "method": "GET", "path": "/api/v1/workspaces/{workspaceId}/documents", "idempotency": false },
+      { "method": "POST", "path": "/api/v1/workspaces/{workspaceId}/documents", "idempotency": true },
+      { "method": "GET", "path": "/api/v1/workspaces/{workspaceId}/documents/{documentId}", "idempotency": false },
+      { "method": "PUT", "path": "/api/v1/workspaces/{workspaceId}/documents/{documentId}", "idempotency": true },
+      { "method": "POST", "path": "/api/v1/workspaces/{workspaceId}/documents/{documentId}/tombstone", "idempotency": true },
+      { "method": "GET", "path": "/api/v1/workspaces/{workspaceId}/documents/{documentId}/revisions", "idempotency": false },
+      { "method": "GET", "path": "/api/v1/workspaces/{workspaceId}/documents/{documentId}/revisions/{revision}", "idempotency": false }
+    ],
+    "prohibited": ["export", "hard-purge", "batch-mutation", "semantic-search", "realtime-co-editing", "recovery-artifact"]
+  },
+  "boundaries": {
+    "production_d1": "absent",
+    "production_document_routes": "absent",
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "github_pages_behavior": "static-personal-guest-fallback-redirect-or-unavailable",
+    "server_visible_plaintext": "prohibited",
+    "automatic_merge": "prohibited",
+    "client_timestamp_conflict_resolution": "prohibited"
+  },
+  "conflict_contract": {
+    "authority": "D1 monotonic integer revision",
+    "precondition": "compare-and-set on base_revision",
+    "stale_base_status": 409,
+    "stale_base_error": "DOCUMENT_REVISION_CONFLICT",
+    "fingerprint_mismatch_error": "IDEMPOTENCY_KEY_REUSED",
+    "idempotency_retention_days": 30,
+    "resolution_options": ["review-latest", "reapply-to-latest", "save-as-separate-copy", "discard-with-confirmation"],
+    "automatic_merge": false
+  },
+  "outbox_contract": {
+    "storage": "encrypted-indexeddb",
+    "ordering": "fifo-per-document-with-declared-predecessor",
+    "max_pending_entries": 100,
+    "max_bytes": 26214400,
+    "warn_at_percent": 80,
+    "expiry_days": 7,
+    "expiry_behavior": "quarantine-not-delete",
+    "non_retryable_statuses": [401, 403, 409],
+    "reauthorized_on_submission": true
+  },
+  "copy_to_workspace": {
+    "mode": "manual-one-time-unlinked",
+    "credential_documents": "rejected-before-destination-encryption",
+    "destination_revision": 1,
+    "source_mutated": false,
+    "idempotent": true,
+    "residual_risk": "The API cannot semantically inspect encrypted category and therefore cannot guarantee Credential rejection from a malicious authorized client (ADR-007, accepted at Gate G3)."
+  },
+  "stories": [
+    { "id": "CF-P6-001", "title": "Freeze document, revision, and sync contract", "size": "M", "status": "PLANNED", "entry_gate": "P6-G0", "exit_gate": "P6-G1", "evidence": ["CF-EV-P6-STA-001", "CF-EV-P6-SEC-001"] },
+    { "id": "CF-P6-002", "title": "Implement StorageProvider abstraction and provider isolation", "size": "L", "status": "PLANNED", "entry_gate": "P6-G1", "exit_gate": "P6-G2", "evidence": ["CF-EV-P6-UT-001", "CF-EV-P6-QA-001", "CF-EV-P6-SEC-002"] },
+    { "id": "CF-P6-003", "title": "Implement the encrypted document envelope", "size": "L", "status": "PLANNED", "entry_gate": "P6-G2", "exit_gate": "P6-G2A", "evidence": ["CF-EV-P6-UT-002", "CF-EV-P6-VEC-001", "CF-EV-P6-SEC-003"] },
+    { "id": "CF-P6-004", "title": "Implement atomic mutations, append-only revisions, and idempotency", "size": "XL", "status": "PLANNED", "entry_gate": "P6-G2A", "exit_gate": "P6-G2B", "evidence": ["CF-EV-P6-UT-003", "CF-EV-P6-INT-001", "CF-EV-P6-SEC-004", "CF-EV-P6-QA-002"] },
+    { "id": "CF-P6-005", "title": "Implement authorized reads and revision history", "size": "L", "status": "PLANNED", "entry_gate": "P6-G2B", "exit_gate": "P6-G2C", "evidence": ["CF-EV-P6-UT-004", "CF-EV-P6-INT-002", "CF-EV-P6-SEC-005"] },
+    { "id": "CF-P6-006", "title": "Implement the encrypted offline outbox", "size": "XL", "status": "PLANNED", "entry_gate": "P6-G2C", "exit_gate": "P6-G3", "evidence": ["CF-EV-P6-UT-005", "CF-EV-P6-INT-003", "CF-EV-P6-E2E-001", "CF-EV-P6-SEC-006"] },
+    { "id": "CF-P6-007", "title": "Implement conflict resolution and Copy to workspace", "size": "XL", "status": "PLANNED", "entry_gate": "P6-G3", "exit_gate": "P6-G3A", "evidence": ["CF-EV-P6-E2E-002", "CF-EV-P6-QA-003", "CF-EV-P6-SEC-007", "CF-EV-P6-UX-001"] },
+    { "id": "CF-P6-008", "title": "Integrate and qualify the isolated Preview document slice", "size": "XL", "status": "PLANNED", "entry_gate": "P6-G3A", "exit_gate": "P6-G4A", "evidence": ["CF-EV-P6-E2E-003", "CF-EV-P6-PERF-001", "CF-EV-P6-SEC-008", "CF-EV-P6-OPS-001", "CF-EV-P6-QA-004"] },
+    { "id": "CF-P6-009", "title": "Assemble Phase 6 exit and Phase 7 handoff", "size": "M", "status": "PLANNED", "entry_gate": "P6-G4A", "exit_gate": "P6-G5", "evidence": ["CF-EV-P6-QA-005", "CF-EV-P6-SEC-009", "CF-EV-P6-OPS-002", "CF-EV-P6-STA-002"] }
+  ],
+  "gate_sequence": [
+    "P6-G0", "P6-G1", "P6-G2", "P6-G2A", "P6-G2B", "P6-G2C", "P6-G3", "P6-G3A", "P6-G4", "P6-G4A", "P6-G5"
+  ],
+  "sprint_gate_scenarios": [
+    { "id": "G1", "scenario": "Personal documents unchanged", "required": "byte-for-byte identical to pre-refactor characterization baseline; zero personal writes from any collaboration path" },
+    { "id": "G2", "scenario": "Editor creates and Viewer reads", "required": "create 201 at revision 1; Viewer reads current document and revision history" },
+    { "id": "G3", "scenario": "Viewer cannot write via API", "required": "authorization denial with zero document, revision, idempotency, and business audit rows" },
+    { "id": "G4", "scenario": "Two browsers edit the same revision", "required": "exactly one revision advance; the other receives 409 DOCUMENT_REVISION_CONFLICT and retains its draft" },
+    { "id": "G5", "scenario": "Network retry", "required": "exactly one revision, one idempotency result, and one audit event" },
+    { "id": "G6", "scenario": "Offline mutation replay", "required": "queued mutation re-authorized on submission produces exactly one revision; changed authority quarantines instead" }
+  ],
+  "quality_budgets": {
+    "vector_agreement_percent": 100,
+    "concurrent_writers_one_base_revision": 20,
+    "identical_replays": 32,
+    "personal_provider_writes_allowed": 0,
+    "preview_authenticated_read_p95_ms": 300,
+    "preview_authenticated_write_p95_ms": 500,
+    "client_encrypt_p95_ms": 150,
+    "client_decrypt_p95_ms": 150,
+    "outbox_flush_25_entries_p95_ms": 5000,
+    "lazy_phase_6_chunk_max_kib_gzip": 60,
+    "collaboration_startup_ceiling_kib_gzip": 75,
+    "eager_phase_6_modules_on_personal_startup": 0,
+    "max_request_bytes": 1048576,
+    "supported_browsers": ["Chrome latest two", "Edge latest two", "Firefox latest two", "Safari 17.4+"],
+    "zero_tolerance": [
+      "p0_p1_skip", "quarantine", "disabled_case", "conditional_omission", "accepted_flake",
+      "open_defect", "plaintext_canary", "unauthorized_write_success", "cross_workspace_disclosure",
+      "exploitable_critical_high_dependency"
+    ]
+  },
+  "recovery_contract": {
+    "rehearsals_required": [
+      "conflict-during-rotation", "tombstone-versus-concurrent-update",
+      "revoked-device-with-pending-outbox", "removed-member-with-pending-outbox",
+      "outbox-expiry-and-quarantine-recovery", "idempotency-window-expiry",
+      "d1-fault-at-every-atomic-statement", "adjacent-runtime-and-schema-rollback",
+      "disposable-d1-restore"
+    ],
+    "shared_preview_time_travel": "read-only-bookmark-fingerprint-only",
+    "shared_preview_restore": "prohibited-without-separate-destructive-approval",
+    "rollback_rule": "preserve-append-only-revisions-and-monotonic-key-versions",
+    "retention_cleanup_rule": "bounded-idempotency-batches-never-delete-document-revisions"
+  },
+  "exit_gate_requirement": {
+    "automated_check": "cf:phase6:exit:check",
+    "ships_with": "CF-P6-009",
+    "rationale": "Phases 3, 4, and 5 each ship an automated exit gate wired into check:cloudflare; Phase 6 must not regress that pattern."
+  }
+}
