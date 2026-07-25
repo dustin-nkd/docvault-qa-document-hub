@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P6",
+  "story": "CF-P6-004",
+  "status": "PASS",
+  "approved_entry_gate": "P6-G2A",
+  "next_gate": "P6-G2B",
+  "authorizes_on_approval": "CF-P6-005",
+  "modules": {
+    "service": "functions/_lib/documents/document-service.ts",
+    "recipes": "functions/_lib/persistence/mutation-recipes.ts",
+    "audit_registry": "functions/_lib/audit/event-registry.ts"
+  },
+  "recipes_added": ["document.create", "document.tombstone"],
+  "recipes_reused": ["document.update"],
+  "audit_events_added": ["document.created", "document.tombstoned"],
+  "migration_required": false,
+  "migration_avoided_because": "audit_events.event_type constrains format, not an enumerated value set, so new event types need no schema change",
+  "atomicity": {
+    "boundary": "single guarded D1 batch per mutation",
+    "guard_carries_authorization": true,
+    "guard_carries_precondition": true,
+    "rollback_on_guard_failure": true,
+    "bare_writes_outside_batch": 0,
+    "statement_roles": ["guard", "domain", "audit", "result"]
+  },
+  "authorization": {
+    "roles_permitted": ["owner", "admin", "editor"],
+    "viewer_permitted": false,
+    "checked_before_apply": true,
+    "checked_before_replay": true,
+    "server_derived_fields": ["actorUserId", "effectiveRole", "authoritativeTime", "revision"],
+    "client_override_possible": false
+  },
+  "idempotency": {
+    "ledger": "mutation_results",
+    "binding": ["actor_user_id", "actor_device_id", "workspace_id", "operation", "client_mutation_id"],
+    "fingerprint_bytes": 32,
+    "fingerprint_comparison": "constant-time",
+    "retention_days": 30,
+    "replay_returns_original": true,
+    "replay_creates_second_revision": false,
+    "replay_creates_second_audit_event": false,
+    "different_fingerprint_error": "IDEMPOTENCY_KEY_REUSED",
+    "expired_window_error": "IDEMPOTENCY_WINDOW_EXPIRED"
+  },
+  "revisions": {
+    "append_only": true,
+    "monotonic": true,
+    "create_revision": 1,
+    "delete_is_tombstone": true,
+    "rows_deleted": 0
+  },
+  "error_taxonomy": [
+    "VALIDATION_FAILED", "RESOURCE_NOT_FOUND", "DOCUMENT_REVISION_CONFLICT",
+    "IDEMPOTENCY_KEY_REUSED", "IDEMPOTENCY_WINDOW_EXPIRED", "KEY_VERSION_MISMATCH"
+  ],
+  "conflict_disclosure": ["submittedBaseRevision", "currentRevision"],
+  "sprint_gate_scenarios_addressed": [
+    { "id": "G3", "scenario": "Viewer cannot write via API", "evidence": "CF-EV-P6-INT-001", "proof": "Viewer create, update, and tombstone each denied with zero document, revision, ledger, and audit rows" },
+    { "id": "G4", "scenario": "Two browsers edit the same revision", "evidence": "CF-EV-P6-INT-001", "proof": "concurrent updates settle one fulfilled and one rejected; winner advances to revision 2, loser receives DOCUMENT_REVISION_CONFLICT and writes nothing" },
+    { "id": "G5", "scenario": "Network retry", "evidence": "CF-EV-P6-INT-001", "proof": "five identical replays return the original result with unchanged row counts; different content on the same key is rejected" }
+  ],
+  "denial_matrix": [
+    "viewer", "removed-member", "revoked-device", "cross-workspace-identifier",
+    "non-current-key-version", "tombstoned-target", "revoked-after-success-replay"
+  ],
+  "failure_injection": {
+    "boundary": "audit statement unique constraint",
+    "business_tables_changed": 0,
+    "document_pointer_changed": false
+  },
+  "privacy": {
+    "server_visible_plaintext": false,
+    "ledger_result_keys": ["clientMutationId", "documentId", "occurredAt", "operation", "revision"],
+    "audit_metadata": "{}"
+  },
+  "tests": {
+    "workers_total": 218,
+    "workers_files": 30,
+    "document_mutation_tests": 16,
+    "result": "PASS",
+    "skips": 0
+  },
+  "phase_2_assertion_adjustment": {
+    "test": "tests/cloudflare/security-mutation-recipes.workers.test.ts",
+    "from": "exact equality on the full recipe key set",
+    "to": "all seven CF-P2-005 contracts still published",
+    "safety_loop_coverage": "widened from 7 to 9 contracts",
+    "security_property_relaxed": false
+  },
+  "authorization_boundary": {
+    "routes_implemented": 0,
+    "migrations_created": 0,
+    "remote_writes": 0,
+    "personal_vault_diff_lines": 0,
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_d1": "NO-GO"
+  },
+  "evidence": ["CF-EV-P6-UT-003", "CF-EV-P6-INT-001", "CF-EV-P6-SEC-004", "CF-EV-P6-QA-002"]
+}

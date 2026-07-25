@@ -59,3 +59,4 @@ import './storage-provider-isolation.test.mjs';
 import './cloudflare-phase-6-provider-policy.test.mjs';
 import './document-envelope.test.mjs';
 import './cloudflare-phase-6-envelope-policy.test.mjs';
+import './cloudflare-phase-6-mutations-policy.test.mjs';

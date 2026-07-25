@@ -75,10 +75,18 @@ describe('CF-P2-005 security mutation recipes', () => {
     });
 
     it('publishes all seven approved static recipe contracts with one audit boundary', () => {
-        expect(Object.keys(SECURITY_RECIPE_CONTRACTS).sort()).toEqual([
+        // CF-P2-005 approved these seven. A later phase may add its own recipe —
+        // CF-P6-004 added document.create and document.tombstone — but none of the
+        // seven may disappear or change character, and the static-SQL safety
+        // properties below still apply to every contract in the module, including
+        // any a later phase introduces.
+        const approvedByPhase2 = [
             'document.update', 'envelope.provision', 'invitation.accept', 'invitation.replace',
             'membership.change', 'rotation.commit', 'workspace.create'
-        ]);
+        ];
+        const published = Object.keys(SECURITY_RECIPE_CONTRACTS).sort();
+        for (const operation of approvedByPhase2) expect(published).toContain(operation);
+
         for (const contract of Object.values(SECURITY_RECIPE_CONTRACTS)) {
             expect(contract.guard).not.toContain('${');
             expect(contract.guard).not.toMatch(/SELECT\s+\*/i);

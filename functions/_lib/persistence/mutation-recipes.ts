@@ -8,7 +8,9 @@ export type SecurityMutationOperation =
     | 'invitation.accept'
     | 'membership.change'
     | 'envelope.provision'
+    | 'document.create'
     | 'document.update'
+    | 'document.tombstone'
     | 'rotation.commit';
 
 export type BindValue = string | number | ArrayBuffer | null;
@@ -133,6 +135,36 @@ export const SECURITY_RECIPE_CONTRACTS: Readonly<Record<SecurityMutationOperatio
              WHERE workspace_id = ? AND user_id = ? AND state = 'pending_key'`
         ], auditEvent: 'envelope.provisioned', auditTarget: 'key_envelope'
     },
+    // CF-P6-004. The guard's authorization SELECT is the compare-and-set: when it
+    // matches no row the ledger's NOT NULL result_json is violated and D1 rolls the
+    // whole batch back, so a Viewer, a removed member, a revoked device, a stale
+    // base revision, or a non-current key version all leave zero rows behind.
+    'document.create': {
+        ledger: 'mutation_results',
+        guard: `INSERT INTO mutation_results (id, actor_user_id, actor_device_id, workspace_id,
+          operation, client_mutation_id, request_fingerprint, target_type, target_id, http_status,
+          result_json, created_at, expires_at)
+         VALUES (?, ?, ?, ?, 'document.create', ?, ?, 'document', ?, 201,
+           (SELECT ? FROM memberships m JOIN devices d ON d.user_id = m.user_id
+            JOIN users u ON u.id = m.user_id
+            JOIN workspaces w ON w.id = m.workspace_id
+            JOIN workspace_key_versions kv ON kv.workspace_id = w.id
+            WHERE m.workspace_id = ? AND m.user_id = ? AND m.state = 'active'
+              AND m.role IN ('owner', 'admin', 'editor') AND d.id = ? AND d.state = 'active'
+              AND d.user_id = m.user_id AND u.status = 'active' AND w.state = 'active'
+              AND kv.key_version = ? AND kv.state = 'current'
+              AND NOT EXISTS (SELECT 1 FROM documents existing WHERE existing.id = ?)), ?, ?)`,
+        domain: [
+            `INSERT INTO documents (id, workspace_id, current_revision, current_key_version,
+              current_ciphertext_digest, ciphertext_bytes, envelope_version, state,
+              created_by, created_at, updated_at, tombstoned_at)
+             VALUES (?, ?, 1, ?, ?, ?, 1, 'active', ?, ?, ?, NULL)`,
+            `INSERT INTO document_revisions (document_id, workspace_id, revision, base_revision,
+              operation, key_version, ciphertext_envelope, ciphertext_digest, ciphertext_bytes,
+              actor_user_id, actor_device_id, client_mutation_id, server_time)
+             VALUES (?, ?, 1, 0, 'create', ?, ?, ?, ?, ?, ?, ?, ?)`
+        ], auditEvent: 'document.created', auditTarget: 'document'
+    },
     'document.update': {
         ledger: 'mutation_results',
         guard: `INSERT INTO mutation_results (id, actor_user_id, actor_device_id, workspace_id,
@@ -155,6 +187,34 @@ export const SECURITY_RECIPE_CONTRACTS: Readonly<Record<SecurityMutationOperatio
               current_ciphertext_digest = ?, ciphertext_bytes = ?, updated_at = ?
              WHERE id = ? AND workspace_id = ? AND current_revision = ? AND state = 'active'`
         ], auditEvent: 'document.updated', auditTarget: 'document'
+    },
+    // A delete is a revisioned tombstone, never a row removal: the revision chain
+    // and every prior ciphertext stay intact for audit and recovery.
+    'document.tombstone': {
+        ledger: 'mutation_results',
+        guard: `INSERT INTO mutation_results (id, actor_user_id, actor_device_id, workspace_id,
+          operation, client_mutation_id, request_fingerprint, target_type, target_id, http_status,
+          result_json, created_at, expires_at)
+         VALUES (?, ?, ?, ?, 'document.tombstone', ?, ?, 'document', ?, 200,
+           (SELECT ? FROM memberships m JOIN devices d ON d.user_id = m.user_id
+            JOIN users u ON u.id = m.user_id
+            JOIN documents doc ON doc.workspace_id = m.workspace_id
+            JOIN workspace_key_versions kv ON kv.workspace_id = doc.workspace_id
+            WHERE m.workspace_id = ? AND m.user_id = ? AND m.state = 'active'
+              AND m.role IN ('owner', 'admin', 'editor') AND d.id = ? AND d.state = 'active'
+              AND d.user_id = m.user_id AND u.status = 'active'
+              AND doc.id = ? AND doc.state = 'active' AND doc.current_revision = ?
+              AND kv.key_version = ? AND kv.state = 'current'), ?, ?)`,
+        domain: [
+            `INSERT INTO document_revisions (document_id, workspace_id, revision, base_revision,
+              operation, key_version, ciphertext_envelope, ciphertext_digest, ciphertext_bytes,
+              actor_user_id, actor_device_id, client_mutation_id, server_time)
+             VALUES (?, ?, ?, ?, 'delete', ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `UPDATE documents SET current_revision = ?, current_key_version = ?,
+              current_ciphertext_digest = ?, ciphertext_bytes = ?, updated_at = ?,
+              state = 'tombstoned', tombstoned_at = ?
+             WHERE id = ? AND workspace_id = ? AND current_revision = ? AND state = 'active'`
+        ], auditEvent: 'document.tombstoned', auditTarget: 'document'
     },
     'rotation.commit': {
         ledger: 'mutation_results',
@@ -241,7 +301,11 @@ export const buildMembershipChangeRecipe = (db: Pick<D1Database, 'prepare'>, bin
     buildSecurityMutationRecipe(db, 'membership.change', bindings);
 export const buildEnvelopeProvisionRecipe = (db: Pick<D1Database, 'prepare'>, bindings: RecipeBindings) =>
     buildSecurityMutationRecipe(db, 'envelope.provision', bindings);
+export const buildDocumentCreateRecipe = (db: Pick<D1Database, 'prepare'>, bindings: RecipeBindings) =>
+    buildSecurityMutationRecipe(db, 'document.create', bindings);
 export const buildDocumentMutationRecipe = (db: Pick<D1Database, 'prepare'>, bindings: RecipeBindings) =>
     buildSecurityMutationRecipe(db, 'document.update', bindings);
+export const buildDocumentTombstoneRecipe = (db: Pick<D1Database, 'prepare'>, bindings: RecipeBindings) =>
+    buildSecurityMutationRecipe(db, 'document.tombstone', bindings);
 export const buildRotationCommitRecipe = (db: Pick<D1Database, 'prepare'>, bindings: RecipeBindings) =>
     buildSecurityMutationRecipe(db, 'rotation.commit', bindings);

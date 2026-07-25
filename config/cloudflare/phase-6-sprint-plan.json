@@ -198,7 +198,7 @@
       "id": "CF-P6-004",
       "title": "Implement atomic mutations, append-only revisions, and idempotency",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P6-G2A",
       "exit_gate": "P6-G2B",
       "evidence": [

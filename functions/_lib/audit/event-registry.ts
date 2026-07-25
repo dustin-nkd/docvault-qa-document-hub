@@ -12,7 +12,9 @@ export const AUDIT_EVENT_TYPES = Object.freeze([
     'membership.removed',
     'ownership.transferred',
     'envelope.provisioned',
+    'document.created',
     'document.updated',
+    'document.tombstoned',
     'rotation.committed',
     'audit.corrected'
 ] as const);
@@ -56,7 +58,8 @@ export interface AuditRegistryProjection {
 
 const EMPTY_METADATA_EVENTS: readonly AuditEventType[] = Object.freeze([
     'workspace.created', 'invitation.created', 'invitation.replaced', 'invitation.revoked',
-    'invitation.accepted', 'membership.changed', 'envelope.provisioned', 'document.updated',
+    'invitation.accepted', 'membership.changed', 'envelope.provisioned',
+    'document.created', 'document.updated', 'document.tombstoned',
     'rotation.committed', 'audit.corrected'
 ]);
 
@@ -71,7 +74,9 @@ const TARGETS: Readonly<Record<AuditEventType, AuditTargetType>> = Object.freeze
     'membership.removed': 'membership',
     'ownership.transferred': 'membership',
     'envelope.provisioned': 'key_envelope',
+    'document.created': 'document',
     'document.updated': 'document',
+    'document.tombstoned': 'document',
     'rotation.committed': 'key_version',
     'audit.corrected': 'system'
 });
