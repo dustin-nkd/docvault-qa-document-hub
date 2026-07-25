@@ -172,7 +172,7 @@
       "id": "CF-P6-002",
       "title": "Implement StorageProvider abstraction and provider isolation",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P6-G1",
       "exit_gate": "P6-G2",
       "evidence": [

@@ -54,3 +54,6 @@ import './cloudflare-phase-5-preview-key-policy.test.mjs';
 import './cloudflare-phase-5-exit-policy.test.mjs';
 import './cloudflare-phase-6-sprint-policy.test.mjs';
 import './cloudflare-phase-6-contract-policy.test.mjs';
+import './personal-vault-characterization.test.mjs';
+import './storage-provider-isolation.test.mjs';
+import './cloudflare-phase-6-provider-policy.test.mjs';
