@@ -239,7 +239,7 @@
       "id": "CF-P6-007",
       "title": "Implement conflict resolution and Copy to workspace",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P6-G3",
       "exit_gate": "P6-G3A",
       "evidence": [

@@ -63,3 +63,5 @@ import './cloudflare-phase-6-mutations-policy.test.mjs';
 import './cloudflare-phase-6-reads-policy.test.mjs';
 import './outbox.test.mjs';
 import './cloudflare-phase-6-outbox-policy.test.mjs';
+import './conflict-resolution.test.mjs';
+import './cloudflare-phase-6-conflict-policy.test.mjs';
