@@ -225,7 +225,7 @@
       "id": "CF-P6-006",
       "title": "Implement the encrypted offline outbox",
       "size": "XL",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P6-G2C",
       "exit_gate": "P6-G3",
       "evidence": [

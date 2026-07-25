@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P6",
+  "story": "CF-P6-006",
+  "status": "PASS",
+  "approved_entry_gate": "P6-G2C",
+  "next_gate": "P6-G3",
+  "authorizes_on_approval": "CF-P6-007",
+  "module": "js/collaboration/outbox.js",
+  "states": ["queued", "inflight", "applied", "terminal", "expired", "quarantined"],
+  "storage": {
+    "browser": "indexeddb",
+    "test": "in-memory-adapter",
+    "same_state_machine_both": true,
+    "payload_accepts_only_bytes": true,
+    "draft_accepts_only_bytes": true,
+    "plaintext_fields": 0,
+    "namespace_components": ["environment", "provider_subject", "workspace_id", "device_id"]
+  },
+  "retry": {
+    "reuses_original_mutation_id": true,
+    "backoff": "exponential-full-jitter",
+    "base_ms": 1000,
+    "ceiling_ms": 300000,
+    "max_attempts": 8,
+    "non_retryable_statuses": [400, 401, 403, 404, 409],
+    "non_retryable_codes": [
+      "KEY_VERSION_MISMATCH", "VALIDATION_FAILED", "DOCUMENT_REVISION_CONFLICT",
+      "IDEMPOTENCY_KEY_REUSED", "IDEMPOTENCY_WINDOW_EXPIRED", "RESOURCE_NOT_FOUND"
+    ]
+  },
+  "ordering": {
+    "per_document_fifo": true,
+    "declared_predecessor": true,
+    "independent_documents_concurrent": true,
+    "inflight_blocks_same_document": true
+  },
+  "quota": {
+    "max_pending_entries": 100,
+    "max_bytes": 26214400,
+    "warn_at_percent": 80,
+    "refusal_preserves_queued_work": true,
+    "byte_ceiling_enforced_independently": true
+  },
+  "expiry": {
+    "days": 7,
+    "behavior": "quarantine-not-delete",
+    "draft_preserved": true
+  },
+  "quarantine_reasons": [
+    "logout", "account-change", "workspace-change", "role-removed", "device-revoked",
+    "membership-lost", "key-rotated", "schema-unsupported", "lifecycle-incompatible", "expired"
+  ],
+  "authority": {
+    "queued_entry_is_permission": false,
+    "reauthorized_on_submission": true,
+    "quarantined_entry_claimable": false,
+    "reauthentication_alone_restores": false
+  },
+  "disposal": {
+    "requires_recorded_result": true,
+    "explicit_discard_allowed": true,
+    "silent_delete": false,
+    "forensic_erasure_claimed": false
+  },
+  "sprint_gate_scenarios_addressed": [
+    { "id": "G6", "scenario": "Offline mutation replay", "evidence": "CF-EV-P6-INT-003", "proof": "a mutation queued offline reaches D1 only after reconnect and creates exactly one revision; a lost response followed by a retry returns the original revision without creating a second; an entry whose membership was removed is quarantined and never reaches D1" }
+  ],
+  "defect_found_and_fixed": {
+    "defect": "RESOURCE_NOT_FOUND and status 404 were absent from the non-retryable set, so a mutation against a deleted or invisible document would retry until its attempt ceiling",
+    "found_by": "tests/cloudflare/outbox-replay.workers.test.ts",
+    "resolution": "both added to the non-retryable set",
+    "accepted_as_known_issue": false
+  },
+  "browser_matrix": ["chromium", "firefox", "webkit"],
+  "browser_evidence": {
+    "real_indexeddb": true,
+    "bytes_survive_round_trip": true,
+    "survives_page_reload": true,
+    "namespace_isolated_in_browser": true,
+    "quarantine_verified_in_browser": true,
+    "console_errors": 0,
+    "registered_in_e2e": true
+  },
+  "tests": {
+    "node": 18,
+    "workers": 5,
+    "browser_engines": 3,
+    "result": "PASS",
+    "skips": 0
+  },
+  "authorization_boundary": {
+    "routes_registered": 0,
+    "migrations_created": 0,
+    "remote_writes": 0,
+    "personal_vault_diff_lines": 0,
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_d1": "NO-GO"
+  },
+  "evidence": ["CF-EV-P6-UT-005", "CF-EV-P6-INT-003", "CF-EV-P6-E2E-001", "CF-EV-P6-SEC-006"]
+}
