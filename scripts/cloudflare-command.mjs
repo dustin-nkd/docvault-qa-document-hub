@@ -12,6 +12,9 @@ const state = collectCloudflareToolchainState(root);
 const wranglerBin = path.join(root, 'node_modules/wrangler/bin/wrangler.js');
 const typescriptBin = path.join(root, 'node_modules/typescript/bin/tsc');
 const vitestBin = path.join(root, 'node_modules/vitest/vitest.mjs');
+// Holds CF-P4-007's latency budget; run isolated so CPU contention cannot
+// corrupt the measurement (see the `test` command below).
+const LATENCY_TEST_FILE = 'tests/cloudflare/preview-api-integration.workers.test.ts';
 const configPath = path.join(root, 'wrangler.jsonc');
 const burstConfigPath = path.join(root, 'wrangler.identity-burst.jsonc');
 const burstTypesPath = path.join(root, 'workers/identity-burst-configuration.d.ts');
@@ -91,7 +94,17 @@ if (command === 'toolchain-check') {
 } else if (command === 'test') {
     if (!fs.existsSync(path.join(root, 'vitest.config.mts'))) throw new Error('Workers Vitest configuration is not available until CF-P1-007');
     runNodeTool(typescriptBin, ['--project', 'tsconfig.workers-tests.json']);
-    runNodeTool(vitestBin, ['run', '--config', 'vitest.config.mts']);
+    // CF-P4-007 asserts a wall-clock p95 budget for authenticated control-plane
+    // reads. Run in the default parallel pass, that measurement competes for CPU
+    // with the Phase 5 PBKDF2-600k device-key suites and intermittently fails:
+    // steady-state p95 is ~11 ms, but a starved run was observed at 250 ms
+    // against the 250 ms budget. The budget measures the service, not test-runner
+    // scheduling, so the latency file runs alone in a second pass instead. The
+    // 250 ms budget and the test itself are unchanged — only the contention is
+    // removed. Keep both passes: excluding the file from the first pass would
+    // otherwise drop its three functional cases from the suite.
+    runNodeTool(vitestBin, ['run', '--config', 'vitest.config.mts', '--exclude', LATENCY_TEST_FILE]);
+    runNodeTool(vitestBin, ['run', '--config', 'vitest.config.mts', LATENCY_TEST_FILE]);
 } else if (command === 'functions-build' || command === 'pages-dry-run') {
     requireFoundationFiles();
     validateConfig();

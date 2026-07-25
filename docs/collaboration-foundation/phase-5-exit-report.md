@@ -60,6 +60,14 @@ policy gates (`scripts/check-cloudflare-phase-5-*.mjs`), which report
   policy check plus the Node, Workers/D1, Functions typecheck, dependency audit,
   browser regression, artifact, rollback, and deployment-boundary gates. The
   post-reconciliation gate passed on 2026-07-23 in 56.5 seconds.
+- Exit re-verification on 2026-07-25 found the gate was not reliably green: the
+  `CF-P4-007` control-plane p95 budget failed once in two full-gate runs because
+  the measurement competed for CPU with the Phase 5 PBKDF2-600k suites
+  (steady-state p95 11 ms against a 250 ms budget). The contention was removed —
+  `cf:test` now runs the latency file in its own pass — with the budget, test,
+  pinned file, and `CF-P4-007` manifest unchanged and the suite still at 29
+  files / 194 tests. Four consecutive full-gate runs passed afterwards. See
+  `CF-EV-P5-QA-004`.
 
 ## 4. Evidence inventory
 
