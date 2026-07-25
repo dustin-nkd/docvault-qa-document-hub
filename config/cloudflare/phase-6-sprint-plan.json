@@ -212,7 +212,7 @@
       "id": "CF-P6-005",
       "title": "Implement authorized reads and revision history",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P6-G2B",
       "exit_gate": "P6-G2C",
       "evidence": [

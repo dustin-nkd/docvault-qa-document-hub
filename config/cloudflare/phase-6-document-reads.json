@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P6",
+  "story": "CF-P6-005",
+  "status": "PASS",
+  "approved_entry_gate": "P6-G2B",
+  "next_gate": "P6-G2C",
+  "authorizes_on_approval": "CF-P6-006",
+  "module": "functions/_lib/documents/document-reads.ts",
+  "operations": ["listDocuments", "readDocument", "listRevisions", "readRevision"],
+  "authorization": {
+    "requires_active_membership": true,
+    "requires_active_device": true,
+    "requires_active_user": true,
+    "requires_active_workspace": true,
+    "role_constrained": false,
+    "viewer_can_read": true,
+    "rationale": "Reads are deliberately role-agnostic so a Viewer can read; the CF-P6-004 mutation guards remain the only write path and still exclude Viewers."
+  },
+  "scoping": {
+    "workspace_scoped_in_sql": true,
+    "filtered_after_fetch": false
+  },
+  "non_disclosure": {
+    "shared_denial_code": "RESOURCE_NOT_FOUND",
+    "causes_mapped_to_shared_code": [
+      "non-member", "removed-member", "revoked-device", "deactivated-user",
+      "foreign-workspace", "unknown-document", "unknown-revision", "hidden-tombstone"
+    ],
+    "existence_oracle_possible": false
+  },
+  "pagination": {
+    "cursor": "hmac-sha256-opaque",
+    "cursor_bindings": ["route", "workspaceId", "documentId", "position", "issuedAt", "expiresAt"],
+    "cursor_ttl_ms": 900000,
+    "cursor_max_length": 2048,
+    "default_page_size": 25,
+    "maximum_page_size": 100,
+    "forgeable": false,
+    "transferable_across_workspaces": false,
+    "transferable_across_routes": false,
+    "transferable_across_documents": false
+  },
+  "tombstone_semantics": {
+    "current_read_returns_metadata_only": true,
+    "current_read_payload": null,
+    "tombstone_revision_serves_payload": false,
+    "earlier_revisions_readable": true
+  },
+  "response_headers": {
+    "cache_control": "no-store, private",
+    "pragma": "no-cache",
+    "expires": "0",
+    "service_worker": "none",
+    "content_type_options": "nosniff",
+    "referrer_policy": "no-referrer",
+    "frame_options": "DENY"
+  },
+  "sprint_gate_scenarios_addressed": [
+    { "id": "G2", "scenario": "Editor creates and Viewer reads", "evidence": "CF-EV-P6-INT-002", "proof": "an Editor creates and updates a document; a Viewer reads the current document, finds it in the list, retrieves the full revision history, and reads a historical revision payload" }
+  ],
+  "route_registration": {
+    "registered_in_deployed_preview_runtime": false,
+    "registration_story": "CF-P6-008",
+    "reason": "Registering these routes changes the Phase 5 preview handler's pinned route inventory; that amendment is negotiated at Preview integration rather than silently here."
+  },
+  "tests": {
+    "workers_total": 228,
+    "workers_files": 31,
+    "document_read_tests": 10,
+    "result": "PASS",
+    "skips": 0
+  },
+  "authorization_boundary": {
+    "routes_registered": 0,
+    "migrations_created": 0,
+    "remote_writes": 0,
+    "personal_vault_diff_lines": 0,
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_d1": "NO-GO"
+  },
+  "evidence": ["CF-EV-P6-UT-004", "CF-EV-P6-INT-002", "CF-EV-P6-SEC-005"]
+}
