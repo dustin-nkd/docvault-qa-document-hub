@@ -1,6 +1,6 @@
 # Collaboration Foundation Phase 6 handoff
 
-Status: **DRAFT — issued by CF-P5-008 assembly; becomes controlling once Phase 5 exits at `P5-G5`**
+Status: **CONTROLLING — Phase 5 exited at `P5-G5` on 2026-07-25**
 
 ## Objective
 
@@ -91,10 +91,15 @@ collaboration document UX and Personal-to-workspace copy remain Phase 7.
 - Product Owner, Senior QA, Security Reviewer, Operations, Privacy Reviewer,
   UX Lead, and Technical Lead sign-off.
 
-## Prerequisite
+## Prerequisite — satisfied
 
-This handoff becomes controlling only after Phase 5 closes at `P5-G5`: the
-isolated Preview D1 reconciled to zero active qualification authority while
-retaining required history, the four `CF-P5-008` evidence records promoted to
-PASS, and the seven cross-functional sign-offs recorded. See
-[`phase-5-exit-report.md`](phase-5-exit-report.md) sections 6–8.
+Phase 5 closed at `P5-G5` on 2026-07-25: the isolated Preview D1 was reconciled
+to zero active qualification authority while retaining required history, all
+four `CF-P5-008` evidence records are PASS, and the exit authorization is
+recorded. See [`phase-5-exit-report.md`](phase-5-exit-report.md) sections 6–8.
+
+Two conditions carry into Phase 6 and are not resolved by that exit: no
+automated `cf:phase5:exit:check` gate exists yet (so Phase 5's exit manifest is
+not machine-verified against drift the way Phases 3 and 4 are), and the exit
+authorization was granted by the single project owner holding all seven review
+roles rather than by seven independent reviewers.

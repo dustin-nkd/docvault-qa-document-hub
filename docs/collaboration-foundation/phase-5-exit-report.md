@@ -1,19 +1,17 @@
 # Collaboration Foundation Phase 5 exit report
 
-Status: **DRAFT — remote reconciliation complete; PENDING cross-functional sign-off**
+Status: PASS
 
 Story: `CF-P5-008`
-Authorization: `P5-G5` (not yet granted)
+Authorization: `P5-G5` — granted 2026-07-25
 
-> This document was assembled to scaffold the Phase 5 exit. Every claim below
-> that could be verified from the repository and remote qualification is
-> recorded as fact. The final isolated Preview D1 reconciliation is complete;
-> the seven cross-functional sign-offs remain open in section 7. Do not treat
-> this report as a passed exit until those sections close.
+> Every claim below is verified against the repository, the local gate, and
+> read-only inspection of the isolated Preview D1. The final reconciliation is
+> complete (section 6) and the exit authorization is recorded in section 7.
 
-## 1. Decision (proposed, pending sign-off)
+## 1. Decision
 
-- Phase 5 device/workspace-key foundation on isolated Preview: **GO (proposed)**
+- Phase 5 device/workspace-key foundation on isolated Preview: **GO**
 - Phase 6 encrypted documents, revisions, conflicts, and sync: `GO` to plan only
 - Collaboration activation: `NO-GO`
 - Production identity: `NO-GO`
@@ -41,7 +39,7 @@ secrets, KEKs, or workspace DEKs.
 | `CF-P5-005` | Workspace key bootstrap/envelopes/readiness | P5-G2C | PASS | UT-004, INT-002, SEC-005, QA-002 |
 | `CF-P5-006` | Monotonic rotation + no-escrow recovery | P5-G3 | PASS | UT-005, INT-003, E2E-002, SEC-006, OPS-001 |
 | `CF-P5-007` | Isolated Preview integration/qualification | P5-G4A | PASS | E2E-003, PERF-002, SEC-007, OPS-002, QA-003 |
-| `CF-P5-008` | Exit assembly + Phase 6 handoff | P5-G5 | **IN PROGRESS** | QA-004, SEC-008, OPS-003, STA-002 — **pending, owned by Codex** |
+| `CF-P5-008` | Exit assembly + Phase 6 handoff | P5-G5 | PASS | QA-004, SEC-008, OPS-003, STA-002 |
 
 Stories 001–007 are confirmed PASS by their committed evidence and by the local
 policy gates (`scripts/check-cloudflare-phase-5-*.mjs`), which report
@@ -134,30 +132,54 @@ zero Phase 6 document rows, and zero foreign-key violations. The pre/post
 Time Travel bookmark fingerprints are recorded in `CF-EV-P5-OPS-003`; raw
 bookmarks are intentionally omitted.
 
-## 7. OPEN — cross-functional sign-off
+## 7. CLOSED — exit authorization
 
 `CF-P5-008` acceptance requires Product Owner, Senior QA, Security Reviewer,
 Operations, Privacy Reviewer, UX Lead, and Technical Lead sign-off, plus zero
-P0/P1 exception or open defect and zero unowned/expired Critical/High risk. None
-of these sign-offs are recorded yet. They are human decisions and are not
-self-issued by this assembly.
+P0/P1 exception or open defect and zero unowned/expired Critical/High risk.
+
+The objective conditions are verified: the risk register carries 22 rows with no
+open unowned risk; the authoritative `npm run check` gate passes (see section 3,
+including the CF-P4-007 flake found and fixed during exit re-verification, not
+accepted); the remote reconciliation in section 6 was confirmed by direct
+read-only inspection of the Preview D1; and no P0/P1 skip, quarantine, disabled
+case, or open defect remains.
+
+**DocVault is a single-maintainer project.** The seven review roles named in the
+sprint are held by one person, the project owner, who granted the Phase 5 exit
+authorization on 2026-07-25. This is recorded as one owner authorization
+covering all seven roles rather than as seven independent reviews, because seven
+independent reviewers do not exist on this project; representing it otherwise
+would misstate the evidence.
 
 | Role | Sign-off | Date |
 |---|---|---|
-| Product Owner | ☐ | |
-| Senior QA | ☐ | |
-| Security Reviewer | ☐ | |
-| Operations | ☐ | |
-| Privacy Reviewer | ☐ | |
-| UX Lead | ☐ | |
-| Technical Lead | ☐ | |
+| Product Owner | ☑ Nguyen Khanh Duy (project owner) | 2026-07-25 |
+| Senior QA | ☑ Nguyen Khanh Duy (project owner, acting) | 2026-07-25 |
+| Security Reviewer | ☑ Nguyen Khanh Duy (project owner, acting) | 2026-07-25 |
+| Operations | ☑ Nguyen Khanh Duy (project owner, acting) | 2026-07-25 |
+| Privacy Reviewer | ☑ Nguyen Khanh Duy (project owner, acting) | 2026-07-25 |
+| UX Lead | ☑ Nguyen Khanh Duy (project owner, acting) | 2026-07-25 |
+| Technical Lead | ☑ Nguyen Khanh Duy (project owner, acting) | 2026-07-25 |
 
-## 8. Remaining work to close Phase 5
+Should this project later gain independent reviewers, a Phase 5 re-review is the
+honest way to obtain genuinely independent sign-off; this authorization does not
+claim one was performed.
 
-1. Promote QA-004, SEC-008, and STA-002 to PASS after their recorded review and
-   sign-off conditions are satisfied; OPS-003 is complete.
-2. Collect the seven sign-offs (section 7) and set this report to PASS under
-   `P5-G5`.
-3. Publish the Phase 6 handoff ([`phase-6-handoff.md`](phase-6-handoff.md)) as
-   the controlling entry contract for encrypted documents, revisions, conflicts,
-   and sync.
+## 8. Phase 5 closure and carried-forward work
+
+Phase 5 is closed. All four `CF-P5-008` evidence records are PASS, the exit
+authorization is recorded in section 7, and
+[`phase-6-handoff.md`](phase-6-handoff.md) is now the controlling entry contract
+for encrypted documents, revisions, conflicts, and sync.
+
+Carried forward, explicitly not part of the Phase 5 exit:
+
+1. **No automated Phase 5 exit gate exists.** Phases 3 and 4 each ship a
+   `cf:phase{3,4}:exit:check` policy wired into `check:cloudflare`; Phase 5 has
+   none, so this report and its manifest data are not machine-verified against
+   drift the way earlier phases are. Building `cf:phase5:exit:check` requires
+   Cloudflare Pages deployment identifiers that are not readable from the
+   repository, so it is assigned to Codex.
+2. Collaboration activation, Production identity, Production D1, and Production
+   business/key routes remain **NO-GO** and require their own later gates.

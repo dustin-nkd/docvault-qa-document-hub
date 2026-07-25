@@ -1,6 +1,8 @@
 # CF-EV-P5-QA-004 Phase 5 final quality reconciliation
 
-Status: PENDING FINAL RECONCILIATION AND SIGN-OFF
+Status: PASS
+
+Story: `CF-P5-008`
 
 The authoritative local `npm run check` gate passed on 2026-07-22 in 59.8
 seconds. It covered the base quality gate, Functions typecheck, Node policy and
@@ -33,6 +35,8 @@ second pass. The 250 ms budget, the test body, the pinned test file, and the
 files and 194 tests with zero skips. Four consecutive full-gate runs passed
 after the change; the isolated pass adds 2.3 seconds.
 
-This record remains pending only on the seven cross-functional sign-offs. No
-P0/P1 skip, quarantine, accepted flake, or open P0/P1 defect remains: the one
+No P0/P1 skip, quarantine, accepted flake, or open P0/P1 defect remains: the one
 flake found during exit verification was fixed and re-verified, not accepted.
+The project owner granted the Phase 5 exit authorization on 2026-07-25, holding
+all seven review roles on this single-maintainer project as recorded in
+`phase-5-exit-report.md` section 7.
