@@ -51,3 +51,4 @@ import './cloudflare-phase-5-device-key-policy.test.mjs';
 import './cloudflare-phase-5-device-services-policy.test.mjs';
 import './cloudflare-phase-5-workspace-keys-policy.test.mjs';
 import './cloudflare-phase-5-preview-key-policy.test.mjs';
+import './cloudflare-phase-5-exit-policy.test.mjs';

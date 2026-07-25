@@ -2,6 +2,8 @@
 
 Status: PASS
 
+Story: `CF-P5-008`
+
 Read-only inspection of the isolated Preview D1 on 2026-07-22 confirmed schema
 12 and zero foreign-key violations. Active sessions, pending OAuth transactions,
 auth rate windows, documents, and document revisions are zero. One active

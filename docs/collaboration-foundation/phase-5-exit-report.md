@@ -173,13 +173,27 @@ authorization is recorded in section 7, and
 [`phase-6-handoff.md`](phase-6-handoff.md) is now the controlling entry contract
 for encrypted documents, revisions, conflicts, and sync.
 
+Phase 5 now ships its own automated exit gate, matching the pattern Phases 3 and
+4 use: `cf:phase5:exit:check` (`scripts/check-cloudflare-phase-5-exit.mjs` +
+`cloudflare-phase-5-exit-policy.mjs`, backed by
+`config/cloudflare/phase-5-exit-gate.json`) is wired into `check:cloudflare` and
+covered by `tests/cloudflare-phase-5-exit-policy.test.mjs`. It reconciles the
+story/evidence inventory, schema and migration digest, remote boundary,
+retired-authority aggregates, recovery bookmarks, deployment identifiers,
+quality exception lists, risk register, and the exit/handoff documents, and it
+rejects 55 mutation cases including collaboration activation, evidence loss,
+un-retired Preview authority, schema drift, and any attempt to record the flake
+as accepted.
+
+The gate also pins the sign-off provenance: it fails if the record is upgraded
+to claim independent reviewers or an independent security/privacy review that
+did not occur. Building it surfaced and fixed a real traceability gap — six
+`CF-P5-007`/`CF-P5-008` evidence records carried no `Story:` line and are now
+linked.
+
 Carried forward, explicitly not part of the Phase 5 exit:
 
-1. **No automated Phase 5 exit gate exists.** Phases 3 and 4 each ship a
-   `cf:phase{3,4}:exit:check` policy wired into `check:cloudflare`; Phase 5 has
-   none, so this report and its manifest data are not machine-verified against
-   drift the way earlier phases are. Building `cf:phase5:exit:check` requires
-   Cloudflare Pages deployment identifiers that are not readable from the
-   repository, so it is assigned to Codex.
-2. Collaboration activation, Production identity, Production D1, and Production
+1. Collaboration activation, Production identity, Production D1, and Production
    business/key routes remain **NO-GO** and require their own later gates.
+2. The exit authorization remains a single-maintainer owner decision; genuine
+   independent review would require a Phase 5 re-review (section 7).

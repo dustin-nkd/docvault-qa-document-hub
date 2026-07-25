@@ -21,6 +21,7 @@ not as seven independent reviews.
 [`phase-6-handoff.md`](../../phase-6-handoff.md) is now the controlling entry
 contract for encrypted documents, revisions, conflicts, and sync. Collaboration
 activation, Production identity, Production D1, and Production business/key
-routes remain NO-GO pending their own later gates. No automated Phase 5 exit
-gate exists yet, so this report is not machine-verified against drift the way
-Phases 3 and 4 are; building `cf:phase5:exit:check` is carried forward.
+routes remain NO-GO pending their own later gates. Phase 5 now ships its own
+automated exit gate (`cf:phase5:exit:check`), matching Phases 3 and 4, so this
+report is machine-verified against drift; building it also surfaced and fixed a
+traceability gap in six evidence records that carried no `Story:` line.

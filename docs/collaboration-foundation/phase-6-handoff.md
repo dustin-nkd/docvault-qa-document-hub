@@ -98,8 +98,7 @@ to zero active qualification authority while retaining required history, all
 four `CF-P5-008` evidence records are PASS, and the exit authorization is
 recorded. See [`phase-5-exit-report.md`](phase-5-exit-report.md) sections 6–8.
 
-Two conditions carry into Phase 6 and are not resolved by that exit: no
-automated `cf:phase5:exit:check` gate exists yet (so Phase 5's exit manifest is
-not machine-verified against drift the way Phases 3 and 4 are), and the exit
-authorization was granted by the single project owner holding all seven review
-roles rather than by seven independent reviewers.
+Phase 5 ships an automated `cf:phase5:exit:check` gate, so its exit manifest is
+machine-verified against drift like Phases 3 and 4. One condition carries into
+Phase 6: the exit authorization was granted by the single project owner holding
+all seven review roles rather than by seven independent reviewers.
