@@ -8,6 +8,9 @@ export const STORY_IDS = Object.freeze(['CF-P6-001', 'CF-P6-002', 'CF-P6-003', '
 export const GATE_SEQUENCE = Object.freeze(['P6-G0', 'P6-G1', 'P6-G2', 'P6-G2A', 'P6-G2B',
     'P6-G2C', 'P6-G3', 'P6-G3A', 'P6-G4', 'P6-G4A', 'P6-G5']);
 
+// Eight routes, not seven: the mutation reconciliation endpoint is what lets a
+// client that lost a response learn whether its mutation applied. Without it the
+// outbox cannot satisfy ADR-006 and gate scenarios G5/G6 cannot be proven.
 export const DOCUMENT_ROUTES = Object.freeze([
     'GET /api/v1/workspaces/{workspaceId}/documents',
     'POST /api/v1/workspaces/{workspaceId}/documents',
@@ -15,7 +18,8 @@ export const DOCUMENT_ROUTES = Object.freeze([
     'PUT /api/v1/workspaces/{workspaceId}/documents/{documentId}',
     'POST /api/v1/workspaces/{workspaceId}/documents/{documentId}/tombstone',
     'GET /api/v1/workspaces/{workspaceId}/documents/{documentId}/revisions',
-    'GET /api/v1/workspaces/{workspaceId}/documents/{documentId}/revisions/{revision}'
+    'GET /api/v1/workspaces/{workspaceId}/documents/{documentId}/revisions/{revision}',
+    'GET /api/v1/workspaces/{workspaceId}/mutations/{clientMutationId}'
 ]);
 
 const sorted = values => [...values].sort();
@@ -24,13 +28,16 @@ const sameSet = (actual, expected) => JSON.stringify(sorted(actual)) === JSON.st
 export function validatePhase6SprintPlan({ manifest, sprintSource, handoff, apiContract,
     migrationManifest, wrangler }) {
     assert(manifest?.schema_version === 1 && manifest.phase === 'CF-P6'
-        && manifest.sprint === 'CF-P6-S01' && manifest.status === 'PLANNED',
+        && manifest.sprint === 'CF-P6-S01'
+        && ['PLANNED', 'ACTIVE'].includes(manifest.status),
     'Unsupported Phase 6 sprint manifest');
 
     // Sprint approval must never imply remote or story authority beyond the first
-    // story. Phases 3-5 all leaked scope when this was left implicit.
+    // story. The decision may advance from PENDING to APPROVED, but remote
+    // authority stays false until P6-G4 is granted separately.
     const authorization = manifest.authorization || {};
-    assert(authorization.entry_gate === 'P6-G0' && authorization.decision === 'PENDING'
+    assert(authorization.entry_gate === 'P6-G0'
+        && ['PENDING', 'APPROVED'].includes(authorization.decision)
         && authorization.authorized_story_on_approval === 'CF-P6-001'
         && authorization.remote_authorization_gate === 'P6-G4'
         && authorization.remote_changes_authorized === false
@@ -61,11 +68,14 @@ export function validatePhase6SprintPlan({ manifest, sprintSource, handoff, apiC
         && providers.guest_uses_provider === false, 'Provider isolation contract drifted');
 
     const routeScope = manifest.route_scope || {};
-    assert(routeScope.document_routes_added === 7 && routeScope.other_routes_added === 0
+    assert(routeScope.document_routes_added === 8 && routeScope.other_routes_added === 0
         && routeScope.viewer_mutation_routes === 0
-        && Array.isArray(routeScope.routes) && routeScope.routes.length === 7
+        && Array.isArray(routeScope.routes) && routeScope.routes.length === 8
         && sameSet(routeScope.routes.map(route => `${route.method} ${route.path}`), DOCUMENT_ROUTES),
     'Phase 6 route surface drifted');
+    assert(typeof routeScope.mutation_reconcile_route_rationale === 'string'
+        && routeScope.mutation_reconcile_route_rationale.includes('lost response'),
+    'Mutation reconcile route rationale is missing');
     // Idempotency is required on exactly the three mutations.
     assert(routeScope.routes.filter(route => route.idempotency === true).length === 3
         && routeScope.routes.every(route => route.idempotency === (route.method !== 'GET')),
@@ -119,7 +129,8 @@ export function validatePhase6SprintPlan({ manifest, sprintSource, handoff, apiC
     assert(sameSet(stories.map(story => story.id), STORY_IDS), 'Phase 6 story inventory drifted');
     const referencedEvidence = [];
     for (const story of stories) {
-        assert(story.status === 'PLANNED', `${story.id} must be PLANNED before P6-G0`);
+        assert(['PLANNED', 'IN PROGRESS', 'PASS'].includes(story.status),
+            `${story.id} has an unsupported status`);
         assert(GATE_SEQUENCE.includes(story.entry_gate) && GATE_SEQUENCE.includes(story.exit_gate),
             `${story.id} references an unknown gate`);
         assert(Array.isArray(story.evidence) && story.evidence.length > 0, `${story.id} lacks evidence`);

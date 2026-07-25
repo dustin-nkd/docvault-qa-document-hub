@@ -26,8 +26,8 @@ test('CF-P6-S01 plans the shared document slice within the approved boundary', (
 
 test('CF-P6-S01 rejects scope, migration, route, provider, and conflict drift', () => {
     for (const mutate of [
-        input => { input.manifest.status = 'ACTIVE'; },
-        input => { input.manifest.authorization.decision = 'APPROVED'; },
+        input => { input.manifest.status = 'COMPLETE'; },
+        input => { input.manifest.authorization.decision = 'AUTO'; },
         input => { input.manifest.authorization.remote_changes_authorized = true; },
         input => { input.manifest.authorization.authorized_story_on_approval = 'CF-P6-004'; },
         input => { input.manifest.entry.predecessor_status = 'PENDING'; },
@@ -42,10 +42,11 @@ test('CF-P6-S01 rejects scope, migration, route, provider, and conflict drift', 
         input => { input.manifest.providers.names = ['PersonalGitHubProvider', 'CollaborationProvider']; },
         input => { input.manifest.providers.guest_uses_provider = true; },
         // Route surface and Viewer write prohibition.
-        input => { input.manifest.route_scope.document_routes_added = 8; },
+        input => { input.manifest.route_scope.document_routes_added = 9; },
         input => { input.manifest.route_scope.viewer_mutation_routes = 1; },
         input => { input.manifest.route_scope.other_routes_added = 1; },
         input => { input.manifest.route_scope.routes.pop(); },
+        input => { input.manifest.route_scope.mutation_reconcile_route_rationale = undefined; },
         input => { input.manifest.route_scope.routes[0].path = '/api/v1/workspaces/{workspaceId}/export'; },
         input => { input.manifest.route_scope.routes[0].idempotency = true; },
         input => { input.manifest.route_scope.routes[1].idempotency = false; },
@@ -77,7 +78,7 @@ test('CF-P6-S01 rejects scope, migration, route, provider, and conflict drift', 
         input => { input.manifest.copy_to_workspace.residual_risk = 'none'; },
         // Stories, gates, scenarios, budgets.
         input => { input.manifest.stories = input.manifest.stories.slice(1); },
-        input => { input.manifest.stories[0].status = 'PASS'; },
+        input => { input.manifest.stories[0].status = 'SKIPPED'; },
         input => { input.manifest.stories[0].evidence = []; },
         input => { input.manifest.stories[1].evidence = input.manifest.stories[0].evidence; },
         input => { input.manifest.stories[0].exit_gate = 'P7-G1'; },

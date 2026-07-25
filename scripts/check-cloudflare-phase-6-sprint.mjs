@@ -19,5 +19,5 @@ validatePhase6SprintPlan({
 console.log('Cloudflare Phase 6 sprint plan passed');
 console.log('  CF-P6-S01: planned; P6-G0 approval authorizes CF-P6-001 only');
 console.log('  Schema 12 sufficient — sprint approval carries no migration authority');
-console.log('  Document routes: 7; Viewer mutation routes: 0');
+console.log('  Document routes: 8 (7 document + 1 mutation reconcile); Viewer mutation routes: 0');
 console.log('  Production identity, D1, document routes, and collaboration activation: NO-GO');

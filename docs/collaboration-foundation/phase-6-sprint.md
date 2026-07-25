@@ -72,7 +72,7 @@ Therefore sprint approval carries **no** migration authority. If implementation 
 
 ### 4.2 Route surface
 
-Phase 6 adds exactly the seven contracted document routes and no others:
+Phase 6 adds exactly the eight contracted routes below and no others:
 
 | Route | Method | Authorization | Idempotency |
 |---|---|---|---|
@@ -83,6 +83,15 @@ Phase 6 adds exactly the seven contracted document routes and no others:
 | `/api/v1/workspaces/{workspaceId}/documents/{documentId}/tombstone` | POST | Owner/Admin/Editor + key-ready device | required |
 | `/api/v1/workspaces/{workspaceId}/documents/{documentId}/revisions` | GET | active key-ready member/device | none |
 | `/api/v1/workspaces/{workspaceId}/documents/{documentId}/revisions/{revision}` | GET | active key-ready member/device | none |
+| `/api/v1/workspaces/{workspaceId}/mutations/{clientMutationId}` | GET | same active actor/device binding | none |
+
+The eighth route is the outbox reconciliation endpoint. It was omitted from the
+first draft of this plan and restored by the `CF-P6-001` reconciliation: without
+it a client that lost a mutation response has no authorized way to learn whether
+the mutation applied, so `ADR-006`'s "reconcile before creating a new mutation
+ID" rule and sprint gate scenarios G5 and G6 would be unverifiable. It returns
+`{ state, result }` only for the exact authenticated actor/device/workspace
+binding and only within the 30-day idempotency window.
 
 Viewer is deliberately absent from every mutation row. A Viewer mutation is an authorization denial, not a validation error, and creates no document, revision, idempotency, or business audit side effect. Export, hard purge, batch mutation, and semantic search remain unavailable.
 
