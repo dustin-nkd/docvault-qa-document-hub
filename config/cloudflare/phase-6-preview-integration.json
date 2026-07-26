@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P6",
+  "story": "CF-P6-008",
+  "status": "IN PROGRESS",
+  "approved_entry_gate": "P6-G3A",
+  "remote_authorization_gate": "P6-G4",
+  "remote_authorization_granted_on": "2026-07-26",
+  "exit_gate": "P6-G4A",
+  "deployment": {
+    "branch": "codex-cf-p3-preview",
+    "from_commit": "6ee65d0",
+    "to_commit": "dd402b9",
+    "fast_forward": true,
+    "force_push": false,
+    "deployment_id": "ea66d321-fd38-4e0c-bcc5-d30c8191f5d1",
+    "previous_deployment_id": "858989d1-7b16-4ebd-a9fe-bd1dfeb10f1b",
+    "secrets_changed": 0,
+    "bindings_changed": 0,
+    "migrations_applied": 0,
+    "schema_version": 12
+  },
+  "unauthenticated_boundary": {
+    "routes_probed": 8,
+    "all_routes_status": 401,
+    "any_route_404_or_405": false,
+    "hostile_origin_mutations_probed": 3,
+    "hostile_origin_status": 403,
+    "origin_check_precedes_authentication": true
+  },
+  "environment_isolation": {
+    "production_documents_status": 503,
+    "production_session_status": 503,
+    "production_d1_bindings": 0,
+    "github_pages_documents_status": 404,
+    "deployment_url_status": 503,
+    "deployment_url_note": "A per-deployment hostname is not the approved Preview origin, so the runtime declines every collaboration route there."
+  },
+  "performance": {
+    "unauthenticated_read_samples": 20,
+    "unauthenticated_read_p95_ms": 213,
+    "budget_ms": 300,
+    "includes_network_rtt": true,
+    "authenticated_read_write_measured": false
+  },
+  "remote_state_after_probes": {
+    "documents": 0,
+    "document_revisions": 0,
+    "document_audit_events": 0,
+    "active_users": 0,
+    "active_sessions": 0,
+    "auth_rate_windows": 2,
+    "auth_rate_windows_note": "bounded operational control state from unauthenticated probes, not collaboration business data",
+    "shared_preview_restore_executed": false
+  },
+  "outstanding": {
+    "reason": "The authenticated multi-role journeys require a synthetic GitHub OAuth session. That login cannot be performed from this environment, and a session cannot be minted directly because SESSION_TOKEN_PEPPER is a Preview secret that is deliberately not readable here.",
+    "blocked_scenarios": ["G1", "G2", "G3", "G4", "G5", "G6"],
+    "blocked_scenarios_note": "All six are proven against real D1 at the persistence layer by CF-P6-004 through CF-P6-007; what remains unproven is the same behaviour over real Preview HTTP sessions.",
+    "pending_evidence": ["CF-EV-P6-E2E-003", "CF-EV-P6-PERF-001", "CF-EV-P6-QA-004"],
+    "owner": "requires a synthetic OAuth browser login by the project owner or Codex"
+  },
+  "rollback": {
+    "target_deployment_id": "858989d1-7b16-4ebd-a9fe-bd1dfeb10f1b",
+    "target_commit": "199b712",
+    "same_schema_contract": true,
+    "data_touched_by_deployment": false
+  },
+  "authorization_boundary": {
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_d1": "NO-GO",
+    "production_document_routes": "NO-GO"
+  },
+  "evidence_complete": ["CF-EV-P6-OPS-001", "CF-EV-P6-SEC-008"]
+}
