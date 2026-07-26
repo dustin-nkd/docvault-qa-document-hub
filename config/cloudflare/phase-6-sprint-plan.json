@@ -268,7 +268,7 @@
       "id": "CF-P6-009",
       "title": "Assemble Phase 6 exit and Phase 7 handoff",
       "size": "M",
-      "status": "PLANNED",
+      "status": "IN PROGRESS",
       "entry_gate": "P6-G4A",
       "exit_gate": "P6-G5",
       "evidence": [

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P6",
+  "story": "CF-P6-009",
+  "status": "PARTIAL",
+  "exit_gate": "P6-G5",
+  "exit_gate_granted": false,
+  "decision": {
+    "phase_6_document_slice": "GO-WITH-RECORDED-GAP",
+    "phase_7_document_ux": "PLAN-ONLY",
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_d1": "NO-GO",
+    "production_document_routes": "NO-GO"
+  },
+  "stories": [
+    { "id": "CF-P6-001", "status": "PASS", "gate": "cf:phase6:contract:check" },
+    { "id": "CF-P6-002", "status": "PASS", "gate": "cf:phase6:provider:check" },
+    { "id": "CF-P6-003", "status": "PASS", "gate": "cf:phase6:envelope:check" },
+    { "id": "CF-P6-004", "status": "PASS", "gate": "cf:phase6:mutations:check" },
+    { "id": "CF-P6-005", "status": "PASS", "gate": "cf:phase6:reads:check" },
+    { "id": "CF-P6-006", "status": "PASS", "gate": "cf:phase6:outbox:check" },
+    { "id": "CF-P6-007", "status": "PASS", "gate": "cf:phase6:conflict:check" },
+    { "id": "CF-P6-008", "status": "IN PROGRESS", "gate": null },
+    { "id": "CF-P6-009", "status": "IN PROGRESS", "gate": "cf:phase6:exit:check" }
+  ],
+  "gate_scenarios": {
+    "verified_at_persistence_layer": ["G1", "G2", "G3", "G4", "G5", "G6"],
+    "verified_over_preview_http": ["G1", "G4", "G5", "G6"],
+    "not_verified_over_preview_http": ["G2", "G3"],
+    "not_verified_reason": "G2 and G3 need a second GitHub identity because membership role is per user per workspace; three OAuth attempts for a second account failed at the callback and D1 shows the transactions were never consumed."
+  },
+  "closing_condition": {
+    "required_steps": 5,
+    "blocking": true,
+    "summary": "authenticate a second GitHub identity, add it as a Viewer, confirm G2 and G3 over HTTP, promote CF-EV-P6-QA-004 to PASS, and finish the Preview cleanup"
+  },
+  "identity_provenance": {
+    "synthetic_identity_used": false,
+    "identity": "project owner personal GitHub account",
+    "owner_advised": true,
+    "described_as_synthetic_anywhere": false
+  },
+  "cleanup": {
+    "complete": false,
+    "documents_active": 0,
+    "sessions_active": 1,
+    "devices_active": 1,
+    "workspaces_active": 1,
+    "revisions_retained": 4,
+    "shared_preview_restore_executed": false
+  },
+  "authorization_boundary": {
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "production_d1": "NO-GO",
+    "production_document_routes": "NO-GO"
+  }
+}
