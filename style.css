@@ -1849,3 +1849,55 @@ button[aria-busy="true"] { cursor:progress !important; }
     .collab-invites { padding: 12px; }
     .collab-invites__create, .collab-invites__copy, .collab-invites__revoke { width: 100%; }
 }
+
+/* ── CF-P7-008 invitation acceptance ────────────────────────────────────── */
+
+.collab-accept { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-accept__heading { margin: 0; font-size: 17px; font-weight: 600; color: var(--tx); }
+.collab-accept__summary { margin: 0; font-size: 14px; color: var(--tx); }
+.collab-accept__expires { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-accept__expires[data-invitation-state="expired"],
+.collab-accept__expires[data-invitation-state="revoked"],
+.collab-accept__expires[data-invitation-state="consumed"] { color: var(--collab-warning); }
+.collab-accept__action,
+.collab-accept__device-action {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-accept__action:hover:not(:disabled) { background: var(--card-h); }
+.collab-accept__action:disabled { opacity: .55; cursor: not-allowed; }
+.collab-accept__reason { margin: 0; font-size: 12px; color: var(--collab-warning); }
+/* What acceptance actually gets you: stated plainly, not as a warning, because
+   waiting for a key is the expected outcome rather than a fault. */
+.collab-accept__after {
+    margin: 0;
+    font-size: 12px;
+    color: var(--tx-m);
+    padding-left: 10px;
+    border-left: 2px solid var(--brd-l);
+}
+.collab-accept__failure {
+    margin: 0;
+    font-size: 13px;
+    color: var(--collab-danger);
+    padding-left: 10px;
+    border-left: 3px solid var(--collab-danger);
+}
+.collab-accept__action:focus-visible,
+.collab-accept__device-action:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-accept { padding: 12px; }
+    .collab-accept__action, .collab-accept__device-action { width: 100%; }
+}
