@@ -1714,3 +1714,61 @@ button[aria-busy="true"] { cursor:progress !important; }
     .collab-device { padding: 12px; }
     .collab-device__register, .collab-device__revoke { width: 100%; }
 }
+
+/* ── CF-P7-006 member list and role-disabled controls ───────────────────── */
+
+.collab-members { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-members__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-members__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.collab-members__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-members__name {
+    font-size: 14px;
+    color: var(--tx);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 22ch;
+}
+.collab-members__readiness { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.collab-members__readiness-text { color: var(--tx-m); }
+.collab-members__actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.collab-members__action {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.collab-members__action:hover:not(:disabled) { background: var(--card-h); }
+.collab-members__action:disabled { opacity: .55; cursor: not-allowed; }
+.collab-members__action:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+/* The reason is real text, not a tooltip: it is rendered in the flow, carried by
+   aria-describedby, and is what assistive technology announces with the control. */
+.collab-members__reason {
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--tx-m);
+    padding-left: 10px;
+    border-left: 2px solid var(--brd-l);
+}
+
+@media (max-width: 480px) {
+    .collab-members { padding: 12px; }
+    .collab-members__name { max-width: 100%; }
+    .collab-members__action { flex: 1 1 auto; }
+}

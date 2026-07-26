@@ -73,3 +73,5 @@ import './collaboration-create-workspace.test.mjs';
 import './cloudflare-phase-7-create-workspace-policy.test.mjs';
 import './collaboration-device-initialization.test.mjs';
 import './cloudflare-phase-7-device-policy.test.mjs';
+import './collaboration-member-list.test.mjs';
+import './cloudflare-phase-7-member-policy.test.mjs';

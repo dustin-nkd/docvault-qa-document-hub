@@ -163,13 +163,14 @@
       "id": "CF-P7-006",
       "title": "Member list, role badge, and explained role-disabled controls",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G2C",
       "exit_gate": "P7-G2D",
       "evidence": [
         "CF-EV-P7-UI-005",
         "CF-EV-P7-A11Y-002"
-      ]
+      ],
+      "gate": "cf:phase7:members:check"
     },
     {
       "id": "CF-P7-007",
