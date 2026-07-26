@@ -58,6 +58,34 @@ while (queue.length > 0) {
     }
 }
 
+// Follow the JavaScript module graph, both static imports and dynamic ones.
+//
+// Without this the collaboration modules are silently absent from the artifact.
+// The lazy design deliberately keeps them out of index.html, so the reference
+// walk above cannot see them, and Cloudflare Pages answers the SPA fallback for
+// their paths — a 200 of text/html where the browser expected a module. That is
+// exactly what shipped to Preview before this pass existed: the entry resolved,
+// its imports did not, and the shell never mounted.
+//
+// Walking the graph rather than listing paths means a new lazy entry point is
+// picked up by adding its `import()`, not by remembering to edit this file.
+const SPECIFIER = /(?:\bfrom\s*|(?:^|[^.\w])import\s*\(\s*)(['"])([^'"]+)\1/g;
+let scanned = 0;
+while (scanned < included.size) {
+    scanned = included.size;
+    for (const relativePath of [...included]) {
+        if (!relativePath.endsWith('.js') && !relativePath.endsWith('.mjs')) continue;
+        const source = fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
+        for (const match of source.matchAll(SPECIFIER)) {
+            const specifier = match[2];
+            // Bare specifiers are not ours to resolve; only relative paths are.
+            if (!specifier.startsWith('./') && !specifier.startsWith('../')) continue;
+            const dependency = normalizeLocal(specifier, relativePath);
+            if (dependency) include(dependency);
+        }
+    }
+}
+
 fs.rmSync(output, { recursive: true, force: true });
 let totalBytes = 0;
 for (const relativePath of [...included].sort()) {
