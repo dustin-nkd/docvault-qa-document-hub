@@ -20,6 +20,15 @@ function actual() {
 test('CF-P2-005 locks seven recipes, races, correction, and disabled runtime', () => {
     assert.equal(validatePhase2SecurityRecipes(actual()), true);
 });
+// NO-OP CONTROL (D-P7-01). The unmutated real input must pass. If this fails, every
+// assert.throws below is vacuous -- a no-op mutation would throw identically -- and the
+// drift cases prove nothing. Do not weaken this to make the suite green.
+test('CF-P2-005 no-op control: unmutated real input does not throw', () => {
+    const input = actual();
+    assert.equal(input.wrangler.env.preview.vars.COLLABORATION_ENABLED, 'true',
+        'D-P7-01 activates preview; a no-op control against a stale fixture would be meaningless');
+    assert.doesNotThrow(() => validatePhase2SecurityRecipes(input));
+});
 test('CF-P2-005 rejects recipe, SQL, consistency, and correction drift', () => {
     for (const mutate of [
         input => { input.foundation.recipes.pop(); },
@@ -32,7 +41,11 @@ test('CF-P2-005 rejects API reachability, remote state, activation, and evidence
     for (const mutate of [
         input => { input.apiSources.shell += '\nconst db = env.COLLAB_DB;'; },
         input => { input.wrangler.d1_databases = [{ binding: 'COLLAB_DB', database_id: 'forbidden' }]; },
+        // D-P7-01 (2026-07-26) activates collaboration in PREVIEW ONLY. Production and the
+        // top-level vars default stay 'false', and these two cases are the surviving proof
+        // that flipping either of them to 'true' is still rejected.
         input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; },
         input => { delete input.evidenceSources['CF-EV-P2-SEC-005']; }
     ]) { const input = actual(); mutate(input); assert.throws(() => validatePhase2SecurityRecipes(input)); }
 });

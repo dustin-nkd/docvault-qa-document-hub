@@ -21,6 +21,11 @@ function actualInput() {
 }
 
 test('Phase 3 plan freezes scope, gates, traceability, security, and environment boundaries', () => {
+    // NO-OP CONTROL. The unmutated, real repository input must pass. Every rejection case
+    // below is a single mutation of this same input, so if this control ever throws then a
+    // no-op mutation would throw identically and every assert.throws in this file would pass
+    // for the wrong reason -- green, but proving nothing.
+    assert.doesNotThrow(() => validatePhase3SprintPlan(actualInput()));
     assert.equal(validatePhase3SprintPlan(actualInput()), true);
 });
 
@@ -30,7 +35,14 @@ test('Phase 3 plan rejects premature authorization, production identity, route e
         input => { input.manifest.boundaries.production_identity_enabled = true; },
         input => { input.manifest.route_scope.push('POST /api/v1/workspaces'); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
-        input => { input.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'true'; }
+        // D-P7-01 (owner-approved 2026-07-26, decision-log.md at commit 0d5f3a2) authorizes
+        // COLLABORATION_ENABLED='true' for the PREVIEW environment only. Preview 'true' is
+        // therefore the unmutated baseline now and can no longer serve as a rejection case,
+        // so this proof is retargeted -- not dropped -- onto the two environments the
+        // decision leaves untouched: production and the top-level default vars. Neither may
+        // ever activate collaboration.
+        input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; }
     ]) {
         const input = actualInput();
         mutate(input);

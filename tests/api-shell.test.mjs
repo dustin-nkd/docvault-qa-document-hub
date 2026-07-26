@@ -17,10 +17,24 @@ const productionEnv = Object.freeze({
     CANONICAL_PRODUCTION_ORIGIN: 'https://docvault-qa-document-hub.pages.dev',
     COLLABORATION_ENABLED: 'false'
 });
+// D-P7-01 (owner-approved 2026-07-26, docs/collaboration-foundation/decision-log.md @ 0d5f3a2)
+// activates collaboration for the PREVIEW environment ONLY. The preview fixture therefore has
+// to carry COLLABORATION_ENABLED 'true': inheriting 'false' from productionEnv would be a
+// stale stub that no longer models what Cloudflare hands the Worker on a preview deployment.
+// The NO-OP CONTROL at the bottom of this file pins all three fixtures to the real
+// wrangler.jsonc so they cannot silently drift back into stubs.
 const previewEnv = Object.freeze({
     ...productionEnv,
     APP_ENV: 'preview',
-    ORIGIN_POLICY_MODE: 'preview'
+    ORIGIN_POLICY_MODE: 'preview',
+    COLLABORATION_ENABLED: 'true'
+});
+// The top-level `vars` default. D-P7-01 leaves this switched OFF, exactly like production.
+const defaultVarsEnv = Object.freeze({
+    APP_ENV: 'local',
+    ORIGIN_POLICY_MODE: 'local',
+    CANONICAL_PRODUCTION_ORIGIN: 'https://docvault-qa-document-hub.pages.dev',
+    COLLABORATION_ENABLED: 'false'
 });
 
 const request = (pathName, init = {}) => new Request(
@@ -234,6 +248,9 @@ test('mutation media type, byte limit, and JSON syntax fail before feature handl
     assert.equal((await readError(malformed)).code, 'INVALID_JSON');
 });
 
+// D-P7-01 activates collaboration for PREVIEW ONLY; the `production` environment stays
+// 'false'. This case already targets PRODUCTION, so the decision does not move it — it is the
+// production half of the boundary that must never shift, kept exactly as it was.
 test('valid JSON remains unavailable even when a runtime flag is tampered', async () => {
     const tamperedEnv = { ...productionEnv, COLLABORATION_ENABLED: 'true' };
     const response = await handleApiRequest(request('/api/v1/session/logout', {
@@ -241,6 +258,23 @@ test('valid JSON remains unavailable even when a runtime flag is tampered', asyn
         headers: {
             'Content-Type': 'application/json; charset=utf-8',
             Origin: productionEnv.CANONICAL_PRODUCTION_ORIGIN
+        },
+        body: '{}'
+    }), tamperedEnv);
+    assert.equal(response.status, 503);
+    assert.equal((await readError(response)).code, 'COLLABORATION_UNAVAILABLE');
+});
+
+// The other half of the boundary D-P7-01 leaves switched off. The suite proved the
+// production case only; the decision names the top-level `vars` default too, so the
+// rejection proof is extended to cover it rather than assumed.
+test('valid JSON remains unavailable even when the default vars runtime flag is tampered', async () => {
+    const tamperedEnv = { ...defaultVarsEnv, COLLABORATION_ENABLED: 'true' };
+    const response = await handleApiRequest(new Request('http://localhost:8788/api/v1/session/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Origin: 'http://localhost:8788'
         },
         body: '{}'
     }), tamperedEnv);
@@ -269,6 +303,73 @@ test('unexpected body-stream failures return sanitized JSON without an exception
     assert.equal(response.status, 500);
     assert.equal((await readError(response)).code, 'INTERNAL_ERROR');
     assert.doesNotMatch(await copy.text(), new RegExp(canary));
+});
+
+// ---------------------------------------------------------------------------
+// NO-OP CONTROL (D-P7-01)
+// ---------------------------------------------------------------------------
+// Every rejection assertion in this file is only worth something if the REAL, UNMUTATED
+// deployment input is ACCEPTED by the REAL gate. If the unmutated input already produced the
+// outcome the tamper cases assert, a no-op mutation would produce it identically and the suite
+// would be vacuous — green while proving nothing.
+//
+// This shell has no throw/return duality to test: handleApiRequest converts everything into a
+// Response. The equivalent of "does not throw" here is that the unmutated request traverses
+// every gate — route, method, Accept, origin, media type, byte limit, JSON syntax — and reaches
+// the feature boundary as 503 COLLABORATION_UNAVAILABLE, instead of being short-circuited by a
+// gate (403/404/405/406/413/415/400) or collapsing into 500 INTERNAL_ERROR.
+//
+// D-P7-01 (owner-approved 2026-07-26) put COLLABORATION_ENABLED = 'true' into the real preview
+// vars, so this control is what distinguishes "the gate was migrated" from "the tests were bent
+// around it".
+test('NO-OP CONTROL: the real unmutated wrangler environments reach the shell boundary intact', async () => {
+    const wrangler = JSON.parse(fs.readFileSync(path.join(root, 'wrangler.jsonc'), 'utf8'));
+    const shellVars = vars => ({
+        APP_ENV: vars.APP_ENV,
+        ORIGIN_POLICY_MODE: vars.ORIGIN_POLICY_MODE,
+        CANONICAL_PRODUCTION_ORIGIN: vars.CANONICAL_PRODUCTION_ORIGIN,
+        COLLABORATION_ENABLED: vars.COLLABORATION_ENABLED
+    });
+
+    // The fixtures this suite runs on are the real deployment inputs, not stubs.
+    assert.deepEqual(shellVars(wrangler.env.production.vars), { ...productionEnv });
+    assert.deepEqual(shellVars(wrangler.env.preview.vars), { ...previewEnv });
+    assert.deepEqual(shellVars(wrangler.vars), { ...defaultVarsEnv });
+
+    // The D-P7-01 boundary itself, asserted against the real config rather than a fixture:
+    // preview is authorized, production and the default vars must never activate.
+    assert.equal(wrangler.env.preview.vars.COLLABORATION_ENABLED, 'true');
+    assert.equal(wrangler.env.production.vars.COLLABORATION_ENABLED, 'false');
+    assert.equal(wrangler.vars.COLLABORATION_ENABLED, 'false');
+
+    const unmutated = [
+        ['production', productionEnv, () => request('/api/v1/session')],
+        ['preview', previewEnv, () => requestAt('https://feature-auth.docvault-qa-document-hub.pages.dev', '/api/v1/session')],
+        ['default vars', defaultVarsEnv, () => new Request('http://localhost:8788/api/v1/session')]
+    ];
+    for (const [label, env, buildRequest] of unmutated) {
+        let response;
+        await assert.doesNotReject(
+            async () => { response = await handleApiRequest(buildRequest(), env); },
+            `unmutated ${label} input must not make the shell throw`
+        );
+        assert.notEqual(response.status, 500, `unmutated ${label} input must not collapse into INTERNAL_ERROR`);
+        assert.equal(response.status, 503, `unmutated ${label} input must clear every gate and reach the feature boundary`);
+        assert.equal((await readError(response)).code, 'COLLABORATION_UNAVAILABLE');
+    }
+
+    // Discrimination check: the pipeline's outcomes are actually distinguishable, so the 503
+    // above is a cleared-every-gate result and not a blanket answer the shell gives everyone.
+    const mutated = await handleApiRequest(request('/api/v1/session/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Origin: 'https://attacker.example'
+        },
+        body: '{}'
+    }), productionEnv);
+    assert.equal(mutated.status, 403);
+    assert.equal((await readError(mutated)).code, 'CSRF_REJECTED');
 });
 
 test('Pages routing invokes Functions only for the versioned API namespace', () => {

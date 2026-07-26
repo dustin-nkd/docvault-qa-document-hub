@@ -28,7 +28,21 @@ function actualInput() {
     };
 }
 
+// NO-OP CONTROL. Every assert.throws below is only meaningful if the UNMUTATED real
+// input passes. Under D-P7-01 (preview COLLABORATION_ENABLED = 'true') a gate that had
+// not been migrated would throw on the unmutated input, and every rejection case in this
+// file would then pass for the wrong reason. This helper re-proves the control per case.
+function assertRejects(mutate) {
+    assert.doesNotThrow(() => validatePhase2PersistenceFoundation(actualInput()),
+        'NO-OP CONTROL FAILED: unmutated input is already rejected, so this suite is vacuous');
+    const input = actualInput();
+    mutate(input);
+    assert.throws(() => validatePhase2PersistenceFoundation(input));
+}
+
 test('CF-P2-004 locks typed, checked, bounded, atomic, and API-isolated persistence', () => {
+    // NO-OP CONTROL: the real, unmutated repository state must pass under D-P7-01.
+    assert.doesNotThrow(() => validatePhase2PersistenceFoundation(actualInput()));
     assert.equal(validatePhase2PersistenceFoundation(actualInput()), true);
 });
 
@@ -41,9 +55,7 @@ test('CF-P2-004 rejects unsafe SQL, unchecked topology, and client-selected cons
         input => { input.foundation.read_contract.maximum_page_size = 101; }
     ];
     for (const mutate of cases) {
-        const input = actualInput();
-        mutate(input);
-        assert.throws(() => validatePhase2PersistenceFoundation(input));
+        assertRejects(mutate);
     }
 });
 
@@ -51,12 +63,14 @@ test('CF-P2-004 rejects API reachability, remote binding, activation, and eviden
     const cases = [
         input => { input.apiSources.shell += "\nimport './persistence/index';"; },
         input => { input.wrangler.d1_databases = [{ binding: 'COLLAB_DB', database_id: 'forbidden' }]; },
+        // D-P7-01 authorizes COLLABORATION_ENABLED = 'true' for PREVIEW ONLY. Production
+        // must still be rejected, so this case stays targeted at production.
         input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        // D-P7-01 leaves the top-level `vars` default disabled too; prove it is rejected.
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; },
         input => { delete input.evidenceSources['CF-EV-P2-SEC-004']; }
     ];
     for (const mutate of cases) {
-        const input = actualInput();
-        mutate(input);
-        assert.throws(() => validatePhase2PersistenceFoundation(input));
+        assertRejects(mutate);
     }
 });

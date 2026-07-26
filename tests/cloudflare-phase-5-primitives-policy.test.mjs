@@ -27,12 +27,21 @@ test('CF-P5-002 locks strict primitives, independent vectors, evidence, and disa
 });
 
 test('CF-P5-002 rejects downgrade, vector drift, route reachability, migration, and activation', () => {
+    // NO-OP CONTROL (D-P7-01): the UNMUTATED real input — whose wrangler.jsonc now carries
+    // env.preview.vars.COLLABORATION_ENABLED = 'true' — must still be ACCEPTED. If this throws,
+    // every assert.throws below would pass for the wrong reason and this suite would be vacuous.
+    assert.doesNotThrow(() => validatePhase5Primitives(input()));
+
     for (const mutate of [
         value => { value.manifest.implementation.fallback = 'plaintext'; },
         value => { value.vectorFixture.vectors.pop(); },
         value => { value.sourceFiles['functions/_lib/e2ee/primitives.ts'] = value.sourceFiles['functions/_lib/e2ee/primitives.ts'].replace('600_000', '300_000'); },
         value => { value.routeSource += "\nimport { wrapWorkspaceKey } from '../e2ee';"; },
         value => { value.migrationManifest.entries.push({ sequence: 11 }); },
+        // D-P7-01 authorizes COLLABORATION_ENABLED='true' for PREVIEW only. The production
+        // boundary is unchanged and this case is the surviving proof of it: the gate
+        // (cloudflare-phase-5-primitives-policy.mjs:85) is production-scoped, so activating
+        // production must still be rejected. Do not retarget this to preview.
         value => { value.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
         value => { delete value.evidenceSources['CF-EV-P5-SEC-002']; }
     ]) {

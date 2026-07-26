@@ -92,10 +92,12 @@ export function validatePhase6SprintPlan({ manifest, sprintSource, handoff, apiC
         && boundaries.automatic_merge === 'prohibited'
         && boundaries.client_timestamp_conflict_resolution === 'prohibited',
     'Phase 6 boundary drifted');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
-        && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
+        && [wrangler.vars, wrangler.env?.production?.vars]
             .every(vars => vars?.COLLABORATION_ENABLED === 'false'),
-    'Production D1 or collaboration activation drifted');
+    'Production D1 or collaboration activation drifted outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
 
     const conflict = manifest.conflict_contract || {};
     assert(conflict.authority === 'D1 monotonic integer revision'

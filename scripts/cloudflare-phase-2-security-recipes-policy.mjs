@@ -23,9 +23,10 @@ export function validatePhase2SecurityRecipes({ foundation, recipeSource, idempo
     assert((foundation.race_matrix || []).length === 7, 'Race matrix is incomplete');
     assert(Object.values(foundation.environment_boundary || {}).every(value => value === false), 'CF-P2-005 expanded runtime authority');
     assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_KEYS), 'An unapproved remote binding exists');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false'
-        && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false'
-        && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
+        && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
 
     for (const operation of foundation.recipes) assert(recipeSource.includes(`'${operation}'`), `Recipe is missing: ${operation}`);
     for (const builder of ['buildWorkspaceCreateRecipe', 'buildInvitationReplaceRecipe',

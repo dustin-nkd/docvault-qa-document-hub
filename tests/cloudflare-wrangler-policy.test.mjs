@@ -19,16 +19,40 @@ const baseline = JSON.parse(fs.readFileSync(path.join(root, 'config/cloudflare/p
 const transition = JSON.parse(fs.readFileSync(path.join(root, 'config/cloudflare/pages-wrangler-diff.json'), 'utf8'));
 const clone = (value) => structuredClone(value);
 
-test('Pages Wrangler config locks source, output, compatibility, environments, and disabled collaboration', () => {
+// NO-OP CONTROL for every assert.throws in this file.
+// D-P7-01 (approved 2026-07-26, decision-log.md) turned COLLABORATION_ENABLED on for the
+// PREVIEW environment only. That makes the real wrangler.jsonc an input any un-migrated gate
+// would reject on its own, so if this control ever throws, the UNMUTATED config already fails
+// and every rejection case below would pass for the wrong reason — the suite would be vacuous
+// and would prove nothing about the production boundary. Keep this test first and passing.
+test('Pages Wrangler config locks source, output, compatibility, environments, and the D-P7-01 collaboration boundary', () => {
     assert.equal(validateWranglerConfig(parsed.config, parsed.source), true);
+    // Same no-op through the exact harness the rejection loops use (clone + stringified
+    // source), so a green assert.throws below can only come from the mutation itself.
+    assert.equal(validateWranglerConfig(clone(parsed.config), JSON.stringify(parsed.config)), true);
+    // The boundary D-P7-01 drew: preview activated, default vars and production still off.
+    assert.equal(parsed.config.env.preview.vars.COLLABORATION_ENABLED, 'true');
+    assert.equal(parsed.config.vars.COLLABORATION_ENABLED, 'false');
+    assert.equal(parsed.config.env.production.vars.COLLABORATION_ENABLED, 'false');
 });
 
 test('Pages Wrangler config fails closed for missing, malformed, or enabled collaboration values', () => {
-    for (const value of [undefined, false, true, 'true', 'FALSE', '0']) {
-        const config = clone(parsed.config);
-        if (value === undefined) delete config.env.production.vars.COLLABORATION_ENABLED;
-        else config.env.production.vars.COLLABORATION_ENABLED = value;
-        assert.throws(() => validateWranglerConfig(config, JSON.stringify(config)));
+    // D-P7-01 authorized collaboration for PREVIEW only. These cases are the surviving proof
+    // that the two scopes it did NOT authorize — the production environment and the top-level
+    // default vars — still reject activation ('true'), type confusion (true/false booleans),
+    // casing drift ('FALSE'), truthiness games ('0'), and an omitted value.
+    for (const [scope, varsOf] of [
+        ['env.production.vars', (config) => config.env.production.vars],
+        ['vars (default)', (config) => config.vars]
+    ]) {
+        for (const value of [undefined, false, true, 'true', 'FALSE', '0']) {
+            const config = clone(parsed.config);
+            const vars = varsOf(config);
+            if (value === undefined) delete vars.COLLABORATION_ENABLED;
+            else vars.COLLABORATION_ENABLED = value;
+            assert.throws(() => validateWranglerConfig(config, JSON.stringify(config)),
+                `${scope}.COLLABORATION_ENABLED=${String(value)} must be rejected under D-P7-01`);
+        }
     }
 });
 

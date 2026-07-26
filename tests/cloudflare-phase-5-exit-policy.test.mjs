@@ -34,7 +34,12 @@ function actualInput() {
     };
 }
 
+// NO-OP CONTROL. The unmutated, real repository input must pass. This is the
+// load-bearing precondition for every assert.throws below: if the real input
+// already threw, a no-op mutation would throw identically and the whole drift
+// suite would be vacuous — green while proving nothing. Do not weaken this.
 test('CF-P5-008 reconciles Phase 5 evidence, schema, remote boundary, recovery, and Phase 6 handoff', () => {
+    assert.doesNotThrow(() => validatePhase5Exit(actualInput()));
     assert.equal(validatePhase5Exit(actualInput()), true);
 });
 
@@ -89,7 +94,12 @@ test('CF-P5-008 rejects activation, evidence loss, unretired authority, and sche
         input => { input.manifest.sign_off.roles_covered = ['Product Owner']; },
         input => { input.manifest.sign_off.model = 'seven-independent-reviews'; },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
-        input => { input.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'true'; },
+        // D-P7-01 (approved 2026-07-26) activates collaboration on PREVIEW only,
+        // so mutating preview to 'true' is now a no-op. Retargeted onto the two
+        // scopes the decision leaves switched off forever — production and the
+        // top-level vars default — so the activation proof survives the decision.
+        input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; },
         input => { input.riskRegister = input.riskRegister.replace(/^\| R09 \|.*$/m, '| R09 | x | Open |'); },
         input => { input.exitReport = input.exitReport.replace(/^Status: PASS$/m, 'Status: DRAFT'); },
         input => { input.exitReport = input.exitReport.replace('single-maintainer project', 'reviewed project'); },
@@ -101,4 +111,29 @@ test('CF-P5-008 rejects activation, evidence loss, unretired authority, and sche
         mutate(input);
         assert.throws(() => validatePhase5Exit(input), Error);
     }
+});
+
+// The loop above matches on bare `Error`, which cannot show WHICH assertion
+// fired. The activation boundary is the one thing D-P7-01 narrows, so pin it
+// here by message: preview is authorized to be 'true', nothing else is, and
+// preview may not be silently switched back off either.
+test('CF-P5-008 confines the D-P7-01 activation to preview and pins production and the vars default off', () => {
+    const noOp = actualInput();
+    assert.equal(noOp.wrangler.env.preview.vars.COLLABORATION_ENABLED, 'true');
+    assert.equal(noOp.wrangler.env.production.vars.COLLABORATION_ENABLED, 'false');
+    assert.equal(noOp.wrangler.vars.COLLABORATION_ENABLED, 'false');
+    assert.equal(validatePhase5Exit(noOp), true);
+
+    for (const mutate of [
+        input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; }
+    ]) {
+        const input = actualInput();
+        mutate(input);
+        assert.throws(() => validatePhase5Exit(input), /Production or activation boundary drifted outside preview/);
+    }
+
+    const disarmed = actualInput();
+    disarmed.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'false';
+    assert.throws(() => validatePhase5Exit(disarmed), /Preview no longer carries the D-P7-01 authorization/);
 });

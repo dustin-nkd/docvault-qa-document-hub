@@ -35,13 +35,34 @@ test('CF-P2-002 rejects edits, gaps, duplicates, ownership drift, destructive SQ
         input => { input.manifest.entries[3].tables.push('users'); },
         input => { input.migrationSources[input.manifest.entries[5].filename] += '\nDROP TABLE users;'; },
         input => { input.wrangler.d1_databases = [{ binding: 'COLLAB_DB', database_id: 'forbidden' }]; },
+        // D-P7-01 activates COLLABORATION_ENABLED='true' for PREVIEW only; production must
+        // never activate collaboration, so this mutation stays a rejection.
         input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; }
     ];
+    // NO-OP CONTROL: the unmutated real input must pass. If it throws, every assert.throws
+    // below would succeed for the wrong reason and this suite would prove nothing.
+    assert.doesNotThrow(() => validatePhase2Migrations(actualInput()), 'no-op control failed: rejection cases would be vacuous');
     for (const mutate of cases) {
         const input = actualInput();
         mutate(input);
         assert.throws(() => validatePhase2Migrations(input));
     }
+});
+
+// D-P7-01 (docs/collaboration-foundation/decision-log.md, commit 0d5f3a2) authorizes
+// COLLABORATION_ENABLED='true' for the PREVIEW environment ONLY. The boundary that must
+// survive is that the default vars and production can never activate collaboration.
+test('CF-P2-002 keeps collaboration disabled outside preview under D-P7-01', () => {
+    // NO-OP CONTROL: proves the two rejections below are not vacuous.
+    assert.doesNotThrow(() => validatePhase2Migrations(actualInput()), 'no-op control failed: boundary cases would be vacuous');
+
+    const productionEnabled = actualInput();
+    productionEnabled.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true';
+    assert.throws(() => validatePhase2Migrations(productionEnabled), /disabled outside preview/);
+
+    const defaultVarsEnabled = actualInput();
+    defaultVarsEnabled.wrangler.vars.COLLABORATION_ENABLED = 'true';
+    assert.throws(() => validatePhase2Migrations(defaultVarsEnabled), /disabled outside preview/);
 });
 
 test('CF-P2-002 rejects unknown, reordered, duplicate, missing, and changed applied history', () => {

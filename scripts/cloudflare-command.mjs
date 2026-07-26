@@ -43,7 +43,10 @@ const validateConfig = () => {
     validateWranglerConfig(config, source, state.toolchain.compatibility_date);
     console.log('Cloudflare Wrangler configuration policy passed');
     console.log('  Environments: local, preview, production');
-    console.log('  Collaboration: disabled in every environment');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
+    // Reported from the parsed config so this line cannot go stale against it.
+    console.log('  Collaboration: ' + [['local', config.vars], ['preview', config.env?.preview?.vars], ['production', config.env?.production?.vars]]
+        .map(([environment, vars]) => `${environment}=${vars?.COLLABORATION_ENABLED}`).join(', '));
     console.log('  Preview D1: one approved binding; production bindings: none');
 };
 

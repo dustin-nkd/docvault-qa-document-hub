@@ -63,7 +63,9 @@ export function validatePhase2LocalReadiness({ readiness, querySource, migration
     assert(sameSet(readiness.gate_candidate.required_reviewers || [], ['Security Reviewer', 'Technical Lead', 'Senior QA']), 'P2-G2 reviewer inventory drifted');
     assert(Object.values(readiness.environment_boundary || {}).every(value => value === false), 'CF-P2-003 must not authorize remote D1 or collaboration');
     assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_BINDING_KEYS), 'Wrangler contains an unapproved remote binding');
-    assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
+    assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
 
     assert(readiness.representative_workload?.documents === 10000, 'Representative document scale drifted');
     assert(readiness.representative_workload?.revisions_per_hot_document === 50, 'Representative revision depth drifted');

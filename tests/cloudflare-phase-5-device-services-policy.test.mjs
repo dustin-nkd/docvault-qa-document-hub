@@ -26,8 +26,23 @@ const input = () => {
     };
 };
 
+// D-P7-01 (owner-approved 2026-07-26, docs/collaboration-foundation/decision-log.md) activates
+// COLLABORATION_ENABLED='true' for the PREVIEW environment ONLY. The top-level `vars` default and
+// the `production` environment stay 'false'. This gate asserts only
+// `wrangler.env.production.vars.COLLABORATION_ENABLED === 'false'`, so preview activation passes
+// through while a production flip is still rejected by the case below.
+
 test('CF-P5-004 locks atomic device registration, inventory, revocation, and audit', () => {
+    // NO-OP CONTROL: the real, UNMUTATED repository input must validate. If this throws, every
+    // assert.throws below would pass for the wrong reason and the suite would prove nothing.
     assert.equal(validatePhase5DeviceServices(input()), true);
+
+    // Pin the preconditions the rejection cases rely on, so that flipping production to 'true' is a
+    // real change rather than a no-op, and so the suite cannot be made green by reverting D-P7-01.
+    const { wrangler } = input();
+    assert.equal(wrangler.env.preview.vars.COLLABORATION_ENABLED, 'true', 'D-P7-01 preview activation');
+    assert.equal(wrangler.env.production.vars.COLLABORATION_ENABLED, 'false', 'production stays disabled');
+    assert.equal(wrangler.vars.COLLABORATION_ENABLED, 'false', 'default vars stay disabled');
 });
 
 test('CF-P5-004 rejects private-key paths, migration drift, route activation, and evidence loss', () => {
@@ -36,6 +51,8 @@ test('CF-P5-004 rejects private-key paths, migration drift, route activation, an
         ['migration', value => { value.migrationManifest.entries[10].gate = 'P5-G2A'; }],
         ['rotation sequence', value => { value.contract.rotation_schema.planned_sequence = 11; }],
         ['route', value => { value.routeSource += "\nimport '../devices';"; }],
+        // D-P7-01: preview may now legitimately be 'true', so the activation-boundary proof lives on
+        // production -- the environment this gate actually asserts. Kept targeted here, never deleted.
         ['production', value => { value.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; }],
         ['evidence', value => { delete value.evidenceSources['CF-EV-P5-SEC-004']; }]
     ]) {

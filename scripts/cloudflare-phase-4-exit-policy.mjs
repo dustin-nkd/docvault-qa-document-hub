@@ -72,11 +72,13 @@ export function validatePhase4Exit({ manifest, evidenceSources, storyContracts, 
         && boundary.collaboration_enabled === 'false' && boundary.preview_unauthenticated_mutation_status === 401
         && boundary.production_disabled_shell_status === 503 && boundary.github_pages_api_status === 405,
     'Remote environment boundary drifted');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
         && wrangler.env?.preview?.d1_databases?.length === 1
         && wrangler.env.preview.d1_databases[0].binding === 'COLLAB_DB'
-        && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
-            .every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Production or activation boundary drifted');
+        && [wrangler.vars, wrangler.env?.production?.vars]
+            .every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Production or activation boundary drifted outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
 
     const recovery = manifest.recovery || {};
     assert(recovery.mode === 'read-only-compatible-rollback-rehearsal'

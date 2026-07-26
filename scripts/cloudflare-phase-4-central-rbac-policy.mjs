@@ -76,9 +76,11 @@ export function validatePhase4CentralRbac({ manifest, prerequisite, sourceFiles,
     assert(!routeSource.includes('authorizeWorkspaceAction') && !routeSource.includes('_lib/rbac'),
         'Central RBAC was routed before authorization');
     assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12 && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M' && migrationManifest.entries[10]?.sequence === 11 && migrationManifest.entries[10]?.story === 'CF-P5-004' && migrationManifest.entries[10]?.gate === 'P5-G2A-M', 'CF-P4-003 added an unauthorized migration');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
     assert(!wrangler.env?.production?.d1_databases
-        && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
-            .every(value => value?.COLLABORATION_ENABLED === 'false'), 'Collaboration runtime boundary drifted');
+        && [wrangler.vars, wrangler.env?.production?.vars]
+            .every(value => value?.COLLABORATION_ENABLED === 'false'), 'Collaboration runtime boundary drifted outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
 
     assert(same(Object.keys(evidenceSources).sort(), [...EVIDENCE].sort()), 'CF-P4-003 evidence inventory drifted');
     for (const [id, source] of Object.entries(evidenceSources)) {

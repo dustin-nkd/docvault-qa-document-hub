@@ -23,6 +23,8 @@ function actualInput() {
     };
 }
 
+// NO-OP CONTROL. The unmutated, real repository input must be ACCEPTED. If this ever throws,
+// every assert.throws below passes for the wrong reason and this suite proves nothing.
 test('Phase 5 plan freezes key-only scope, gates, traceability, crypto, recovery, and quality boundaries', () => {
     assert.equal(validatePhase5SprintPlan(actualInput()), true);
 });
@@ -34,7 +36,13 @@ test('Phase 5 plan rejects premature authorization, Phase 6 scope pull-forward, 
         input => { input.manifest.boundaries.document_routes_enabled = true; },
         input => { input.manifest.route_scope.authorized_routes.push('POST /api/v1/devices'); },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
-        input => { input.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'true'; }
+        // D-P7-01 (approved 2026-07-26) authorizes COLLABORATION_ENABLED='true' on PREVIEW ONLY.
+        // This case previously mutated preview and is retargeted, not deleted: the surviving proof
+        // is that production and the top-level default vars are still rejected when activated.
+        input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; },
+        // D-P7-01 must also hold in the other direction: preview losing the authorization is drift.
+        input => { input.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'false'; }
     ]) {
         const input = actualInput(); mutate(input);
         assert.throws(() => validatePhase5SprintPlan(input));

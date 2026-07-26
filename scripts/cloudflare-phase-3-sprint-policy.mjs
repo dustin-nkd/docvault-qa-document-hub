@@ -82,8 +82,10 @@ export function validatePhase3SprintPlan({ manifest, sprintSource, traceability,
     }
 
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases, 'Production D1 must remain absent at sprint planning');
-    assert([wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
-        .every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Collaboration must remain disabled at sprint planning');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
+    assert([wrangler.vars, wrangler.env?.production?.vars]
+        .every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Collaboration must remain disabled outside preview at sprint planning');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
     return true;
 }
 

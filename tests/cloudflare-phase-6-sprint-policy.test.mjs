@@ -20,7 +20,16 @@ function actualInput() {
     };
 }
 
+// NO-OP CONTROL. The real, unmutated repository input must be ACCEPTED. Every
+// `assert.throws` below is only meaningful if this passes: if the validator threw on
+// the unmutated input, a no-op mutation would throw identically and the drift suite
+// would be vacuous — green while proving nothing. Since D-P7-01 (approved 2026-07-26)
+// set the PREVIEW environment to COLLABORATION_ENABLED = 'true' in the real
+// wrangler.jsonc, this control is what proves the gate was migrated rather than the
+// tests bent around it.
 test('CF-P6-S01 plans the shared document slice within the approved boundary', () => {
+    const unmutated = actualInput();
+    assert.doesNotThrow(() => validatePhase6SprintPlan(unmutated));
     assert.equal(validatePhase6SprintPlan(actualInput()), true);
 });
 
@@ -58,7 +67,15 @@ test('CF-P6-S01 rejects scope, migration, route, provider, and conflict drift', 
         input => { input.manifest.boundaries.automatic_merge = 'allowed'; },
         input => { input.manifest.boundaries.client_timestamp_conflict_resolution = 'allowed'; },
         input => { input.wrangler.env.production.d1_databases = [{ binding: 'COLLAB_DB' }]; },
-        input => { input.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'true'; },
+        // D-P7-01 (approved 2026-07-26) activates collaboration in PREVIEW ONLY. This case
+        // used to mutate env.preview to 'true'; that is now the real repository state, so it
+        // was RETARGETED (not deleted) to the two environments the decision leaves switched
+        // off. The rejection proof it carried therefore survives where it still matters.
+        input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; },
+        // D-P7-01 is also a floor, not just a ceiling: preview must keep carrying the
+        // authorization, so silently switching it back off is drift too.
+        input => { input.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'false'; },
         // Conflict and idempotency semantics.
         input => { input.manifest.conflict_contract.stale_base_status = 200; },
         input => { input.manifest.conflict_contract.automatic_merge = true; },

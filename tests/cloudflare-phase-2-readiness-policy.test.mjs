@@ -25,6 +25,8 @@ function actualInput() {
     };
 }
 
+// NO-OP CONTROL. The unmutated real repository input must validate. If this ever fails,
+// every assert.throws below passes for the wrong reason and this suite proves nothing.
 test('CF-P2-003 locks tenant constraints, keyset queries, index plans, and the local-only boundary', () => {
     assert.equal(validatePhase2LocalReadiness(actualInput()), true);
 });
@@ -46,10 +48,19 @@ test('CF-P2-003 rejects unsafe query source and missing tenant/index controls', 
 });
 
 test('CF-P2-003 rejects gate approval drift, remote state, activation, and evidence drift', () => {
+    // NO-OP CONTROL for this case table: the unmutated input must NOT throw, so that each
+    // assert.throws below is attributable to its own mutation rather than to ambient failure.
+    assert.doesNotThrow(() => validatePhase2LocalReadiness(actualInput()));
     const cases = [
         input => { input.readiness.gate_candidate.decision = 'REVIEW_REQUIRED'; },
         input => { input.wrangler.d1_databases = [{ binding: 'COLLAB_DB', database_id: 'forbidden' }]; },
+        // D-P7-01 (approved 2026-07-26) activates collaboration for PREVIEW ONLY.
+        // Production must never activate — this is the boundary that has to survive.
         input => { input.wrangler.env.production.vars.COLLABORATION_ENABLED = 'true'; },
+        // D-P7-01: the top-level vars default must never activate collaboration either.
+        input => { input.wrangler.vars.COLLABORATION_ENABLED = 'true'; },
+        // D-P7-01: preview activation is the authorized state; silently reverting it is drift.
+        input => { input.wrangler.env.preview.vars.COLLABORATION_ENABLED = 'false'; },
         input => { delete input.evidenceSources['CF-EV-P2-SEC-003']; }
     ];
     for (const mutate of cases) {

@@ -45,9 +45,10 @@ export function validatePhase2PreviewD1({ preview, manifest, wrangler, apiSource
         && wrangler.env.preview.d1_databases[0].binding === 'COLLAB_DB'
         && wrangler.env.preview.d1_databases[0].database_id === preview.resource.database_id
         && !wrangler.d1_databases && !wrangler.env?.production?.d1_databases, 'Wrangler preview-only D1 authority drifted');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
     assert(wrangler.vars?.COLLABORATION_ENABLED === 'false'
-        && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false'
-        && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
+        && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
     const api = Object.values(apiSources).join('\n');
     assert(!/COLLAB_DB|D1Database|persistence/i.test(api), 'Disabled API reaches preview persistence');
     assert(api.includes('COLLABORATION_UNAVAILABLE'), 'Disabled API response drifted');

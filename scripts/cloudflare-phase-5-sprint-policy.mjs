@@ -140,10 +140,12 @@ export function validatePhase5SprintPlan({ manifest, sprintSource, handoff, impl
     'Phase 5 recovery contract drifted');
 
     assert(migrationManifest.entries?.length === 12 && migrationManifest.entries[11]?.sequence === 12 && migrationManifest.entries[11]?.story === 'CF-P5-006' && migrationManifest.entries[11]?.gate === 'P5-G2C-M', 'Sprint migration inventory exceeds approved P5-G2C-M');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
-        && [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
+        && [wrangler.vars, wrangler.env?.production?.vars]
             .every(vars => vars?.COLLABORATION_ENABLED === 'false'),
-    'Production D1 or collaboration activation drifted');
+    'Production D1 or collaboration activation drifted outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
     assert(/^Status: \*\*READY FOR APPROVAL AT `P5-G0`\*\*$/m.test(sprintSource),
         'Sprint document approval status drifted');
     for (const id of STORY_IDS) assert(sprintSource.includes(`### \`${id}\``), `Sprint document lacks ${id}`);
