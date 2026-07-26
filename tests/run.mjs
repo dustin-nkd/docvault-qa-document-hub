@@ -79,3 +79,5 @@ import './collaboration-invitations.test.mjs';
 import './cloudflare-phase-7-invitation-policy.test.mjs';
 import './collaboration-invitation-accept.test.mjs';
 import './cloudflare-phase-7-accept-policy.test.mjs';
+import './collaboration-sync-state.test.mjs';
+import './cloudflare-phase-7-sync-policy.test.mjs';

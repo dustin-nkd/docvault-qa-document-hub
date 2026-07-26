@@ -201,12 +201,13 @@
       "id": "CF-P7-009",
       "title": "Sync state model: Saved, Saving, Offline, Conflict, Access removed",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G3A",
       "exit_gate": "P7-G3B",
       "evidence": [
         "CF-EV-P7-UI-008"
-      ]
+      ],
+      "gate": "cf:phase7:sync:check"
     },
     {
       "id": "CF-P7-010",
