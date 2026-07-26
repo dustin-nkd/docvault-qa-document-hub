@@ -185,12 +185,63 @@ async function runBrowser(browserName, baseUrl) {
             } catch (error) {
                 storageUnavailableCode = error.code;
             }
+            // CF-P7-005: re-binding an enrolled key onto the device id the
+            // server assigns. Registration cannot be reordered to avoid this --
+            // the public key must exist before it can be registered, and the
+            // server derives the id -- so the same key has to move. The
+            // fingerprint must survive: a rebind that changed it would leave
+            // every workspace envelope provisioned to this device unopenable.
+            const assignedDeviceId = '55555555-5555-4555-8555-555555555555';
+            const rebindLifecycle = new DeviceKeyLifecycle({
+                environment: 'local-browser-test',
+                context: { userId, deviceId: '66666666-6666-4666-8666-666666666666', workspaceId }
+            });
+            const rebindEnrolled = await rebindLifecycle.enroll(secret);
+            const rebindResult = await rebindLifecycle.rebindDeviceId(assignedDeviceId, secret);
+            const rebindStore = await new Promise((resolve, reject) => {
+                const open = indexedDB.open(databaseName);
+                open.onerror = () => reject(open.error);
+                open.onsuccess = () => {
+                    const database = open.result;
+                    const transaction = database.transaction(rebindLifecycle.store.storeName, 'readonly');
+                    const store = transaction.objectStore(rebindLifecycle.store.storeName);
+                    const moved = store.get(`${userId}:${assignedDeviceId}`);
+                    const original = store.get(`${userId}:66666666-6666-4666-8666-666666666666`);
+                    transaction.oncomplete = () => {
+                        database.close();
+                        resolve({ moved: moved.result, original: original.result });
+                    };
+                    transaction.onerror = () => reject(transaction.error);
+                };
+            });
+            // The re-bound key must still open: prove it by unlocking against
+            // the public key registered before the move.
+            const rebindUnlock = await rebindLifecycle.unlock(secret, rebindEnrolled.publicJwk);
+            let rebindOldIdCode;
+            try {
+                rebindLifecycle.changeContext({
+                    userId, deviceId: '66666666-6666-4666-8666-666666666666', workspaceId
+                });
+                await rebindLifecycle.unlock(secret, rebindEnrolled.publicJwk);
+            } catch (error) {
+                rebindOldIdCode = error.code;
+            }
+
             return {
                 supported, protectMs, unlockMs, enrolledState, explicitLock, wrongCodes,
                 unlockedState, contextSwitchState, pagehideState, reloadState, revokedCode,
                 unsupportedCode, storageUnavailableCode, guidance, interruptedCode, stored, storedText,
                 domText: document.documentElement.outerHTML,
-                errorClassStable: new DeviceKeyLifecycleError('LOCAL_UNLOCK_FAILED').code
+                errorClassStable: new DeviceKeyLifecycleError('LOCAL_UNLOCK_FAILED').code,
+                rebind: {
+                    rebound: rebindResult.rebound,
+                    fingerprintUnchanged: rebindResult.fingerprint === rebindEnrolled.fingerprint,
+                    unlockedFingerprint: rebindUnlock.fingerprint,
+                    aadDeviceId: rebindStore.moved?.aad?.deviceId ?? null,
+                    aadFingerprint: rebindStore.moved?.aad?.fingerprint ?? null,
+                    originalRecordRemoved: rebindStore.original === undefined,
+                    oldIdCode: rebindOldIdCode
+                }
             };
         }, `${baseUrl}/${modulePath}`);
 
@@ -216,6 +267,18 @@ async function runBrowser(browserName, baseUrl) {
             assert.equal(result.storedText.includes(prohibited), false, `${browserName}: IndexedDB leaked ${prohibited}`);
             assert.equal(result.domText.includes(prohibited), false, `${browserName}: DOM leaked ${prohibited}`);
         }
+        // CF-P7-005 re-bind: same key, new device id, nothing left behind.
+        assert.equal(result.rebind.rebound, true, `${browserName}: rebind did not run`);
+        assert.equal(result.rebind.fingerprintUnchanged, true,
+            `${browserName}: rebind changed the fingerprint, orphaning any provisioned envelope`);
+        assert.equal(result.rebind.aadDeviceId, '55555555-5555-4555-8555-555555555555',
+            `${browserName}: the stored AAD still binds the old device id`);
+        assert.equal(result.rebind.aadFingerprint, result.rebind.unlockedFingerprint,
+            `${browserName}: the re-protected AAD disagrees with the key it protects`);
+        assert.equal(result.rebind.originalRecordRemoved, true,
+            `${browserName}: the key is still readable under the abandoned device id`);
+        assert.equal(result.rebind.oldIdCode, 'LOCAL_UNLOCK_FAILED',
+            `${browserName}: the old device id must no longer unlock anything`);
         assert.ok(result.protectMs <= 2_500, `${browserName}: protect ${result.protectMs.toFixed(1)}ms exceeds max`);
         assert.ok(result.unlockMs <= 2_500, `${browserName}: unlock ${result.unlockMs.toFixed(1)}ms exceeds max`);
         assert.deepEqual(errors, [], `${browserName}: browser runtime errors`);

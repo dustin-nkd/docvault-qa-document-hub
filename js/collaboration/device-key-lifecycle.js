@@ -150,25 +150,39 @@ async function protectPrivateKey(platformCrypto, pkcs8, aad, unlockSecret) {
     }
 }
 
-async function importProtectedPrivateKey(platformCrypto, value, unlockSecret) {
+// Split out of importProtectedPrivateKey so the rebind path can re-protect the
+// same bytes under a new AAD without a second copy of this decryption. The
+// caller owns the returned buffer and must zero it.
+async function decryptPrivateKeyBytes(platformCrypto, value, unlockSecret) {
     const secret = copySecret(unlockSecret);
-    let plaintext;
     try {
         const envelope = privateEnvelope(value);
         const salt = decodeBase64Url(envelope.salt, 16, 32);
         const nonce = decodeBase64Url(envelope.nonce, 12, 12);
         const ciphertext = decodeBase64Url(envelope.ciphertext, 17, 528);
         const key = await deriveKek(platformCrypto.subtle, secret, salt);
-        plaintext = new Uint8Array(await platformCrypto.subtle.decrypt({
+        const plaintext = new Uint8Array(await platformCrypto.subtle.decrypt({
             name: 'AES-GCM', iv: nonce, additionalData: encoder.encode(canonicalize(envelope.aad)), tagLength: 128
         }, key, ciphertext));
-        if (plaintext.byteLength < 1 || plaintext.byteLength > 512) fail();
+        if (plaintext.byteLength < 1 || plaintext.byteLength > 512) {
+            plaintext.fill(0);
+            fail();
+        }
+        return plaintext;
+    } finally {
+        secret.fill(0);
+    }
+}
+
+async function importProtectedPrivateKey(platformCrypto, value, unlockSecret) {
+    let plaintext;
+    try {
+        plaintext = await decryptPrivateKeyBytes(platformCrypto, value, unlockSecret);
         return await platformCrypto.subtle.importKey('pkcs8', plaintext,
             { name: 'ECDH', namedCurve: PROFILE.curve }, false, ['deriveBits']);
     } catch {
         return fail();
     } finally {
-        secret.fill(0);
         plaintext?.fill(0);
     }
 }
@@ -407,6 +421,56 @@ export class DeviceKeyLifecycle {
         const validated = validateContext(nextContext);
         if (Object.keys(validated).some(key => validated[key] !== this.context[key])) this.lock('context-change');
         this.context = validated;
+    }
+
+    /**
+     * Move an already-enrolled key onto the device id the server assigned.
+     *
+     * Registration cannot be reordered to avoid this. `POST /api/v1/devices`
+     * needs the public key in its body, so the pair must exist first; the
+     * server then derives the device id itself and ignores any the client
+     * proposes. But enrolment binds the stored envelope to a device id, in both
+     * the record key and the authenticated AAD. Something has to reconcile the
+     * two, and re-enrolling cannot: it would generate a *different* pair, so the
+     * fingerprint already registered would no longer match the key held here,
+     * and every workspace envelope later provisioned to this device would be
+     * undecryptable.
+     *
+     * So the same private key is re-protected under the new AAD. No new key
+     * material is generated, the fingerprint is unchanged, and the operation is
+     * ordered write-then-delete: an interruption leaves the original record
+     * intact rather than destroying the only copy of the key.
+     */
+    async rebindDeviceId(nextDeviceId, unlockSecret) {
+        await this.assertSupported();
+        const currentDeviceId = this.context.deviceId;
+        if (uuid(nextDeviceId) === currentDeviceId) return Object.freeze({ rebound: false });
+        this.lock('rebind');
+        const operationEpoch = this.epoch;
+        let plaintext;
+        try {
+            const stored = await this.store.get(this.context.userId, currentDeviceId);
+            plaintext = await decryptPrivateKeyBytes(this.platformCrypto, stored, unlockSecret);
+            const aad = privateAad({ ...stored.aad, deviceId: nextDeviceId });
+            const envelope = await protectPrivateKey(this.platformCrypto, plaintext, aad, unlockSecret);
+            await this.store.put(this.context.userId, nextDeviceId, envelope);
+            await this.store.delete(this.context.userId, currentDeviceId);
+            const privateKey = await this.platformCrypto.subtle.importKey('pkcs8', plaintext,
+                { name: 'ECDH', namedCurve: PROFILE.curve }, false, ['deriveBits']);
+            if (operationEpoch !== this.epoch) fail();
+            this.context = validateContext({ ...this.context, deviceId: nextDeviceId });
+            this.unlocked = Object.freeze({
+                userId: this.context.userId, deviceId: nextDeviceId,
+                fingerprint: stored.aad.fingerprint, privateKey
+            });
+            return Object.freeze({ rebound: true, fingerprint: stored.aad.fingerprint });
+        } catch (error) {
+            this.lock('rebind-failed');
+            if (error instanceof DeviceKeyLifecycleError) throw error;
+            return fail();
+        } finally {
+            plaintext?.fill(0);
+        }
     }
 
     async revokeLocalDevice() {

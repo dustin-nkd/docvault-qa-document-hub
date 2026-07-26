@@ -1,15 +1,31 @@
 # CF-EV-P6-QA-004 Preview integration quality reconciliation
 
-Status: PARTIAL
+Status: PASS
 
 Story: `CF-P6-008`
 
-The Preview document slice is deployed, reachable, correctly gated, and exercised end to end with a real session. Four of the six sprint gate scenarios are verified over Preview HTTP and all six are verified against the same real D1 schema at the persistence layer.
+The Preview document slice is deployed, reachable, correctly gated, and exercised end to end against Preview deployment `25a4a7d8`. **All six sprint gate scenarios are verified over Preview HTTP**, and all six are independently verified against the same real D1 schema at the persistence layer.
 
-Verified over HTTP: G1 by the zero-line Personal Vault diff, G4 by two concurrent writers returning 409 and 200 with the loser writing nothing, G5 by a retry returning the original revision with no fourth revision created, and the reconcile half of G6 by the mutation route reporting state applied.
+Verified earlier over HTTP: G1 by the zero-line Personal Vault diff, G4 by two concurrent writers returning 409 and 200 with the loser writing nothing, G5 by a retry returning the original revision with no fourth revision created, and the reconcile half of G6 by the mutation route reporting state applied.
 
-Not verified over HTTP: G2 and G3. Both require a second GitHub identity because role is per user per workspace. Three authentication attempts for a second account failed at the OAuth callback with the deliberately non-disclosing auth-result of unavailable; D1 shows the transactions were created but never consumed and the rate limiter stayed well below its ceiling. The failure is outside the Phase 6 code under test — the same callback succeeded for the first identity on this deployment.
+## Second identity
 
-This record is PARTIAL rather than PASS, and CF-P6-008 does not exit at P6-G4A on the strength of it. The Phase 6 exit report carries the gap forward explicitly rather than absorbing it.
+G2 and G3 were previously blocked because membership role is per user per workspace and only one GitHub identity could authenticate. The cause is now known and was never a defect: `guardedProvider` in `functions/_lib/identity/runtime-handler.ts` rejects any resolved identity whose numeric subject is absent from the `PREVIEW_ALLOWED_GITHUB_SUBJECTS` allowlist. That is a deliberate Preview control — only designated identities may authenticate there — and the second account had simply never been designated. The owner added its subject and redeployed, because Cloudflare Pages binds environment variables at build time.
 
-Cleanup was partial and is recorded as such: the test document was tombstoned through the product API and one session was logged out through the API, but a device revoke returned 400 on a malformed body after the session had closed, and direct D1 writes were refused by the permission classifier. One owner browser session, one active device, and one workspace holding only a tombstoned document remain, with append-only revision history retained by design.
+Both identities are real GitHub accounts belonging to the project owner. **No synthetic identity was used and no test or authentication bypass was deployed.**
+
+Diagnosing that block also surfaced a genuine defect, fixed separately: every identity-validation and transport failure in the GitHub OAuth adapter collapsed into the default `unavailable` category, which made an account-data rejection indistinguishable from a provider outage.
+
+## G2 — an Editor creates, a Viewer reads
+
+On workspace `81987e05`, the owner sealed a document with a genuine 32-byte workspace DEK under `A256GCM-doc-v1`. The Viewer, holding only an envelope wrapped to its own device public key, listed the workspace, read the document, enumerated its two revisions, unwrapped the workspace key, and decrypted the exact plaintext the Editor had sealed. The server never held plaintext, a device private key, or the DEK.
+
+## G3 — a Viewer cannot write
+
+The same Viewer attempted `document-create`, `document-update`, and `document-tombstone`. All three were denied with the single shared non-disclosing code `RESOURCE_NOT_FOUND`, which does not reveal whether the resource exists. The document's revision count was 2 before the attempts and 2 after: **zero rows were written**. The denial lives in the SQL guard, so each attempt rolled back rather than being decided at the route.
+
+## Cleanup
+
+Cleanup was carried out through the product API and is reported exactly: the qualification document was tombstoned, all three devices were revoked, and both API sessions were logged out. Zero active documents and zero active devices remain.
+
+Residual Preview state is retained and disclosed rather than forced to zero. Seven document revisions and the audit events are append-only by trigger and cannot be deleted by design; two workspaces remain because the Preview surface exposes no workspace delete route; and three browser sessions from the identity runs remain live because their tokens were never captured and could not be revoked without them. No shared Preview restore was performed and no direct D1 write was made.

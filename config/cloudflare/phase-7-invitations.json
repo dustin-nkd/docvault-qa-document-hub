@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-007",
+  "status": "PASS",
+  "approved_entry_gate": "P7-G2D",
+  "next_gate": "P7-G3",
+  "authorizes_on_approval": "CF-P7-008",
+  "surfaces": ["invitation-manage"],
+  "modules": {
+    "journey": "js/collaboration/invitations.js"
+  },
+  "secret_handling": {
+    "token_bits_minimum": 256,
+    "returned_once": true,
+    "recoverable": false,
+    "fragment_only": true,
+    "query_string_rejected": true,
+    "rendered_into_anchor": false,
+    "stored_anywhere": false,
+    "logged": false,
+    "clearable_by_caller": true,
+    "clipboard_injected": true,
+    "blocked_clipboard_explains_manual_path": true,
+    "rationale": "The acceptance token has at least 256 random bits, is returned exactly once, lives only in a URL fragment so it never reaches the server in a request line, referrer, or proxy log, and is stored server-side only as a digest. It cannot be recovered, so the surface says so while the value is on screen. It renders into a readonly input rather than an anchor because activating a link would push the secret into browser history, which is exactly what the fragment placement exists to avoid."
+  },
+  "authority": {
+    "source": "docs/collaboration-foundation/domain-and-rbac.md",
+    "invitable_roles": ["admin", "editor", "viewer"],
+    "owner_cannot_be_invited": true,
+    "admin_invitation_reserved_to_owner": true,
+    "revocation_follows_creation_split": true,
+    "enforced_here": false,
+    "server_remains_the_authority": true
+  },
+  "presentation": {
+    "denied_control_hidden": false,
+    "denied_control_states_reason": true,
+    "reason_ids_scoped_per_instance": true,
+    "one_time_warning_is_assertive": true
+  },
+  "isolation": {
+    "personal_storage_keys_referenced": 0,
+    "inner_html_used": false,
+    "eager_script_tag": false,
+    "service_worker_precached": false,
+    "network_call_in_module": false
+  },
+  "tests": {
+    "unit": "tests/collaboration-invitations.test.mjs",
+    "unit_count": 27,
+    "policy": "tests/cloudflare-phase-7-invitation-policy.test.mjs"
+  }
+}

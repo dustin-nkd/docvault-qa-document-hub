@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-009",
+  "status": "PASS",
+  "approved_entry_gate": "P7-G3A",
+  "next_gate": "P7-G3B",
+  "authorizes_on_approval": "CF-P7-010",
+  "surfaces": ["sync-state"],
+  "modules": {
+    "journey": "js/collaboration/sync-state.js"
+  },
+  "machine": {
+    "states": ["saved", "saving", "offline", "conflict", "access-removed"],
+    "count": 5,
+    "sixth_state_defined": false,
+    "terminal": ["access-removed"],
+    "distinct_shape_per_state": true,
+    "state_by_colour_alone": false,
+    "conflict_left_automatically": false
+  },
+  "access_removed": {
+    "requires_denial": true,
+    "requires_completed_membership_recheck": true,
+    "claimable_from_status_code_alone": false,
+    "recovery_is_reentry_not_retry": true,
+    "rationale": "The API is deliberately non-disclosing: RESOURCE_NOT_FOUND is returned whether or not the resource exists, so a stranger cannot probe for workspaces. Claiming access was removed from that status code alone would undo the property, because the message itself would confirm the resource exists. The state may therefore only be claimed after a completed membership re-check reports the user is no longer an active member."
+  },
+  "outbox_axis": {
+    "outbox_states": ["queued", "inflight", "applied", "terminal", "expired", "quarantined"],
+    "outbox_state_count": 6,
+    "recovery_situations": ["expired", "quarantined"],
+    "recovery_flattened_into_error": false,
+    "vocabulary_reused_from": "js/collaboration/outbox.js",
+    "second_vocabulary_defined": false
+  },
+  "isolation": {
+    "personal_storage_keys_referenced": 0,
+    "inner_html_used": false,
+    "eager_script_tag": false,
+    "service_worker_precached": false,
+    "network_call_in_module": false
+  },
+  "tests": {
+    "unit": "tests/collaboration-sync-state.test.mjs",
+    "unit_count": 28,
+    "policy": "tests/cloudflare-phase-7-sync-policy.test.mjs"
+  }
+}

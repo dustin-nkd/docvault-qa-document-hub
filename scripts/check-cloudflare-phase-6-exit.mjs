@@ -16,6 +16,7 @@ validatePhase6Exit({
 });
 
 console.log('Cloudflare Phase 6 exit gate passed');
-console.log('  CF-P6-009: PARTIAL; P6-G5 NOT granted');
-console.log('  Gate scenarios: 6/6 at the persistence layer, 4/6 over Preview HTTP (G2 and G3 open)');
-console.log('  Identity provenance recorded as the owner personal account, not synthetic');
+console.log('  CF-P6-009: PASS; P6-G5 granted; all nine stories PASS');
+console.log('  Gate scenarios: 6/6 at the persistence layer, 6/6 over Preview HTTP');
+console.log('  Identity provenance recorded as two owner personal accounts, not synthetic');
+console.log('  Preview cleanup partial by design and disclosed, not reported complete');

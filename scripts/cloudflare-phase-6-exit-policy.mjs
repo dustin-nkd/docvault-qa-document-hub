@@ -39,11 +39,14 @@ export function validatePhase6Exit({ manifest, exitReport, handoff, sprintPlan, 
             `${story.id} names a gate that does not exist: ${story.gate}`);
     }
 
-    assert(manifest.closing_condition?.blocking === true
-        && manifest.closing_condition.required_steps >= 1
+    // Explicit and blocking while anything is open; explicitly discharged once
+    // nothing is. Either way it must say something substantive.
+    assert(manifest.closing_condition?.blocking === open
+        && manifest.closing_condition.required_steps >= (open ? 1 : 0)
+        && (open || manifest.closing_condition.required_steps === 0)
         && typeof manifest.closing_condition.summary === 'string'
         && manifest.closing_condition.summary.length > 40,
-    'The closing condition must stay explicit and blocking');
+    'The closing condition does not match the open gate scenarios');
 
     // Provenance must never be quietly upgraded into a synthetic-identity claim.
     const identity = manifest.identity_provenance || {};
@@ -68,14 +71,29 @@ export function validatePhase6Exit({ manifest, exitReport, handoff, sprintPlan, 
         assert(boundary[key] === 'NO-GO', `Phase 6 exit boundary drifted: ${key}`);
     }
 
-    assert(/^Status: \*\*PARTIAL/m.test(exitReport) || /^Status: PASS$/m.test(exitReport),
-        'Phase 6 exit report status line drifted');
-    assert(exitReport.includes('OPEN — the condition for closing Phase 6'),
-        'The exit report dropped its closing-condition section');
-    assert(/^Status: \*\*DRAFT/m.test(handoff),
-        'The Phase 7 handoff must stay DRAFT until P6-G5 is granted');
-    assert(handoff.includes('Prerequisite — not yet satisfied'),
-        'The Phase 7 handoff dropped its unmet prerequisite');
+    // The documents must agree with the manifest in whichever direction it
+    // points. While a scenario is open the closing condition and the DRAFT
+    // handoff are mandatory; once none is open they must be gone, so a closed
+    // phase cannot keep advertising an unmet prerequisite.
+    if (open) {
+        assert(/^Status: \*\*PARTIAL/m.test(exitReport),
+            'The exit report must read PARTIAL while a gate scenario is open');
+        assert(exitReport.includes('OPEN — the condition for closing Phase 6'),
+            'The exit report dropped its closing-condition section');
+        assert(/^Status: \*\*DRAFT/m.test(handoff),
+            'The Phase 7 handoff must stay DRAFT until P6-G5 is granted');
+        assert(handoff.includes('Prerequisite — not yet satisfied'),
+            'The Phase 7 handoff dropped its unmet prerequisite');
+    } else {
+        assert(/^Status: \*\*PASS/m.test(exitReport),
+            'The exit report must read PASS once every gate scenario is proven');
+        assert(!exitReport.includes('OPEN — the condition for closing Phase 6'),
+            'The exit report still carries a closing condition it has satisfied');
+        assert(!/^Status: \*\*DRAFT/m.test(handoff) && !handoff.includes('Prerequisite — not yet satisfied'),
+            'The Phase 7 handoff still reads as blocked after Phase 6 closed');
+        assert(manifest.exit_gate_granted === true,
+            'Phase 6 cannot report PASS without P6-G5 granted');
+    }
     assert(sprintPlan.stories?.length === 9, 'Sprint plan story inventory drifted');
     return true;
 }

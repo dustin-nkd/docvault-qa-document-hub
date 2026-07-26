@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-004",
+  "status": "PASS",
+  "approved_entry_gate": "P7-G2A",
+  "next_gate": "P7-G2B",
+  "authorizes_on_approval": "CF-P7-005",
+  "surfaces": ["create-workspace"],
+  "modules": {
+    "journey": "js/collaboration/create-workspace.js"
+  },
+  "journey": {
+    "steps": ["name-workspace", "bootstrap-key", "create"],
+    "statuses": ["naming", "binding", "sealing", "creating", "created", "failed"],
+    "intent_precedes_key_material": true,
+    "single_idempotency_key_for_both_calls": true,
+    "retry_reuses_original_key": true,
+    "automatic_retry": false,
+    "workspace_id_derived_by_server": true,
+    "binding_device_compared_before_sealing": true,
+    "created_workspace_id_compared_before_selection": true,
+    "rationale": "The client seals the creator envelope only after the bootstrap intent returns the binding, because the envelope is bound to a workspace id, key version, and device fingerprint the server chooses. One idempotency key covers both calls and a retry reuses it: a create that fails after the mutation reached D1 looks identical to one that failed before it, so a fresh key would read as a second request and could leave the user with a workspace they never asked for."
+  },
+  "name_rule": {
+    "min_code_points": 1,
+    "max_code_points": 80,
+    "counts_code_points_not_utf16_units": true,
+    "mirrors_server_rule_in": "functions/_lib/workspaces/workspace-bootstrap.ts",
+    "server_remains_the_authority": true,
+    "reasons": ["required", "too-long", "untrimmed", "control-character"]
+  },
+  "preconditions": {
+    "requires_active_own_device": true,
+    "blocked_control_hidden": false,
+    "blocked_control_states_reason": true,
+    "blocked_control_offers_device_journey": true,
+    "unknown_session_does_not_render_signed_out": true,
+    "fails_only_on_submit": false
+  },
+  "error_mapping": {
+    "codes_mapped": 12,
+    "reachable_codes": 10,
+    "unreachable_codes": ["DOCUMENT_REVISION_CONFLICT", "RESOURCE_NOT_FOUND"],
+    "unexpected_code_reported_not_flattened": true,
+    "every_code_explains_itself": true
+  },
+  "isolation": {
+    "personal_storage_keys_referenced": 0,
+    "inner_html_used": false,
+    "eager_script_tag": false,
+    "service_worker_precached": false,
+    "generates_own_uuid": false,
+    "network_call_in_module": false
+  },
+  "tests": {
+    "unit": "tests/collaboration-create-workspace.test.mjs",
+    "unit_count": 41,
+    "policy": "tests/cloudflare-phase-7-create-workspace-policy.test.mjs"
+  }
+}

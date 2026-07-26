@@ -1,6 +1,6 @@
 # Collaboration Foundation Phase 7 handoff
 
-Status: **DRAFT — issued by CF-P6-009; becomes controlling only when Phase 6 closes at `P6-G5`**
+Status: **CONTROLLING — issued by CF-P6-009; Phase 6 closed at `P6-G5`**
 
 ## Objective
 
@@ -60,20 +60,20 @@ the Phase 6 slice and adds no new cryptographic or persistence primitive.
   collaboration behaviour. GitHub Pages stays a static Personal/Guest fallback.
 - New persistence requires a separately reviewed forward-only migration.
 
-## Prerequisite — not yet satisfied
+## Prerequisite — satisfied
 
-Phase 6 has **not** closed. `CF-P6-008` remains IN PROGRESS because sprint gate
-scenarios **G2** and **G3** were never exercised over Preview HTTP, and
-`CF-EV-P6-QA-004` is PARTIAL. See
-[`phase-6-exit-report.md`](phase-6-exit-report.md) section 5 for the exact
-closing condition: authenticate a second GitHub identity, add it as a Viewer, and
-confirm the Editor-creates/Viewer-reads and Viewer-cannot-write scenarios over
-HTTP.
+Phase 6 has closed. `CF-P6-008` is PASS: sprint gate scenarios **G2** and **G3**
+were exercised over Preview HTTP with a second designated GitHub identity, and
+`CF-EV-P6-QA-004` is PASS. See
+[`phase-6-exit-report.md`](phase-6-exit-report.md) section 5 for how they were
+proven.
 
-Two further conditions carry forward: the Phase 6 qualification used the project
-owner's personal GitHub account rather than a synthetic identity, and the Preview
-cleanup is partial — one session, one device, and one workspace holding a
-tombstoned document remain.
+Two conditions carry forward as facts rather than blockers. The qualification
+used two real GitHub accounts belonging to the project owner rather than
+synthetic identities, so Phase 7 must not describe that evidence as synthetic.
+And Preview cleanup is deliberately partial: revisions and audit events are
+append-only by trigger, the Preview surface exposes no workspace delete route,
+and three browser sessions could not be revoked without their tokens. Phase 7
+inherits that residue and must not silently reset it.
 
-This handoff becomes controlling only once those are resolved and `P6-G5` is
-granted.
+This handoff is controlling.

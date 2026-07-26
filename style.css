@@ -1266,3 +1266,885 @@ button[aria-busy="true"] { cursor:progress !important; }
     color: var(--acc) !important;
   }
 }
+
+/* ── CF-P7-002: collaboration shell, banner, and base states ──────────────
+   The contract forbids signalling state by colour alone, so each state gets a
+   distinct shape as well as its text label. Everything here is scoped to the
+   collaboration surfaces and cannot reach a Personal Vault view. */
+
+/* Theme-aware collaboration tokens.
+   The palette accents are tuned for the dark theme and fall below the bar on
+   light: --acc-l gives a 2.54:1 focus ring on a white card where WCAG 2.2 AA
+   asks 3:1 for non-text, and --c-bug and --c-tc give 3.76:1 and 2.15:1 as text
+   where AA asks 4.5:1. These three tokens carry a darker light-theme value so
+   every collaboration surface meets the bar in both themes, measured rather
+   than assumed. */
+:root {
+    --collab-focus: #34d399;   /* 8.86:1 on the dark card */
+    --collab-danger: #ef4444;  /* 4.53:1 on the dark card */
+    --collab-warning: #f59e0b; /* 7.93:1 on the dark card */
+}
+[data-theme="light"] {
+    --collab-focus: #047857;   /* 5.48:1 on white, 4.96:1 on the page */
+    --collab-danger: #b91c1c;  /* 6.47:1 on white */
+    --collab-warning: #b45309; /* 5.02:1 on white */
+}
+
+.collab-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--brd);
+    color: var(--tx-m);
+    font-size: 13px;
+    line-height: 1.4;
+}
+.collab-banner[hidden] { display: none; }
+.collab-banner__shape {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: var(--c-tc);
+    transform: rotate(45deg);
+}
+.collab-banner__text { margin: 0; }
+
+.collab-root { padding: 16px; }
+.collab-root[hidden] { display: none; }
+
+.collab-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--tx-m);
+}
+.collab-state__title { margin: 0; color: var(--tx); font-size: 15px; font-weight: 600; }
+.collab-state__reason { margin: 0; max-width: 48ch; font-size: 13px; line-height: 1.5; }
+
+/* Distinct shape per state. Colour is secondary and never the only signal. */
+.collab-state__shape { width: 18px; height: 18px; flex: 0 0 auto; }
+.collab-state__shape--square { background: var(--tx-d); border-radius: 3px; }
+.collab-state__shape--lock {
+    border: 2px solid var(--c-tc);
+    border-radius: 3px;
+    box-shadow: inset 0 4px 0 -2px var(--c-tc);
+}
+.collab-state__shape--triangle {
+    width: 0; height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 16px solid var(--c-bug);
+}
+.collab-state__shape--spinner {
+    border: 2px solid var(--brd-l);
+    border-top-color: var(--acc);
+    border-radius: 50%;
+    animation: collab-spin .8s linear infinite;
+}
+@keyframes collab-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .collab-state__shape--spinner { animation-duration: 3s; }
+}
+
+.collab-state__action {
+    min-height: 24px;
+    padding: 6px 14px;
+    background: var(--card);
+    border: 1px solid var(--brd-l);
+    border-radius: 8px;
+    color: var(--tx);
+    font: inherit;
+    cursor: pointer;
+}
+.collab-state__action:hover { background: var(--card-h); }
+
+/* WCAG 2.2 AA: focus is always visible and never removed on mouse interaction. */
+.collab-state__action:focus-visible,
+.collab-banner a:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+/* 320 px floor: nothing overflows, nothing is clipped. */
+@media (max-width: 480px) {
+    .collab-banner { padding: 8px 10px; font-size: 12px; }
+    .collab-state { padding: 24px 12px; }
+    .collab-state__reason { max-width: none; }
+}
+
+/* ── CF-P7-003: account menu, workspace switcher, context indicator ───────
+   The context indicator sits in the chrome, not inside the switcher menu:
+   gate UX U2 requires the active workspace to be readable without opening
+   anything. Status is carried on a data attribute so it is never colour-only. */
+
+.collab-chrome {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--brd);
+    background: var(--bg2);
+}
+
+.collab-context {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    font-size: 13px;
+}
+.collab-context__prefix { color: var(--tx-d); flex: 0 0 auto; }
+.collab-context--active .collab-context__prefix { color: var(--tx-m); }
+.collab-context__name {
+    color: var(--tx);
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* A context that is not active reads differently in weight and in a marker,
+   not by hue alone. */
+.collab-context:not(.collab-context--active) .collab-context__name {
+    font-weight: 500;
+    font-style: italic;
+    color: var(--tx-m);
+}
+.collab-context:not(.collab-context--active) .collab-context__name::after {
+    content: ' (!)';
+    font-style: normal;
+}
+
+.collab-account, .collab-switcher { position: relative; }
+
+.collab-account__trigger,
+.collab-switcher__trigger,
+.collab-switcher__create {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+    padding: 6px 12px;
+    background: var(--card);
+    border: 1px solid var(--brd-l);
+    border-radius: 8px;
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+.collab-account__trigger:hover:not(:disabled),
+.collab-switcher__trigger:hover:not(:disabled),
+.collab-switcher__create:hover { background: var(--card-h); }
+
+/* Disabled controls stay visible and legible: the contract forbids hiding a
+   control the current role or state cannot use. */
+.collab-account__trigger:disabled,
+.collab-switcher__trigger:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+.collab-account__avatar { width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto; }
+.collab-account__label { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.collab-account__menu,
+.collab-switcher__list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 60;
+    min-width: 200px;
+    max-width: min(320px, calc(100vw - 24px));
+    padding: 4px;
+    background: var(--card);
+    border: 1px solid var(--brd-l);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+.collab-account__menu[hidden], .collab-switcher__list[hidden] { display: none; }
+
+.collab-account__item,
+.collab-switcher__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: 24px;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+.collab-account__item:hover, .collab-switcher__option:hover { background: var(--card-h); }
+.collab-switcher__option[aria-selected="true"] { background: rgba(16,185,129,.10); }
+.collab-switcher__option[aria-selected="true"] .collab-switcher__name::before {
+    content: '\2713\00a0';
+    color: var(--acc-l);
+}
+.collab-switcher__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.collab-role-badge {
+    flex: 0 0 auto;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--brd-l);
+    background: var(--bg2);
+    color: var(--tx-m);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+}
+.collab-role-badge--owner { color: var(--c-rel); border-color: var(--c-rel); }
+.collab-role-badge--admin { color: var(--c-tp); border-color: var(--c-tp); }
+.collab-role-badge--editor { color: var(--acc-l); border-color: var(--acc-d); }
+.collab-role-badge--viewer { color: var(--tx-m); }
+
+.collab-account__trigger:focus-visible,
+.collab-switcher__trigger:focus-visible,
+.collab-switcher__create:focus-visible,
+.collab-account__item:focus-visible,
+.collab-switcher__option:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+/* ── CF-P7-004 create workspace ─────────────────────────────────────────── */
+
+.collab-create {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    max-width: 100%;
+}
+.collab-create__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-create__label { font-size: 13px; color: var(--tx-m); }
+.collab-create__input {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+}
+.collab-create__input[aria-invalid="true"] { border-color: var(--collab-danger); }
+.collab-create__input:disabled { opacity: .6; cursor: not-allowed; }
+.collab-create__hint { margin: 0; font-size: 12px; color: var(--tx-d); }
+.collab-create__input[aria-invalid="true"] ~ .collab-create__hint { color: var(--collab-danger); }
+
+.collab-create__steps { margin: 4px 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.collab-create__step { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.collab-create__step-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Each step state carries its own shape, so state never rests on colour. */
+.collab-create__shape { width: 12px; height: 12px; flex: 0 0 auto; border: 1.5px solid currentColor; }
+.collab-create__shape--pending { border-radius: 50%; opacity: .45; }
+.collab-create__shape--active { border-radius: 50%; border-style: dashed; color: var(--acc-l); }
+.collab-create__shape--done { border-radius: 2px; background: currentColor; color: var(--acc-l); }
+.collab-create__shape--stopped {
+    border-radius: 0;
+    color: var(--collab-danger);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: currentColor;
+}
+.collab-create__step--pending { color: var(--tx-d); }
+.collab-create__step--active { color: var(--tx); font-weight: 600; }
+.collab-create__step--done { color: var(--tx-m); }
+.collab-create__step--stopped { color: var(--collab-danger); }
+
+.collab-create__submit,
+.collab-create__device-action {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-create__submit:hover:not(:disabled) { background: var(--card-h); }
+.collab-create__submit:disabled { opacity: .55; cursor: not-allowed; }
+.collab-create__blocked { margin: 0; font-size: 12px; color: var(--collab-warning); }
+.collab-create__status { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-create__failure {
+    margin: 0;
+    font-size: 13px;
+    color: var(--collab-danger);
+    padding-left: 10px;
+    border-left: 3px solid var(--collab-danger);
+}
+
+.collab-create__input:focus-visible,
+.collab-create__submit:focus-visible,
+.collab-create__device-action:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-chrome { gap: 8px; padding: 8px 10px; }
+    .collab-context { width: 100%; }
+    .collab-account__label { max-width: 10ch; }
+    .collab-account__menu, .collab-switcher__list { left: auto; right: 0; }
+    .collab-create { padding: 12px; }
+    .collab-create__submit, .collab-create__device-action { width: 100%; }
+}
+
+/* ── CF-P7-005 device and key initialization ────────────────────────────── */
+
+.collab-device {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    max-width: 100%;
+}
+.collab-device__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-device__fingerprint-label {
+    margin: 0;
+    font-size: 12px;
+    color: var(--tx-m);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+}
+/* Grouped, monospaced, and allowed to wrap: this value gets read aloud to
+   another person, and a run that reflows mid-group is read wrongly. */
+.collab-device__fingerprint {
+    margin: 0;
+    font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--tx);
+    word-spacing: .35em;
+    overflow-wrap: break-word;
+}
+
+.collab-device__readiness {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    align-items: start;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-device__readiness-title { grid-column: 2; margin: 0; font-size: 14px; font-weight: 600; }
+.collab-device__readiness-reason { grid-column: 2; margin: 0; font-size: 13px; color: var(--tx-m); }
+
+/* One shape per readiness value. Three of them mean "waiting" and must still be
+   distinguishable from each other without reading the colour. */
+.collab-device__shape {
+    grid-row: 1;
+    width: 14px;
+    height: 14px;
+    margin-top: 3px;
+    flex: 0 0 auto;
+    border: 2px solid currentColor;
+}
+.collab-device__shape--key_ready { border-radius: 3px; background: currentColor; color: var(--acc-l); }
+.collab-device__shape--pending_key { border-radius: 50%; border-style: dashed; color: var(--collab-warning); }
+.collab-device__shape--stale_key { border-radius: 0; border-style: dashed; color: var(--collab-warning); }
+.collab-device__shape--not_entitled {
+    border-radius: 0;
+    color: var(--tx-d);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: currentColor;
+}
+.collab-device__shape--revoked {
+    border-radius: 50%;
+    color: var(--collab-danger);
+    background: linear-gradient(to bottom right, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%);
+}
+
+.collab-device__register,
+.collab-device__revoke {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-device__register:hover:not(:disabled),
+.collab-device__revoke:hover:not(:disabled) { background: var(--card-h); }
+.collab-device__register:disabled,
+.collab-device__revoke:disabled { opacity: .55; cursor: not-allowed; }
+.collab-device__blocked { margin: 0; font-size: 12px; color: var(--collab-warning); }
+.collab-device__status { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-device__failure {
+    margin: 0;
+    font-size: 13px;
+    color: var(--collab-danger);
+    padding-left: 10px;
+    border-left: 3px solid var(--collab-danger);
+}
+
+.collab-device__register:focus-visible,
+.collab-device__revoke:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-device { padding: 12px; }
+    .collab-device__register, .collab-device__revoke { width: 100%; }
+}
+
+/* ── CF-P7-006 member list and role-disabled controls ───────────────────── */
+
+.collab-members { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-members__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-members__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    /* minmax(0, 1fr): a grid track defaults to min-width auto, so one wide row
+       would otherwise push the whole list past its container. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+}
+.collab-members__row {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-members__name {
+    font-size: 14px;
+    color: var(--tx);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 22ch;
+}
+.collab-members__readiness { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.collab-members__readiness-text { color: var(--tx-m); }
+.collab-members__actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; min-width: 0; }
+.collab-members__action {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.collab-members__action:hover:not(:disabled) { background: var(--card-h); }
+.collab-members__action:disabled { opacity: .55; cursor: not-allowed; }
+.collab-members__action:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+/* The reason is real text, not a tooltip: it is rendered in the flow, carried by
+   aria-describedby, and is what assistive technology announces with the control. */
+.collab-members__reason {
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--tx-m);
+    padding-left: 10px;
+    border-left: 2px solid var(--brd-l);
+}
+
+@media (max-width: 480px) {
+    .collab-members { padding: 12px; }
+    .collab-members__name { max-width: 100%; }
+    .collab-members__action { flex: 1 1 auto; }
+}
+
+/* ── CF-P7-007 invitations ──────────────────────────────────────────────── */
+
+.collab-invites { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-invites__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-invites__create,
+.collab-invites__copy,
+.collab-invites__revoke {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-invites__create:hover:not(:disabled),
+.collab-invites__copy:hover,
+.collab-invites__revoke:hover:not(:disabled) { background: var(--card-h); }
+.collab-invites__create:disabled,
+.collab-invites__revoke:disabled { opacity: .55; cursor: not-allowed; }
+.collab-invites__create:focus-visible,
+.collab-invites__copy:focus-visible,
+.collab-invites__revoke:focus-visible,
+.collab-invites__url:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+/* The one-time value. Given its own block, an assertive warning, and a field
+   rather than a link, because it cannot be shown again. */
+.collab-invites__issued {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--collab-warning);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-invites__warning { margin: 0; font-size: 13px; color: var(--collab-warning); }
+.collab-invites__url {
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+}
+.collab-invites__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+}
+.collab-invites__row {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-invites__login { font-size: 14px; color: var(--tx); min-width: 0; overflow-wrap: anywhere; }
+.collab-invites__expires { font-size: 12px; color: var(--tx-d); }
+.collab-invites__reason {
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--tx-m);
+    padding-left: 10px;
+    border-left: 2px solid var(--brd-l);
+}
+
+@media (max-width: 480px) {
+    .collab-invites { padding: 12px; }
+    .collab-invites__create, .collab-invites__copy, .collab-invites__revoke { width: 100%; }
+}
+
+/* ── CF-P7-008 invitation acceptance ────────────────────────────────────── */
+
+.collab-accept { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-accept__heading { margin: 0; font-size: 17px; font-weight: 600; color: var(--tx); }
+.collab-accept__summary { margin: 0; font-size: 14px; color: var(--tx); }
+.collab-accept__expires { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-accept__expires[data-invitation-state="expired"],
+.collab-accept__expires[data-invitation-state="revoked"],
+.collab-accept__expires[data-invitation-state="consumed"] { color: var(--collab-warning); }
+.collab-accept__action,
+.collab-accept__device-action {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-accept__action:hover:not(:disabled) { background: var(--card-h); }
+.collab-accept__action:disabled { opacity: .55; cursor: not-allowed; }
+.collab-accept__reason { margin: 0; font-size: 12px; color: var(--collab-warning); }
+/* What acceptance actually gets you: stated plainly, not as a warning, because
+   waiting for a key is the expected outcome rather than a fault. */
+.collab-accept__after {
+    margin: 0;
+    font-size: 12px;
+    color: var(--tx-m);
+    padding-left: 10px;
+    border-left: 2px solid var(--brd-l);
+}
+.collab-accept__failure {
+    margin: 0;
+    font-size: 13px;
+    color: var(--collab-danger);
+    padding-left: 10px;
+    border-left: 3px solid var(--collab-danger);
+}
+.collab-accept__action:focus-visible,
+.collab-accept__device-action:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-accept { padding: 12px; }
+    .collab-accept__action, .collab-accept__device-action { width: 100%; }
+}
+
+/* ── CF-P7-009 sync state ───────────────────────────────────────────────── */
+
+.collab-sync {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 8px;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+    max-width: 100%;
+}
+.collab-sync__label { font-size: 13px; font-weight: 600; color: var(--tx); }
+.collab-sync__detail { grid-column: 2; margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-sync__recovery {
+    grid-column: 1 / -1;
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--collab-warning);
+    padding-left: 10px;
+    border-left: 2px solid var(--collab-warning);
+}
+
+/* One shape per state. Five shapes, five states, nothing left to colour. */
+.collab-sync__shape { width: 12px; height: 12px; flex: 0 0 auto; border: 2px solid currentColor; }
+.collab-sync__shape--check {
+    border-radius: 50%;
+    background: currentColor;
+    color: var(--acc-l);
+}
+.collab-sync__shape--spinner {
+    border-radius: 50%;
+    border-style: dashed;
+    color: var(--tx-m);
+    animation: collab-sync-spin 1.4s linear infinite;
+}
+.collab-sync__shape--cloud-slash {
+    border-radius: 3px;
+    color: var(--tx-d);
+    background: linear-gradient(to bottom right, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%);
+}
+.collab-sync__shape--diamond {
+    border-radius: 0;
+    color: var(--collab-warning);
+    transform: rotate(45deg);
+}
+.collab-sync__shape--lock {
+    border-radius: 0;
+    color: var(--collab-danger);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: currentColor;
+}
+.collab-sync[data-terminal="true"] { border-color: var(--collab-danger); }
+
+@keyframes collab-sync-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .collab-sync__shape--spinner { animation-duration: 3s; }
+}
+
+/* ── CF-P7-010 conflict dialog ──────────────────────────────────────────── */
+
+.collab-conflict {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--collab-warning);
+    border-radius: 12px;
+    background: var(--card);
+    max-width: 100%;
+}
+.collab-conflict__title { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-conflict__revisions { margin: 0; font-size: 13px; color: var(--tx-m); }
+/* The safety statement leads, because it is the answer to the question the user
+   is actually asking: is my work still there. */
+.collab-conflict__safety {
+    margin: 0;
+    font-size: 13px;
+    color: var(--tx);
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--bg2);
+}
+.collab-conflict__options {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+}
+.collab-conflict__option {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-conflict__option[data-destructive="true"] { border-color: var(--collab-danger); }
+.collab-conflict__choose,
+.collab-conflict__cancel-discard,
+.collab-conflict__dismiss {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-conflict__choose:hover:not(:disabled) { background: var(--card-h); }
+.collab-conflict__choose:disabled { opacity: .55; cursor: not-allowed; }
+.collab-conflict__choose--discard-with-confirmation { border-color: var(--collab-danger); }
+.collab-conflict__consequence { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-conflict__choose:focus-visible,
+.collab-conflict__cancel-discard:focus-visible,
+.collab-conflict__dismiss:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-conflict { padding: 12px; }
+    .collab-conflict__choose, .collab-conflict__cancel-discard, .collab-conflict__dismiss {
+        width: 100%;
+    }
+}
+
+/* ── CF-P7-011 audit activity ───────────────────────────────────────────── */
+
+.collab-audit { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-audit__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-audit__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+}
+.collab-audit__row {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--brd);
+    border-radius: 8px;
+    background: var(--bg2);
+    font-size: 12px;
+}
+.collab-audit__type {
+    font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+    color: var(--tx);
+    overflow-wrap: anywhere;
+}
+.collab-audit__when, .collab-audit__reason-code { color: var(--tx-d); }
+.collab-audit__outcome { color: var(--tx-m); }
+/* Outcome carries a shape as well as a colour. */
+.collab-audit__shape { width: 10px; height: 10px; flex: 0 0 auto; border: 2px solid currentColor; }
+.collab-audit__shape--success { border-radius: 50%; background: currentColor; color: var(--acc-l); }
+.collab-audit__shape--denied {
+    border-radius: 0;
+    color: var(--collab-danger);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: currentColor;
+}
+.collab-audit__shape--failure { border-radius: 2px; color: var(--collab-warning); }
+.collab-audit__reason { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-audit__more {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-audit__more:hover:not(:disabled) { background: var(--card-h); }
+.collab-audit__more:disabled { opacity: .55; cursor: not-allowed; }
+.collab-audit__more:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+@media (max-width: 480px) {
+    .collab-audit { padding: 12px; }
+    .collab-audit__more { width: 100%; }
+}
+
+/* ── CF-P7-013 the way into collaboration ───────────────────────────────── */
+
+/* Hidden in markup and revealed only where collaboration can run, so a user on
+   GitHub Pages is never offered a door that leads nowhere. */
+.collab-open {
+    min-height: 40px;
+    margin: 12px 16px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+.collab-open[hidden] { display: none; }
+.collab-open:hover:not(:disabled) { background: var(--card-h); }
+.collab-open:disabled { opacity: .55; cursor: progress; }
+.collab-open:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+.collab-root[hidden] { display: none; }
+.collab-chrome {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--brd);
+    background: var(--bg2);
+}
