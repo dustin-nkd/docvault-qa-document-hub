@@ -18,6 +18,7 @@ import {
     workspaceSwitcherModel, renderWorkspaceSwitcher, setSwitcherOpen
 } from './workspace-switcher.js';
 import { createApiClient, API_BASE, ERROR_PRESENTATION } from './api-client.js';
+import { renderSurfacePanel } from './surface-panel.js';
 
 export const CHROME_ID = 'collaboration-chrome';
 
@@ -38,7 +39,7 @@ export const CHROME_ID = 'collaboration-chrome';
  *          environment?: string, subject?: string}} input
  */
 export function openCollaboration({ document: doc, deployment, session = { authenticated: null },
-    workspaces = [], storage, environment, subject } = {}) {
+    workspaces = [], storage, environment, subject, device = null, data = {} } = {}) {
     const container = mountShell({ document: doc, deployment });
     // Null means the deployment cannot support collaboration. The banner owned
     // by the eager module has already said so; adding a second message here
@@ -81,7 +82,13 @@ export function openCollaboration({ document: doc, deployment, session = { authe
         workspaceSwitcherModel({ context, workspaces }));
     const account = renderAccountMenu(doc, accountMenuModel({ session }));
     chrome.append(switcher, account);
-    container.replaceChildren(chrome);
+    // The chrome names where you are; the panel is everything you can do there.
+    // Composed in one call so a surface is never quietly omitted -- see
+    // surface-panel.js for why an absent surface is worse than a loading one.
+    const panel = renderSurfacePanel({
+        document: doc, context, session, device: device ?? null, data: data ?? {}
+    });
+    container.replaceChildren(chrome, panel);
 
     bindDisclosure(chrome, switcher, '.collab-switcher__trigger', setSwitcherOpen);
     bindDisclosure(chrome, account, '.collab-account__trigger', setAccountMenuOpen);
