@@ -193,6 +193,38 @@ describe('CF-P3-004 GitHub provider adapter', () => {
         expect(calls[0].init.redirect).toBe('manual');
     });
 
+    it('separates an identity-endpoint transport failure from a generic provider outage', async () => {
+        const adapter = createGitHubOAuthAdapter({ clientId: 'client-id', clientSecret: 'client-secret' }, {
+            transport: { async request(url) {
+                if (url === GITHUB_OAUTH_CONSTANTS.tokenEndpoint) {
+                    return json({ access_token: 'provider-token', token_type: 'bearer' });
+                }
+                throw new TypeError('network');
+            } },
+            clock: { now: () => 1_900_000_050_000 }, random: random(1), sleep: { wait: async () => {} }
+        });
+        await expect(adapter.resolveIdentity({
+            code: 'code', redirectUri: GITHUB_OAUTH_CONSTANTS.callbackUri,
+            pkceVerifier: encodeBase64Url(new Uint8Array(64).fill(9))
+        })).rejects.toMatchObject({ category: 'identity_transport_unavailable' });
+    });
+
+    it('classifies malformed callback input as a request defect before contacting the provider', async () => {
+        let calls = 0;
+        const adapter = createGitHubOAuthAdapter({ clientId: 'client-id', clientSecret: 'client-secret' }, {
+            transport: { async request() { calls += 1; return json({}); } },
+            clock: { now: () => 1_900_000_050_000 }, random: random(1), sleep: { wait: async () => {} }
+        });
+        await expect(adapter.resolveIdentity({
+            code: 'has spaces', redirectUri: GITHUB_OAUTH_CONSTANTS.callbackUri,
+            pkceVerifier: encodeBase64Url(new Uint8Array(64).fill(9))
+        })).rejects.toMatchObject({ category: 'request_rejected' });
+        await expect(adapter.resolveIdentity({
+            code: 'code', redirectUri: GITHUB_OAUTH_CONSTANTS.callbackUri, pkceVerifier: 'not-base64url!!'
+        })).rejects.toMatchObject({ category: 'request_rejected' });
+        expect(calls).toBe(0);
+    });
+
     it('retries identity once with a capped delay inside the eight-second provider budget', async () => {
         const now = { value: 1_900_000_100_000 };
         const timeouts: number[] = [];

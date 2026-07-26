@@ -46,9 +46,9 @@ export interface GitHubOAuthAdapter {
     resolveIdentity(input: GitHubOAuthResolutionInput): Promise<GitHubIdentity>;
 }
 
-export type GitHubOAuthFailureCategory = 'credentials_rejected' | 'redirect_rejected'
+export type GitHubOAuthFailureCategory = 'request_rejected' | 'credentials_rejected' | 'redirect_rejected'
     | 'verification_rejected' | 'token_transport_unavailable' | 'token_rejected' | 'token_response_rejected'
-    | 'identity_rejected' | 'unavailable';
+    | 'identity_transport_unavailable' | 'identity_rejected' | 'unavailable';
 
 export class GitHubOAuthAdapterError extends Error {
     readonly code = 'GITHUB_OAUTH_UNAVAILABLE' as const;
@@ -247,16 +247,24 @@ async function exchangeCode(configuration: GitHubOAuthConfiguration, input: GitH
 async function fetchIdentity(accessToken: string, deadline: number,
     dependencies: GitHubOAuthAdapterDependencies): Promise<GitHubIdentity> {
     for (let attempt = 0; attempt < 2; attempt += 1) {
-        const response = await dependencies.transport.request(IDENTITY_ENDPOINT, {
-            // Do not forward the bearer token to a redirect destination.
-            method: 'GET', redirect: 'manual',
-            headers: {
-                Accept: 'application/vnd.github+json',
-                Authorization: `Bearer ${accessToken}`,
-                'User-Agent': 'DocVault-QA-Document-Hub',
-                'X-GitHub-Api-Version': GITHUB_API_VERSION
-            }
-        }, remainingTimeout(deadline, dependencies.clock));
+        // The budget check throws its own `unavailable`; keep it outside the
+        // transport catch so a spent deadline is not reported as a network fault.
+        const timeout = remainingTimeout(deadline, dependencies.clock);
+        let response: Response;
+        try {
+            response = await dependencies.transport.request(IDENTITY_ENDPOINT, {
+                // Do not forward the bearer token to a redirect destination.
+                method: 'GET', redirect: 'manual',
+                headers: {
+                    Accept: 'application/vnd.github+json',
+                    Authorization: `Bearer ${accessToken}`,
+                    'User-Agent': 'DocVault-QA-Document-Hub',
+                    'X-GitHub-Api-Version': GITHUB_API_VERSION
+                }
+            }, timeout);
+        } catch {
+            throw new GitHubOAuthAdapterError('identity_transport_unavailable');
+        }
         if (response.status === 200) {
             let result: GitHubIdentity;
             try {
@@ -285,11 +293,18 @@ export function createGitHubOAuthAdapter(configuration: GitHubOAuthConfiguration
     });
     return Object.freeze({
         async resolveIdentity(input: GitHubOAuthResolutionInput): Promise<GitHubIdentity> {
+            // Malformed callback input is a defect in the request, not a provider
+            // fault. Reporting it as `unavailable` made a bad code or verifier
+            // indistinguishable from a GitHub outage.
+            if (!/^[A-Za-z0-9_-]{1,512}$/.test(input.code) || input.redirectUri !== CALLBACK_URI) {
+                throw new GitHubOAuthAdapterError('request_rejected');
+            }
             try {
-                if (!/^[A-Za-z0-9_-]{1,512}$/.test(input.code) || input.redirectUri !== CALLBACK_URI) {
-                    throw new IdentityPrimitiveError('IDENTITY_CRYPTO_INVALID');
-                }
                 decodeBase64Url(input.pkceVerifier, 64);
+            } catch {
+                throw new GitHubOAuthAdapterError('request_rejected');
+            }
+            try {
                 const deadline = serverTime(dependencies.clock) + OVERALL_BUDGET_MS;
                 const accessToken = await exchangeCode(exactConfiguration, input, deadline, dependencies);
                 return await fetchIdentity(accessToken, deadline, dependencies);

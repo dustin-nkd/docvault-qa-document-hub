@@ -28,7 +28,7 @@
     "verified_at_persistence_layer": ["G1", "G2", "G3", "G4", "G5", "G6"],
     "verified_over_preview_http": ["G1", "G4", "G5", "G6"],
     "not_verified_over_preview_http": ["G2", "G3"],
-    "not_verified_reason": "G2 and G3 need a second GitHub identity because membership role is per user per workspace; three OAuth attempts for a second account failed at the callback and D1 shows the transactions were never consumed."
+    "not_verified_reason": "G2 and G3 need a second GitHub identity because membership role is per user per workspace; four OAuth attempts failed at the provider stage of the callback, which is why the transactions were never consumed. State validation passed, rate limiting was excluded, and a control sign-in with the first identity succeeded, so the exact cause must be read from the Preview deployment log."
   },
   "closing_condition": {
     "required_steps": 5,
@@ -44,7 +44,7 @@
   "cleanup": {
     "complete": false,
     "documents_active": 0,
-    "sessions_active": 1,
+    "sessions_active": 2,
     "devices_active": 1,
     "workspaces_active": 1,
     "revisions_retained": 4,

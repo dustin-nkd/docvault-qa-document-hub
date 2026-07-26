@@ -45,6 +45,7 @@ export class OAuthCallbackError extends Error {
     declare readonly outcome: 'rejected' | 'provider_credentials_rejected' | 'provider_redirect_rejected'
         | 'provider_verification_rejected' | 'provider_token_transport_unavailable'
         | 'provider_token_rejected' | 'provider_token_response_rejected'
+        | 'provider_identity_transport_unavailable'
         | 'provider_identity_rejected' | 'provider_unavailable' | 'internal_error';
 
     constructor(outcome: OAuthCallbackError['outcome'] = 'internal_error') {
@@ -57,6 +58,9 @@ export class OAuthCallbackError extends Error {
 function providerOutcome(error: unknown): OAuthCallbackError['outcome'] {
     if (!(error instanceof GitHubOAuthAdapterError)) return 'provider_unavailable';
     switch (error.category) {
+        // Not a provider fault: the callback request itself was malformed.
+        case 'request_rejected': return 'rejected';
+        case 'identity_transport_unavailable': return 'provider_identity_transport_unavailable';
         case 'credentials_rejected': return 'provider_credentials_rejected';
         case 'redirect_rejected': return 'provider_redirect_rejected';
         case 'verification_rejected': return 'provider_verification_rejected';

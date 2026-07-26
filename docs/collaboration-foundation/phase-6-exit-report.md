@@ -74,16 +74,32 @@ network round trip included.
 ## 5. OPEN — the condition for closing Phase 6
 
 **G2 and G3 were never exercised over Preview HTTP.** Both require a second
-GitHub identity, because membership role is per user per workspace. Three
-attempts to authenticate a second account failed at the OAuth callback with the
-deliberately non-disclosing `auth-result=unavailable`; the transactions were
-created but never consumed and the rate limiter stayed well below its ceiling.
-The same callback succeeded for the first identity on the same deployment, so
-the failure sits outside the Phase 6 code under test.
+GitHub identity, because membership role is per user per workspace. Four attempts
+to authenticate a second account failed at the OAuth callback with the
+deliberately non-disclosing `auth-result=unavailable`.
+
+The cause was subsequently narrowed. The transactions were created but never
+consumed, which is a *consequence* rather than the fault: `completeOAuthCallback`
+consumes the transaction inside `commitOAuthCallback`, which runs only after
+`provider.resolveIdentity` returns, so any provider-stage failure leaves the row
+pending. State validation itself passed. Rate limiting was excluded — the
+`oauth_source` windows peaked at 5 against a ceiling of 20. A control sign-in with
+the first identity succeeded end to end on the same deployment, and the second
+account's public profile satisfies every `normalizeIdentity` check, so neither the
+credential configuration nor the identity parser explains it.
+
+The precise reason is not yet observable: `callbackRedirect` deliberately reduces
+every failure to `unavailable`, and until the classification fix landed the
+emitted operational outcome was `provider_unavailable` for twelve distinct
+causes. That classification defect is now fixed, so the remaining step is to read
+the emitted `outcome` from the Preview deployment log during a live attempt.
+
+None of this touches the Phase 6 document code under test.
 
 To close Phase 6 at `P6-G5`:
 
-1. Authenticate a second GitHub identity against the Preview alias.
+1. Tail the Preview deployment log during a second-identity attempt and read the
+   emitted identity outcome, then authenticate that identity against the alias.
 2. Add it to the qualification workspace as a Viewer.
 3. Confirm the Viewer reads a document an Editor created (**G2**) and that a
    Viewer create, update, and tombstone are each denied with zero rows (**G3**).

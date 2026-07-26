@@ -97,12 +97,14 @@ export function validatePhase3OAuthCallback({ manifest, sprintManifest, sprintSo
         && service.includes('openAuthorizationSession(database)'), 'Atomic authority controls weakened');
 
     assert(manifest.workers_test_file === 'tests/cloudflare/oauth-callback.workers.test.ts'
-        && manifest.workers_test_count === 12 && (workersTestSource.match(/\bit\s*\(/g) || []).length === 12,
+        && manifest.workers_test_count === 14 && (workersTestSource.match(/\bit\s*\(/g) || []).length === 14,
     'Workers callback test inventory drifted');
     for (const phrase of ['never returns the provider token', 'eight-second provider budget',
         'non-numeric responses', 'closed GitHub token error codes', 'mutable login changes', 'exactly one concurrent callback',
         'session insert conflicts', 'same numeric subject', 'wrong-subject reauthentication',
-        'never echoes canaries']) {
+        'never echoes canaries',
+        // A provider fault and a malformed request must stay separable in telemetry.
+        'identity-endpoint transport failure', 'request defect before contacting the provider']) {
         assert(workersTestSource.includes(phrase), `Callback security coverage missing: ${phrase}`);
     }
 
