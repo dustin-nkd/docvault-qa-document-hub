@@ -1,0 +1,372 @@
+{
+  "schema_version": 2,
+  "phase": "CF-P7",
+  "sprint": "Phase 7 — Collaboration UI",
+  "title": "Deliver the collaboration interface: account, workspace, membership, device and key initialization, sync state, conflict, and audit surfaces",
+  "status": "IN PROGRESS",
+  "authorization": {
+    "entry_gate": "P7-G0",
+    "decision": "APPROVED",
+    "authorized_story_on_approval": "CF-P7-001",
+    "remote_authorization_gate": "P7-G4",
+    "remote_changes_authorized": false,
+    "exit_gate": "P7-G5",
+    "approved_on": "2026-07-26"
+  },
+  "entry": {
+    "predecessor_phase": "CF-P6",
+    "predecessor_status": "PASS",
+    "predecessor_exit_gate": "P6-G5",
+    "controlling_handoff": "docs/collaboration-foundation/phase-7-handoff.md"
+  },
+  "principle": "Phase 7 adds no cryptographic, persistence, or authorization primitive. It is the interface over the Phase 3 to Phase 6 services. Every read and write goes through an existing service; the UI layer may not reimplement identity, envelope, revision, idempotency, cursor, membership, or outbox logic.",
+  "surfaces": [
+    {
+      "id": "account-menu",
+      "name": "Account menu",
+      "owner": "CF-P7-003"
+    },
+    {
+      "id": "workspace-switcher",
+      "name": "Workspace switcher",
+      "owner": "CF-P7-003"
+    },
+    {
+      "id": "create-workspace",
+      "name": "Create workspace",
+      "owner": "CF-P7-004"
+    },
+    {
+      "id": "device-key-initialization",
+      "name": "Device and key initialization",
+      "owner": "CF-P7-005"
+    },
+    {
+      "id": "member-list-role-badge",
+      "name": "Member list and role badge",
+      "owner": "CF-P7-006"
+    },
+    {
+      "id": "invitation-manage",
+      "name": "Invitation creation, copy, and revoke",
+      "owner": "CF-P7-007"
+    },
+    {
+      "id": "invitation-accept",
+      "name": "Invitation acceptance",
+      "owner": "CF-P7-008"
+    },
+    {
+      "id": "sync-state",
+      "name": "Sync state: Saved, Saving, Offline, Conflict, Access removed",
+      "owner": "CF-P7-009"
+    },
+    {
+      "id": "conflict-dialog",
+      "name": "Conflict resolution dialog",
+      "owner": "CF-P7-010"
+    },
+    {
+      "id": "audit-activity",
+      "name": "Audit activity",
+      "owner": "CF-P7-011"
+    },
+    {
+      "id": "base-states",
+      "name": "Empty, loading, unauthorized, and error states",
+      "owner": "CF-P7-002"
+    },
+    {
+      "id": "github-pages-banner",
+      "name": "GitHub Pages banner: collaboration is Cloudflare-only",
+      "owner": "CF-P7-002"
+    }
+  ],
+  "sync_states": [
+    "Saved",
+    "Saving",
+    "Offline",
+    "Conflict",
+    "Access removed"
+  ],
+  "base_states": [
+    "empty",
+    "loading",
+    "unauthorized",
+    "error"
+  ],
+  "stories": [
+    {
+      "id": "CF-P7-001",
+      "title": "Freeze the collaboration UI contract, surface inventory, and accessibility baseline",
+      "size": "M",
+      "status": "PASS",
+      "entry_gate": "P7-G0",
+      "exit_gate": "P7-G1",
+      "evidence": [
+        "CF-EV-P7-STA-001",
+        "CF-EV-P7-A11Y-001"
+      ],
+      "gate": "cf:phase7:contract:check"
+    },
+    {
+      "id": "CF-P7-002",
+      "title": "Lazy collaboration shell, GitHub Pages banner, and the four base states",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G1",
+      "exit_gate": "P7-G2",
+      "evidence": [
+        "CF-EV-P7-UI-001",
+        "CF-EV-P7-PERF-001"
+      ]
+    },
+    {
+      "id": "CF-P7-003",
+      "title": "Account menu and workspace switcher with persistent workspace identity",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G2",
+      "exit_gate": "P7-G2A",
+      "evidence": [
+        "CF-EV-P7-UI-002"
+      ]
+    },
+    {
+      "id": "CF-P7-004",
+      "title": "Create workspace journey",
+      "size": "M",
+      "status": "PLANNED",
+      "entry_gate": "P7-G2A",
+      "exit_gate": "P7-G2B",
+      "evidence": [
+        "CF-EV-P7-UI-003"
+      ]
+    },
+    {
+      "id": "CF-P7-005",
+      "title": "Device and key initialization",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G2B",
+      "exit_gate": "P7-G2C",
+      "evidence": [
+        "CF-EV-P7-UI-004",
+        "CF-EV-P7-SEC-001"
+      ]
+    },
+    {
+      "id": "CF-P7-006",
+      "title": "Member list, role badge, and explained role-disabled controls",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G2C",
+      "exit_gate": "P7-G2D",
+      "evidence": [
+        "CF-EV-P7-UI-005",
+        "CF-EV-P7-A11Y-002"
+      ]
+    },
+    {
+      "id": "CF-P7-007",
+      "title": "Invitation creation, copy, and revoke",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G2D",
+      "exit_gate": "P7-G3",
+      "evidence": [
+        "CF-EV-P7-UI-006",
+        "CF-EV-P7-SEC-002"
+      ]
+    },
+    {
+      "id": "CF-P7-008",
+      "title": "Invitation acceptance",
+      "size": "M",
+      "status": "PLANNED",
+      "entry_gate": "P7-G3",
+      "exit_gate": "P7-G3A",
+      "evidence": [
+        "CF-EV-P7-UI-007"
+      ]
+    },
+    {
+      "id": "CF-P7-009",
+      "title": "Sync state model: Saved, Saving, Offline, Conflict, Access removed",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G3A",
+      "exit_gate": "P7-G3B",
+      "evidence": [
+        "CF-EV-P7-UI-008"
+      ]
+    },
+    {
+      "id": "CF-P7-010",
+      "title": "Conflict resolution dialog with guaranteed draft preservation",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G3B",
+      "exit_gate": "P7-G3C",
+      "evidence": [
+        "CF-EV-P7-UI-009",
+        "CF-EV-P7-A11Y-003"
+      ]
+    },
+    {
+      "id": "CF-P7-011",
+      "title": "Audit activity",
+      "size": "M",
+      "status": "PLANNED",
+      "entry_gate": "P7-G3C",
+      "exit_gate": "P7-G3D",
+      "evidence": [
+        "CF-EV-P7-UI-010"
+      ]
+    },
+    {
+      "id": "CF-P7-012",
+      "title": "Responsive layout and keyboard/focus qualification across every surface",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G3D",
+      "exit_gate": "P7-G3E",
+      "evidence": [
+        "CF-EV-P7-A11Y-004",
+        "CF-EV-P7-UI-011"
+      ]
+    },
+    {
+      "id": "CF-P7-013",
+      "title": "Integrate and qualify the collaboration UI on Preview",
+      "size": "L",
+      "status": "PLANNED",
+      "entry_gate": "P7-G4",
+      "exit_gate": "P7-G4A",
+      "evidence": [
+        "CF-EV-P7-QA-001",
+        "CF-EV-P7-PERF-002"
+      ]
+    },
+    {
+      "id": "CF-P7-014",
+      "title": "Assemble Phase 7 exit and Phase 8 handoff",
+      "size": "M",
+      "status": "PLANNED",
+      "entry_gate": "P7-G4A",
+      "exit_gate": "P7-G5",
+      "evidence": [
+        "CF-EV-P7-EXIT-001"
+      ]
+    }
+  ],
+  "gate_sequence": [
+    "P7-G0",
+    "P7-G1",
+    "P7-G2",
+    "P7-G2A",
+    "P7-G2B",
+    "P7-G2C",
+    "P7-G2D",
+    "P7-G3",
+    "P7-G3A",
+    "P7-G3B",
+    "P7-G3C",
+    "P7-G3D",
+    "P7-G3E",
+    "P7-G4",
+    "P7-G4A",
+    "P7-G5"
+  ],
+  "gate_ux": [
+    {
+      "id": "U1",
+      "criterion": "Personal vault and workspace data are never mixed",
+      "required": "no personal record is ever rendered on a workspace surface and no workspace record on a personal surface; zero personal writes originate from any collaboration path; zero collaboration modules are evaluated on personal startup"
+    },
+    {
+      "id": "U2",
+      "criterion": "The user always knows which workspace they are in",
+      "required": "the active workspace is identifiable on every collaboration surface without opening a menu, at every supported width, and it survives reload and back-navigation rather than silently defaulting"
+    },
+    {
+      "id": "U3",
+      "criterion": "Role-disabled controls carry an explanation",
+      "required": "a control the current role may not use stays visible, is programmatically disabled rather than merely styled, and states the reason in text that assistive technology announces; it is never silently hidden and never fails only on submit"
+    },
+    {
+      "id": "U4",
+      "criterion": "A local draft is never lost to a conflict",
+      "required": "the local draft survives the conflict dialog being dismissed, navigation away, and a full reload; it is discarded only by an explicit confirmed choice, and no automatic merge is ever performed"
+    },
+    {
+      "id": "U5",
+      "criterion": "Keyboard navigation and focus states meet the bar",
+      "required": "every surface is completable by keyboard alone in a logical order, with a visible focus indicator meeting WCAG 2.2 AA non-text contrast, no focus trap, and focus moved and restored correctly around dialogs"
+    },
+    {
+      "id": "U6",
+      "criterion": "Mobile and tablet layouts do not break",
+      "required": "every surface renders without horizontal page scroll, overlapping controls, clipped text, or unreachable actions at 320 px width, tablet portrait, and tablet landscape, including long workspace and account names"
+    }
+  ],
+  "quality_budgets": {
+    "personal_startup_collaboration_modules": 0,
+    "collaboration_startup_ceiling_kib_gzip": 75,
+    "lazy_phase_7_chunk_max_kib_gzip": 60,
+    "decrypt_and_render_100_documents_p95_ms": 500,
+    "preview_authenticated_read_p95_ms": 300,
+    "preview_authenticated_write_p95_ms": 500,
+    "accessibility_standard": "WCAG 2.2 AA",
+    "minimum_supported_width_px": 320,
+    "supported_browsers": [
+      "Chrome latest two",
+      "Edge latest two",
+      "Firefox latest two",
+      "Safari 17.4+"
+    ],
+    "zero_tolerance": [
+      "p0_p1_skip",
+      "quarantine",
+      "disabled_case",
+      "conditional_omission",
+      "accepted_flake",
+      "open_defect",
+      "plaintext_canary",
+      "colour_only_state",
+      "unexplained_disabled_control",
+      "horizontal_page_scroll"
+    ]
+  },
+  "boundaries": {
+    "production_d1": "absent",
+    "production_document_routes": "absent",
+    "collaboration_activation": "NO-GO",
+    "production_identity": "NO-GO",
+    "github_pages_behavior": "static-personal-guest-fallback-with-collaboration-unavailable-banner",
+    "server_visible_plaintext": "prohibited",
+    "automatic_merge": "prohibited",
+    "automatic_personal_upload": "prohibited",
+    "personal_provider_fallback": "prohibited",
+    "silent_draft_discard": "prohibited",
+    "new_persistence": "requires a separately reviewed forward-only migration",
+    "reimplementing_phase_6_services_in_ui": "prohibited"
+  },
+  "deferred_to_phase_8": [
+    {
+      "item": "Copy to workspace journey and the Credential exclusion",
+      "reason": "Requested Phase 7 scope does not include it. CF-P6-007 already implements the refusal and ADR-007 records the residual risk, so the boundary stays enforced in the service layer while it is unexposed. It must not be silently forgotten.",
+      "service_already_enforces": true
+    },
+    {
+      "item": "Document editor rich text and side-by-side conflict diff",
+      "reason": "Out of the requested surface inventory; the four labelled resolutions satisfy U4 without a diff view.",
+      "service_already_enforces": false
+    }
+  ],
+  "exit_gate_requirement": {
+    "automated_check": "cf:phase7:exit:check",
+    "ships_with": "CF-P7-014",
+    "rationale": "Phases 3 through 6 each ship an automated exit gate wired into check:cloudflare; Phase 7 must not regress that pattern."
+  }
+}
