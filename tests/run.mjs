@@ -67,3 +67,5 @@ import './conflict-resolution.test.mjs';
 import './cloudflare-phase-6-conflict-policy.test.mjs';
 import './collaboration-shell.test.mjs';
 import './cloudflare-phase-7-shell-policy.test.mjs';
+import './collaboration-account-workspace.test.mjs';
+import './cloudflare-phase-7-account-policy.test.mjs';
