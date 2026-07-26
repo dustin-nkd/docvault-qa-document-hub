@@ -89,8 +89,11 @@ export function validatePhase1ExitGate({
     assert(manifest.production_boundary?.user_or_workspace_data === 'absent-no-remote-storage-binding', 'Production data boundary is not empty');
     assert(sameSet(manifest.production_boundary?.functions_include || [], ['/api/v1/*']), 'Functions route boundary drifted');
     assert((manifest.production_boundary?.remote_binding_names || []).length === 0, 'Exit manifest contains a remote binding');
-    const states = [wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars];
-    assert(states.every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Wrangler no longer fails closed in every environment');
+    // D-P7-01: preview is authorized to activate collaboration; the default vars
+    // and production are not, and that is the boundary this pins.
+    const states = [wrangler.vars, wrangler.env?.production?.vars];
+    assert(states.every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Wrangler no longer fails closed outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
     assert(!containsKey(withoutApprovedPreviewD1(wrangler), REMOTE_BINDING_KEYS), 'Wrangler contains an unapproved remote binding');
     assert((configurationDiff.remote_binding_names?.preview || []).length === 0
         && (configurationDiff.remote_binding_names?.production || []).length === 0, 'Reviewed configuration diff contains a remote binding');

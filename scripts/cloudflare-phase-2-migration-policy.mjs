@@ -75,7 +75,9 @@ export function validatePhase2Migrations({ manifest, migrationSources, freeze, w
     assert(manifest.environment_policy?.preview === 'prohibited-before-P2-G3', 'Preview migration policy drifted');
     assert(manifest.environment_policy?.production === 'prohibited-through-Phase-2', 'Production migration policy drifted');
     assert(!/d1_databases|database_id|preview_database_id/i.test(JSON.stringify(withoutApprovedPreviewD1(wrangler))), 'An unapproved remote D1 binding or identifier is present');
-    assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled');
+    // D-P7-01: preview activates under P7-G4; production never does.
+    assert(wrangler.vars?.COLLABORATION_ENABLED === 'false' && wrangler.env?.production?.vars?.COLLABORATION_ENABLED === 'false', 'Collaboration must remain disabled outside preview');
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true', 'Preview no longer carries the D-P7-01 authorization');
 
     const entries = manifest.entries || [];
     assert(entries.length === 12, 'Migration manifest must include the authorized P5-G2C-M rotation expansion');

@@ -79,8 +79,11 @@ export function validatePhase2ExitGate({
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
         && wrangler.env?.preview?.d1_databases?.length === 1
         && wrangler.env.preview.d1_databases[0].binding === 'COLLAB_DB', 'Wrangler D1 isolation drifted');
-    assert([wrangler.vars, wrangler.env?.preview?.vars, wrangler.env?.production?.vars]
-        .every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Collaboration no longer fails closed');
+    assert([wrangler.vars, wrangler.env?.production?.vars]
+        .every(vars => vars?.COLLABORATION_ENABLED === 'false'), 'Collaboration no longer fails closed outside preview');
+    // D-P7-01, approved 2026-07-26: preview activates, production never does.
+    assert(wrangler.env?.preview?.vars?.COLLABORATION_ENABLED === 'true',
+        'Preview no longer carries the D-P7-01 authorization');
 
     const deployments = manifest.verified_deployments || {};
     assert(/^[0-9a-f]{40}$/.test(deployments.verified_commit)

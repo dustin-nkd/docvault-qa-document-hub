@@ -13,7 +13,7 @@ assert(same(contract.roles, ['owner','admin','editor','viewer']) && same(contrac
 assert(contract.invitations?.token_bits === 256 && contract.invitations.storage === 'hash-only' && contract.invitations.expiry_hours === 72 && contract.invitations.single_use && contract.invitations.revocable && contract.invitations.accepted_membership_state === 'pending_key', 'Invitation contract drifted');
 assert(contract.invariants?.length === 5 && contract.deferred?.length === 5, 'Invariant or scope boundary drifted');
 assert(Object.values(contract.boundaries || {}).every(value => value === false || value === 0), 'Phase 4 contract activated a boundary');
-assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases && [wrangler.vars,wrangler.env?.preview?.vars,wrangler.env?.production?.vars].every(v=>v?.COLLABORATION_ENABLED==='false'), 'Runtime boundary drifted');
+assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases && [wrangler.vars,wrangler.env?.production?.vars].every(v=>v?.COLLABORATION_ENABLED==='false') && wrangler.env?.preview?.vars?.COLLABORATION_ENABLED==='true', 'Runtime boundary drifted');
 for (const id of contract.evidence) { const source = read(`docs/collaboration-foundation/evidence/phase-4/${id}.md`); assert(source.startsWith(`# ${id} `) && /^Status: PASS$/m.test(source) && source.includes('CF-P4-001'), `${id} evidence drifted`); }
 console.log('Cloudflare Phase 4 contract freeze passed');
 console.log('  CF-P4-001: PASS; P4-G1 authorizes workspace bootstrap only');

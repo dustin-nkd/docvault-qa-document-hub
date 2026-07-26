@@ -26,7 +26,10 @@ export const expectedEnvironmentVars = {
         APP_ENV: 'preview',
         ORIGIN_POLICY_MODE: 'preview',
         CANONICAL_PRODUCTION_ORIGIN: canonicalProductionOrigin,
-        COLLABORATION_ENABLED: 'false',
+        // D-P7-01, approved 2026-07-26: preview activates collaboration so
+        // Phase 7 can qualify a journey. The default vars and production stay
+        // 'false', and every other gate still pins them there.
+        COLLABORATION_ENABLED: 'true',
         KEY_FOUNDATION_MODE: 'preview-only',
         IDENTITY_RUNTIME_MODE: 'preview-only',
         GITHUB_OAUTH_CLIENT_ID: 'Ov23liT50KOwBmEGu7bH'
@@ -85,7 +88,7 @@ export function validateWranglerConfig(config, source, compatibilityDate = '2026
     ]) {
         exactKeys(vars, Object.keys(expectedEnvironmentVars[environment]), `wrangler.${environment}.vars`);
         assert(JSON.stringify(vars) === JSON.stringify(expectedEnvironmentVars[environment]), `${environment} variables drifted`);
-        assert(vars.COLLABORATION_ENABLED === 'false', `${environment} collaboration must use the exact disabled string`);
+        assert(vars.COLLABORATION_ENABLED === (environment === 'preview' ? 'true' : 'false'), `${environment} collaboration must use the exact expected string`);
         assert(vars.KEY_FOUNDATION_MODE === (environment === 'preview' ? 'preview-only' : 'disabled'),
             `${environment} key foundation mode drifted`);
     }
