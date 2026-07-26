@@ -32,7 +32,10 @@ export function validatePhase5PreviewKeyFoundation({ manifest, sprint, wrangler,
     assert(!wrangler.d1_databases && !wrangler.env?.production?.d1_databases
         && wrangler.env?.production?.vars?.IDENTITY_RUNTIME_MODE === 'disabled', 'Production isolation drifted');
 
-    assert((handlerSource.match(/id: '[^']+'/g) || []).length === 13
+    // CF-P6-008 deliberately extended this handler from the 13 Phase 5 routes to 21
+    // by registering the eight frozen Phase 6 document routes. The Phase 5 controls
+    // below still apply to every route in the file.
+    assert((handlerSource.match(/id: '[^']+'/g) || []).length === 21
         && handlerSource.includes("env.KEY_FOUNDATION_MODE !== 'preview-only'")
         && handlerSource.includes("url.origin !== PREVIEW_ORIGIN")
         && handlerSource.includes('verifyCsrfToken')

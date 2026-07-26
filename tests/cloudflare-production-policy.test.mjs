@@ -24,6 +24,11 @@ test('production import graph contains only reviewed Function runtime modules', 
         'functions/_lib/devices/device-repository.ts',
         'functions/_lib/devices/device-service.ts',
         'functions/_lib/devices/index.ts',
+        // CF-P6-008 registered the eight document routes on the Preview runtime, so
+        // the document modules are now part of the reviewed Function import graph.
+        'functions/_lib/documents/document-reads.ts',
+        'functions/_lib/documents/document-service.ts',
+        'functions/_lib/documents/request-fingerprint.ts',
         'functions/_lib/e2ee/canonical.ts',
         'functions/_lib/e2ee/errors.ts',
         'functions/_lib/e2ee/jwk.ts',

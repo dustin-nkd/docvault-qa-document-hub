@@ -18,6 +18,18 @@ import {
     type IdentityRuntimeConfiguration,
     type SessionLifecycleDependencies
 } from '../identity/index';
+import {
+    DocumentReadError,
+    createDocumentCursorCodec,
+    listDocuments,
+    listRevisions,
+    readDocument,
+    readRevision
+} from '../documents/document-reads';
+import {
+    DocumentMutationError,
+    executeDocumentMutation
+} from '../documents/document-service';
 import { PersistenceError } from '../persistence/index';
 import {
     abortWorkspaceKeyRotation,
@@ -50,7 +62,10 @@ const ROTATION_REASONS = Object.freeze([
 type RouteId = 'device-list' | 'device-register' | 'device-revoke' | 'workspace-bootstrap-intent'
     | 'workspace-create-keyed' | 'workspace-device-list' | 'key-envelope-current'
     | 'key-envelope-provision' | 'rotation-start' | 'rotation-stage' | 'rotation-commit'
-    | 'rotation-abort' | 'rotation-read';
+    | 'rotation-abort' | 'rotation-read'
+    // CF-P6-008: the eight frozen Phase 6 document routes.
+    | 'document-list' | 'document-create' | 'document-read' | 'document-update'
+    | 'document-tombstone' | 'revision-list' | 'revision-read' | 'mutation-reconcile';
 
 interface Route {
     readonly id: RouteId;
@@ -73,7 +88,18 @@ const ROUTES: readonly Route[] = Object.freeze([
     { id: 'rotation-stage', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/key-rotations\/([^/]+)\/envelopes\/([^/]+)$/, methods: ['PUT'], mutation: true, requiresDevice: true },
     { id: 'rotation-commit', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/key-rotations\/([^/]+)\/commit$/, methods: ['POST'], mutation: true, requiresDevice: true },
     { id: 'rotation-abort', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/key-rotations\/([^/]+)$/, methods: ['DELETE'], mutation: true, requiresDevice: true },
-    { id: 'rotation-read', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/key-rotations\/([^/]+)$/, methods: ['GET'], mutation: false, requiresDevice: true }
+    { id: 'rotation-read', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/key-rotations\/([^/]+)$/, methods: ['GET'], mutation: false, requiresDevice: true },
+    // CF-P6-008. Reads are open to any active key-ready member including a
+    // Viewer; every mutation is Owner/Admin/Editor only and that restriction
+    // lives in the SQL guard, not here.
+    { id: 'document-list', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/documents$/, methods: ['GET'], mutation: false, requiresDevice: true },
+    { id: 'document-create', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/documents$/, methods: ['POST'], mutation: true, requiresDevice: true },
+    { id: 'document-read', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/documents\/([^/]+)$/, methods: ['GET'], mutation: false, requiresDevice: true },
+    { id: 'document-update', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/documents\/([^/]+)$/, methods: ['PUT'], mutation: true, requiresDevice: true },
+    { id: 'document-tombstone', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/documents\/([^/]+)\/tombstone$/, methods: ['POST'], mutation: true, requiresDevice: true },
+    { id: 'revision-list', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/documents\/([^/]+)\/revisions$/, methods: ['GET'], mutation: false, requiresDevice: true },
+    { id: 'revision-read', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/documents\/([^/]+)\/revisions\/([^/]+)$/, methods: ['GET'], mutation: false, requiresDevice: true },
+    { id: 'mutation-reconcile', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/mutations\/([^/]+)$/, methods: ['GET'], mutation: false, requiresDevice: true }
 ]);
 
 type ErrorCode = 'VALIDATION_FAILED' | 'INVALID_JSON' | 'INVALID_CURSOR' | 'CSRF_REJECTED'
@@ -299,6 +325,20 @@ function mapError(error: unknown): PreviewKeyApiError {
     }
     if (error instanceof ControlPlaneCursorError) return new PreviewKeyApiError(400, 'INVALID_CURSOR');
     if (error instanceof E2eePrimitiveError) return new PreviewKeyApiError(400, 'VALIDATION_FAILED');
+    // CF-P6-008. A read denial and a missing document share one mapping so the
+    // response cannot be used to probe for a document in another workspace.
+    if (error instanceof DocumentReadError) {
+        if (error.code === 'INVALID_CURSOR') return new PreviewKeyApiError(400, 'INVALID_CURSOR');
+        if (error.code === 'RESOURCE_NOT_FOUND') return new PreviewKeyApiError(404, 'RESOURCE_NOT_FOUND');
+        return new PreviewKeyApiError(400, 'VALIDATION_FAILED');
+    }
+    if (error instanceof DocumentMutationError) {
+        if (error.code === 'VALIDATION_FAILED') return new PreviewKeyApiError(400, 'VALIDATION_FAILED');
+        if (error.code === 'RESOURCE_NOT_FOUND') return new PreviewKeyApiError(404, 'RESOURCE_NOT_FOUND');
+        // Conflict, idempotency reuse, expiry, and key-version mismatch are all
+        // 409s the client must resolve rather than retry.
+        return new PreviewKeyApiError(409, 'OPERATION_NOT_PERMITTED');
+    }
     if (error instanceof PersistenceError) {
         if (error.code === 'PERSISTENCE_NOT_FOUND') return new PreviewKeyApiError(404, 'RESOURCE_NOT_FOUND');
         if (error.code === 'AUTHORITY_REVOKED') return new PreviewKeyApiError(403, 'OPERATION_NOT_PERMITTED');
@@ -407,6 +447,56 @@ async function dispatch(database: D1Database, request: Request, matched: { route
         return success(persistentRequestId, 200, { ...status, ...binding }, undefined, session.setCookie);
     }
 
+    // ---- CF-P6-008 document reads -------------------------------------------
+    // Any active member with an active device may read, Viewers included; the
+    // shared not-found mapping in the read module keeps denials non-disclosing.
+    if (matched.route.id === 'document-list' || matched.route.id === 'document-read'
+        || matched.route.id === 'revision-list' || matched.route.id === 'revision-read'
+        || matched.route.id === 'mutation-reconcile') {
+        const workspaceId = requireUuid(matched.params[0]);
+        const reader = { actorUserId, actorDeviceId: requireUuid(deviceId), workspaceId };
+        const documentCursor = createDocumentCursorCodec(await cursorSigningKey(runtime));
+
+        if (matched.route.id === 'document-list' || matched.route.id === 'revision-list') {
+            assertQuery(url, ['limit', 'cursor']);
+            const limit = queryLimit(url, 100);
+            const token = url.searchParams.get('cursor');
+            const page = matched.route.id === 'document-list'
+                ? await listDocuments(database, reader,
+                    { limit, codec: documentCursor, now, ...(token ? { cursor: token } : {}) })
+                : await listRevisions(database, reader, requireUuid(matched.params[1]),
+                    { limit, codec: documentCursor, now, ...(token ? { cursor: token } : {}) });
+            return success(persistentRequestId, 200, { items: page.items },
+                { limit, nextCursor: page.nextCursor }, session.setCookie);
+        }
+
+        if (url.search) throw new PreviewKeyApiError(400, 'VALIDATION_FAILED');
+        if (matched.route.id === 'document-read') {
+            return success(persistentRequestId, 200,
+                await readDocument(database, reader, requireUuid(matched.params[1])),
+                undefined, session.setCookie);
+        }
+        if (matched.route.id === 'revision-read') {
+            const revision = Number(matched.params[2]);
+            if (!Number.isInteger(revision)) throw new PreviewKeyApiError(400, 'VALIDATION_FAILED');
+            return success(persistentRequestId, 200,
+                await readRevision(database, reader, requireUuid(matched.params[1]), revision),
+                undefined, session.setCookie);
+        }
+
+        // mutation-reconcile: only the exact actor/device/workspace binding may
+        // ask whether its own mutation applied.
+        const stored = await database.prepare(
+            `SELECT http_status AS status, result_json AS result FROM mutation_results
+             WHERE actor_user_id = ? AND actor_device_id = ? AND workspace_id = ?
+               AND client_mutation_id = ? LIMIT 1`
+        ).bind(actorUserId, requireUuid(deviceId), workspaceId, requireUuid(matched.params[1]))
+            .first<{ status: number; result: string }>();
+        if (stored === null) throw new PreviewKeyApiError(404, 'RESOURCE_NOT_FOUND');
+        return success(persistentRequestId, 200,
+            { state: 'applied', result: JSON.parse(stored.result) }, undefined, session.setCookie);
+    }
+
     if (url.search) throw new PreviewKeyApiError(400, 'VALIDATION_FAILED');
     const body = await readBody(request);
     const clientMutationId = idempotency(request);
@@ -485,6 +575,52 @@ async function dispatch(database: D1Database, request: Request, matched: { route
             targetDeviceId, targetFingerprint: String(value.aad.targetFingerprint),
             keyVersion: Number(value.aad.keyVersion), envelope: value });
         return success(persistentRequestId, result.httpStatus, result, undefined, session.setCookie);
+    }
+
+    // ---- CF-P6-008 document mutations ---------------------------------------
+    // Role, membership, device, revision precondition, and key version are all
+    // enforced inside the service's SQL guard, so a denial rolls back rather
+    // than being decided here.
+    if (matched.route.id === 'document-create' || matched.route.id === 'document-update'
+        || matched.route.id === 'document-tombstone') {
+        const required = matched.route.id === 'document-create'
+            ? ['ciphertextEnvelope', 'ciphertextDigest', 'keyVersion', 'envelopeVersion']
+            : ['ciphertextEnvelope', 'ciphertextDigest', 'keyVersion', 'envelopeVersion', 'baseRevision'];
+        if (!exactKeys(body.value, required)) throw new PreviewKeyApiError(400, 'VALIDATION_FAILED');
+
+        let envelope: Uint8Array;
+        let digest: Uint8Array;
+        try {
+            envelope = decodeBase64Url(String(body.value.ciphertextEnvelope));
+            digest = decodeBase64Url(String(body.value.ciphertextDigest));
+        } catch {
+            throw new PreviewKeyApiError(400, 'VALIDATION_FAILED');
+        }
+
+        const operation = matched.route.id === 'document-create' ? 'create'
+            : matched.route.id === 'document-update' ? 'update' : 'delete';
+        const documentId = matched.route.id === 'document-create'
+            ? requestId(dependencies) : requireUuid(matched.params[1]);
+
+        const outcome = await executeDocumentMutation(database, {
+            operation,
+            actorUserId,
+            actorDeviceId: requireUuid(deviceId),
+            workspaceId,
+            documentId,
+            baseRevision: operation === 'create' ? 0 : Number(body.value.baseRevision),
+            keyVersion: Number(body.value.keyVersion),
+            envelopeVersion: Number(body.value.envelopeVersion),
+            ciphertextEnvelope: envelope,
+            ciphertextDigest: digest,
+            ciphertextBytes: envelope.length,
+            clientMutationId,
+            serverTime: now,
+            requestId: persistentRequestId,
+            auditEventId: requestId(dependencies),
+            mutationResultId: requestId(dependencies)
+        });
+        return success(persistentRequestId, outcome.httpStatus, outcome, undefined, session.setCookie);
     }
 
     if (matched.route.id === 'rotation-start') {
