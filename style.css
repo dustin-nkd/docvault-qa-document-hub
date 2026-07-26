@@ -1609,3 +1609,108 @@ button[aria-busy="true"] { cursor:progress !important; }
     .collab-create { padding: 12px; }
     .collab-create__submit, .collab-create__device-action { width: 100%; }
 }
+
+/* ── CF-P7-005 device and key initialization ────────────────────────────── */
+
+.collab-device {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    max-width: 100%;
+}
+.collab-device__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-device__fingerprint-label {
+    margin: 0;
+    font-size: 12px;
+    color: var(--tx-m);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+}
+/* Grouped, monospaced, and allowed to wrap: this value gets read aloud to
+   another person, and a run that reflows mid-group is read wrongly. */
+.collab-device__fingerprint {
+    margin: 0;
+    font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--tx);
+    word-spacing: .35em;
+    overflow-wrap: break-word;
+}
+
+.collab-device__readiness {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    align-items: start;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-device__readiness-title { grid-column: 2; margin: 0; font-size: 14px; font-weight: 600; }
+.collab-device__readiness-reason { grid-column: 2; margin: 0; font-size: 13px; color: var(--tx-m); }
+
+/* One shape per readiness value. Three of them mean "waiting" and must still be
+   distinguishable from each other without reading the colour. */
+.collab-device__shape {
+    grid-row: 1;
+    width: 14px;
+    height: 14px;
+    margin-top: 3px;
+    flex: 0 0 auto;
+    border: 2px solid currentColor;
+}
+.collab-device__shape--key_ready { border-radius: 3px; background: currentColor; color: var(--acc-l); }
+.collab-device__shape--pending_key { border-radius: 50%; border-style: dashed; color: var(--collab-warning); }
+.collab-device__shape--stale_key { border-radius: 0; border-style: dashed; color: var(--collab-warning); }
+.collab-device__shape--not_entitled {
+    border-radius: 0;
+    color: var(--tx-d);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: currentColor;
+}
+.collab-device__shape--revoked {
+    border-radius: 50%;
+    color: var(--collab-danger);
+    background: linear-gradient(to bottom right, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%);
+}
+
+.collab-device__register,
+.collab-device__revoke {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-device__register:hover:not(:disabled),
+.collab-device__revoke:hover:not(:disabled) { background: var(--card-h); }
+.collab-device__register:disabled,
+.collab-device__revoke:disabled { opacity: .55; cursor: not-allowed; }
+.collab-device__blocked { margin: 0; font-size: 12px; color: var(--collab-warning); }
+.collab-device__status { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-device__failure {
+    margin: 0;
+    font-size: 13px;
+    color: var(--collab-danger);
+    padding-left: 10px;
+    border-left: 3px solid var(--collab-danger);
+}
+
+.collab-device__register:focus-visible,
+.collab-device__revoke:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-device { padding: 12px; }
+    .collab-device__register, .collab-device__revoke { width: 100%; }
+}
