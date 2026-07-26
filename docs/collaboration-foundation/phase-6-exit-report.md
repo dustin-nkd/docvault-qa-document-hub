@@ -1,15 +1,15 @@
 # Collaboration Foundation Phase 6 exit report
 
-Status: **PARTIAL — seven of nine stories PASS; CF-P6-008 carries an open gap and Phase 6 does not exit at P6-G5**
+Status: **PASS — all nine stories PASS; every sprint gate scenario is proven over Preview HTTP and Phase 6 exits at P6-G5**
 
 Story: `CF-P6-009`
-Authorization: `P6-G5` (not granted)
+Authorization: `P6-G5` (granted)
 
 > Phase 6 delivered the shared document vertical slice end to end and proved it
-> against a real database and a live Preview deployment. It does not close,
-> because two of the six sprint gate scenarios were never exercised over Preview
-> HTTP. That gap is stated here rather than absorbed, and section 5 is the
-> honest condition for closing later.
+> against a real database and a live Preview deployment. All six sprint gate
+> scenarios are now verified over Preview HTTP with two real GitHub identities,
+> no synthetic identity, and no deployed test bypass. Section 5 records how the
+> last open scenarios were closed.
 
 ## 1. Decision
 
@@ -71,43 +71,38 @@ bootstrapped with a genuine 32-byte DEK produced the revision chain
 historical revisions. Authenticated read p95 was 102 ms against a 300 ms budget,
 network round trip included.
 
-## 5. OPEN — the condition for closing Phase 6
+## 5. CLOSED — how G2 and G3 were proven
 
-**G2 and G3 were never exercised over Preview HTTP.** Both require a second
-GitHub identity, because membership role is per user per workspace. Four attempts
-to authenticate a second account failed at the OAuth callback with the
+**G2 and G3 are now verified over Preview HTTP.** Both need a second GitHub
+identity because membership role is per user per workspace, and for four attempts
+no second account could authenticate: the callback always returned the
 deliberately non-disclosing `auth-result=unavailable`.
 
-The cause was subsequently narrowed. The transactions were created but never
-consumed, which is a *consequence* rather than the fault: `completeOAuthCallback`
-consumes the transaction inside `commitOAuthCallback`, which runs only after
-`provider.resolveIdentity` returns, so any provider-stage failure leaves the row
-pending. State validation itself passed. Rate limiting was excluded — the
-`oauth_source` windows peaked at 5 against a ceiling of 20. A control sign-in with
-the first identity succeeded end to end on the same deployment, and the second
-account's public profile satisfies every `normalizeIdentity` check, so neither the
-credential configuration nor the identity parser explains it.
+The cause was neither rate limiting nor state validation. `guardedProvider` in
+`functions/_lib/identity/runtime-handler.ts` rejects any resolved identity whose
+numeric subject is absent from the `PREVIEW_ALLOWED_GITHUB_SUBJECTS` allowlist.
+That is a deliberate Preview control, not a defect, and the second account had
+never been designated. Adding its subject and redeploying — Pages binds
+environment variables at build time — resolved it immediately. The unconsumed
+OAuth transactions were a consequence of failing at the provider stage, which
+runs before the transaction is consumed, not the fault itself.
 
-The precise reason is not yet observable: `callbackRedirect` deliberately reduces
-every failure to `unavailable`, and until the classification fix landed the
-emitted operational outcome was `provider_unavailable` for twelve distinct
-causes. That classification defect is now fixed, so the remaining step is to read
-the emitted `outcome` from the Preview deployment log during a live attempt.
+Diagnosis surfaced one genuine defect, fixed separately: the GitHub OAuth adapter
+collapsed every identity-validation and transport failure into the default
+`unavailable` category, making an account-data rejection indistinguishable from a
+provider outage.
 
-None of this touches the Phase 6 document code under test.
+**G2** — on workspace `81987e05` the owner sealed a document with a genuine
+32-byte workspace DEK. The Viewer, holding only an envelope wrapped to its own
+device key, listed, read, enumerated both revisions, unwrapped the workspace key,
+and decrypted the exact plaintext the Editor had sealed.
 
-To close Phase 6 at `P6-G5`:
+**G3** — the same Viewer's create, update, and tombstone were each denied with the
+single shared non-disclosing code, and the revision count was 2 before and 2
+after. Zero rows were written; the denial rolls back inside the SQL guard.
 
-1. Tail the Preview deployment log during a second-identity attempt and read the
-   emitted identity outcome, then authenticate that identity against the alias.
-2. Add it to the qualification workspace as a Viewer.
-3. Confirm the Viewer reads a document an Editor created (**G2**) and that a
-   Viewer create, update, and tombstone are each denied with zero rows (**G3**).
-4. Promote `CF-EV-P6-QA-004` from PARTIAL to PASS and set `CF-P6-008` to PASS.
-5. Complete the Preview cleanup left partial in section 6.
-
-Everything else is in place; this is a single sitting of work once a second
-identity exists.
+Both identities are real accounts belonging to the project owner. No synthetic
+identity was used and no test or authentication bypass was deployed.
 
 ## 6. Remote state and cleanup
 
