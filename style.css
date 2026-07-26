@@ -2148,3 +2148,30 @@ button[aria-busy="true"] { cursor:progress !important; }
     border-bottom: 1px solid var(--brd);
     background: var(--bg2);
 }
+
+/* ── CF-P7-013 the composed panel ───────────────────────────────────────── */
+
+/* One column with a zero-floor track: a wide surface must never push the panel
+   past the page, which is the defect CF-P7-012 found in four lists at once. */
+.collab-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 0;
+    max-width: 100%;
+}
+.collab-panel__section {
+    min-width: 0;
+    border: 1px solid var(--brd);
+    border-radius: 12px;
+    background: var(--card);
+    overflow: hidden;
+}
+.collab-panel__section[data-scope="account"] { border-style: solid; }
+/* A workspace-scoped section reads as dependent on the current workspace, so it
+   is visually subordinate rather than merely differently coloured. */
+.collab-panel__section[data-scope="workspace"] { border-left-width: 3px; }
+
+@media (max-width: 480px) {
+    .collab-panel { gap: 10px; }
+}
