@@ -1772,3 +1772,80 @@ button[aria-busy="true"] { cursor:progress !important; }
     .collab-members__name { max-width: 100%; }
     .collab-members__action { flex: 1 1 auto; }
 }
+
+/* ── CF-P7-007 invitations ──────────────────────────────────────────────── */
+
+.collab-invites { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-invites__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-invites__create,
+.collab-invites__copy,
+.collab-invites__revoke {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-invites__create:hover:not(:disabled),
+.collab-invites__copy:hover,
+.collab-invites__revoke:hover:not(:disabled) { background: var(--card-h); }
+.collab-invites__create:disabled,
+.collab-invites__revoke:disabled { opacity: .55; cursor: not-allowed; }
+.collab-invites__create:focus-visible,
+.collab-invites__copy:focus-visible,
+.collab-invites__revoke:focus-visible,
+.collab-invites__url:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+/* The one-time value. Given its own block, an assertive warning, and a field
+   rather than a link, because it cannot be shown again. */
+.collab-invites__issued {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--collab-warning);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-invites__warning { margin: 0; font-size: 13px; color: var(--collab-warning); }
+.collab-invites__url {
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+}
+.collab-invites__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.collab-invites__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-invites__login { font-size: 14px; color: var(--tx); }
+.collab-invites__expires { font-size: 12px; color: var(--tx-d); }
+.collab-invites__reason {
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--tx-m);
+    padding-left: 10px;
+    border-left: 2px solid var(--brd-l);
+}
+
+@media (max-width: 480px) {
+    .collab-invites { padding: 12px; }
+    .collab-invites__create, .collab-invites__copy, .collab-invites__revoke { width: 100%; }
+}
