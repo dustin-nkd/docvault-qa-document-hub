@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "phase": "CF-P7",
-  "sprint": "Phase 7 \u2014 Collaboration UI",
+  "sprint": "Phase 7 — Collaboration UI",
   "title": "Deliver the collaboration interface: account, workspace, membership, device and key initialization, sync state, conflict, and audit surfaces",
   "status": "IN PROGRESS",
   "authorization": {
@@ -138,12 +138,13 @@
       "id": "CF-P7-004",
       "title": "Create workspace journey",
       "size": "M",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G2A",
       "exit_gate": "P7-G2B",
       "evidence": [
         "CF-EV-P7-UI-003"
-      ]
+      ],
+      "gate": "cf:phase7:create:check"
     },
     {
       "id": "CF-P7-005",

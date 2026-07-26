@@ -84,6 +84,20 @@ found the prohibition in a comment and failed a correct file. The policy now
 strips comments before asserting a construct is *absent*, and a test proves that
 documenting `workspaces[0]` passes while performing it fails.
 
+## Correction recorded by CF-P7-004
+
+This story's browser qualification checked that focus **moved and returned**
+correctly, which it did, but never measured the focus ring's contrast. CF-P7-004
+did measure it and found the ring these surfaces use — `2px solid var(--acc-l)` —
+reaches only **2.54:1** against a white card in the light theme, below the 3:1
+the contract requires for non-text. The accent is tuned for the dark theme, where
+it measures 8.86:1.
+
+The defect was latent from the day this story shipped. It is fixed in CF-P7-004
+by a theme-aware `--collab-focus` token, and every collaboration focus rule —
+including the ones added here — now points at it. Re-measured after the fix:
+5.48:1 light, 8.86:1 dark. See `CF-EV-P7-UI-003`.
+
 ## Boundary
 
 No route, no schema, no network call, no remote environment. Personal Vault code
