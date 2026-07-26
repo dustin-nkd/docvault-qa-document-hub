@@ -64,11 +64,13 @@
     "personal_provider_fallback": false
   },
   "declared_limits": {
-    "surfaces_reachable_from_entry": ["account-menu", "workspace-switcher"],
-    "surfaces_not_yet_composed": ["create-workspace", "device-key-initialization",
-      "member-list-role-badge", "invitation-manage", "invitation-accept", "sync-state",
-      "conflict-dialog", "audit-activity"],
-    "reason": "This story builds the layer the surfaces were always meant to call and wires the session through it, which is what moves the entry off a permanent loading state. Composing the remaining eight surfaces into the shell is CF-P7-013's integration work and is recorded here rather than left to be discovered, so the coverage this gate claims is exactly the coverage it has."
+    "surfaces_reachable_from_entry": ["account-menu", "workspace-switcher", "create-workspace",
+      "device-key-initialization", "member-list-role-badge", "invitation-manage",
+      "invitation-accept", "sync-state", "conflict-dialog", "audit-activity"],
+    "surfaces_not_yet_composed": [],
+    "closed_by": "CF-P7-013",
+    "closed_on": "2026-07-26",
+    "reason": "CF-P7-015 built the layer the surfaces were always meant to call and wired the session through it, which is what moved the entry off a permanent loading state; two of the ten journey surfaces were reachable from the entry when it shipped, and the other eight were declared here rather than left to be discovered. CF-P7-013 closed that limit: it composed the eight into the panel and fed each one from its own authorized read through this client. The split is no longer taken on trust either -- the gate now walks the entry's import graph and refuses a surface claimed reachable that nothing imported renders, and one claimed pending that the entry already reaches."
   },
   "tests": {
     "unit": "tests/collaboration-api-client.test.mjs",

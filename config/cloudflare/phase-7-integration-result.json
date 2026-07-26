@@ -1,0 +1,26 @@
+{
+  "generated_by": "tests/browser-collaboration-integration.mjs",
+  "summary": [
+    {
+      "browser": "chromium",
+      "surfaces": 8,
+      "widths": 6,
+      "routesCalled": 6,
+      "stuckOnLoading": 0
+    },
+    {
+      "browser": "firefox",
+      "surfaces": 8,
+      "widths": 6,
+      "routesCalled": 6,
+      "stuckOnLoading": 0
+    },
+    {
+      "browser": "webkit",
+      "surfaces": 8,
+      "widths": 6,
+      "routesCalled": 6,
+      "stuckOnLoading": 0
+    }
+  ]
+}

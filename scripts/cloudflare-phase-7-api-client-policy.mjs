@@ -24,6 +24,34 @@ export const CAPABILITY_QUERY_KEYS = Object.freeze(['token', 'csrf', 'csrfToken'
 export const TRANSPORT_PATTERN =
     /(^|[^\w.])fetch\s*\(|\bglobalThis\.fetch\b|\bwindow\.fetch\b|\bself\.fetch\b/;
 
+/**
+ * Every module reachable from one entry by following static imports.
+ *
+ * Added by CF-P7-013, so "reachable from the entry" stops being something a
+ * manifest asserts and becomes something the graph shows. A surface can be
+ * claimed reachable only if a module in this closure renders it, and claimed
+ * pending only if none does — which means the claim cannot survive being wrong
+ * in either direction.
+ *
+ * Static imports are the whole graph here on purpose: the one dynamic import in
+ * the app is the app's own `import('./collaboration/entry.js')`, which is where
+ * this walk starts.
+ */
+export function importClosure(sources, start) {
+    const seen = new Set();
+    const queue = [start];
+    while (queue.length > 0) {
+        const current = queue.shift();
+        if (seen.has(current) || sources[current] === undefined) continue;
+        seen.add(current);
+        const body = code(sources[current]);
+        for (const match of body.matchAll(/from\s*'\.\/([A-Za-z0-9._-]+\.js)'/g)) {
+            queue.push(`js/collaboration/${match[1]}`);
+        }
+    }
+    return seen;
+}
+
 /** Strip comments before asserting a construct is absent. */
 export function code(source) {
     return String(source)
@@ -353,7 +381,11 @@ export async function validatePhase7ApiClient({ manifest, contract, clientSource
     const limits = manifest.declared_limits || {};
     const reached = limits.surfaces_reachable_from_entry || [];
     const pending = limits.surfaces_not_yet_composed || [];
-    assert(pending.length > 0, 'A limit is declared with nothing in it');
+    // A limit may be empty only once something has closed it, and the thing that
+    // closed it has to be named. Left unguarded, an empty list is
+    // indistinguishable from a limit somebody quietly deleted.
+    assert(pending.length > 0 || typeof limits.closed_by === 'string',
+        'A limit is declared with nothing in it and nothing recorded as closing it');
     assert(typeof limits.reason === 'string' && limits.reason.length > 80,
         'The narrowed coverage carries no reason');
     const frozenSurfaces = (contract.surfaces || [])
@@ -365,6 +397,25 @@ export async function validatePhase7ApiClient({ manifest, contract, clientSource
         'The declared coverage split does not account for every frozen surface');
     for (const surface of reached) {
         assert(!pending.includes(surface), `${surface} is declared both reached and pending`);
+    }
+
+    // The split is checked against the module graph, not taken on trust. A
+    // surface is reachable when something the entry imports renders it, and the
+    // renderer is the one place its id appears as the surface marker — so this
+    // asks the code the same question the manifest answers, and refuses a
+    // disagreement in either direction.
+    const closure = importClosure(collaborationSources || {}, manifest.modules?.entry);
+    assert(closure.size > 1, 'The entry module graph could not be walked');
+    const renders = surface => [...closure].some(file =>
+        code((collaborationSources || {})[file] ?? '')
+            .includes(`'data-collab-surface', '${surface}'`));
+    for (const surface of reached) {
+        assert(renders(surface),
+            `${surface} is declared reachable from the entry but nothing it imports renders it`);
+    }
+    for (const surface of pending) {
+        assert(!renders(surface),
+            `${surface} is declared not yet composed, but the entry already reaches it`);
     }
 
     const tests = manifest.tests || {};

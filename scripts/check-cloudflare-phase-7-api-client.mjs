@@ -43,8 +43,17 @@ console.log('  CSRF in memory only, an Idempotency-Key on every mutation and no 
 console.log('  Availability is the deployment\'s own answer; the hostname is a pre-filter '
     + '(owner authorization, 2026-07-26)');
 
-// Narrowed coverage is stated out loud, not left in a file nobody opens.
-const pending = manifest.declared_limits.surfaces_not_yet_composed;
-console.log(`  DECLARED LIMIT: ${pending.length} of 10 journey surfaces are built and gated but `
-    + 'not yet composed into the shell — that is CF-P7-013 integration work');
-console.log(`    ${pending.join(', ')}`);
+// Narrowed coverage is stated out loud, not left in a file nobody opens — and
+// so is the fact that it has since been closed, because a limit that is quietly
+// dropped and a limit that was honoured look identical in a file.
+const limits = manifest.declared_limits;
+const pending = limits.surfaces_not_yet_composed;
+if (pending.length > 0) {
+    console.log(`  DECLARED LIMIT: ${pending.length} of 10 journey surfaces are built and gated `
+        + 'but not yet composed into the shell — that is CF-P7-013 integration work');
+    console.log(`    ${pending.join(', ')}`);
+} else {
+    console.log(`  DECLARED LIMIT CLOSED by ${limits.closed_by} on ${limits.closed_on}: all `
+        + `${limits.surfaces_reachable_from_entry.length} journey surfaces are reachable from `
+        + 'the entry, checked against its import graph rather than claimed');
+}

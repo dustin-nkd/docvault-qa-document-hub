@@ -13,8 +13,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-    validatePhase7ApiClient, code, PERSONAL_KEYS, PROHIBITED_QUERY_KEYS, CAPABILITY_QUERY_KEYS,
-    TRANSPORT_PATTERN
+    validatePhase7ApiClient, code, importClosure, PERSONAL_KEYS, PROHIBITED_QUERY_KEYS,
+    CAPABILITY_QUERY_KEYS, TRANSPORT_PATTERN
 } from '../scripts/cloudflare-phase-7-api-client-policy.mjs';
 import * as apiClient from '../js/collaboration/api-client.js';
 
@@ -508,8 +508,12 @@ test('a unit test inventory that disagrees with the suite is rejected', async ()
 test('a surface dropped from both coverage lists is rejected', async () => {
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
-    drifted.manifest.declared_limits.surfaces_not_yet_composed =
-        drifted.manifest.declared_limits.surfaces_not_yet_composed.slice(1);
+    const limits = drifted.manifest.declared_limits;
+    // A surface in neither list is coverage claimed and not delivered, which is
+    // the failure this rule exists to stop. Dropped from the reachable list now
+    // that the pending one is closed and empty.
+    assert.ok(limits.surfaces_reachable_from_entry.length > 0);
+    limits.surfaces_reachable_from_entry = limits.surfaces_reachable_from_entry.slice(1);
     await assert.rejects(() => validatePhase7ApiClient(drifted),
         /does not account for every frozen surface/);
 });
@@ -522,16 +526,52 @@ test('claiming a surface is reachable while it is also pending is rejected', asy
         /does not account for every frozen surface/);
 });
 
-test('claiming coverage of a surface that is not composed is rejected', async () => {
+test('a limit emptied with nothing recorded as closing it is rejected', async () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    // A limit somebody quietly deleted and a limit some story honoured look
+    // identical in a file unless the second one is named.
+    delete drifted.manifest.declared_limits.closed_by;
+    await assert.rejects(() => validatePhase7ApiClient(drifted),
+        /nothing recorded as closing it/);
+});
+
+test('claiming a surface is reachable that nothing the entry imports renders is rejected',
+    async () => {
+        const drifted = input();
+        drifted.manifest = clone(drifted.manifest);
+        // The entry no longer imports the panel, so eight of the ten surfaces
+        // stop being reachable — but the manifest still says they are.
+        drifted.collaborationSources['js/collaboration/entry.js'] = mutated(
+            drifted.collaborationSources['js/collaboration/entry.js'],
+            /import\s*\{\s*renderSurfacePanel\s*\}\s*from\s*'\.\/surface-panel\.js';/,
+            'const renderSurfacePanel = () => null;');
+        await assert.rejects(() => validatePhase7ApiClient(drifted),
+            /declared reachable from the entry but nothing it imports renders it/);
+    });
+
+test('claiming a surface is still pending after the entry reaches it is rejected', async () => {
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
     const limits = drifted.manifest.declared_limits;
-    limits.surfaces_reachable_from_entry = [
-        ...limits.surfaces_reachable_from_entry, ...limits.surfaces_not_yet_composed
-    ];
-    limits.surfaces_not_yet_composed = [];
+    limits.surfaces_reachable_from_entry = limits.surfaces_reachable_from_entry
+        .filter(surface => surface !== 'audit-activity');
+    limits.surfaces_not_yet_composed = ['audit-activity'];
     await assert.rejects(() => validatePhase7ApiClient(drifted),
-        /A limit is declared with nothing in it/);
+        /declared not yet composed, but the entry already reaches it/);
+});
+
+test('the import closure follows the entry rather than the directory', () => {
+    const sources = collaborationSources();
+    const closure = importClosure(sources, 'js/collaboration/entry.js');
+    assert.ok(closure.has('js/collaboration/entry.js'));
+    assert.ok(closure.has('js/collaboration/surface-panel.js'),
+        'the panel the entry imports is missing from its own closure');
+    assert.ok(closure.has('js/collaboration/audit-activity.js'),
+        'the closure stopped at the first hop instead of following transitively');
+    // A module nothing imports is not in the graph, which is the whole point:
+    // walking the directory would have called every surface reachable.
+    assert.equal(closure.has('js/collaboration/storage-provider.js'), false);
 });
 
 test('a narrowed coverage with no reason is rejected', async () => {
@@ -545,6 +585,7 @@ test('the declared limit is stated at run time, not only in the manifest', () =>
     const check = read('scripts/check-cloudflare-phase-7-api-client.mjs');
     assert.match(check, /DECLARED LIMIT/);
     assert.match(check, /surfaces_not_yet_composed/);
+    assert.match(check, /DECLARED LIMIT CLOSED/);
 });
 
 test('dropping the single-transport-seam claim is rejected', async () => {

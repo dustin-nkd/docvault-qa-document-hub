@@ -1422,7 +1422,14 @@ button[aria-busy="true"] { cursor:progress !important; }
     font-style: normal;
 }
 
-.collab-account, .collab-switcher { position: relative; }
+/* `min-width: 0` is load-bearing, not tidiness (CF-P7-013).
+   The context name truncates with an ellipsis, but truncation only happens if
+   every ancestor between it and the chrome is allowed to shrink. A flex item
+   defaults to `min-width: auto`, so without this the switcher grew to the full
+   width of a long workspace name and pushed the chrome past the page at 320 px.
+   CF-P7-012 could not see it: it qualified the switcher on its own, where there
+   was no flex parent to refuse, and the composed chrome is where it appears. */
+.collab-account, .collab-switcher { position: relative; min-width: 0; max-width: 100%; }
 
 .collab-account__trigger,
 .collab-switcher__trigger,

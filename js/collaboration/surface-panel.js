@@ -76,7 +76,35 @@ function mountSurface(doc, section, surface, build) {
 }
 
 /**
+ * A read that did not come back, said out loud (CF-P7-013).
+ *
+ * The rule above — an undelivered list renders `loading`, never an empty one —
+ * is right while a read is still in flight and wrong the moment it has failed.
+ * A surface left on `loading` after its read was denied is the permanent-loading
+ * defect this story exists to remove, wearing the honest state's clothes: the
+ * user waits for something that is never coming.
+ *
+ * So a caller that knows a read failed says so, and that surface renders its own
+ * `error` with the reason the server gave. Absence of a key still means "not
+ * back yet"; presence here means "back, and it was a no".
+ */
+function mountFailure(doc, section, surface, failure) {
+    section.appendChild(renderBaseState(doc, baseStateModel({
+        state: failure.state === 'unauthorized' ? 'unauthorized' : 'error',
+        surface,
+        title: failure.title ?? 'This section could not be loaded',
+        reason: failure.reason
+            ?? 'The workspace could not be reached for this section. Nothing was changed.'
+    })));
+}
+
+/**
  * Compose the panel.
+ *
+ * `data.failures` maps a surface id to the reason its read came back refused.
+ * It is deliberately separate from the data itself: a missing key means the
+ * answer has not arrived, and an entry here means it arrived and was a no. The
+ * two look identical from inside the panel and mean opposite things to a user.
  *
  * @param {{document: Document, context: {status: string, workspaceId: string|null},
  *          session: {authenticated: boolean|null, login?: string},
@@ -101,6 +129,15 @@ export function renderSurfacePanel({ document: doc, context, session, device = n
         section.setAttribute('data-surface', surface);
         section.setAttribute('data-scope',
             ACCOUNT_SCOPED.includes(surface) ? 'account' : 'workspace');
+
+        // A read that came back refused outranks everything below it: there is
+        // nothing to wait for and nothing to render from.
+        const failure = (data.failures ?? {})[surface];
+        if (failure !== undefined) {
+            mountFailure(doc, section, surface, failure);
+            panel.appendChild(section);
+            continue;
+        }
 
         // A workspace-scoped surface with no active workspace says so, rather
         // than rendering an empty list that looks like an empty workspace.

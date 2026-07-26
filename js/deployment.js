@@ -17,6 +17,26 @@
     const LOCAL_HOSTS = Object.freeze(['localhost', '127.0.0.1', '[::1]']);
 
     /**
+     * Which environment a remembered workspace selection belongs to.
+     *
+     * The selection key is scoped by environment and subject so a Preview choice
+     * can never be restored in Production. Pages names a production deployment
+     * `<project>.pages.dev` and every preview `<something>.<project>.pages.dev`,
+     * so the label count is the distinction — and where it is not recognised the
+     * answer is `preview`, which is the conservative one: a selection that fails
+     * to be restored costs a click, and one restored into the wrong environment
+     * shows a user a workspace they did not choose.
+     *
+     * @param {string} hostname
+     * @param {string} target
+     */
+    function environmentOf(hostname, target) {
+        if (target === 'local') return 'local';
+        if (target !== 'cloudflare') return 'preview';
+        return hostname.split('.').length <= 3 ? 'production' : 'preview';
+    }
+
+    /**
      * Where collaboration *could* run. Availability is a property of the
      * deployment, never of the user: a signed-out visitor on Cloudflare still
      * gets `available`, because the reason they cannot collaborate is
@@ -51,6 +71,22 @@
         // An unrecognised origin fails closed. Guessing that some custom domain
         // is the Cloudflare deployment would offer a feature that then 404s.
         return { available: false, reason: 'unsupported-origin', target: 'unknown' };
+    }
+
+    /**
+     * `localStorage`, or nothing.
+     *
+     * Reading the property itself throws in some privacy configurations, so the
+     * access is guarded rather than the use. A store that cannot be reached is
+     * no remembered selection, which the entry already treats as a state rather
+     * than an error.
+     */
+    function readableStore() {
+        try {
+            return window.localStorage || null;
+        } catch (error) {
+            return null;
+        }
     }
 
     const BANNER_ID = 'collaboration-availability-banner';
@@ -103,7 +139,21 @@
                 // a hostname pre-filter and cannot tell a Cloudflare deployment
                 // with collaboration switched on from one with it switched off.
                 // The entry asks the deployment itself and renders that answer.
-                return module.startCollaboration({ document: doc, deployment: availability });
+                //
+                // The store, the environment, and the address bar are handed in
+                // rather than reached for. Without the first two the entry can
+                // never restore a remembered workspace, so every workspace-scoped
+                // surface would stay empty for a returning user; without the
+                // third an invitation link is a fragment nothing ever reads.
+                return module.startCollaboration({
+                    document: doc,
+                    deployment: availability,
+                    storage: readableStore(),
+                    environment: environmentOf(
+                        String(location.hostname || '').toLowerCase(), availability.target),
+                    location: location,
+                    history: history
+                });
             }).catch(function () {
                 // Collaboration failing to load must never break the Personal
                 // Vault around it; the control simply becomes available again.
@@ -117,6 +167,7 @@
 
     window.DocVaultDeployment = Object.freeze({
         evaluate,
+        environmentOf,
         applyBanner,
         bindCollaborationOpener,
         bannerId: BANNER_ID,

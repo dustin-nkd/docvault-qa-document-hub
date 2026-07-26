@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-013",
+  "status": "PARTIAL",
+  "approved_entry_gate": "P7-G4",
+  "next_gate": "P7-G4A",
+  "authorizes_on_approval": "CF-P7-014",
+  "environment": "preview",
+
+  "composition": {
+    "entry": "js/collaboration/entry.js",
+    "panel": "js/collaboration/surface-panel.js",
+    "adapter": "js/collaboration/services.js",
+    "client": "js/collaboration/api-client.js",
+    "surfaces_in_chrome": ["account-menu", "workspace-switcher"],
+    "surfaces_in_panel": [
+      "create-workspace", "device-key-initialization", "member-list-role-badge",
+      "invitation-manage", "invitation-accept", "sync-state", "conflict-dialog",
+      "audit-activity"
+    ],
+    "shared_surfaces": ["base-states", "github-pages-banner"],
+    "routes_exercised": [
+      "/api/v1/session",
+      "/api/v1/workspaces",
+      "/api/v1/workspaces/{workspaceId}/members",
+      "/api/v1/workspaces/{workspaceId}/invitations",
+      "/api/v1/workspaces/{workspaceId}/audit-events",
+      "/api/v1/workspaces/{workspaceId}/key-envelopes/current",
+      "/api/v1/invitations/bootstrap"
+    ],
+    "single_transport_seam": true,
+    "adds_primitive": false,
+    "reimplements_service": false
+  },
+
+  "budgets": {
+    "collaboration_modules_on_personal_startup": 0,
+    "surfaces_left_on_loading_after_reads": 0,
+    "personal_storage_keys_touched": 0,
+    "horizontal_page_scroll": false
+  },
+
+  "local_qualification": {
+    "harness": "tests/browser-collaboration-integration.mjs",
+    "browsers": ["chromium", "firefox", "webkit"],
+    "widths_px": [320, 768, 1024],
+    "themes": ["dark", "light"],
+    "surfaces_mounted": 8,
+    "routes_called": 6,
+    "surfaces_left_on_loading": 0,
+    "workspace_chosen_through_the_switcher": true,
+    "evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-003.md",
+    "defects_found": [
+      "The chrome overflowed the page at 320 px with a long workspace name: .collab-switcher and .collab-account are flex items and default to min-width auto, so the context name could not shrink and its ellipsis never applied. CF-P7-012 could not see it because it qualified the switcher on its own, with no flex parent to refuse; the composed chrome is the only place it appears."
+    ]
+  },
+
+  "preview": {
+    "deployment": "4c5d7c8a-17ec-4469-bcb7-b266bce91aa6",
+    "source_commit": "fe0fa2e",
+    "branch": "codex-cf-p3-preview",
+    "url": "https://4c5d7c8a.docvault-qa-document-hub.pages.dev",
+    "collaboration_enabled": false,
+    "modules_before_opener": 0,
+    "modules_after_opener": 19,
+    "shell_mounted": true,
+    "rendered_state": "error",
+    "rendered_title": "Collaboration is not enabled here",
+    "horizontal_page_scroll": false,
+    "journeys_qualified": false,
+    "evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-002.md"
+  },
+
+  "blocked_on": {
+    "owner_action": "Set COLLABORATION_ENABLED for the Preview environment of the Pages project and redeploy codex-cf-p3-preview, then report the new deployment id.",
+    "reason": "Both /api/v1/session and /api/v1/workspaces answer 503 COLLABORATION_UNAVAILABLE on the measured deployment, so no authenticated journey exists to qualify. Cloudflare Pages binds environment variables at build time, so setting the variable is not enough on its own -- the branch has to be rebuilt. wrangler pages secret put is refused to an agent by the permission classifier, which makes this an owner action rather than a step this story can take.",
+    "agent_permitted": false,
+    "blocks": ["journey qualification", "CF-P7-013 PASS", "CF-P7-014"]
+  },
+
+  "declared_limits": {
+    "journeys_not_completable_in_this_build": [
+      {
+        "journey": "register this device",
+        "surface": "device-key-initialization",
+        "missing": "an unlock secret to protect the device key",
+        "reason": "DeviceKeyLifecycle.enroll takes an unlock secret, and the passphrase surface that would collect one is not among the twelve CF-P7-001 froze. Adding it is a contract change under its own story, not an implementation detail of this one."
+      },
+      {
+        "journey": "create a workspace",
+        "surface": "create-workspace",
+        "missing": "a client-side workspace-DEK sealer, and an active device to seal to",
+        "reason": "runCreateWorkspace needs keys.sealCreatorEnvelope, which exists nowhere in the browser: Phase 5 shipped the device key pair and the server-side envelope services, and Phase 6 drove the sealing by hand. Writing one here would be a new cryptographic primitive, which the Phase 7 governing principle forbids. The surface states the nearer half of the reason itself -- there is no active device -- and holds its submit control disabled rather than failing on press."
+      },
+      {
+        "journey": "accept an invitation",
+        "surface": "invitation-accept",
+        "missing": "an active device to bind the membership to",
+        "reason": "InvitationAcceptRequest carries a device id, and device registration is unavailable for the reason above. The review half is composed and reads live: the token is taken from the fragment, the address bar is cleared by replacement, and the invitation is described. Only the final accept is held, with the surface stating why."
+      },
+      {
+        "journey": "resolve a conflict",
+        "surface": "conflict-dialog",
+        "missing": "an open workspace document",
+        "reason": "A conflict is raised by a document mutation, and no document surface exists in the frozen Phase 7 inventory -- the handoff scoped the document experience but CF-P7-001 froze twelve surfaces without one. The dialog composes and renders its own no-conflict state; it cannot be reached by a user in this build."
+      },
+      {
+        "journey": "sign in",
+        "surface": "base-states",
+        "missing": "a CSRF-exempt path through the API client",
+        "reason": "POST /api/v1/oauth/github/transactions is public and CSRF-exempt, and the CF-P7-015 client requires a CSRF token on every mutation -- a refusal its own gate proves. Carving an exemption into it is a change to that client under its own review. The control CF-P7-015 shipped on the unauthorized state is therefore not wired here."
+      }
+    ],
+    "sync_states_reachable": ["saved", "access-removed"],
+    "sync_states_not_reachable": ["saving", "offline", "conflict"],
+    "sync_reason": "Saving, Offline, and Conflict are all derived from outbox entries for an open document, and there is no document surface in the frozen inventory to create one. Saved and Access removed do not need one: Saved is the empty queue, and Access removed is reached from a real workspace-scoped denial followed by a membership re-check, which this build performs."
+  },
+
+  "tests": {
+    "adapter": "tests/collaboration-services.test.mjs",
+    "integration": "tests/collaboration-integration.test.mjs",
+    "panel": "tests/collaboration-surface-panel.test.mjs",
+    "browser": "tests/browser-collaboration-integration.mjs",
+    "policy": "tests/cloudflare-phase-7-preview-policy.test.mjs"
+  }
+}

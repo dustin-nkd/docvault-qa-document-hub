@@ -88,5 +88,8 @@ import './cloudflare-phase-7-audit-policy.test.mjs';
 import './cloudflare-phase-7-qualification-policy.test.mjs';
 import './cloudflare-phase-7-api-client-policy.test.mjs';
 import './collaboration-api-client.test.mjs';
+import './collaboration-services.test.mjs';
 import './collaboration-entry.test.mjs';
+import './collaboration-integration.test.mjs';
+import './cloudflare-phase-7-preview-policy.test.mjs';
 import './collaboration-surface-panel.test.mjs';
