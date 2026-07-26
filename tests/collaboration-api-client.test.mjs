@@ -82,8 +82,8 @@ test('the returned client is frozen', () => {
 
 // ── the frozen error taxonomy ────────────────────────────────────────────────
 
-test('the taxonomy is exactly the twelve frozen codes', () => {
-    assert.equal(TAXONOMY_CODES.length, 12);
+test('the taxonomy is exactly the twenty-nine codes of the server catalog', () => {
+    assert.equal(TAXONOMY_CODES.length, 29);
 });
 
 test('every frozen code presents with a reason in text', () => {
@@ -95,11 +95,29 @@ test('every frozen code presents with a reason in text', () => {
     }
 });
 
-test('the three server aliases resolve onto frozen codes', () => {
+test('the wire-spelling aliases resolve onto frozen codes', () => {
     for (const [server, frozen] of Object.entries(SERVER_CODE_ALIASES)) {
         assert.equal(presentErrorCode(server).code, frozen, server);
         assert.ok(frozen in ERROR_PRESENTATION, frozen);
     }
+});
+
+test('the wire spellings the Workers runtime emits still present as unauthorized', () => {
+    // CF-P7-016 turned this join around. The handlers put UNAUTHENTICATED and
+    // RECENT_AUTHENTICATION_REQUIRED on the wire and no Phase 7 story may change
+    // them; without the alias a real 401 or 403 from Preview would fall into the
+    // unrecognised bucket and silently lose its unauthorized presentation.
+    assert.equal(presentErrorCode('UNAUTHENTICATED').code, 'AUTHENTICATION_REQUIRED');
+    assert.equal(presentErrorCode('UNAUTHENTICATED').ui, 'unauthorized');
+    assert.equal(presentErrorCode('RECENT_AUTHENTICATION_REQUIRED').code,
+        'REAUTHENTICATION_REQUIRED');
+    assert.equal(presentErrorCode('RECENT_AUTHENTICATION_REQUIRED').ui, 'unauthorized');
+});
+
+test('a session that expired is its own code rather than an alias of another', () => {
+    assert.equal(presentErrorCode('SESSION_EXPIRED').recognised, true);
+    assert.equal(presentErrorCode('SESSION_EXPIRED').code, 'SESSION_EXPIRED');
+    assert.equal(presentErrorCode('SESSION_EXPIRED').ui, 'unauthorized');
 });
 
 test('an unknown code fails closed as error rather than passing through', () => {

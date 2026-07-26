@@ -121,7 +121,7 @@ test('echoing an unknown server code back into the interface is rejected', async
 test('an alias resolving outside the frozen taxonomy is rejected', async () => {
     const drifted = input();
     drifted.clientExports.SERVER_CODE_ALIASES = {
-        ...apiClient.SERVER_CODE_ALIASES, AUTHENTICATION_REQUIRED: 'SOMETHING_ELSE'
+        ...apiClient.SERVER_CODE_ALIASES, UNAUTHENTICATED: 'SOMETHING_ELSE'
     };
     await assert.rejects(() => validatePhase7ApiClient(drifted),
         /resolves outside the frozen taxonomy/);
@@ -138,8 +138,9 @@ test('an undeclared alias is rejected', async () => {
 test('a contract whose taxonomy shrinks is rejected', async () => {
     const drifted = input();
     drifted.contract = clone(drifted.contract);
-    drifted.contract.error_mapping = drifted.contract.error_mapping.slice(0, 11);
-    await assert.rejects(() => validatePhase7ApiClient(drifted), /no longer twelve codes/);
+    drifted.contract.error_mapping = drifted.contract.error_mapping.slice(0, 28);
+    await assert.rejects(() => validatePhase7ApiClient(drifted),
+        /the manifest declares 29/);
 });
 
 // ── same-origin and CSRF ─────────────────────────────────────────────────────

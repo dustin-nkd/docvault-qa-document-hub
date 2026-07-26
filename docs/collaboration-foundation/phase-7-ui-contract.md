@@ -66,23 +66,100 @@ Three rules:
 
 ## 4. Error to state mapping
 
-Every code in the frozen server taxonomy maps to exactly one presentation, and
-every one of them explains itself in text.
+**Amended by `CF-P7-016`.** As frozen, this section opened by claiming that every
+code in the server taxonomy mapped to exactly one presentation, and then listed
+twelve. The catalog it claimed to cover — `api-contract.md` §8 — holds
+twenty-nine, and two of the twelve rows named codes that appear in no catalog at
+all: `UNAUTHENTICATED`, which the catalog spells `AUTHENTICATION_REQUIRED`, and
+`RECENT_AUTHENTICATION_REQUIRED`, which it spells `REAUTHENTICATION_REQUIRED`.
+The claim was therefore false in both directions at once — seventeen server codes
+had no decided presentation, and two presentations were decided for codes the
+catalog does not define.
 
-| Code | Presented as |
-|---|---|
-| `UNAUTHENTICATED` | unauthorized |
-| `RECENT_AUTHENTICATION_REQUIRED` | unauthorized |
-| `OPERATION_NOT_PERMITTED` | role-disabled explanation |
-| `DOCUMENT_REVISION_CONFLICT` | Conflict |
-| `RESOURCE_NOT_FOUND` | empty, or Access removed after a membership re-check |
-| `KEY_VERSION_MISMATCH` | error |
-| `IDEMPOTENCY_KEY_REUSED` | error |
-| `IDEMPOTENCY_WINDOW_EXPIRED` | error |
-| `RATE_LIMITED` | error |
-| `COLLABORATION_UNAVAILABLE` | error |
-| `VALIDATION_FAILED` | error |
-| `CSRF_REJECTED` | error |
+It is corrected here, by a Phase 7 story, rather than from Phase 8, because
+`CF-P7-001` freezes this document: a mapping may not be added or removed as an
+implementation detail, and changing one takes a new story. Editing a frozen
+contract from a later phase is exactly what this programme forbids everywhere
+else. So the contract change and the gate amendment ship in one commit, on the
+`D-P7-01` precedent, leaving no window in which the two disagree.
+
+The gate no longer takes the catalog's size on trust either. It parses §8 out of
+`api-contract.md` and fails if any catalog code is unmapped or any mapped code is
+absent from the catalog. That bidirectional check is the assertion whose absence
+let a map claim completeness while covering twelve of twenty-nine.
+
+The presentation vocabulary is **unchanged and still closed**: `unauthorized`,
+`error`, `empty-or-access-removed`, `Conflict`, and the role-disabled
+explanation. Seventeen new codes did not earn a sixth. Every code maps to exactly
+one presentation, and every one of them explains itself in text.
+
+| HTTP | Code | Presented as |
+| ---: | --- | --- |
+| 400 | `INVALID_JSON` | error |
+| 400 | `VALIDATION_FAILED` | error |
+| 400 | `INVALID_CURSOR` | error |
+| 400 | `INVALID_PRECONDITION` | error |
+| 401 | `AUTHENTICATION_REQUIRED` | unauthorized |
+| 401 | `SESSION_EXPIRED` | unauthorized |
+| 401 | `REAUTHENTICATION_REQUIRED` | unauthorized |
+| 403 | `CSRF_REJECTED` | error |
+| 403 | `DEVICE_NOT_AUTHORIZED` | error |
+| 403 | `KEY_PROVISIONING_REQUIRED` | error |
+| 403 | `OPERATION_NOT_PERMITTED` | role-disabled explanation |
+| 404 | `RESOURCE_NOT_FOUND` | empty, or Access removed after a membership re-check |
+| 405 | `METHOD_NOT_ALLOWED` | error |
+| 406 | `NOT_ACCEPTABLE` | error |
+| 409 | `DOCUMENT_REVISION_CONFLICT` | Conflict |
+| 409 | `IDEMPOTENCY_KEY_REUSED` | error |
+| 409 | `IDEMPOTENCY_WINDOW_EXPIRED` | error |
+| 409 | `STATE_TRANSITION_INVALID` | error |
+| 409 | `KEY_VERSION_MISMATCH` | error |
+| 409 | `FINGERPRINT_CHANGED` | error |
+| 409 | `INVITATION_UNAVAILABLE` | error |
+| 409 | `LAST_OWNER_REQUIRED` | role-disabled explanation |
+| 409 | `LIFECYCLE_POLICY_UNAVAILABLE` | error |
+| 413 | `PAYLOAD_TOO_LARGE` | error |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | error |
+| 422 | `UNSUPPORTED_ENVELOPE` | error |
+| 429 | `RATE_LIMITED` | error |
+| 500 | `INTERNAL_ERROR` | error |
+| 503 | `COLLABORATION_UNAVAILABLE` | error |
+
+### Why the non-obvious rows are what they are
+
+Most of the seventeen are `error` because `error` is what the vocabulary means:
+the action did not happen, nothing changed, and the recovery is to read the
+reason and try again. Five rows were arguments, and the argument is recorded.
+
+- **`SESSION_EXPIRED` is `unauthorized`, `DEVICE_NOT_AUTHORIZED` is not.** Both
+  are refusals of the caller, but `unauthorized` is the state the shell renders
+  as "Sign in to see this". That is true of an expired session and false of a
+  revoked device: the session is fine, and telling that user to sign in sends
+  them round a loop that cannot clear the refusal. A revoked device is recovered
+  through the device journey, so it presents as `error` with its own reason.
+- **`KEY_PROVISIONING_REQUIRED` is `error`,** for the same reason and by the same
+  neighbour: `KEY_VERSION_MISMATCH` was already frozen as `error`, and both are
+  "this device's key material is not usable yet", recovered in the device and key
+  surface rather than at an authentication wall.
+- **`INVITATION_UNAVAILABLE` is `error`, not `empty-or-access-removed`,** even
+  though it is the invitation half of the same non-enumeration policy that makes
+  `RESOURCE_NOT_FOUND` deliberately ambiguous. Two reasons. It is not a
+  membership question, so the re-check that §3 requires before `Access removed`
+  may be claimed has nothing to re-check; and the surface that receives it,
+  `invitation-accept`, does not declare `empty` among its base states, so
+  `empty-or-access-removed` is not a state it can render.
+- **`LAST_OWNER_REQUIRED` is a role-disabled explanation, not an `error`.** The
+  name of the presentation says role, but its shape is what is being chosen: a
+  control that stays visible, is programmatically disabled, and states its reason
+  in text. A workspace must keep an Owner, the member list already knows who the
+  Owners are, and §5 forbids a control that looks enabled and fails only on
+  submit. Presenting this as a generic error would mean the product waits for the
+  user to try before telling them the rule.
+- **`LIFECYCLE_POLICY_UNAVAILABLE` is `error`,** taking its neighbour
+  `COLLABORATION_UNAVAILABLE` rather than the role-disabled shape. It is not a
+  denial aimed at this user — export and deletion are reserved and deny-closed
+  for everyone — and the reason a user needs is that the capability is not
+  available here, which is what `error` with a stated reason says.
 
 ## 5. Role-disabled controls
 

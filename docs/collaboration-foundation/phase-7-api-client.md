@@ -41,20 +41,33 @@ that is already proven.
 | Cursors | Copied through byte for byte. Nothing here decodes, parses, or inspects one |
 | Pagination | `limit` bounded at 100; `offset`, `page`, and `skip` refused outright |
 | Origin | Absolute, protocol-relative, and non-`/api/v1` paths refused **before** the send |
-| Errors | The twelve frozen codes, each to its one frozen presentation. Anything else fails closed |
+| Errors | The frozen codes — twenty-nine since `CF-P7-016` — each to its one frozen presentation. Anything else fails closed |
 
 Each refusal has a code, and the gate drives every one of them against a fake
 transport rather than reading the source for a pattern.
 
-### The three alias codes
+### The two wire-spelling aliases
 
-The API contract's error catalog and the frozen UI contract's taxonomy name three
-of the same failures differently — `AUTHENTICATION_REQUIRED` and `SESSION_EXPIRED`
-against `UNAUTHENTICATED`, `REAUTHENTICATION_REQUIRED` against
-`RECENT_AUTHENTICATION_REQUIRED`. Neither document is wrong and neither may be
-edited to match the other: the UI contract is frozen, and the API contract is the
-server's. So the join is one explicit table in the client, and the gate asserts
-every alias lands inside the frozen twelve. No thirteenth code was invented.
+**Amended by `CF-P7-016`.** This section used to describe three aliases pointing
+the other way, and to argue that the API contract and the frozen UI contract
+simply named three failures differently, that neither was wrong, and that neither
+could be edited to match the other. The middle claim was false. `UNAUTHENTICATED`
+and `RECENT_AUTHENTICATION_REQUIRED` are spellings the API catalog does not
+contain at all, so the client was aliasing two real catalog codes onto two
+invented ones — and the frozen §4 map they belonged to covered twelve of the
+catalog's twenty-nine while claiming to cover all of it. `CF-P7-016` corrected
+§4, which the freeze permits through a story and forbids as an implementation
+detail.
+
+What is left is a genuine join, in the opposite direction. The implemented
+Workers handlers emit `UNAUTHENTICATED` and `RECENT_AUTHENTICATION_REQUIRED` on
+the wire, and no Phase 7 story may change a handler — reconciling the server with
+its own catalog is the server's review, not this one. So those two wire spellings
+map onto `AUTHENTICATION_REQUIRED` and `REAUTHENTICATION_REQUIRED`, and the gate
+asserts every alias lands inside the frozen set. Without them a real 401 or 403
+from Preview would reach the unrecognised bucket and lose its `unauthorized`
+presentation without anything failing. `SESSION_EXPIRED` needs no alias now that
+it has a mapping of its own.
 
 ### Why an unknown code fails closed
 

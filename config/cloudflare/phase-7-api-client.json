@@ -15,11 +15,12 @@
   },
   "taxonomy": {
     "source": "config/cloudflare/phase-7-ui-contract.json",
-    "frozen_code_count": 12,
+    "frozen_code_count": 29,
+    "corrected_by": "CF-P7-016",
     "unknown_code_presentation": "error",
     "unknown_code_echoed": false,
-    "server_aliases": ["AUTHENTICATION_REQUIRED", "SESSION_EXPIRED", "REAUTHENTICATION_REQUIRED"],
-    "alias_rationale": "The API contract and the frozen UI contract name three of the same failures differently, because they were written for different readers at different times. Neither is wrong and neither may be edited to match the other: the UI contract is frozen and the API contract is the server's. So the join is written down here, in one table, where a reader can confirm that no thirteenth code was invented and that every alias lands inside the frozen twelve."
+    "server_aliases": ["UNAUTHENTICATED", "RECENT_AUTHENTICATION_REQUIRED"],
+    "alias_rationale": "This table used to run the other way, and CF-P7-016 turned it around. The old reasoning was that the frozen UI contract and the API contract named three failures differently and neither could be edited to match the other. That was wrong about which document was in error: the UI contract's UNAUTHENTICATED and RECENT_AUTHENTICATION_REQUIRED are spellings the API catalog does not contain at all, so the map was aliasing real catalog codes onto invented ones. CF-P7-016 renamed them to AUTHENTICATION_REQUIRED and REAUTHENTICATION_REQUIRED and mapped the whole catalog. What remains is a genuine wire join in the opposite direction: the implemented Workers handlers emit UNAUTHENTICATED and RECENT_AUTHENTICATION_REQUIRED on the wire, and no Phase 7 story may change a handler. Without these two entries a real 401 or 403 from Preview would reach the unrecognised bucket and lose its unauthorized presentation. SESSION_EXPIRED no longer needs an alias because it now has a mapping of its own, and it is emitted nowhere in functions/ in any case."
   },
   "session": {
     "csrf_token_storage": "memory-only",
@@ -74,7 +75,7 @@
   },
   "tests": {
     "unit": "tests/collaboration-api-client.test.mjs",
-    "unit_count": 56,
+    "unit_count": 58,
     "wiring": "tests/collaboration-entry.test.mjs",
     "policy": "tests/cloudflare-phase-7-api-client-policy.test.mjs"
   }

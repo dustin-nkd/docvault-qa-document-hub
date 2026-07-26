@@ -126,7 +126,9 @@ export async function validatePhase7ApiClient({ manifest, contract, clientSource
     // directions: a code added here without being frozen, or frozen and not
     // handled here, are both drift.
     const frozen = (contract.error_mapping || []).map(entry => entry.code);
-    assert(frozen.length === 12, 'The frozen error taxonomy is no longer twelve codes');
+    assert(frozen.length === (manifest.taxonomy?.frozen_code_count ?? 0),
+        `The frozen error taxonomy is ${frozen.length} codes, `
+        + `the manifest declares ${manifest.taxonomy?.frozen_code_count}`);
     assert(same(api.TAXONOMY_CODES || [], frozen),
         'The handled error codes drifted from the frozen taxonomy');
 
@@ -149,8 +151,10 @@ export async function validatePhase7ApiClient({ manifest, contract, clientSource
     assert(!unknown.reason.includes('SOME_CODE_THIS_BUILD_HAS_NEVER_SEEN'),
         'An unknown code is echoed back into the interface');
 
-    // The server catalog names three of the frozen codes differently. The join
-    // is declared, not guessed, and every alias must land inside the frozen set.
+    // The implemented Workers handlers still put two pre-CF-P7-016 spellings on
+    // the wire. The join is declared, not guessed, and every alias must land
+    // inside the frozen set — an alias onto a code nobody froze is how the
+    // defect CF-P7-016 corrected got in.
     const aliases = api.SERVER_CODE_ALIASES || {};
     assert(same(Object.keys(aliases), manifest.taxonomy?.server_aliases || []),
         'The declared server alias set drifted from the client');

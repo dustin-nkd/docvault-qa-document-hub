@@ -258,12 +258,14 @@ test('a failure is raised with the code the journeys read', async () => {
     }
 });
 
-test('a server alias resolves into the frozen taxonomy rather than through it', async () => {
+test('a wire spelling resolves into the frozen taxonomy rather than through it', async () => {
+    // The Workers runtime emits UNAUTHENTICATED; CF-P7-016 made the catalog's
+    // AUTHENTICATION_REQUIRED the frozen code, so the alias points that way now.
     const { services } = await signedIn([
-        respond(401, { error: { code: 'AUTHENTICATION_REQUIRED' }, meta: {} })
+        respond(401, { error: { code: 'UNAUTHENTICATED' }, meta: {} })
     ]);
     const code = await refusal(() => services.listAuditEvents({ workspaceId: WS }));
-    assert.equal(code, 'UNAUTHENTICATED');
+    assert.equal(code, 'AUTHENTICATION_REQUIRED');
 });
 
 test('a code this build has never seen fails closed and is not echoed', async () => {

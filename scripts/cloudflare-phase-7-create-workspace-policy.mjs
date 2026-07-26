@@ -7,13 +7,17 @@ export const STEPS = Object.freeze(['name-workspace', 'bootstrap-key', 'create']
 export const STATUSES = Object.freeze([
     'naming', 'binding', 'sealing', 'creating', 'created', 'failed'
 ]);
-export const TAXONOMY = Object.freeze([
-    'UNAUTHENTICATED', 'RECENT_AUTHENTICATION_REQUIRED', 'OPERATION_NOT_PERMITTED',
-    'DOCUMENT_REVISION_CONFLICT', 'RESOURCE_NOT_FOUND', 'KEY_VERSION_MISMATCH',
-    'IDEMPOTENCY_KEY_REUSED', 'IDEMPOTENCY_WINDOW_EXPIRED', 'RATE_LIMITED',
-    'COLLABORATION_UNAVAILABLE', 'VALIDATION_FAILED', 'CSRF_REJECTED'
-]);
-export const UNREACHABLE = Object.freeze(['DOCUMENT_REVISION_CONFLICT', 'RESOURCE_NOT_FOUND']);
+/**
+ * The two codes this journey demonstrably cannot produce.
+ *
+ * Named rather than derived because it is a claim about these two routes, not
+ * arithmetic: a create has no base revision to conflict against and addresses no
+ * existing resource. The rest of the unreachable set is the complement of the
+ * reachable one and is computed below — CF-P7-016 took the taxonomy from twelve
+ * to twenty-nine, and a hand-maintained list of the other seventeen would be a
+ * copy that rots rather than a decision anybody made.
+ */
+export const NOT_PRODUCIBLE = Object.freeze(['DOCUMENT_REVISION_CONFLICT', 'RESOURCE_NOT_FOUND']);
 export const NAME_REASONS = Object.freeze([
     'required', 'too-long', 'untrimmed', 'control-character'
 ]);
@@ -142,33 +146,47 @@ export function validatePhase7CreateWorkspace({ manifest, contract, journeySourc
     }
 
     // ── error taxonomy ───────────────────────────────────────────────────────
+    //
+    // The taxonomy is the frozen contract's, read from it rather than copied
+    // here. CF-P7-016 corrected §4 from twelve codes to the full server catalog,
+    // and a second copy in this file is exactly what let the first one be wrong
+    // for as long as it was.
+    const taxonomy = (contract.error_mapping || []).map(row => row.code);
+    assert(taxonomy.length > 0, 'The frozen contract carries no error mapping to compare against');
     const mapping = manifest.error_mapping || {};
-    assert(mapping.codes_mapped === TAXONOMY.length,
-        'The error mapping no longer covers the frozen taxonomy');
-    assert(mapping.reachable_codes === TAXONOMY.length - UNREACHABLE.length,
-        'The reachable code count drifted');
-    assert(same(mapping.unreachable_codes || [], UNREACHABLE),
-        'The unreachable code set drifted');
-    assert(mapping.unexpected_code_reported_not_flattened === true
-        && mapping.every_code_explains_itself === true,
-    'The error mapping claim drifted');
     // Compared against the frozen contract itself, value for value. A paraphrase
     // of the mapping would pass a text search and still present the wrong thing.
     const presentation = exported.PRESENTATION_BY_CODE || {};
     const reachable = exported.CREATE_WORKSPACE_CODES || [];
-    assert(same(Object.keys(presentation), TAXONOMY),
+    assert(same(Object.keys(presentation), taxonomy),
         'The presentation table no longer covers exactly the frozen taxonomy');
     for (const row of contract.error_mapping || []) {
         assert(presentation[row.code] === row.ui,
             `The journey presents ${row.code} as ${presentation[row.code]}, `
             + `but the frozen contract says ${row.ui}`);
     }
-    assert(reachable.length === TAXONOMY.length - UNREACHABLE.length,
-        'The reachable code set drifted from the manifest count');
-    for (const codeName of UNREACHABLE) {
+
+    // The subset these two routes can return is the declared one; everything
+    // else in the taxonomy is unreachable here by construction, not by list.
+    // The claims about the subset come before the arithmetic about it, so a
+    // drifted set is reported as the decision it broke rather than as a count.
+    for (const codeName of reachable) {
+        assert(taxonomy.includes(codeName),
+            `${codeName} is declared reachable but is not in the frozen taxonomy`);
+    }
+    for (const codeName of NOT_PRODUCIBLE) {
         assert(!reachable.includes(codeName),
             `${codeName} became reachable on a surface that cannot produce it`);
     }
+    const unreachable = taxonomy.filter(codeName => !reachable.includes(codeName));
+    assert(mapping.codes_mapped === taxonomy.length,
+        'The error mapping no longer covers the frozen taxonomy');
+    assert(mapping.reachable_codes === reachable.length, 'The reachable code count drifted');
+    assert(same(mapping.unreachable_codes || [], unreachable),
+        'The unreachable code set drifted');
+    assert(mapping.unexpected_code_reported_not_flattened === true
+        && mapping.every_code_explains_itself === true,
+    'The error mapping claim drifted');
     assert(exported.NAME_RULE?.maxCodePoints === rule.max_code_points,
         'The exported name bound disagrees with the manifest');
 

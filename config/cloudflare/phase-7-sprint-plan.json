@@ -19,6 +19,8 @@
     "predecessor_exit_gate": "P6-G5",
     "controlling_handoff": "docs/collaboration-foundation/phase-7-handoff.md"
   },
+  "story_count": 15,
+  "story_count_note": "Fifteen stories, CF-P7-001 through CF-P7-015. CF-P7-015 was added after the plan was frozen and took the next free number, which is why the highest id is 015 and the last story in sequence is CF-P7-014. Several documents, including the exit report's own status line, read '13 of 14'; that arithmetic was corrected by CF-P7-014 and the correction is recorded in section 2 of docs/collaboration-foundation/phase-7-exit-report.md. 'The original fourteen' in the CF-P7-015 reason below is historically correct and was deliberately left alone: the plan did hold fourteen stories before CF-P7-015 was added.",
   "principle": "Phase 7 adds no cryptographic, persistence, or authorization primitive. It is the interface over the Phase 3 to Phase 6 services. Every read and write goes through an existing service; the UI layer may not reimplement identity, envelope, revision, idempotency, cursor, membership, or outbox logic.",
   "surfaces": [
     {
@@ -265,24 +267,60 @@
       "id": "CF-P7-013",
       "title": "Integrate and qualify the collaboration UI on Preview",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PARTIAL",
       "entry_gate": "P7-G4",
       "exit_gate": "P7-G4A",
+      "gate": "cf:phase7:preview:check",
+      "reason": "Not PASS. The story's exit criterion is qualifying the journeys on Preview and zero journeys are qualified. Preview deployment 681ad3ca-f0f7-4f66-8649-c7dab3de798d, built from d4d9ea6, answers 503 COLLABORATION_UNAVAILABLE on /api/v1/session and /api/v1/workspaces, so there is no session, workspace, member, invitation, or audit event to qualify against. D-P7-01 was executed in the repository at d4d9ea6, but Cloudflare Pages binds environment variables at build time, so a build produced before COLLABORATION_ENABLED was set for the Preview environment cannot carry it. Closing this needs the variable set on the Pages project AND a new build of codex-cf-p3-preview -- a new deployment id, not a re-measurement of 681ad3ca. That is an owner action: wrangler pages secret put is refused to an agent by the permission classifier. What IS proven on the deployment: the lazy boundary holds (0 collaboration modules referenced eagerly, 0 precached), the artifact serves the entry's full 20-module import closure, the fail-closed shell states the deployment is not enabled and offers zero controls, the response headers are recorded, and the availability banner is present and hidden. The gate cf:phase7:preview:check passes while this story is not PASS, because the gate correctly asserts a fail-closed deployment and the story needs a qualified journey; a green gate is not a closed story.",
+      "measured_budget_breach": {
+        "budget": "lazy_phase_7_chunk_max_kib_gzip",
+        "declared_limit_kib_gzip": 60,
+        "measured_kib_gzip": 78.4,
+        "measured_bytes_gzip": 80249,
+        "over_by_kib_gzip": 18.4,
+        "over_by_percent": 31,
+        "modules_measured": 20,
+        "narrowest_reading_kib_gzip": 64.3,
+        "narrowest_reading_note": "Excluding the three inherited Phase 5/6 service modules the lazy path also pulls (device-key-lifecycle.js 5,212 B, outbox.js 5,457 B, conflict-resolution.js 3,708 B), the seventeen Phase 7 modules alone are 65,872 B = 64.3 KiB gzip. There is no reading of 'the Phase 7 chunk' under which this passes.",
+        "measured_on": "Preview deployment 681ad3ca-f0f7-4f66-8649-c7dab3de798d, as Cloudflare serves it",
+        "measured_by": "CF-EV-P7-OPS-004",
+        "first_measured": "2026-07-26",
+        "gated_by": "nothing -- this key is read by no script under scripts/, and no gate computes a byte size of any collaboration module",
+        "cause": "There is no bundling or minification step. Twenty unminified source files are served with comments intact.",
+        "status": "OPEN -- neither met nor renegotiated. Recorded, not accepted."
+      },
       "evidence": [
+        "CF-EV-P7-OPS-001",
+        "CF-EV-P7-OPS-002",
+        "CF-EV-P7-OPS-003",
+        "CF-EV-P7-OPS-004"
+      ],
+      "evidence_planned_but_never_written": [
         "CF-EV-P7-QA-001",
         "CF-EV-P7-PERF-002"
-      ]
+      ],
+      "evidence_note": "The two identifiers this story was planned with were never written. The four OPS records above are what was actually produced, and every one of them is PARTIAL. CF-P7-014 corrected the manifest to name the records that exist rather than the records that were planned."
     },
     {
       "id": "CF-P7-014",
       "title": "Assemble Phase 7 exit and Phase 8 handoff",
       "size": "M",
-      "status": "PLANNED",
+      "status": "PARTIAL",
       "entry_gate": "P7-G4A",
       "exit_gate": "P7-G5",
+      "reason": "Not PASS. Both documents are delivered -- docs/collaboration-foundation/phase-7-exit-report.md is complete and signed, and docs/collaboration-foundation/phase-8-handoff.md is issued. Three things this story owns are not done. (1) exit_gate_requirement below says the automated check cf:phase7:exit:check ships with this story; it does not exist, so by Phase 7's own definition -- a story is PASS when its gate script exists and passes -- this story cannot be PASS. (2) CF-EV-P7-EXIT-001 is not written. (3) P7-G4A, this story's entry gate, is not reached, because CF-P7-013 is not PASS. The work was done anyway under an explicit owner instruction, and doing it out of gate order is recorded here rather than hidden by backdating the gate.",
+      "delivered": [
+        "docs/collaboration-foundation/phase-7-exit-report.md",
+        "docs/collaboration-foundation/phase-8-handoff.md"
+      ],
+      "not_delivered": [
+        "cf:phase7:exit:check and its policy module, manifest, and drift test",
+        "CF-EV-P7-EXIT-001"
+      ],
       "evidence": [
         "CF-EV-P7-EXIT-001"
-      ]
+      ],
+      "evidence_note": "CF-EV-P7-EXIT-001 is named here because the plan named it. It is not written. It is listed under not_delivered above so the gap is visible from the manifest and not only from the exit report."
     }
   ],
   "gate_sequence": [

@@ -201,7 +201,7 @@ test('dropping a code from the presentation table is rejected', () => {
 test('making an unreachable code reachable is rejected', () => {
     const drifted = input();
     drifted.journeyExports.CREATE_WORKSPACE_CODES.push('RESOURCE_NOT_FOUND');
-    assert.throws(() => validatePhase7CreateWorkspace(drifted), /reachable code set drifted/);
+    assert.throws(() => validatePhase7CreateWorkspace(drifted), /cannot produce it/);
 });
 
 test('flattening an unexpected code into error is rejected', () => {

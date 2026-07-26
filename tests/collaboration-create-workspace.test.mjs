@@ -152,7 +152,7 @@ test('reports an unexpected code instead of flattening it into error', () => {
 test('keeps the two codes this journey cannot produce out of the reachable set', () => {
     assert.equal(CREATE_WORKSPACE_CODES.includes('DOCUMENT_REVISION_CONFLICT'), false);
     assert.equal(CREATE_WORKSPACE_CODES.includes('RESOURCE_NOT_FOUND'), false);
-    assert.equal(Object.keys(PRESENTATION_BY_CODE).length, 12);
+    assert.equal(Object.keys(PRESENTATION_BY_CODE).length, 29);
 });
 
 test('handles a thrown value with no code at all', () => {

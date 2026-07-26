@@ -92,11 +92,22 @@ Every code in the frozen taxonomy is mapped, using the contract's own
 presentation strings so the gate can compare the two tables value for value
 instead of matching two vocabularies that drift apart quietly.
 
-Two codes — `DOCUMENT_REVISION_CONFLICT` and `RESOURCE_NOT_FOUND` — are not
-reachable on these two routes. They stay in the mapping but are excluded from the
-reachable set, and a code outside that set is reported as an unexpected response
-rather than flattened into the generic error bucket where nobody would ever
-notice it.
+`CF-P7-016` took that taxonomy from twelve codes to the server catalog's
+twenty-nine and corrected two spellings, so this table now has twenty-nine rows
+and names `AUTHENTICATION_REQUIRED` and `REAUTHENTICATION_REQUIRED` where it used
+to name `UNAUTHENTICATED` and `RECENT_AUTHENTICATION_REQUIRED`. **The reachable
+subset is unchanged at ten.** These two routes return what they always returned;
+the wire spellings still arrive and are joined onto the catalog codes by the API
+client, so no journey behaviour moved.
+
+`DOCUMENT_REVISION_CONFLICT` and `RESOURCE_NOT_FOUND` remain the two the journey
+demonstrably cannot produce: a create has no base revision to conflict against
+and addresses no existing resource. They stay in the mapping and out of the
+reachable set, as do the other seventeen the journey has no route to. A code
+outside the reachable set is reported as an unexpected response rather than
+flattened into the generic error bucket where nobody would ever notice it — and
+the gate now computes the unreachable set as the complement of the reachable one
+rather than reading back a list.
 
 ## 7. Two safeguards worth naming
 

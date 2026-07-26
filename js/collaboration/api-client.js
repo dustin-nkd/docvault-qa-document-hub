@@ -67,45 +67,91 @@ const fail = (code, context) => { throw new ApiClientError(code, context); };
 
 // ── the frozen error taxonomy ────────────────────────────────────────────────
 //
-// CF-P7-001 §4 froze twelve codes and the presentation each one takes. The
-// server catalog in the API contract is larger and uses different names for
-// three of them, because it was written first and for a different audience.
-// Both are correct; they are not the same list. The alias table below is the
-// join, kept explicit so a reader can see that no code was invented here.
+// CF-P7-001 §4 freezes a presentation for every code in the server catalog, and
+// CF-P7-016 made that sentence true: the map covered twelve of the catalog's
+// twenty-nine, and two of the twelve were spellings the catalog does not
+// contain. The names here are now the catalog's own, so this table and
+// `api-contract.md` §8 can be compared code for code.
+//
+// One alias table survives, and it points the other way than it used to. The
+// implemented Workers runtime still puts `UNAUTHENTICATED` and
+// `RECENT_AUTHENTICATION_REQUIRED` on the wire; the catalog those handlers were
+// written against calls the same failures `AUTHENTICATION_REQUIRED` and
+// `REAUTHENTICATION_REQUIRED`. Until the server is reconciled under its own
+// review — nothing in Phase 7 may change a Workers handler — a real 401 or 403
+// arrives under the wire spelling, and without this join it would fall through
+// to the unrecognised bucket and quietly lose its `unauthorized` presentation.
+//
+// `SESSION_EXPIRED` needed no alias once it earned a mapping of its own.
 
-/** Server code → the frozen UI-contract code that presents it. */
+/** Wire spelling → the catalog code that presents it. */
 export const SERVER_CODE_ALIASES = Object.freeze({
-    AUTHENTICATION_REQUIRED: 'UNAUTHENTICATED',
-    SESSION_EXPIRED: 'UNAUTHENTICATED',
-    REAUTHENTICATION_REQUIRED: 'RECENT_AUTHENTICATION_REQUIRED'
+    UNAUTHENTICATED: 'AUTHENTICATION_REQUIRED',
+    RECENT_AUTHENTICATION_REQUIRED: 'REAUTHENTICATION_REQUIRED'
 });
 
-/** The twelve, exactly as CF-P7-001 §4 froze them. */
+/** The catalog, exactly as CF-P7-001 §4 maps it after CF-P7-016. */
 export const ERROR_PRESENTATION = Object.freeze({
-    UNAUTHENTICATED: Object.freeze({
+    INVALID_JSON: Object.freeze({
+        ui: 'error',
+        reason: 'That request could not be read. Reload the page and try again.'
+    }),
+    VALIDATION_FAILED: Object.freeze({
+        ui: 'error',
+        reason: 'That request was not valid. Check the highlighted fields and try again.'
+    }),
+    INVALID_CURSOR: Object.freeze({
+        ui: 'error',
+        reason: 'This list could not be continued from where it left off. Load it again.'
+    }),
+    INVALID_PRECONDITION: Object.freeze({
+        ui: 'error',
+        reason: 'This change was sent without the version it applies to. Nothing was changed.'
+    }),
+    AUTHENTICATION_REQUIRED: Object.freeze({
         ui: 'unauthorized',
         reason: 'Your session has ended. Sign in with GitHub to continue.'
     }),
-    RECENT_AUTHENTICATION_REQUIRED: Object.freeze({
+    SESSION_EXPIRED: Object.freeze({
+        ui: 'unauthorized',
+        reason: 'Your session expired. Sign in with GitHub again to continue.'
+    }),
+    REAUTHENTICATION_REQUIRED: Object.freeze({
         ui: 'unauthorized',
         reason: 'This action needs a recent sign-in. Confirm it is you, then try again.'
+    }),
+    CSRF_REJECTED: Object.freeze({
+        ui: 'error',
+        reason: 'That request could not be verified. Reload the page and try again.'
+    }),
+    DEVICE_NOT_AUTHORIZED: Object.freeze({
+        ui: 'error',
+        reason: 'This device is no longer trusted for this account. Set it up again to continue.'
+    }),
+    KEY_PROVISIONING_REQUIRED: Object.freeze({
+        ui: 'error',
+        reason: 'This device is still waiting for its workspace key. Finish setting it up first.'
     }),
     OPERATION_NOT_PERMITTED: Object.freeze({
         ui: 'role-disabled-explanation',
         reason: 'Your role in this workspace does not allow this action.'
     }),
-    DOCUMENT_REVISION_CONFLICT: Object.freeze({
-        ui: 'Conflict',
-        reason: 'Someone else changed this document. Nothing is merged automatically and '
-            + 'your draft is kept.'
-    }),
     RESOURCE_NOT_FOUND: Object.freeze({
         ui: 'empty-or-access-removed',
         reason: 'Nothing here is available to you.'
     }),
-    KEY_VERSION_MISMATCH: Object.freeze({
+    METHOD_NOT_ALLOWED: Object.freeze({
         ui: 'error',
-        reason: 'This workspace key changed. Reload the workspace before saving again.'
+        reason: 'That action is not available on this item. Nothing was changed.'
+    }),
+    NOT_ACCEPTABLE: Object.freeze({
+        ui: 'error',
+        reason: 'This browser and the server could not agree on a format. Reload the page.'
+    }),
+    DOCUMENT_REVISION_CONFLICT: Object.freeze({
+        ui: 'Conflict',
+        reason: 'Someone else changed this document. Nothing is merged automatically and '
+            + 'your draft is kept.'
     }),
     IDEMPOTENCY_KEY_REUSED: Object.freeze({
         ui: 'error',
@@ -115,21 +161,55 @@ export const ERROR_PRESENTATION = Object.freeze({
         ui: 'error',
         reason: 'This change is too old to reconcile. Review the latest version before retrying.'
     }),
+    STATE_TRANSITION_INVALID: Object.freeze({
+        ui: 'error',
+        reason: 'This item has already moved on from that state. Reload it to see where it is.'
+    }),
+    KEY_VERSION_MISMATCH: Object.freeze({
+        ui: 'error',
+        reason: 'This workspace key changed. Reload the workspace before saving again.'
+    }),
+    FINGERPRINT_CHANGED: Object.freeze({
+        ui: 'error',
+        reason: 'That device key changed while this was in progress. Load it again before '
+            + 'continuing.'
+    }),
+    INVITATION_UNAVAILABLE: Object.freeze({
+        ui: 'error',
+        reason: 'This invitation cannot be used. Ask a workspace owner or admin for a new one.'
+    }),
+    LAST_OWNER_REQUIRED: Object.freeze({
+        ui: 'role-disabled-explanation',
+        reason: 'A workspace must keep at least one Owner, so this one cannot be removed or '
+            + 'demoted.'
+    }),
+    LIFECYCLE_POLICY_UNAVAILABLE: Object.freeze({
+        ui: 'error',
+        reason: 'Export and deletion are not available on this deployment yet.'
+    }),
+    PAYLOAD_TOO_LARGE: Object.freeze({
+        ui: 'error',
+        reason: 'That is larger than this workspace accepts. Nothing was saved.'
+    }),
+    UNSUPPORTED_MEDIA_TYPE: Object.freeze({
+        ui: 'error',
+        reason: 'That request was sent in a format the server does not accept.'
+    }),
+    UNSUPPORTED_ENVELOPE: Object.freeze({
+        ui: 'error',
+        reason: 'This key envelope is a version this workspace cannot use. Nothing was changed.'
+    }),
     RATE_LIMITED: Object.freeze({
         ui: 'error',
         reason: 'Too many requests. Wait a moment and try again.'
     }),
+    INTERNAL_ERROR: Object.freeze({
+        ui: 'error',
+        reason: 'Something went wrong on the server. Nothing was changed; try again shortly.'
+    }),
     COLLABORATION_UNAVAILABLE: Object.freeze({
         ui: 'error',
         reason: 'Team collaboration is not enabled on this deployment.'
-    }),
-    VALIDATION_FAILED: Object.freeze({
-        ui: 'error',
-        reason: 'That request was not valid. Check the highlighted fields and try again.'
-    }),
-    CSRF_REJECTED: Object.freeze({
-        ui: 'error',
-        reason: 'That request could not be verified. Reload the page and try again.'
     })
 });
 

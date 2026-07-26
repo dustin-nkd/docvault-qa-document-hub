@@ -8,9 +8,14 @@ thirteen of them are PASS. Fifteen `cf:phase7:*` gates run inside
 `check:cloudflare` — `sprint`, `contract`, `shell`, `account`, `create`,
 `device`, `members`, `invitations`, `accept`, `sync`, `conflict`, `audit`,
 `qualify`, `api`, `preview`. The status line of
-[`phase-7-exit-report.md`](phase-7-exit-report.md) reads "13 of 14" while the
-table directly beneath it lists fifteen rows; the count is fifteen, and
-`CF-P7-014` owns correcting its own status line.
+[`phase-7-exit-report.md`](phase-7-exit-report.md) read "13 of 14" while the
+table directly beneath it listed fifteen rows. **`CF-P7-014` corrected it to
+"13 of 15" on 2026-07-27** and recorded the correction in §2 of that report
+rather than making it silently; `config/cloudflare/phase-7-sprint-plan.json` now
+carries `story_count: 15` so the count is machine-readable instead of a sentence
+that has to be re-derived by eye. The count was available to get wrong because
+`CF-P7-015` took the next free number after the plan was frozen, so the highest
+identifier is `015` while the last story in *sequence* is `CF-P7-014`.
 
 That arithmetic is not a pedantic point. `cf:phase7:preview:check` **passes**
 while `CF-P7-013` is **not PASS**, because the gate correctly asserts a
@@ -19,10 +24,12 @@ not a closed story. Phase 8 is the phase most likely to confuse the two, so the
 distinction is stated at the top.
 
 Phase 8 opens on the grant of `P7-G5` and not before. The controlling document is
-[`phase-8-handoff.md`](phase-8-handoff.md), which `CF-P7-014` issues at that
-grant; it does not exist yet, and this plan is written against the Phase 7 exit
-report and the frozen contracts rather than against a handoff that has not been
-written.
+[`phase-8-handoff.md`](phase-8-handoff.md), which `CF-P7-014` has now issued
+ahead of that grant: it exists, it names the four unmet entry conditions, and it
+states in its own status line that it becomes controlling only when `P7-G5` is
+granted. This plan was written against the Phase 7 exit report and the frozen
+contracts rather than against the handoff, and nothing below has been rewritten
+to depend on it.
 
 ## Governing principle
 

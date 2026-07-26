@@ -36,7 +36,7 @@ console.log('Cloudflare Phase 7 API client gate passed');
 console.log('  CF-P7-015: PASS; P7-G3F authorizes CF-P7-013 only');
 console.log(`  Transport lives in exactly one of ${Object.keys(collaborationSources).length} `
     + 'collaboration modules, which is what the eleven surface gates assume');
-console.log('  The twelve frozen error codes each present as the contract froze them; '
+console.log('  The 29 frozen error codes each present as the contract froze them (CF-P7-016); '
     + 'an unknown code fails closed');
 console.log('  CSRF in memory only, an Idempotency-Key on every mutation and no read, '
     + 'cursors passed through unread');
