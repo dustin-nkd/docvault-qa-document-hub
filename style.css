@@ -1961,3 +1961,70 @@ button[aria-busy="true"] { cursor:progress !important; }
 @media (prefers-reduced-motion: reduce) {
     .collab-sync__shape--spinner { animation-duration: 3s; }
 }
+
+/* ── CF-P7-010 conflict dialog ──────────────────────────────────────────── */
+
+.collab-conflict {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--collab-warning);
+    border-radius: 12px;
+    background: var(--card);
+    max-width: 100%;
+}
+.collab-conflict__title { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-conflict__revisions { margin: 0; font-size: 13px; color: var(--tx-m); }
+/* The safety statement leads, because it is the answer to the question the user
+   is actually asking: is my work still there. */
+.collab-conflict__safety {
+    margin: 0;
+    font-size: 13px;
+    color: var(--tx);
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--bg2);
+}
+.collab-conflict__options { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.collab-conflict__option {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    background: var(--bg2);
+}
+.collab-conflict__option[data-destructive="true"] { border-color: var(--collab-danger); }
+.collab-conflict__choose,
+.collab-conflict__cancel-discard,
+.collab-conflict__dismiss {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-conflict__choose:hover:not(:disabled) { background: var(--card-h); }
+.collab-conflict__choose:disabled { opacity: .55; cursor: not-allowed; }
+.collab-conflict__choose--discard-with-confirmation { border-color: var(--collab-danger); }
+.collab-conflict__consequence { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-conflict__choose:focus-visible,
+.collab-conflict__cancel-discard:focus-visible,
+.collab-conflict__dismiss:focus-visible {
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-conflict { padding: 12px; }
+    .collab-conflict__choose, .collab-conflict__cancel-discard, .collab-conflict__dismiss {
+        width: 100%;
+    }
+}

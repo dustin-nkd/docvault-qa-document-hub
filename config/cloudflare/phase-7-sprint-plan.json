@@ -213,13 +213,14 @@
       "id": "CF-P7-010",
       "title": "Conflict resolution dialog with guaranteed draft preservation",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G3B",
       "exit_gate": "P7-G3C",
       "evidence": [
         "CF-EV-P7-UI-009",
         "CF-EV-P7-A11Y-003"
-      ]
+      ],
+      "gate": "cf:phase7:conflict:check"
     },
     {
       "id": "CF-P7-011",

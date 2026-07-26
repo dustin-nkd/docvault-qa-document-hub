@@ -81,3 +81,5 @@ import './collaboration-invitation-accept.test.mjs';
 import './cloudflare-phase-7-accept-policy.test.mjs';
 import './collaboration-sync-state.test.mjs';
 import './cloudflare-phase-7-sync-policy.test.mjs';
+import './collaboration-conflict-dialog.test.mjs';
+import './cloudflare-phase-7-conflict-policy.test.mjs';
