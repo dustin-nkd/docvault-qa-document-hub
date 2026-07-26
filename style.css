@@ -2028,3 +2028,58 @@ button[aria-busy="true"] { cursor:progress !important; }
         width: 100%;
     }
 }
+
+/* ── CF-P7-011 audit activity ───────────────────────────────────────────── */
+
+.collab-audit { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
+.collab-audit__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-audit__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.collab-audit__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--brd);
+    border-radius: 8px;
+    background: var(--bg2);
+    font-size: 12px;
+}
+.collab-audit__type {
+    font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+    color: var(--tx);
+    overflow-wrap: anywhere;
+}
+.collab-audit__when, .collab-audit__reason-code { color: var(--tx-d); }
+.collab-audit__outcome { color: var(--tx-m); }
+/* Outcome carries a shape as well as a colour. */
+.collab-audit__shape { width: 10px; height: 10px; flex: 0 0 auto; border: 2px solid currentColor; }
+.collab-audit__shape--success { border-radius: 50%; background: currentColor; color: var(--acc-l); }
+.collab-audit__shape--denied {
+    border-radius: 0;
+    color: var(--collab-danger);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: currentColor;
+}
+.collab-audit__shape--failure { border-radius: 2px; color: var(--collab-warning); }
+.collab-audit__reason { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-audit__more {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-audit__more:hover:not(:disabled) { background: var(--card-h); }
+.collab-audit__more:disabled { opacity: .55; cursor: not-allowed; }
+.collab-audit__more:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+@media (max-width: 480px) {
+    .collab-audit { padding: 12px; }
+    .collab-audit__more { width: 100%; }
+}

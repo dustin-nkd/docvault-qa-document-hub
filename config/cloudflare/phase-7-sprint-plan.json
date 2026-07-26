@@ -226,12 +226,13 @@
       "id": "CF-P7-011",
       "title": "Audit activity",
       "size": "M",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G3C",
       "exit_gate": "P7-G3D",
       "evidence": [
         "CF-EV-P7-UI-010"
-      ]
+      ],
+      "gate": "cf:phase7:audit:check"
     },
     {
       "id": "CF-P7-012",
