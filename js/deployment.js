@@ -62,23 +62,63 @@
         return true;
     }
 
+    const OPEN_ID = 'collaboration-open';
+
+    /**
+     * Reveal the way into collaboration, and make pressing it the only thing
+     * that loads it.
+     *
+     * The dynamic import lives inside the handler on purpose: this file ships in
+     * the initial payload, and the Phase 7 budget is zero collaboration modules
+     * evaluated for a user who never opens collaboration. A top-level import
+     * here would spend that budget on everyone.
+     *
+     * @param {Document} doc
+     * @param {{available: boolean, reason: string}} availability
+     */
+    function bindCollaborationOpener(doc, availability) {
+        const opener = doc.getElementById(OPEN_ID);
+        if (opener === null) return false;
+        if (!availability.available) {
+            opener.hidden = true;
+            return false;
+        }
+        opener.hidden = false;
+        opener.addEventListener('click', function () {
+            opener.disabled = true;
+            import('./collaboration/entry.js').then(function (module) {
+                module.openCollaboration({ document: doc, deployment: availability });
+            }).catch(function () {
+                // Collaboration failing to load must never break the Personal
+                // Vault around it; the control simply becomes available again.
+                opener.disabled = false;
+            });
+        });
+        return true;
+    }
+
     const verdict = evaluate(typeof location === 'undefined' ? {} : location);
 
     window.DocVaultDeployment = Object.freeze({
         evaluate,
         applyBanner,
+        bindCollaborationOpener,
         bannerId: BANNER_ID,
+        openerId: OPEN_ID,
         collaborationAvailable: verdict.available,
         reason: verdict.reason,
         target: verdict.target
     });
 
     if (typeof document !== 'undefined') {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded',
-                () => applyBanner(document, verdict), { once: true });
-        } else {
+        const start = () => {
             applyBanner(document, verdict);
+            bindCollaborationOpener(document, verdict);
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', start, { once: true });
+        } else {
+            start();
         }
     }
 })();
