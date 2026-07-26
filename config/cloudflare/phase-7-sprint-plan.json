@@ -176,13 +176,14 @@
       "id": "CF-P7-007",
       "title": "Invitation creation, copy, and revoke",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G2D",
       "exit_gate": "P7-G3",
       "evidence": [
         "CF-EV-P7-UI-006",
         "CF-EV-P7-SEC-002"
-      ]
+      ],
+      "gate": "cf:phase7:invitations:check"
     },
     {
       "id": "CF-P7-008",
