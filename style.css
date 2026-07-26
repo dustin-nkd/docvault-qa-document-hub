@@ -1272,6 +1272,24 @@ button[aria-busy="true"] { cursor:progress !important; }
    distinct shape as well as its text label. Everything here is scoped to the
    collaboration surfaces and cannot reach a Personal Vault view. */
 
+/* Theme-aware collaboration tokens.
+   The palette accents are tuned for the dark theme and fall below the bar on
+   light: --acc-l gives a 2.54:1 focus ring on a white card where WCAG 2.2 AA
+   asks 3:1 for non-text, and --c-bug and --c-tc give 3.76:1 and 2.15:1 as text
+   where AA asks 4.5:1. These three tokens carry a darker light-theme value so
+   every collaboration surface meets the bar in both themes, measured rather
+   than assumed. */
+:root {
+    --collab-focus: #34d399;   /* 8.86:1 on the dark card */
+    --collab-danger: #ef4444;  /* 4.53:1 on the dark card */
+    --collab-warning: #f59e0b; /* 7.93:1 on the dark card */
+}
+[data-theme="light"] {
+    --collab-focus: #047857;   /* 5.48:1 on white, 4.96:1 on the page */
+    --collab-danger: #b91c1c;  /* 6.47:1 on white */
+    --collab-warning: #b45309; /* 5.02:1 on white */
+}
+
 .collab-banner {
     display: flex;
     align-items: center;
@@ -1349,7 +1367,7 @@ button[aria-busy="true"] { cursor:progress !important; }
 /* WCAG 2.2 AA: focus is always visible and never removed on mouse interaction. */
 .collab-state__action:focus-visible,
 .collab-banner a:focus-visible {
-    outline: 2px solid var(--acc-l);
+    outline: 2px solid var(--collab-focus);
     outline-offset: 2px;
 }
 
@@ -1501,7 +1519,85 @@ button[aria-busy="true"] { cursor:progress !important; }
 .collab-switcher__create:focus-visible,
 .collab-account__item:focus-visible,
 .collab-switcher__option:focus-visible {
-    outline: 2px solid var(--acc-l);
+    outline: 2px solid var(--collab-focus);
+    outline-offset: 2px;
+}
+
+/* ── CF-P7-004 create workspace ─────────────────────────────────────────── */
+
+.collab-create {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    max-width: 100%;
+}
+.collab-create__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-create__label { font-size: 13px; color: var(--tx-m); }
+.collab-create__input {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+}
+.collab-create__input[aria-invalid="true"] { border-color: var(--collab-danger); }
+.collab-create__input:disabled { opacity: .6; cursor: not-allowed; }
+.collab-create__hint { margin: 0; font-size: 12px; color: var(--tx-d); }
+.collab-create__input[aria-invalid="true"] ~ .collab-create__hint { color: var(--collab-danger); }
+
+.collab-create__steps { margin: 4px 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.collab-create__step { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.collab-create__step-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Each step state carries its own shape, so state never rests on colour. */
+.collab-create__shape { width: 12px; height: 12px; flex: 0 0 auto; border: 1.5px solid currentColor; }
+.collab-create__shape--pending { border-radius: 50%; opacity: .45; }
+.collab-create__shape--active { border-radius: 50%; border-style: dashed; color: var(--acc-l); }
+.collab-create__shape--done { border-radius: 2px; background: currentColor; color: var(--acc-l); }
+.collab-create__shape--stopped {
+    border-radius: 0;
+    color: var(--collab-danger);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: currentColor;
+}
+.collab-create__step--pending { color: var(--tx-d); }
+.collab-create__step--active { color: var(--tx); font-weight: 600; }
+.collab-create__step--done { color: var(--tx-m); }
+.collab-create__step--stopped { color: var(--collab-danger); }
+
+.collab-create__submit,
+.collab-create__device-action {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+.collab-create__submit:hover:not(:disabled) { background: var(--card-h); }
+.collab-create__submit:disabled { opacity: .55; cursor: not-allowed; }
+.collab-create__blocked { margin: 0; font-size: 12px; color: var(--collab-warning); }
+.collab-create__status { margin: 0; font-size: 12px; color: var(--tx-m); }
+.collab-create__failure {
+    margin: 0;
+    font-size: 13px;
+    color: var(--collab-danger);
+    padding-left: 10px;
+    border-left: 3px solid var(--collab-danger);
+}
+
+.collab-create__input:focus-visible,
+.collab-create__submit:focus-visible,
+.collab-create__device-action:focus-visible {
+    outline: 2px solid var(--collab-focus);
     outline-offset: 2px;
 }
 
@@ -1510,4 +1606,6 @@ button[aria-busy="true"] { cursor:progress !important; }
     .collab-context { width: 100%; }
     .collab-account__label { max-width: 10ch; }
     .collab-account__menu, .collab-switcher__list { left: auto; right: 0; }
+    .collab-create { padding: 12px; }
+    .collab-create__submit, .collab-create__device-action { width: 100%; }
 }
