@@ -76,9 +76,13 @@ test('minting a second idempotency key is rejected', () => {
 test('sending a different key on the create is rejected', () => {
     const drifted = input();
     drifted.journeySource = drifted.journeySource.replace(
-        /idempotencyKey: requestKey,\n            workspaceId: binding.workspaceId/,
+        // `\s*` rather than `\n`: git renormalises tracked sources to CRLF on
+        // checkout, and a mutation that silently fails to apply proves nothing.
+        /idempotencyKey: requestKey,\s*workspaceId: binding\.workspaceId/,
         'idempotencyKey: newIdempotencyKey(),\n            workspaceId: binding.workspaceId'
     );
+    assert.notEqual(drifted.journeySource, read('js/collaboration/create-workspace.js'),
+        'the mutation did not apply, so this case would pass without testing anything');
     assert.throws(() => validatePhase7CreateWorkspace(drifted), /idempotency key/);
 });
 

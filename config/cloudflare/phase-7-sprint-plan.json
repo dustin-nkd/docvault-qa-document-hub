@@ -150,13 +150,14 @@
       "id": "CF-P7-005",
       "title": "Device and key initialization",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G2B",
       "exit_gate": "P7-G2C",
       "evidence": [
         "CF-EV-P7-UI-004",
         "CF-EV-P7-SEC-001"
-      ]
+      ],
+      "gate": "cf:phase7:device:check"
     },
     {
       "id": "CF-P7-006",
