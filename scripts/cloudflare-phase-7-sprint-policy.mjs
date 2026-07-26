@@ -4,7 +4,8 @@ const same = (a, b) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
 
 export const STORY_IDS = Object.freeze(['CF-P7-001', 'CF-P7-002', 'CF-P7-003', 'CF-P7-004',
     'CF-P7-005', 'CF-P7-006', 'CF-P7-007', 'CF-P7-008', 'CF-P7-009', 'CF-P7-010',
-    'CF-P7-011', 'CF-P7-012', 'CF-P7-013', 'CF-P7-014']);
+    'CF-P7-011', 'CF-P7-012', 'CF-P7-013', 'CF-P7-014',
+    'CF-P7-015']);
 
 /** The twelve requested surfaces. Dropping one is a scope change, not a detail. */
 export const SURFACES = Object.freeze(['account-menu', 'workspace-switcher', 'create-workspace',

@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-015",
+  "status": "PASS",
+  "approved_entry_gate": "P7-G3E",
+  "next_gate": "P7-G3F",
+  "authorizes_on_approval": "CF-P7-013",
+  "surfaces": [],
+  "adds_primitive": false,
+  "reimplements_service": false,
+  "modules": {
+    "client": "js/collaboration/api-client.js",
+    "entry": "js/collaboration/entry.js"
+  },
+  "taxonomy": {
+    "source": "config/cloudflare/phase-7-ui-contract.json",
+    "frozen_code_count": 12,
+    "unknown_code_presentation": "error",
+    "unknown_code_echoed": false,
+    "server_aliases": ["AUTHENTICATION_REQUIRED", "SESSION_EXPIRED", "REAUTHENTICATION_REQUIRED"],
+    "alias_rationale": "The API contract and the frozen UI contract name three of the same failures differently, because they were written for different readers at different times. Neither is wrong and neither may be edited to match the other: the UI contract is frozen and the API contract is the server's. So the join is written down here, in one table, where a reader can confirm that no thirteenth code was invented and that every alias lands inside the frozen twelve."
+  },
+  "session": {
+    "csrf_token_storage": "memory-only",
+    "csrf_token_returned_to_callers": false,
+    "csrf_required_on_every_mutation": true,
+    "credentials_mode": "same-origin",
+    "cache_mode": "no-store"
+  },
+  "idempotency": {
+    "required_on_mutations": true,
+    "permitted_on_reads": false,
+    "caller_supplied_key_preserved": true,
+    "generated_when_absent": true,
+    "minimum_key_length": 32,
+    "maximum_key_length": 128
+  },
+  "pagination": {
+    "cursor_opaque": true,
+    "cursor_constructed_client_side": false,
+    "cursor_interpreted_client_side": false,
+    "offset_pagination_supported": false,
+    "maximum_limit": 100
+  },
+  "availability": {
+    "decided_by": "deployment-probe",
+    "hostname_is_prefilter_only": true,
+    "probe_route": "/api/v1/session",
+    "probe_on_personal_startup": false,
+    "unavailable_signal": "COLLABORATION_UNAVAILABLE",
+    "authorized_by": "owner",
+    "authorized_on": "2026-07-26",
+    "rationale": "js/deployment.js returns available for any *.pages.dev hostname, which is true of the Production Pages deployment where COLLABORATION_ENABLED is false and no D1 exists. Before CF-P7-013 that verdict only controlled a hidden banner; the lazy opener turned it into a clickable door, so the Phase 7 boundary of no collaboration activation was in play. A hostname cannot tell an enabled Cloudflare deployment from a disabled one, so the deployment is asked directly and its COLLABORATION_UNAVAILABLE outranks the hostname. The hostname check stays as a pre-filter because it is free, runs eagerly, and is correct about GitHub Pages and unknown origins, which is where failing closed matters and where no request should be spent."
+  },
+  "isolation": {
+    "single_transport_seam": true,
+    "personal_storage_keys_referenced": 0,
+    "inner_html_used": false,
+    "eager_script_tag": false,
+    "service_worker_precached": false,
+    "csrf_token_exposed": false,
+    "cursor_constructed_client_side": false,
+    "personal_provider_fallback": false
+  },
+  "declared_limits": {
+    "surfaces_reachable_from_entry": ["account-menu", "workspace-switcher"],
+    "surfaces_not_yet_composed": ["create-workspace", "device-key-initialization",
+      "member-list-role-badge", "invitation-manage", "invitation-accept", "sync-state",
+      "conflict-dialog", "audit-activity"],
+    "reason": "This story builds the layer the surfaces were always meant to call and wires the session through it, which is what moves the entry off a permanent loading state. Composing the remaining eight surfaces into the shell is CF-P7-013's integration work and is recorded here rather than left to be discovered, so the coverage this gate claims is exactly the coverage it has."
+  },
+  "tests": {
+    "unit": "tests/collaboration-api-client.test.mjs",
+    "unit_count": 56,
+    "wiring": "tests/collaboration-entry.test.mjs",
+    "policy": "tests/cloudflare-phase-7-api-client-policy.test.mjs"
+  }
+}

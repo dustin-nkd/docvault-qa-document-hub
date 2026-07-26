@@ -5,7 +5,7 @@
   "status": "PASS",
   "approved_entry_gate": "P7-G3D",
   "next_gate": "P7-G3E",
-  "authorizes_on_approval": "CF-P7-013",
+  "authorizes_on_approval": "CF-P7-015",
   "surfaces_qualified": [
     "account-menu", "workspace-switcher", "create-workspace", "device-key-initialization",
     "member-list-role-badge", "invitation-manage", "invitation-accept", "sync-state",

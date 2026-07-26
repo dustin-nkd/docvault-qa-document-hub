@@ -248,6 +248,20 @@
       "gate": "cf:phase7:qualify:check"
     },
     {
+      "id": "CF-P7-015",
+      "title": "Collaboration API client layer over the Phase 3 to Phase 6 services",
+      "size": "L",
+      "status": "PASS",
+      "entry_gate": "P7-G3E",
+      "exit_gate": "P7-G3F",
+      "added_after_plan_freeze": true,
+      "reason": "Phase 7 was planned as the interface over the Phase 3 to Phase 6 services, and every surface story was gated on performing no transport of its own. That held, and nothing was ever built on the other side of it: no module called /api/v1. CF-P7-013 found the consequence on Preview, where the entry rendered loading permanently because there was nothing to ask for a session. The layer is numbered after the original fourteen because it was added once the plan was already frozen, and sequenced before CF-P7-013 because CF-P7-013 cannot pass without it.",
+      "evidence": [
+        "CF-EV-P7-API-001"
+      ],
+      "gate": "cf:phase7:api:check"
+    },
+    {
       "id": "CF-P7-013",
       "title": "Integrate and qualify the collaboration UI on Preview",
       "size": "L",
@@ -285,6 +299,7 @@
     "P7-G3C",
     "P7-G3D",
     "P7-G3E",
+    "P7-G3F",
     "P7-G4",
     "P7-G4A",
     "P7-G5"

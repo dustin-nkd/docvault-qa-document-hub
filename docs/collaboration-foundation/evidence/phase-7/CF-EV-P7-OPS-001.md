@@ -81,6 +81,19 @@ collaboration activation" now needs a decision rather than an assumption.
 
 Recommended: ask the deployment rather than infer from the hostname.
 
+**Closed by `CF-P7-015`.** The owner authorized exactly that on 2026-07-26: ask
+the deployment, keep the hostname as a pre-filter. `js/deployment.js` is
+unchanged in behaviour — it stays free, eager, and correct about GitHub Pages —
+but on a Cloudflare origin its verdict now means "not ruled out". The
+deployment's own `503 COLLABORATION_UNAVAILABLE` decides, requested by the entry
+only after the opener is pressed, so the zero-modules-on-startup budget is
+untouched. See [`CF-EV-P7-API-001`](CF-EV-P7-API-001.md).
+
+The first open item — no API client layer — is also closed by `CF-P7-015`. The
+entry no longer renders `loading` permanently; it resolves a real session. Eight
+of the ten journey surfaces remain uncomposed, which is CF-P7-013's own
+integration work and is declared rather than left implicit.
+
 ## Not evidenced
 
 No authenticated journey, no second identity, no D1 state change. Nothing was

@@ -50,8 +50,16 @@ Each surface is owned by exactly one story. Nothing ships half-owned.
 | CF-P7-010 | Conflict resolution dialog with guaranteed draft preservation | P7-G3B | P7-G3C |
 | CF-P7-011 | Audit activity | P7-G3C | P7-G3D |
 | CF-P7-012 | Responsive layout and keyboard/focus qualification across every surface | P7-G3D | P7-G3E |
+| CF-P7-015 | Collaboration API client layer over the Phase 3 to Phase 6 services | P7-G3E | P7-G3F |
 | CF-P7-013 | Integrate and qualify the collaboration UI on Preview | P7-G4 | P7-G4A |
 | CF-P7-014 | Assemble Phase 7 exit and Phase 8 handoff | P7-G4A | P7-G5 |
+
+CF-P7-015 is numbered after the original fourteen and sequenced before
+CF-P7-013, which looks wrong and is not. It was added after this plan was
+frozen, so it takes the next free number; it runs before CF-P7-013 because
+CF-P7-013 cannot pass without it. Renumbering the others to hide that would
+erase the one fact worth keeping — that the gap was found late, on Preview,
+rather than planned for.
 
 Each story ships an automated policy check wired into `check:cloudflare`, in the
 pattern Phases 3 through 6 established. A story is not PASS on assertion; it is
@@ -84,6 +92,22 @@ while a document is open has to resolve to that state, not to a generic failure.
 last: it qualifies every surface the previous eleven stories shipped, so a
 regression in an early surface cannot slip through on the strength of its own
 story having passed.
+
+**CF-P7-015 — The API client layer.** Added after the plan was frozen, because
+the plan had a hole in it. "The interface over the Phase 3 to Phase 6 services"
+was read by twelve stories as an instruction about what *not* to build — no
+transport in a view — and every one of them was gated on obeying it. None of
+them was wrong. But no story owned the other side of that boundary, so the
+services were never actually called: eleven surfaces sat pure and unreachable
+behind an entry that could not ask who the user was.
+
+The gap survived eleven passing gates because each gate correctly checked its
+own module and no gate could see the shape of the whole. It surfaced on Preview
+in CF-P7-013, as a shell stuck on `loading` forever.
+
+This story adds no surface and no primitive. It is the one module permitted to
+call `fetch`, which is what turns "this surface performs no transport" from
+eleven separate coincidences into an architecture with a single door.
 
 ## Gate UX — the six acceptance criteria
 

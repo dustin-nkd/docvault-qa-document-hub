@@ -6,8 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { openCollaboration, closeCollaboration, CHROME_ID }
+import { openCollaboration, closeCollaboration, startCollaboration, CHROME_ID }
     from '../js/collaboration/entry.js';
+import { createApiClient } from '../js/collaboration/api-client.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
@@ -149,4 +150,124 @@ test('the entry performs no transport of its own', () => {
     const source = read('js/collaboration/entry.js');
     assert.equal(/\bfetch\s*\(/.test(source), false);
     assert.equal(/\.innerHTML/.test(source), false);
+});
+
+// ── CF-P7-015: what the entry does once it can ask ───────────────────────────
+
+const respond = (status, body, contentType = 'application/json; charset=utf-8') => ({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: name => (name.toLowerCase() === 'content-type' ? contentType : null) },
+    json: async () => body
+});
+
+const clientAnswering = responses => {
+    const queue = [...responses];
+    return createApiClient({
+        fetch: async () => (queue.length > 1 ? queue.shift() : queue[0]),
+        randomId: () => 'a'.repeat(36)
+    });
+};
+
+test('the deployment opener reaches startCollaboration, not the hand-fed entry', () => {
+    assert.match(read('js/deployment.js'), /module\.startCollaboration\(/);
+});
+
+test('a deployment that says collaboration is off says so, rather than staying on loading', async () => {
+    const doc = documentWithRoot();
+    await startCollaboration({
+        document: doc, deployment: available,
+        client: clientAnswering([respond(503, { error: { code: 'COLLABORATION_UNAVAILABLE' } })])
+    });
+    const state = doc.container.children[0];
+    assert.equal(state.getAttribute('data-collab-state'), 'error');
+    // The hostname banner is hidden on a Cloudflare origin, so this message is
+    // the only thing that would tell the user why the door led nowhere.
+    assert.match(state.children.map(child => child.textContent).join(' '), /not enabled/i);
+});
+
+test('a signed-out visitor on an enabled deployment is offered a sign-in', async () => {
+    const doc = documentWithRoot();
+    await startCollaboration({
+        document: doc, deployment: available,
+        client: clientAnswering([respond(200, { data: { authenticated: false }, meta: {} })])
+    });
+    const state = doc.container.children[0];
+    assert.equal(state.getAttribute('data-collab-state'), 'unauthorized');
+    assert.notEqual(state.querySelector('[data-collab-action="sign-in"]'), null);
+});
+
+test('a signed-in visitor gets the chrome built from the real session', async () => {
+    const doc = documentWithRoot();
+    await startCollaboration({
+        document: doc, deployment: available,
+        client: clientAnswering([
+            respond(200, {
+                data: {
+                    authenticated: true, user: { userId: 'u_1', login: 'dustin-nkd' },
+                    session: {}, csrfToken: 'csrf'
+                }, meta: {}
+            }),
+            respond(200, { data: { items: workspaces }, meta: { page: { nextCursor: null } } })
+        ])
+    });
+    const chrome = doc.container.children[0];
+    assert.equal(chrome.id, CHROME_ID);
+    assert.notEqual(chrome.querySelector('[data-collab-surface="workspace-switcher"]'), null);
+});
+
+test('a workspace list that fails leaves the session standing and the list empty', async () => {
+    const doc = documentWithRoot();
+    const container = await startCollaboration({
+        document: doc, deployment: available,
+        client: clientAnswering([
+            respond(200, {
+                data: { authenticated: true, user: { userId: 'u_1', login: 'x' }, session: {} },
+                meta: {}
+            }),
+            respond(500, { error: { code: 'INTERNAL_ERROR' }, meta: {} })
+        ])
+    });
+    assert.notEqual(container, null);
+    assert.equal(doc.container.children[0].id, CHROME_ID);
+});
+
+test('an unreachable API is an error state, never a sign-in the user cannot act on', async () => {
+    const doc = documentWithRoot();
+    await startCollaboration({
+        document: doc, deployment: available,
+        // The SPA fallback answering an API path: status 200, but a web page.
+        client: clientAnswering([respond(200, { data: {} }, 'text/html')])
+    });
+    assert.equal(doc.container.children[0].getAttribute('data-collab-state'), 'error');
+});
+
+test('a workspace record the surfaces refuse is an error state, not a stuck loading', async () => {
+    const doc = documentWithRoot();
+    const container = await startCollaboration({
+        document: doc, deployment: available,
+        client: clientAnswering([
+            respond(200, {
+                data: { authenticated: true, user: { userId: 'u_1', login: 'x' }, session: {} },
+                meta: {}
+            }),
+            // Not the shape the server issues, so workspace-context refuses it.
+            respond(200, { data: { items: [{ workspaceId: 'ws_1', displayName: 'X' }] }, meta: {} })
+        ])
+    });
+    assert.notEqual(container, null);
+    const state = doc.container.children[0];
+    assert.equal(state.getAttribute('data-collab-state'), 'error');
+    assert.notEqual(state.getAttribute('data-collab-state'), 'loading');
+});
+
+test('an unsupported deployment is still refused before any request is made', async () => {
+    let reached = false;
+    const doc = documentWithRoot();
+    const result = await startCollaboration({
+        document: doc, deployment: { available: false, reason: 'github-pages' },
+        client: createApiClient({ fetch: async () => { reached = true; return respond(200, {}); } })
+    });
+    assert.equal(result, null);
+    assert.equal(reached, false);
 });

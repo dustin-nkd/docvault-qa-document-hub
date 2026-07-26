@@ -15,7 +15,7 @@ export function validatePhase7Qualification({ manifest, contract, harnessSource,
     assert(manifest?.schema_version === 1 && manifest.phase === 'CF-P7'
         && manifest.story === 'CF-P7-012' && manifest.status === 'PASS'
         && manifest.approved_entry_gate === 'P7-G3D' && manifest.next_gate === 'P7-G3E'
-        && manifest.authorizes_on_approval === 'CF-P7-013',
+        && manifest.authorizes_on_approval === 'CF-P7-015',
     'Unsupported Phase 7 qualification manifest');
 
     // ── coverage: no surface may be quietly left out ─────────────────────────

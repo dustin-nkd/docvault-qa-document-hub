@@ -17,6 +17,7 @@ import { accountMenuModel, renderAccountMenu, setAccountMenuOpen } from './accou
 import {
     workspaceSwitcherModel, renderWorkspaceSwitcher, setSwitcherOpen
 } from './workspace-switcher.js';
+import { createApiClient, API_BASE, ERROR_PRESENTATION } from './api-client.js';
 
 export const CHROME_ID = 'collaboration-chrome';
 
@@ -102,6 +103,115 @@ function bindDisclosure(chrome, root, triggerSelector, setOpen) {
     chrome.addEventListener('keydown', event => {
         if (event.key === 'Escape') setOpen({ root, open: false });
     });
+}
+
+/**
+ * Open collaboration by asking the deployment, rather than being told.
+ *
+ * `openCollaboration` renders what it is handed and performs no transport; this
+ * is what hands it something. The split is deliberate — every state below is
+ * still reachable synchronously in a test without a fake network, and the one
+ * function that awaits is the one that has a reason to.
+ *
+ * Two answers come back from a single `GET /api/v1/session`, because they are
+ * one question asked of one deployment:
+ *
+ *   - whether collaboration runs here at all. `js/deployment.js` already said
+ *     the hostname *could* host it, which is true of every *.pages.dev origin
+ *     including the Production deployment where the feature is switched off and
+ *     no database exists. The API answers `COLLABORATION_UNAVAILABLE` there,
+ *     and that answer wins.
+ *   - and, if it does, who the user is.
+ *
+ * When the deployment says no, the message has to come from here. The banner
+ * that would normally explain an unavailable deployment is hidden on Cloudflare
+ * — correctly, since the hostname really is a Cloudflare one — so staying quiet
+ * would leave a user who pressed a button looking at nothing.
+ *
+ * @param {{document: Document, deployment: {available: boolean, reason: string},
+ *          client?: object, fetch?: Function, storage?: Storage,
+ *          environment?: string, subject?: string,
+ *          loadWorkspaces?: (client: object) => Promise<Array<object>>}} input
+ */
+export async function startCollaboration({ document: doc, deployment, client, fetch: transport,
+    storage, environment, subject, loadWorkspaces } = {}) {
+    const container = mountShell({ document: doc, deployment });
+    if (container === null) return null;
+
+    // No `fetch` named here even as a fallback: the client resolves the global,
+    // and it is the only module under js/collaboration/ that may.
+    const api = client ?? createApiClient({ fetch: transport });
+    const resolved = await api.resolveSession();
+
+    if (resolved.available === false) {
+        showState(doc, {
+            state: 'error',
+            surface: 'base-states',
+            title: 'Collaboration is not enabled here',
+            reason: ERROR_PRESENTATION.COLLABORATION_UNAVAILABLE.reason
+        });
+        return container;
+    }
+
+    if (resolved.authenticated !== true) {
+        // A failure that is not a denial gets its own reason rather than being
+        // shown as a sign-in prompt the user cannot act on.
+        if (resolved.failure !== null && resolved.failure.ui === 'error') {
+            showState(doc, {
+                state: 'error',
+                surface: 'base-states',
+                title: 'Collaboration could not be reached',
+                reason: resolved.failure.reason
+            });
+            return container;
+        }
+        return openCollaboration({
+            document: doc, deployment, session: { authenticated: false }
+        });
+    }
+
+    // Workspaces are a separate authorized read, and a failure to list them is
+    // not a failure to sign in: the session stands, the list is simply empty,
+    // and the switcher's own empty state says so.
+    let workspaces = [];
+    if (typeof loadWorkspaces === 'function') {
+        workspaces = await loadWorkspaces(api);
+    } else {
+        const page = await api.list({ path: `${API_BASE}/workspaces` });
+        workspaces = page.ok ? [...page.items] : [];
+    }
+
+    // The surfaces validate what they render and refuse a record that does not
+    // match the contract — a workspace ID that is not the shape the server
+    // issues, for instance. That refusal is correct and must stay loud, but it
+    // must not surface as a shell left on `loading` forever, which is precisely
+    // the failure this story exists to remove. So it lands as an error state
+    // with a reason, and the refusal itself is re-thrown to nobody's console but
+    // preserved in the state the user can see.
+    try {
+        return openCollaboration({
+            document: doc,
+            deployment,
+            session: {
+                authenticated: true,
+                login: resolved.user?.login,
+                avatarUrl: resolved.user?.avatarUrl
+            },
+            workspaces,
+            storage,
+            environment,
+            subject: subject ?? resolved.user?.userId
+        });
+    } catch {
+        showState(doc, {
+            state: 'error',
+            surface: 'base-states',
+            title: 'Collaboration could not be displayed',
+            reason: 'The workspace data did not match what this version expects. '
+                + 'Reload the page; if it keeps happening, the app needs an update.'
+        });
+        return container;
+    }
 }
 
 /**

@@ -16,7 +16,7 @@ validatePhase7Qualification({
 });
 
 console.log('Cloudflare Phase 7 qualification gate passed');
-console.log('  CF-P7-012: PASS; P7-G3E authorizes CF-P7-013 only');
+console.log('  CF-P7-012: PASS; P7-G3E authorizes CF-P7-015 only');
 console.log('  All twelve surfaces qualified at 320, 768 and 1024 in both themes');
 console.log('  Zero overflow, zero clipped text, zero targets under 24 px');
 console.log('  Every focus ring visible, lowest measured contrast 5.48:1 against a 3:1 floor');
