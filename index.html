@@ -334,6 +334,23 @@
     <!-- Toasts -->
     <div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2" style="pointer-events:none;" aria-live="polite" aria-relevant="additions"></div>
 
+    <!--
+      Collaboration availability banner (CF-P7-002, surface 12). Ships hidden and
+      is revealed by js/deployment.js only where collaboration cannot run, so a
+      Personal-only visitor pays nothing and a GitHub Pages visitor is told why
+      the feature is absent instead of being left to guess.
+    -->
+    <div id="collaboration-availability-banner" class="collab-banner" role="note" hidden>
+        <span class="collab-banner__shape" aria-hidden="true"></span>
+        <p class="collab-banner__text">
+            Team collaboration is available only on the Cloudflare deployment.
+            Your Personal Vault works normally here.
+        </p>
+    </div>
+
+    <!-- Lazy collaboration shell mount point. Empty and hidden until the collaboration shell is dynamically imported. -->
+    <div id="collaboration-root" class="collab-root" hidden></div>
+
     <!-- Modal -->
     <div id="modal" class="fixed inset-0 z-[90] hidden"></div>
 
@@ -558,6 +575,7 @@
 
 <script src="vendor/morphdom/morphdom-umd.min.js"></script>
 <script src="storage.js"></script>
+<script defer src="js/deployment.js"></script>
 <script defer src="js/constants.js"></script>
 <script defer src="js/utils.js"></script>
 <script defer src="js/state.js"></script>
