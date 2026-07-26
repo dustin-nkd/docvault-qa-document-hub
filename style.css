@@ -1359,3 +1359,155 @@ button[aria-busy="true"] { cursor:progress !important; }
     .collab-state { padding: 24px 12px; }
     .collab-state__reason { max-width: none; }
 }
+
+/* ── CF-P7-003: account menu, workspace switcher, context indicator ───────
+   The context indicator sits in the chrome, not inside the switcher menu:
+   gate UX U2 requires the active workspace to be readable without opening
+   anything. Status is carried on a data attribute so it is never colour-only. */
+
+.collab-chrome {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--brd);
+    background: var(--bg2);
+}
+
+.collab-context {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    font-size: 13px;
+}
+.collab-context__prefix { color: var(--tx-d); flex: 0 0 auto; }
+.collab-context--active .collab-context__prefix { color: var(--tx-m); }
+.collab-context__name {
+    color: var(--tx);
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* A context that is not active reads differently in weight and in a marker,
+   not by hue alone. */
+.collab-context:not(.collab-context--active) .collab-context__name {
+    font-weight: 500;
+    font-style: italic;
+    color: var(--tx-m);
+}
+.collab-context:not(.collab-context--active) .collab-context__name::after {
+    content: ' (!)';
+    font-style: normal;
+}
+
+.collab-account, .collab-switcher { position: relative; }
+
+.collab-account__trigger,
+.collab-switcher__trigger,
+.collab-switcher__create {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+    padding: 6px 12px;
+    background: var(--card);
+    border: 1px solid var(--brd-l);
+    border-radius: 8px;
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+.collab-account__trigger:hover:not(:disabled),
+.collab-switcher__trigger:hover:not(:disabled),
+.collab-switcher__create:hover { background: var(--card-h); }
+
+/* Disabled controls stay visible and legible: the contract forbids hiding a
+   control the current role or state cannot use. */
+.collab-account__trigger:disabled,
+.collab-switcher__trigger:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+.collab-account__avatar { width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto; }
+.collab-account__label { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.collab-account__menu,
+.collab-switcher__list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 60;
+    min-width: 200px;
+    max-width: min(320px, calc(100vw - 24px));
+    padding: 4px;
+    background: var(--card);
+    border: 1px solid var(--brd-l);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+.collab-account__menu[hidden], .collab-switcher__list[hidden] { display: none; }
+
+.collab-account__item,
+.collab-switcher__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: 24px;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+.collab-account__item:hover, .collab-switcher__option:hover { background: var(--card-h); }
+.collab-switcher__option[aria-selected="true"] { background: rgba(16,185,129,.10); }
+.collab-switcher__option[aria-selected="true"] .collab-switcher__name::before {
+    content: '\2713\00a0';
+    color: var(--acc-l);
+}
+.collab-switcher__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.collab-role-badge {
+    flex: 0 0 auto;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--brd-l);
+    background: var(--bg2);
+    color: var(--tx-m);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+}
+.collab-role-badge--owner { color: var(--c-rel); border-color: var(--c-rel); }
+.collab-role-badge--admin { color: var(--c-tp); border-color: var(--c-tp); }
+.collab-role-badge--editor { color: var(--acc-l); border-color: var(--acc-d); }
+.collab-role-badge--viewer { color: var(--tx-m); }
+
+.collab-account__trigger:focus-visible,
+.collab-switcher__trigger:focus-visible,
+.collab-switcher__create:focus-visible,
+.collab-account__item:focus-visible,
+.collab-switcher__option:focus-visible {
+    outline: 2px solid var(--acc-l);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .collab-chrome { gap: 8px; padding: 8px 10px; }
+    .collab-context { width: 100%; }
+    .collab-account__label { max-width: 10ch; }
+    .collab-account__menu, .collab-switcher__list { left: auto; right: 0; }
+}
