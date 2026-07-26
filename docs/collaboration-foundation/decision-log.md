@@ -78,3 +78,47 @@ This log records approved decisions, working assumptions, and blocking decisions
 - Any changed decision must update affected requirements, threats, tests, and ADRs in the same review.
 - A superseded decision remains in this log with a pointer to its replacement.
 - No implementation may resolve an open blocking decision implicitly.
+
+## D-P7-01 — Collaboration may be enabled on Preview only
+
+**Status:** APPROVED by the Product Owner, 2026-07-26. Authorizes `CF-P7-013`.
+
+**Decision.** `COLLABORATION_ENABLED` may be `'true'` for the **`preview`
+environment only**. The top-level `vars` default and the `production`
+environment stay pinned to `'false'`.
+
+**Why this needed a decision rather than an edit.** The value was closed on both
+sides. Cloudflare's dashboard refuses to edit it — the project's plaintext
+variables come from `wrangler.jsonc`, and only encrypted secrets are editable
+there — and six gates across four closed phases assert the literal `'false'`:
+
+| Gate | Assertion |
+|---|---|
+| `check-cloudflare-phase-3-exit.mjs` | line 14 |
+| `check-cloudflare-phase-4-contract.mjs` | line 16 |
+| `cloudflare-phase-1-exit-policy.mjs` | line 93 |
+| `cloudflare-phase-2-exit-policy.mjs` | line 83 |
+| `cloudflare-phase-2-migration-policy.mjs` | line 78 |
+| `cloudflare-phase-2-persistence-policy.mjs` | line 24 |
+
+That is fail-closed behaviour working as designed, not a defect. Phase 7 cannot
+qualify a single journey on Preview while it holds, because every collaboration
+route answers `COLLABORATION_UNAVAILABLE`.
+
+**What changes, and what does not.** The six assertions are amended to pin
+`'false'` for the default `vars` and for `production`, and to permit `'true'`
+for `preview`. The boundary that actually matters — **production never
+activates collaboration** — is unchanged and still machine-enforced. What is
+being relaxed is the assumption that *no* environment may activate it, which was
+true when Phases 1 through 4 closed and stopped being true when Phase 7 was
+authorized to qualify on Preview under `P7-G4`.
+
+**Residual risk.** The Preview deployment becomes a live collaboration
+environment with real identities and real D1 rows. That was already true of
+Phase 6's qualification; this decision makes the configuration match what the
+sprint plan asked for rather than leaving it to a manual, unrecorded flip.
+
+**How to apply it.** Amend the six assertions in the same commit as the
+`wrangler.jsonc` change, so no window exists in which the configuration and the
+gates disagree. Any story doing so must re-run `npm run check` and capture the
+real exit code.
