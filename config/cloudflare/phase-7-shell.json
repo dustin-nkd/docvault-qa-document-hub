@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-002",
+  "status": "PASS",
+  "approved_entry_gate": "P7-G1",
+  "next_gate": "P7-G2",
+  "authorizes_on_approval": "CF-P7-003",
+  "surfaces": ["base-states", "github-pages-banner"],
+  "modules": {
+    "deployment": "js/deployment.js",
+    "base_states": "js/collaboration/base-states.js",
+    "shell": "js/collaboration/shell.js"
+  },
+  "laziness": {
+    "eager_script_tag": false,
+    "service_worker_precached": false,
+    "collaboration_modules_on_personal_startup": 0,
+    "deployment_module_outside_collaboration_namespace": true,
+    "rationale": "The banner must render for a user who never loads collaboration, so the deployment predicate lives in the app shell at js/deployment.js and the collaboration modules stay behind a dynamic import."
+  },
+  "base_states": ["empty", "loading", "unauthorized", "error"],
+  "state_signals": {
+    "distinct_shape_per_state": true,
+    "colour_only": false,
+    "reason_required_for": ["unauthorized", "error"],
+    "decorative_shape_aria_hidden": true,
+    "live_region": { "empty": "polite", "loading": "polite", "unauthorized": "assertive", "error": "assertive" }
+  },
+  "deployment_detection": {
+    "available_on": ["cloudflare-deployment", "local-development"],
+    "refused_on": ["github-pages", "unsupported-origin"],
+    "fails_closed_on_unknown_origin": true,
+    "availability_is_deployment_not_session": true
+  },
+  "isolation": {
+    "personal_storage_keys_referenced": 0,
+    "inner_html_used": false,
+    "clears_on_unmount": true
+  },
+  "tests": {
+    "unit": "tests/collaboration-shell.test.mjs",
+    "unit_count": 15,
+    "policy": "tests/cloudflare-phase-7-shell-policy.test.mjs"
+  }
+}

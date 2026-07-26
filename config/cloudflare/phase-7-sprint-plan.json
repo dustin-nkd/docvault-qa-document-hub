@@ -113,13 +113,14 @@
       "id": "CF-P7-002",
       "title": "Lazy collaboration shell, GitHub Pages banner, and the four base states",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G1",
       "exit_gate": "P7-G2",
       "evidence": [
         "CF-EV-P7-UI-001",
         "CF-EV-P7-PERF-001"
-      ]
+      ],
+      "gate": "cf:phase7:shell:check"
     },
     {
       "id": "CF-P7-003",

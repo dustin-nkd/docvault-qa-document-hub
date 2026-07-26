@@ -1266,3 +1266,96 @@ button[aria-busy="true"] { cursor:progress !important; }
     color: var(--acc) !important;
   }
 }
+
+/* ── CF-P7-002: collaboration shell, banner, and base states ──────────────
+   The contract forbids signalling state by colour alone, so each state gets a
+   distinct shape as well as its text label. Everything here is scoped to the
+   collaboration surfaces and cannot reach a Personal Vault view. */
+
+.collab-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--brd);
+    color: var(--tx-m);
+    font-size: 13px;
+    line-height: 1.4;
+}
+.collab-banner[hidden] { display: none; }
+.collab-banner__shape {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: var(--c-tc);
+    transform: rotate(45deg);
+}
+.collab-banner__text { margin: 0; }
+
+.collab-root { padding: 16px; }
+.collab-root[hidden] { display: none; }
+
+.collab-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--tx-m);
+}
+.collab-state__title { margin: 0; color: var(--tx); font-size: 15px; font-weight: 600; }
+.collab-state__reason { margin: 0; max-width: 48ch; font-size: 13px; line-height: 1.5; }
+
+/* Distinct shape per state. Colour is secondary and never the only signal. */
+.collab-state__shape { width: 18px; height: 18px; flex: 0 0 auto; }
+.collab-state__shape--square { background: var(--tx-d); border-radius: 3px; }
+.collab-state__shape--lock {
+    border: 2px solid var(--c-tc);
+    border-radius: 3px;
+    box-shadow: inset 0 4px 0 -2px var(--c-tc);
+}
+.collab-state__shape--triangle {
+    width: 0; height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 16px solid var(--c-bug);
+}
+.collab-state__shape--spinner {
+    border: 2px solid var(--brd-l);
+    border-top-color: var(--acc);
+    border-radius: 50%;
+    animation: collab-spin .8s linear infinite;
+}
+@keyframes collab-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .collab-state__shape--spinner { animation-duration: 3s; }
+}
+
+.collab-state__action {
+    min-height: 24px;
+    padding: 6px 14px;
+    background: var(--card);
+    border: 1px solid var(--brd-l);
+    border-radius: 8px;
+    color: var(--tx);
+    font: inherit;
+    cursor: pointer;
+}
+.collab-state__action:hover { background: var(--card-h); }
+
+/* WCAG 2.2 AA: focus is always visible and never removed on mouse interaction. */
+.collab-state__action:focus-visible,
+.collab-banner a:focus-visible {
+    outline: 2px solid var(--acc-l);
+    outline-offset: 2px;
+}
+
+/* 320 px floor: nothing overflows, nothing is clipped. */
+@media (max-width: 480px) {
+    .collab-banner { padding: 8px 10px; font-size: 12px; }
+    .collab-state { padding: 24px 12px; }
+    .collab-state__reason { max-width: none; }
+}
