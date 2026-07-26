@@ -54,10 +54,16 @@
     "shared_preview_restore_executed": false
   },
   "outstanding": {
-    "reason": "The authenticated multi-role journeys require a synthetic GitHub OAuth session. That login cannot be performed from this environment, and a session cannot be minted directly because SESSION_TOKEN_PEPPER is a Preview secret that is deliberately not readable here.",
-    "blocked_scenarios": ["G1", "G2", "G3", "G4", "G5", "G6"],
+    "reason": "A second GitHub identity is required for G2 and G3. Three OAuth attempts for a second account failed at the callback; only one user exists in the Preview database.",
+    "blocked_scenarios": [
+      "G2",
+      "G3"
+    ],
     "blocked_scenarios_note": "All six are proven against real D1 at the persistence layer by CF-P6-004 through CF-P6-007; what remains unproven is the same behaviour over real Preview HTTP sessions.",
-    "pending_evidence": ["CF-EV-P6-E2E-003", "CF-EV-P6-PERF-001", "CF-EV-P6-QA-004"],
+    "pending_evidence": [
+      "CF-EV-P6-PERF-001",
+      "CF-EV-P6-QA-004"
+    ],
     "owner": "requires a synthetic OAuth browser login by the project owner or Codex"
   },
   "rollback": {
@@ -72,5 +78,63 @@
     "production_d1": "NO-GO",
     "production_document_routes": "NO-GO"
   },
-  "evidence_complete": ["CF-EV-P6-OPS-001", "CF-EV-P6-SEC-008"]
+  "evidence_complete": [
+    "CF-EV-P6-OPS-001",
+    "CF-EV-P6-SEC-008",
+    "CF-EV-P6-E2E-003"
+  ],
+  "authenticated_qualification": {
+    "session_identity": "dustin-nkd (project owner personal GitHub account)",
+    "synthetic_identity": false,
+    "owner_advised_before_proceeding": true,
+    "device_registered": true,
+    "workspace_bootstrapped_with_real_dek": true,
+    "test_bypass_deployed": false,
+    "verified_over_http": [
+      "G1",
+      "G4",
+      "G5",
+      "G6-reconcile"
+    ],
+    "not_verified_over_http": [
+      "G2",
+      "G3"
+    ],
+    "not_verified_reason": "G2 and G3 need a second GitHub identity; three OAuth attempts for a second account failed at the callback with the non-disclosing auth-result=unavailable and D1 shows the transactions were never consumed. Only one user exists in the Preview database.",
+    "g2_g3_proven_at_persistence_layer_by": [
+      "CF-EV-P6-INT-001",
+      "CF-EV-P6-INT-002"
+    ],
+    "authenticated_read_p95_ms": 102,
+    "authenticated_read_budget_ms": 300,
+    "document_lifecycle_observed": [
+      "create 201 rev1",
+      "read 200",
+      "concurrent 409/200",
+      "retry replayed rev3",
+      "revisions 3",
+      "reconcile applied",
+      "tombstone rev4",
+      "historical revision still readable"
+    ],
+    "final_revision_chain": [
+      "create",
+      "update",
+      "update",
+      "delete"
+    ]
+  },
+  "cleanup": {
+    "document_tombstoned_via_api": true,
+    "session_a_logged_out_via_api": true,
+    "device_revoke_attempt_status": 400,
+    "device_revoke_note": "The revoke body shape was wrong and the session had already been logged out, so it was not retried.",
+    "direct_d1_writes_blocked_by_permission_classifier": true,
+    "remaining_active_sessions": 1,
+    "remaining_active_sessions_note": "the owner's second browser session; expires at 12h idle / 7d absolute",
+    "remaining_active_devices": 1,
+    "remaining_active_workspaces": 1,
+    "remaining_active_documents": 0,
+    "retained_history": "1 document, 4 revisions (create, update, update, delete) \u2014 append-only by design"
+  }
 }
