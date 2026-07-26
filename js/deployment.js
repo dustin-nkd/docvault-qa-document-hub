@@ -17,10 +17,22 @@
     const LOCAL_HOSTS = Object.freeze(['localhost', '127.0.0.1', '[::1]']);
 
     /**
-     * Where collaboration can run. Availability is a property of the deployment,
-     * never of the user: a signed-out visitor on Cloudflare still gets
-     * `available`, because the reason they cannot collaborate is authentication,
-     * which is a different message.
+     * Where collaboration *could* run. Availability is a property of the
+     * deployment, never of the user: a signed-out visitor on Cloudflare still
+     * gets `available`, because the reason they cannot collaborate is
+     * authentication, which is a different message.
+     *
+     * This is deliberately only half the answer, and the cheap half. A hostname
+     * cannot distinguish a Cloudflare deployment with collaboration enabled from
+     * one with it disabled — they are the same string — so a `true` here means
+     * "not ruled out", not "confirmed". The confirmation is the API's own
+     * `COLLABORATION_UNAVAILABLE`, asked for by js/collaboration/entry.js after
+     * the user opens collaboration.
+     *
+     * The split is why this file may not simply ask: it ships in the initial
+     * payload for every visitor, and the Phase 7 budget is zero collaboration
+     * work for a user who never opens collaboration. A probe here would spend
+     * that budget on everyone to answer a question almost nobody asks.
      *
      * @param {{hostname?: string, protocol?: string}} location
      * @returns {{available: boolean, reason: string, target: string}}
@@ -87,7 +99,11 @@
         opener.addEventListener('click', function () {
             opener.disabled = true;
             import('./collaboration/entry.js').then(function (module) {
-                module.openCollaboration({ document: doc, deployment: availability });
+                // `startCollaboration`, not `openCollaboration`: this verdict is
+                // a hostname pre-filter and cannot tell a Cloudflare deployment
+                // with collaboration switched on from one with it switched off.
+                // The entry asks the deployment itself and renders that answer.
+                return module.startCollaboration({ document: doc, deployment: availability });
             }).catch(function () {
                 // Collaboration failing to load must never break the Personal
                 // Vault around it; the control simply becomes available again.
