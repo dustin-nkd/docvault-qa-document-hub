@@ -86,3 +86,4 @@ import './cloudflare-phase-7-conflict-policy.test.mjs';
 import './collaboration-audit-activity.test.mjs';
 import './cloudflare-phase-7-audit-policy.test.mjs';
 import './cloudflare-phase-7-qualification-policy.test.mjs';
+import './collaboration-entry.test.mjs';

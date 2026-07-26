@@ -348,6 +348,12 @@
         </p>
     </div>
 
+    <!-- The only way into collaboration. Hidden until js/deployment.js decides the
+         deployment can support it; its click handler is what dynamically imports
+         js/collaboration/entry.js, so nothing under js/collaboration/ is
+         evaluated for a user who never presses it. -->
+    <button id="collaboration-open" class="collab-open" type="button" hidden>Open team workspaces</button>
+
     <!-- Lazy collaboration shell mount point. Empty and hidden until the collaboration shell is dynamically imported. -->
     <div id="collaboration-root" class="collab-root" hidden></div>
 

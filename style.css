@@ -2116,3 +2116,35 @@ button[aria-busy="true"] { cursor:progress !important; }
     .collab-audit { padding: 12px; }
     .collab-audit__more { width: 100%; }
 }
+
+/* ── CF-P7-013 the way into collaboration ───────────────────────────────── */
+
+/* Hidden in markup and revealed only where collaboration can run, so a user on
+   GitHub Pages is never offered a door that leads nowhere. */
+.collab-open {
+    min-height: 40px;
+    margin: 12px 16px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+.collab-open[hidden] { display: none; }
+.collab-open:hover:not(:disabled) { background: var(--card-h); }
+.collab-open:disabled { opacity: .55; cursor: progress; }
+.collab-open:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
+
+.collab-root[hidden] { display: none; }
+.collab-chrome {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--brd);
+    background: var(--bg2);
+}
