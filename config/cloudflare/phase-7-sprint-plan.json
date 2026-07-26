@@ -189,12 +189,13 @@
       "id": "CF-P7-008",
       "title": "Invitation acceptance",
       "size": "M",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G3",
       "exit_gate": "P7-G3A",
       "evidence": [
         "CF-EV-P7-UI-007"
-      ]
+      ],
+      "gate": "cf:phase7:accept:check"
     },
     {
       "id": "CF-P7-009",

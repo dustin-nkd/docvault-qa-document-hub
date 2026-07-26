@@ -77,3 +77,5 @@ import './collaboration-member-list.test.mjs';
 import './cloudflare-phase-7-member-policy.test.mjs';
 import './collaboration-invitations.test.mjs';
 import './cloudflare-phase-7-invitation-policy.test.mjs';
+import './collaboration-invitation-accept.test.mjs';
+import './cloudflare-phase-7-accept-policy.test.mjs';
