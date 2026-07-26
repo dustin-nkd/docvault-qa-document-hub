@@ -238,13 +238,14 @@
       "id": "CF-P7-012",
       "title": "Responsive layout and keyboard/focus qualification across every surface",
       "size": "L",
-      "status": "PLANNED",
+      "status": "PASS",
       "entry_gate": "P7-G3D",
       "exit_gate": "P7-G3E",
       "evidence": [
         "CF-EV-P7-A11Y-004",
         "CF-EV-P7-UI-011"
-      ]
+      ],
+      "gate": "cf:phase7:qualify:check"
     },
     {
       "id": "CF-P7-013",

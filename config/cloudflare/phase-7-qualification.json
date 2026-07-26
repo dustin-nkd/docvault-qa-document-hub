@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-012",
+  "status": "PASS",
+  "approved_entry_gate": "P7-G3D",
+  "next_gate": "P7-G3E",
+  "authorizes_on_approval": "CF-P7-013",
+  "surfaces_qualified": [
+    "account-menu", "workspace-switcher", "create-workspace", "device-key-initialization",
+    "member-list-role-badge", "invitation-manage", "invitation-accept", "sync-state",
+    "conflict-dialog", "audit-activity", "base-states", "github-pages-banner"
+  ],
+  "harness": "tests/browser-collaboration-qualification.mjs",
+  "npm_script": "test:collab:qualify:e2e",
+  "gate_ux": {
+    "criteria": ["U5", "U6"],
+    "widths_px": [320, 768, 1024],
+    "themes": ["dark", "light"],
+    "browsers": ["chromium", "firefox", "webkit"],
+    "long_name_used": true,
+    "horizontal_page_scroll": 0,
+    "overflowing_controls": 0,
+    "clipped_text_nodes": 0,
+    "targets_under_24px": 0,
+    "controls_without_visible_focus_ring": 0,
+    "lowest_focus_ring_contrast": 5.48,
+    "focus_ring_contrast_floor": 3,
+    "disabled_controls_without_announced_reason": 0,
+    "disabled_control_reached_by_tab": 0,
+    "dialog_accessible_name_resolves": true
+  },
+  "declared_limits": {
+    "tab_traversal_asserted_in": ["chromium", "webkit"],
+    "tab_traversal_not_driven_in": ["firefox"],
+    "reason": "Headless Firefox does not advance focus through this harness, so a traversal assertion there would measure the driver rather than the page. Every other assertion in the file still runs on all three browsers, and the limit is logged at run time rather than hidden.",
+    "clipped_text_excludes_form_fields": true,
+    "clipped_text_exclusion_reason": "A single-line form field whose value exceeds its box scrolls within the control; the caret reaches all of it and assistive technology reads the whole value, so it is not text a person cannot get to.",
+    "focus_audit_excludes_unrendered_controls": true,
+    "focus_audit_exclusion_reason": "Controls inside a closed disclosure are not rendered, cannot take focus, and are correctly unreachable by Tab, so auditing their focus ring would measure a style that never applies."
+  },
+  "defects_found_and_fixed": [
+    {
+      "defect": "Every collaboration list overflowed its container at 320 px",
+      "cause": "A CSS grid track defaults to min-width auto, so one wide row pushed the whole list past the page",
+      "fix": "grid-template-columns: minmax(0, 1fr) on each list, and min-width: 0 on each row",
+      "surfaces": ["member-list-role-badge", "invitation-manage", "audit-activity", "conflict-dialog"]
+    }
+  ],
+  "tests": {
+    "policy": "tests/cloudflare-phase-7-qualification-policy.test.mjs",
+    "result": "config/cloudflare/phase-7-qualification-result.json"
+  }
+}

@@ -1719,8 +1719,18 @@ button[aria-busy="true"] { cursor:progress !important; }
 
 .collab-members { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
 .collab-members__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
-.collab-members__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.collab-members__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    /* minmax(0, 1fr): a grid track defaults to min-width auto, so one wide row
+       would otherwise push the whole list past its container. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+}
 .collab-members__row {
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1741,7 +1751,7 @@ button[aria-busy="true"] { cursor:progress !important; }
 }
 .collab-members__readiness { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .collab-members__readiness-text { color: var(--tx-m); }
-.collab-members__actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.collab-members__actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; min-width: 0; }
 .collab-members__action {
     min-height: 32px;
     padding: 6px 10px;
@@ -1824,8 +1834,16 @@ button[aria-busy="true"] { cursor:progress !important; }
     font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
     font-size: 12px;
 }
-.collab-invites__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.collab-invites__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+}
 .collab-invites__row {
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1835,7 +1853,7 @@ button[aria-busy="true"] { cursor:progress !important; }
     border-radius: 10px;
     background: var(--bg2);
 }
-.collab-invites__login { font-size: 14px; color: var(--tx); }
+.collab-invites__login { font-size: 14px; color: var(--tx); min-width: 0; overflow-wrap: anywhere; }
 .collab-invites__expires { font-size: 12px; color: var(--tx-d); }
 .collab-invites__reason {
     flex-basis: 100%;
@@ -1986,7 +2004,14 @@ button[aria-busy="true"] { cursor:progress !important; }
     border-radius: 8px;
     background: var(--bg2);
 }
-.collab-conflict__options { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.collab-conflict__options {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+}
 .collab-conflict__option {
     display: flex;
     flex-direction: column;
@@ -2033,8 +2058,16 @@ button[aria-busy="true"] { cursor:progress !important; }
 
 .collab-audit { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
 .collab-audit__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
-.collab-audit__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.collab-audit__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+}
 .collab-audit__row {
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
