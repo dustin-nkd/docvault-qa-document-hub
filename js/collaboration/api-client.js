@@ -332,6 +332,7 @@ export function assertIdempotencyKey(key) {
 // ── the client ───────────────────────────────────────────────────────────────
 
 const jsonContentType = /^application\/json\b/i;
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 /**
  * Create a client.
@@ -364,6 +365,18 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
     // variable is the only place in a browser that genuinely is.
     let csrfToken = null;
     let sessionResolved = false;
+
+    // Which device this browser is acting as, sent as X-DocVault-Device-ID.
+    //
+    // Every workspace-scoped route the server exposes is declared
+    // `requiresDevice: true` (functions/_lib/collaboration/key-runtime-handler
+    // .ts and runtime-handler.ts), and both refuse the request outright when
+    // the header is absent — before the route's own fields are read, so the
+    // refusal arrives as a bare VALIDATION_FAILED that says nothing about the
+    // missing header. It is not secret and not an identity claim: the session
+    // cookie is the identity, and the server checks this device belongs to
+    // that session and is still active.
+    let actingDeviceId = null;
 
     /**
      * Read one response into either data or a typed failure.
@@ -487,6 +500,11 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
 
         const headers = { Accept: 'application/json' };
         const init = { method: verb, headers, credentials: 'same-origin', cache: 'no-store' };
+
+        // Sent on reads as well as mutations: the workspace-scoped reads
+        // (members, invitations, audit events, key envelopes) are declared
+        // `requiresDevice` too, and refuse the request without it.
+        if (actingDeviceId !== null) headers['X-DocVault-Device-ID'] = actingDeviceId;
 
         if (isMutation(verb)) {
             // A mutation before the session is known is a bug in the caller,
@@ -734,12 +752,33 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
         return true;
     }
 
+    /**
+     * Name the device this browser acts as, or clear it.
+     *
+     * Separate from the session on purpose: signing in and having a registered
+     * device on this particular browser are independent facts, and one session
+     * can act from several devices. Clearing on revoke matters — a header
+     * naming a revoked device is refused, and the refusal would otherwise
+     * outlive the device it names.
+     *
+     * @param {string|null} deviceId
+     */
+    function setActingDevice(deviceId) {
+        if (deviceId === null) {
+            actingDeviceId = null;
+            return;
+        }
+        if (typeof deviceId !== 'string' || !UUID_V4.test(deviceId)) fail('INVALID_DEVICE');
+        actingDeviceId = deviceId;
+    }
+
     return Object.freeze({
         request,
         resolveSession,
         beginSignIn,
         list,
         mutate,
+        setActingDevice,
         newIdempotencyKey,
         forgetSession,
         /** Whether a mutation may currently be sent, without revealing the token. */
