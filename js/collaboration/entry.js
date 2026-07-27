@@ -22,9 +22,33 @@ import { renderSurfacePanel } from './surface-panel.js';
 import { createCollaborationServices } from './services.js';
 import { readMembers } from './member-list.js';
 import { readAuditEvents } from './audit-activity.js';
-import { readKeyReadiness } from './device-initialization.js';
+import {
+    readKeyReadiness, runDeviceRegistration, runDeviceRevocation, unsupportedGuidance
+} from './device-initialization.js';
+import { DeviceKeyLifecycle } from './device-key-lifecycle.js';
+import { runCreateWorkspace, validateDisplayName } from './create-workspace.js';
+import { sealCreatorEnvelope } from './workspace-key-envelope.js';
+import { createDeviceRecordStore, newUnlockSecret, decodeUnlockSecret } from './device-record.js';
 import { reviewInvitation, takeTokenFromFragment } from './invitation-accept.js';
 import { deriveSyncState } from './sync-state.js';
+
+/**
+ * A workspace id no real workspace can ever have, standing in for "none yet".
+ *
+ * `DeviceKeyLifecycle` binds its context to a workspace because a later
+ * workspace-scoped operation reuses the same instance across a `changeContext`
+ * call. Registering a device happens before any workspace is chosen, and the
+ * private-key protection this lifecycle performs never reads `workspaceId` —
+ * see `device-key-lifecycle.js`'s `privateAad`, which omits it — so a
+ * placeholder here binds nothing security-relevant. `changeContext` is called
+ * with the real id the moment a workspace is entered.
+ */
+const PLACEHOLDER_WORKSPACE_ID = '00000000-0000-4000-8000-000000000000';
+
+/** `environment` as this app names it, to what `DeviceKeyLifecycle` accepts. */
+const LIFECYCLE_ENVIRONMENT = Object.freeze({
+    local: 'local-browser-test', preview: 'preview', production: 'production'
+});
 
 export const CHROME_ID = 'collaboration-chrome';
 
@@ -245,11 +269,150 @@ export async function startCollaboration({ document: doc, deployment, client, fe
         userId: resolved.user?.userId
     };
     const identity = subject ?? resolved.user?.userId;
-    const paint = data => openCollaboration({
-        document: doc, deployment, session, workspaces, storage, environment,
-        subject: identity, data
-    });
     const services = createCollaborationServices({ client: api });
+
+    // This browser's registered device, if it has one — read once at open and
+    // kept in a local variable rather than in `data`, because it is a chrome-
+    // wide fact (every surface's `blocked` reasoning depends on it), not a
+    // per-workspace one.
+    const deviceStore = storage && environment && identity
+        ? openDeviceStore({ storage, environment, subject: identity })
+        : null;
+    const storedDevice = deviceStore?.read() ?? null;
+    let currentDevice = storedDevice === null ? null : {
+        deviceId: storedDevice.deviceId, fingerprint: storedDevice.fingerprint, state: storedDevice.state
+    };
+    let lifecycle = null;
+
+    let lastPaintData = {};
+    const paint = data => {
+        lastPaintData = data;
+        return openCollaboration({
+            document: doc, deployment, session, workspaces, storage, environment,
+            subject: identity, device: currentDevice, data
+        });
+    };
+    const repaint = patch => paint({ ...lastPaintData, ...patch });
+
+    /** One `DeviceKeyLifecycle`, its device id moved onto whichever this is now. */
+    function ensureLifecycle(deviceId) {
+        if (lifecycle !== null) {
+            lifecycle.changeContext({ ...lifecycle.context, deviceId });
+            return lifecycle;
+        }
+        lifecycle = new DeviceKeyLifecycle({
+            environment: LIFECYCLE_ENVIRONMENT[environment] ?? 'production',
+            context: { userId: identity, deviceId, workspaceId: PLACEHOLDER_WORKSPACE_ID }
+        });
+        return lifecycle;
+    }
+
+    /**
+     * Register this browser as a device (CF-P7-005's journey, wired for the
+     * first time). No passphrase surface exists yet, so the unlock secret that
+     * protects the local private key is generated here and stored alongside it
+     * — an accepted MVP tradeoff, not a silent one: see the decision log.
+     */
+    async function registerThisDevice() {
+        if (currentDevice !== null && currentDevice.state === 'active') return;
+        const localDeviceId = globalThis.crypto.randomUUID();
+        const unlockSecret = newUnlockSecret();
+        repaint({ deviceStatus: 'enrolling', deviceFailure: null });
+        try {
+            const result = await runDeviceRegistration({
+                lifecycle: ensureLifecycle(localDeviceId),
+                api: services,
+                newDeviceId: () => localDeviceId,
+                newIdempotencyKey: () => services.newIdempotencyKey(),
+                unlockSecret: decodeUnlockSecret(unlockSecret),
+                onStep: status => repaint({ deviceStatus: status })
+            });
+            currentDevice = { deviceId: result.deviceId, fingerprint: result.fingerprint, state: 'active' };
+            deviceStore?.write({
+                deviceId: result.deviceId, fingerprint: result.fingerprint, state: 'active',
+                publicJwk: result.publicJwk, unlockSecret
+            });
+            repaint({ deviceStatus: 'registered', deviceFailure: null });
+        } catch (error) {
+            repaint({ deviceStatus: 'failed', deviceFailure: deviceFailureFrom(error) });
+        }
+    }
+
+    /** Revoke this device: server first, then the local key (CF-P7-005). */
+    async function revokeThisDevice() {
+        if (currentDevice === null || currentDevice.state !== 'active') return;
+        const deviceId = currentDevice.deviceId;
+        repaint({ deviceStatus: 'revoking', deviceFailure: null });
+        try {
+            await runDeviceRevocation({
+                lifecycle: ensureLifecycle(deviceId),
+                api: services,
+                deviceId,
+                newIdempotencyKey: () => services.newIdempotencyKey(),
+                onStep: status => repaint({ deviceStatus: status })
+            });
+            currentDevice = null;
+            deviceStore?.clear();
+            repaint({ deviceStatus: 'revoked', deviceFailure: null });
+        } catch (error) {
+            repaint({ deviceStatus: 'failed', deviceFailure: deviceFailureFrom(error) });
+        }
+    }
+
+    /**
+     * Create a workspace (CF-P7-004's journey, wired for the first time).
+     *
+     * Read from the DOM at submit rather than kept live in `data` on every
+     * keystroke — a repaint on each keystroke would replace the input node and
+     * drop focus mid-word, since this panel repaints by replacing its subtree,
+     * not by diffing it.
+     */
+    async function submitCreateWorkspace(nameValue) {
+        if (currentDevice === null || currentDevice.state !== 'active') return;
+        const nameCheck = validateDisplayName(nameValue);
+        if (!nameCheck.valid) {
+            repaint({
+                workspaceName: nameValue, createStatus: 'naming',
+                createFailure: { code: 'VALIDATION_FAILED', presentation: 'error', expected: true,
+                    reason: nameCheck.message }
+            });
+            return;
+        }
+        const record = deviceStore?.read();
+        if (!record) return;
+        repaint({ workspaceName: nameValue, createStatus: 'binding', createFailure: null });
+        try {
+            const result = await runCreateWorkspace({
+                api: services,
+                keys: {
+                    sealCreatorEnvelope: ({ workspaceId, keyVersion, ownerDeviceId, ownerFingerprint }) =>
+                        sealCreatorEnvelope({
+                            workspaceId, keyVersion, ownerDeviceId, ownerFingerprint,
+                            ownerUserId: identity, ownerPublicJwk: record.publicJwk
+                        })
+                },
+                selection: selection ?? Object.freeze({ write() { return false; } }),
+                newIdempotencyKey: () => services.newIdempotencyKey(),
+                displayName: nameValue,
+                ownerDeviceId: currentDevice.deviceId,
+                onStep: status => repaint({ workspaceName: nameValue, createStatus: status })
+            });
+            if (result.status !== 'created') {
+                repaint({ workspaceName: nameValue, createStatus: 'failed', createFailure: result.failure });
+                return;
+            }
+            workspaces = [...workspaces, {
+                workspaceId: result.workspaceId, displayName: nameValue, role: 'owner'
+            }];
+            await enter(result.workspaceId);
+        } catch {
+            repaint({
+                workspaceName: nameValue, createStatus: 'failed',
+                createFailure: { code: 'UNKNOWN', presentation: 'error', expected: false,
+                    reason: 'The workspace could not be created. Nothing was left half-created.' }
+            });
+        }
+    }
 
     // Taken out of the address bar before anything is painted, and the history
     // entry that carried it is overwritten in the same step — so no render, no
@@ -268,16 +431,50 @@ export async function startCollaboration({ document: doc, deployment, client, fe
     if (typeof container.addEventListener === 'function') {
         container.addEventListener('click', event => {
             const control = typeof event.target?.closest === 'function'
-                ? event.target.closest('[data-collab-action="workspace-switch"]')
+                ? event.target.closest('[data-collab-action]')
                 : null;
             if (control === null || control.disabled === true) return;
-            const workspaceId = control.getAttribute('data-workspace-id');
-            if (!workspaces.some(item => item.workspaceId === workspaceId)) return;
-            // Written before the reads start, so a reload lands the user back
-            // where they chose rather than wherever the list happens to begin —
-            // the half of U2 that is easiest to lose.
-            selection?.write(workspaceId);
-            void enter(workspaceId);
+            const action = control.getAttribute('data-collab-action');
+
+            if (action === 'workspace-switch') {
+                const workspaceId = control.getAttribute('data-workspace-id');
+                if (!workspaces.some(item => item.workspaceId === workspaceId)) return;
+                // Written before the reads start, so a reload lands the user back
+                // where they chose rather than wherever the list happens to begin
+                // — the half of U2 that is easiest to lose.
+                selection?.write(workspaceId);
+                void enter(workspaceId);
+                return;
+            }
+            if (action === 'register-device') {
+                void registerThisDevice();
+                return;
+            }
+            if (action === 'revoke-device') {
+                void revokeThisDevice();
+                return;
+            }
+            if (action === 'device-setup-open') {
+                // Not a submission of anything — points the person at the
+                // control that starts the journey this one is blocked on.
+                doc.getElementById(CHROME_ID)?.parentElement
+                    ?.querySelector('[data-collab-action="register-device"]')?.focus();
+            }
+        });
+
+        // The create-workspace surface is a real `<form>` so Enter submits it;
+        // delegated for the same reason the switcher is above — the panel is
+        // replaced wholesale on every repaint.
+        container.addEventListener('submit', event => {
+            const form = typeof event.target?.closest === 'function'
+                ? event.target.closest('[data-collab-surface="create-workspace"]')
+                : null;
+            if (form === null) return;
+            event.preventDefault();
+            const submitControl = form.querySelector('[data-collab-action="workspace-create-submit"]');
+            if (submitControl?.disabled === true) return;
+            const nameInput = form.querySelector('#collab-create-name');
+            void submitCreateWorkspace(nameInput ? nameInput.value : '');
         });
     }
 
@@ -345,6 +542,37 @@ function openSelection({ storage, environment, subject }) {
     } catch {
         return null;
     }
+}
+
+/** Open this browser's device record store, or answer that there is none. */
+function openDeviceStore({ storage, environment, subject }) {
+    if (!storage || !environment || !subject) return null;
+    try {
+        return createDeviceRecordStore({ storage, environment, subject });
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Turn a device-journey error into something `device-initialization.js` can
+ * render.
+ *
+ * Two shapes reach here: a `CollaborationServiceError` from a real network
+ * refusal, which already carries a `reason`; and a `DeviceKeyLifecycleError`
+ * from the local crypto layer, which does not — that one goes through the
+ * Phase 5 guidance table instead, so "this browser cannot do this" reads as
+ * that, not as a blank server complaint.
+ */
+function deviceFailureFrom(error) {
+    if (error?.name === 'DeviceKeyLifecycleError') {
+        const guidance = unsupportedGuidance(error);
+        return { code: guidance.code, reason: `${guidance.title}. ${guidance.action}` };
+    }
+    return {
+        code: error?.code ?? 'UNKNOWN',
+        reason: error?.reason ?? 'This could not finish. Nothing was left half-done.'
+    };
 }
 
 /**
