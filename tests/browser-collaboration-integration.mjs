@@ -59,14 +59,18 @@ main{display:block}
 </main>
 <script type="module" src="/drive.js"></script></body></html>`;
 
+// /api/v1/session answers with its fields directly at the top level, not the
+// {data, meta} envelope every other route stubbed below uses -- see
+// js/collaboration/api-client.js's resolveSession(). This fixture used the
+// wrong (enveloped) shape from the day this test was written, so the driven
+// scenario was always the unauthenticated branch, never the signed-in one it
+// claimed to exercise -- invisible until a real signed-in session against the
+// real deployment exposed the same defect in production.
 const SESSION = {
-    data: {
-        authenticated: true,
-        user: { userId: OWNER, login: LONG },
-        session: {},
-        csrfToken: 'csrf'
-    },
-    meta: {}
+    authenticated: true,
+    user: { userId: OWNER, login: LONG },
+    session: {},
+    csrfToken: 'csrf'
 };
 
 const ROUTES = {
