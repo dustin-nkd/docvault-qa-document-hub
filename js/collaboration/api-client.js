@@ -501,10 +501,12 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
             headers['Idempotency-Key'] = idempotencyKey === null
                 ? assertIdempotencyKey(newId())
                 : assertIdempotencyKey(idempotencyKey);
-            if (body !== null) {
-                headers['Content-Type'] = 'application/json; charset=utf-8';
-                init.body = JSON.stringify(body);
-            }
+            // Every mutation route requires this Content-Type and a parseable
+            // JSON body, including one with no fields — a DELETE with no body
+            // at all reads server-side as no body sent, not an empty one, and
+            // is refused before the route-specific fields are even checked.
+            headers['Content-Type'] = 'application/json; charset=utf-8';
+            init.body = JSON.stringify(body ?? {});
         } else {
             // A read carrying an idempotency key is meaningless, and accepting
             // it would let a caller believe a GET was being deduplicated.
