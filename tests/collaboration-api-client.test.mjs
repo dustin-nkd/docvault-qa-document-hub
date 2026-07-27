@@ -317,6 +317,22 @@ test('every mutation method is treated as one', async () => {
     }
 });
 
+// REGRESSION: revokeDevice/revokeInvitation/signOut all call mutate() with no
+// body. The server's mutation policy requires Content-Type: application/json
+// AND a parseable JSON body on every mutation route, including one with no
+// fields -- a request with no body at all is refused before its route-specific
+// fields are even read (functions/_lib/collaboration/key-runtime-handler.ts's
+// device-revoke: readBody() throws INVALID_JSON on a null request.body, and
+// the Content-Type check ahead of it throws UNSUPPORTED_MEDIA_TYPE first).
+// Reported live: revoking a real device on Preview failed with exactly that
+// reason, because this client omitted both when the caller passed no body.
+test('a body-less mutation still sends Content-Type and a parseable empty object', async () => {
+    const { client, calls } = await signedInClient([jsonResponse(200, { data: {}, meta: {} })]);
+    await client.mutate({ method: 'DELETE', path: `${API_BASE}/devices/d_1` });
+    assert.equal(calls[1].init.headers['Content-Type'], 'application/json; charset=utf-8');
+    assert.deepEqual(JSON.parse(calls[1].init.body), {});
+});
+
 test('a read cannot be sent through mutate', async () => {
     const { client } = await signedInClient();
     await assert.rejects(client.mutate({ method: 'GET', path: `${API_BASE}/workspaces` }),
