@@ -119,6 +119,48 @@ function bindDisclosure(chrome, root, triggerSelector, setOpen) {
 }
 
 /**
+ * Wire the "Sign in with GitHub" control the unauthorized state renders.
+ *
+ * Delegated on `container` rather than bound to the button node directly, in
+ * the same pattern the workspace switcher uses below: the base state is
+ * replaced wholesale on every repaint, and a handler bound to a node that no
+ * longer exists is exactly how a shell of this shape leaks listeners.
+ *
+ * On success this navigates the browser away to GitHub, so there is no
+ * "after" to paint — the page the user returns to is the callback redirect,
+ * which starts this whole flow over from `resolveSession()`.
+ *
+ * @param {Element|null} container
+ * @param {{beginSignIn: (input?: {returnPath?: string}) => Promise<object>}} api
+ * @param {Document} doc
+ */
+function bindSignIn(container, api, doc) {
+    if (container === null || typeof container.addEventListener !== 'function') return;
+    container.addEventListener('click', event => {
+        const control = typeof event.target?.closest === 'function'
+            ? event.target.closest('[data-collab-action="sign-in"]')
+            : null;
+        if (control === null || control.disabled === true) return;
+        control.disabled = true;
+        void (async () => {
+            const result = await api.beginSignIn();
+            if (!result.ok) {
+                control.disabled = false;
+                showState(doc, {
+                    state: 'error',
+                    surface: 'base-states',
+                    title: 'Could not start sign-in',
+                    reason: result.failure.reason
+                });
+                return;
+            }
+            const target = doc?.defaultView?.location;
+            if (target) target.href = result.data.authorizationUrl;
+        })();
+    });
+}
+
+/**
  * Open collaboration by asking the deployment, rather than being told.
  *
  * `openCollaboration` renders what it is handed and performs no transport; this
@@ -178,9 +220,11 @@ export async function startCollaboration({ document: doc, deployment, client, fe
             });
             return container;
         }
-        return openCollaboration({
+        const unauthenticated = openCollaboration({
             document: doc, deployment, session: { authenticated: false }
         });
+        bindSignIn(unauthenticated, api, doc);
+        return unauthenticated;
     }
 
     // Workspaces are a separate authorized read, and a failure to list them is

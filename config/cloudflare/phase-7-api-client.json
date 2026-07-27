@@ -75,8 +75,15 @@
   },
   "tests": {
     "unit": "tests/collaboration-api-client.test.mjs",
-    "unit_count": 58,
+    "unit_count": 65,
     "wiring": "tests/collaboration-entry.test.mjs",
     "policy": "tests/cloudflare-phase-7-api-client-policy.test.mjs"
+  },
+  "sign_in_wiring": {
+    "added_by": "CF-P7-013 follow-up, 2026-07-27",
+    "reason": "Discovered live against the rebuilt Preview deployment (91e68f21, commit 42a9bee): the composed unauthorized state rendered a 'Sign in with GitHub' control with data-collab-action=\"sign-in\", but nothing in js/collaboration/ ever listened for a click on it -- the exact 'missing a CSRF-exempt path through the API client' limit CF-P7-013 had already declared, now closed rather than left recorded.",
+    "fix": "js/collaboration/api-client.js gained beginSignIn(), the one function permitted to send a mutation before a session is resolved and without a CSRF token -- POST /api/v1/oauth/github/transactions with purpose 'sign_in' is the one mutation the frozen server contract (functions/_lib/identity/request-policy.ts) accepts unauthenticated. Every other mutation is unaffected: mutate() still refuses without a resolved session and a live CSRF token. js/collaboration/entry.js gained bindSignIn(), delegated on the shell container in the same pattern as the workspace switcher, which calls it and navigates the browser to the returned authorizationUrl.",
+    "reauthenticate_not_exempted": "purpose 'reauthenticate' is not offered through beginSignIn and is not exempt server-side; it must go through mutate() like any other mutation, with the CSRF token an existing session already holds.",
+    "verified_live": "Confirmed against the real Preview deployment: POST /api/v1/oauth/github/transactions with purpose sign_in returned 201 with a valid GitHub authorizationUrl, 3/3 attempts, after the CSRF-exempt path was added. The click itself was verified structurally (a simulated click on the rendered control redirects to the returned URL; a refused attempt shows its own reason and does not navigate; a second click while the control is disabled is ignored) rather than against the live deployment, which requires entering GitHub credentials no agent may supply."
   }
 }

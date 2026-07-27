@@ -131,8 +131,8 @@
       {
         "journey": "sign in",
         "surface": "base-states",
-        "missing": "a CSRF-exempt path through the API client",
-        "reason": "POST /api/v1/oauth/github/transactions is public and CSRF-exempt, and the CF-P7-015 client requires a CSRF token on every mutation -- a refusal its own gate proves. Carving an exemption into it is a change to that client under its own review. The control CF-P7-015 shipped on the unauthorized state is therefore not wired here."
+        "missing": "an actual signed-in GitHub session, which no agent may obtain",
+        "reason": "CF-P7-013's follow-up work closed the original gap: js/collaboration/api-client.js now carries beginSignIn(), the one CSRF-exempt mutation the frozen server contract accepts before a session exists, and js/collaboration/entry.js wires the rendered control to it -- verified structurally (simulated click, refusal, and double-click cases) and against the real Preview deployment's POST /api/v1/oauth/github/transactions (201, a valid authorizationUrl, 3/3 attempts). What remains is not a code gap: the deployment measured below (4c5d7c8a) predates both this fix and CF-P7-017's dispatch fix, and completing the journey end to end requires entering GitHub credentials at github.com, which no agent may do regardless of what the code does."
       }
     ],
     "sync_states_reachable": [

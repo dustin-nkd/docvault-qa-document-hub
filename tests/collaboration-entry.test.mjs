@@ -16,19 +16,56 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 function element(tagName) {
     const node = {
         tagName, children: [], attributes: new Map(), className: '', textContent: '',
-        id: '', hidden: false, disabled: false,
+        id: '', hidden: false, disabled: false, listeners: new Map(),
         setAttribute(name, value) { this.attributes.set(name, String(value)); },
         getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null; },
         removeAttribute(name) { this.attributes.delete(name); },
         append(...nodes) { this.children.push(...nodes); },
         appendChild(child) { this.children.push(child); return child; },
         replaceChildren(...nodes) { this.children = nodes; },
-        addEventListener() {},
+        // Real enough to prove a delegated handler runs: registered listeners
+        // are stored and actually invoked by simulateClick below, rather than
+        // discarded the way a no-op stub would leave every click test unable
+        // to distinguish a wired handler from an absent one.
+        addEventListener(type, handler) {
+            const list = this.listeners.get(type) ?? [];
+            list.push(handler);
+            this.listeners.set(type, list);
+        },
         focus() {},
         querySelector(selector) { return descendants(this).find(matches(selector)) ?? null; },
         querySelectorAll(selector) { return descendants(this).filter(matches(selector)); }
     };
     return node;
+}
+
+/**
+ * Simulate a click that bubbles to `root`, with `target` as the element the
+ * user pressed. Mirrors just enough of the DOM event contract for
+ * `event.target.closest(...)` to work inside a delegated handler.
+ */
+function simulateClick(root, target) {
+    const event = {
+        target: Object.assign(target, {
+            closest(selector) {
+                for (let node = target; node; node = node.parent) {
+                    if (matches(selector)(node)) return node;
+                }
+                return null;
+            }
+        })
+    };
+    for (const handler of root.listeners.get('click') ?? []) handler(event);
+    return event;
+}
+
+/** Wire `child.parent` for every descendant, so `closest` can walk upward. */
+function withParents(root) {
+    for (const child of root.children) {
+        child.parent = root;
+        withParents(child);
+    }
+    return root;
 }
 const descendants = node => node.children.flatMap(child => [child, ...descendants(child)]);
 const matches = selector => node => {
@@ -195,6 +232,73 @@ test('a signed-out visitor on an enabled deployment is offered a sign-in', async
     const state = doc.container.children[0];
     assert.equal(state.getAttribute('data-collab-state'), 'unauthorized');
     assert.notEqual(state.querySelector('[data-collab-action="sign-in"]'), null);
+});
+
+// This is the wiring CF-P7-017's follow-up added: openCollaboration renders
+// the sign-in control, but nothing listened for a click on it until now.
+test('clicking sign-in redirects the browser to the returned authorization URL', async () => {
+    const doc = documentWithRoot();
+    doc.defaultView = { location: { href: '' } };
+    await startCollaboration({
+        document: doc, deployment: available,
+        client: clientAnswering([
+            respond(200, { data: { authenticated: false }, meta: {} }),
+            respond(201, {
+                data: { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 },
+                meta: {}
+            })
+        ])
+    });
+    withParents(doc.container);
+    const button = doc.container.querySelector('[data-collab-action="sign-in"]');
+    assert.notEqual(button, null);
+    simulateClick(doc.container, button);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(doc.defaultView.location.href,
+        'https://github.com/login/oauth/authorize?x=1');
+});
+
+test('a refused sign-in shows its own reason rather than navigating anywhere', async () => {
+    const doc = documentWithRoot();
+    doc.defaultView = { location: { href: '' } };
+    await startCollaboration({
+        document: doc, deployment: available,
+        client: clientAnswering([
+            respond(200, { data: { authenticated: false }, meta: {} }),
+            respond(429, { error: { code: 'RATE_LIMITED' }, meta: {} })
+        ])
+    });
+    withParents(doc.container);
+    const button = doc.container.querySelector('[data-collab-action="sign-in"]');
+    simulateClick(doc.container, button);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(doc.defaultView.location.href, '', 'a refused sign-in must not navigate');
+    const state = doc.container.children[0];
+    assert.equal(state.getAttribute('data-collab-state'), 'error');
+    assert.match(state.children.map(child => child.textContent).join(' '), /too many requests/i);
+});
+
+test('clicking sign-in twice before the first answer returns sends only one request', async () => {
+    const doc = documentWithRoot();
+    doc.defaultView = { location: { href: '' } };
+    let calls = 0;
+    const client = createApiClient({
+        fetch: async () => {
+            if (calls === 0) { calls += 1; return respond(200, { data: { authenticated: false }, meta: {} }); }
+            calls += 1;
+            return respond(201, {
+                data: { authorizationUrl: 'https://github.com/x', expiresAt: 1 }, meta: {}
+            });
+        },
+        randomId: () => 'a'.repeat(36)
+    });
+    await startCollaboration({ document: doc, deployment: available, client });
+    withParents(doc.container);
+    const button = doc.container.querySelector('[data-collab-action="sign-in"]');
+    simulateClick(doc.container, button);
+    simulateClick(doc.container, button);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(calls, 2, 'the second click must be ignored while the button is disabled');
 });
 
 test('a signed-in visitor gets the chrome built from the real session', async () => {

@@ -342,6 +342,83 @@ test('a mutation with no CSRF token held is refused', async () => {
         error => error.code === 'CSRF_TOKEN_REQUIRED');
 });
 
+// ── beginSignIn: the one CSRF-exempt mutation ────────────────────────────────
+
+test('beginSignIn succeeds with no session resolved, unlike every other mutation', async () => {
+    const { transport } = recorder([jsonResponse(201, {
+        data: { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 },
+        meta: {}
+    })]);
+    // A fresh client: resolveSession() was never called, so sessionResolved is
+    // false and csrfToken is null. Every other mutation would refuse here
+    // (see 'a mutation before the session is resolved is refused' below).
+    const client = createApiClient({ fetch: transport, randomId: () => KEY });
+    const result = await client.beginSignIn();
+    assert.equal(result.ok, true);
+    assert.equal(result.data.authorizationUrl, 'https://github.com/login/oauth/authorize?x=1');
+});
+
+test('beginSignIn posts purpose sign_in to the transactions route without a CSRF header', async () => {
+    const { transport, calls } = recorder([jsonResponse(201, {
+        data: { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 }, meta: {}
+    })]);
+    const client = createApiClient({ fetch: transport, randomId: () => KEY });
+    await client.beginSignIn();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, `${API_BASE}/oauth/github/transactions`);
+    assert.equal(calls[0].init.method, 'POST');
+    assert.equal('X-CSRF-Token' in calls[0].init.headers, false);
+    assert.equal('Idempotency-Key' in calls[0].init.headers, false);
+    assert.deepEqual(JSON.parse(calls[0].init.body), { purpose: 'sign_in' });
+    assert.equal(calls[0].init.credentials, 'same-origin');
+    assert.equal(calls[0].init.cache, 'no-store');
+});
+
+test('beginSignIn carries an optional returnPath and nothing else in the body', async () => {
+    const { transport, calls } = recorder([jsonResponse(201, {
+        data: { authorizationUrl: 'https://github.com/x', expiresAt: 1 }, meta: {}
+    })]);
+    const client = createApiClient({ fetch: transport, randomId: () => KEY });
+    await client.beginSignIn({ returnPath: '/dashboard' });
+    assert.deepEqual(JSON.parse(calls[0].init.body), { purpose: 'sign_in', returnPath: '/dashboard' });
+});
+
+test('beginSignIn refuses a non-string returnPath before any request is sent', async () => {
+    let reached = false;
+    const client = createApiClient({ fetch: async () => { reached = true; }, randomId: () => KEY });
+    await assert.rejects(client.beginSignIn({ returnPath: 42 }),
+        error => error.code === 'RETURN_PATH_MUST_BE_STRING');
+    assert.equal(reached, false);
+});
+
+test('beginSignIn never reaches a hostile or cross-origin path', async () => {
+    // The path is a module constant, not caller input, but the same guard that
+    // protects every other call is exercised here rather than assumed silent.
+    const client = createApiClient({ fetch: async () => jsonResponse(201, { data: {}, meta: {} }) });
+    await client.beginSignIn();
+    // No assertion needed beyond "did not throw": assertSameOriginPath runs
+    // unconditionally inside beginSignIn, and a broken constant would fail here.
+});
+
+test('beginSignIn presents a server refusal like any other failure', async () => {
+    const { transport } = recorder([jsonResponse(429, {
+        error: { code: 'RATE_LIMITED' }, meta: {}
+    })]);
+    const client = createApiClient({ fetch: transport, randomId: () => KEY });
+    const result = await client.beginSignIn();
+    assert.equal(result.ok, false);
+    assert.equal(result.failure.code, 'RATE_LIMITED');
+});
+
+test('beginSignIn on a network failure returns a failure rather than throwing', async () => {
+    const client = createApiClient({
+        fetch: async () => { throw new TypeError('Failed to fetch'); }, randomId: () => KEY
+    });
+    const result = await client.beginSignIn();
+    assert.equal(result.ok, false);
+    assert.equal(result.failure.ui, 'error');
+});
+
 test('the CSRF token is never handed back out of the client', async () => {
     const { transport } = recorder([SESSION_OK]);
     const client = createApiClient({ fetch: transport, randomId: () => KEY });

@@ -524,6 +524,53 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
     }
 
     /**
+     * Begin sign-in: create a public OAuth transaction and return the GitHub
+     * authorization URL to redirect the browser to.
+     *
+     * The one exemption from `request()`'s CSRF gate above, and only for
+     * exactly this call. `POST /api/v1/oauth/github/transactions` with
+     * `purpose: 'sign_in'` is the one mutation the frozen server contract
+     * accepts before a session exists — signing in cannot itself require
+     * already being signed in (see functions/_lib/identity/request-policy.ts,
+     * which exempts precisely this route and purpose from its own CSRF check).
+     * This bypasses `request()`'s mutation gate rather than weakening it: every
+     * other mutation still requires `sessionResolved` and a live `csrfToken`.
+     *
+     * `purpose: 'reauthenticate'` is deliberately not offered here — the server
+     * does not exempt it, so a caller asking for a fresh sign-in on an existing
+     * session must go through `mutate()` like any other mutation, with the
+     * CSRF token that session already holds.
+     *
+     * @param {{returnPath?: string}} [input]
+     */
+    async function beginSignIn({ returnPath } = {}) {
+        if (returnPath !== undefined && typeof returnPath !== 'string') {
+            fail('RETURN_PATH_MUST_BE_STRING');
+        }
+        const path = assertSameOriginPath(`${API_BASE}/oauth/github/transactions`);
+        const body = returnPath === undefined
+            ? { purpose: 'sign_in' }
+            : { purpose: 'sign_in', returnPath };
+        let response;
+        try {
+            response = await transport(path, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
+                credentials: 'same-origin',
+                cache: 'no-store',
+                body: JSON.stringify(body)
+            });
+        } catch {
+            // A transport that never reached a server, not the server saying no.
+            return Object.freeze({
+                ok: false, status: null, requestId: null,
+                failure: presentErrorCode('TRANSPORT_FAILED')
+            });
+        }
+        return interpret(response);
+    }
+
+    /**
      * A paginated read. The cursor is whatever the previous page returned.
      *
      * @param {{path: string, limit?: number, cursor?: string|null, filters?: object}} input
@@ -575,6 +622,7 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
     return Object.freeze({
         request,
         resolveSession,
+        beginSignIn,
         list,
         mutate,
         newIdempotencyKey,
