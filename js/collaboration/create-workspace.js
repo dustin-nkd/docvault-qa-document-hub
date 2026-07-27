@@ -56,20 +56,42 @@ export const NAME_RULE = Object.freeze({ minCodePoints: 1, maxCodePoints: 80 });
  * The values are the contract's own strings, not a paraphrase of them, so the
  * gate can compare this table against the frozen one directly instead of
  * matching two vocabularies that drift apart quietly.
+ *
+ * Twenty-nine rows since CF-P7-016, which corrected §4 from twelve — two of them
+ * under spellings the server catalog does not contain — to the whole catalog.
+ * This table mirrors all of it; `CREATE_WORKSPACE_CODES` below is the subset
+ * these two routes can actually return, and that subset is unchanged.
  */
 export const PRESENTATION_BY_CODE = Object.freeze({
-    UNAUTHENTICATED: 'unauthorized',
-    RECENT_AUTHENTICATION_REQUIRED: 'unauthorized',
+    INVALID_JSON: 'error',
+    VALIDATION_FAILED: 'error',
+    INVALID_CURSOR: 'error',
+    INVALID_PRECONDITION: 'error',
+    AUTHENTICATION_REQUIRED: 'unauthorized',
+    SESSION_EXPIRED: 'unauthorized',
+    REAUTHENTICATION_REQUIRED: 'unauthorized',
+    CSRF_REJECTED: 'error',
+    DEVICE_NOT_AUTHORIZED: 'error',
+    KEY_PROVISIONING_REQUIRED: 'error',
     OPERATION_NOT_PERMITTED: 'role-disabled-explanation',
-    DOCUMENT_REVISION_CONFLICT: 'Conflict',
     RESOURCE_NOT_FOUND: 'empty-or-access-removed',
-    KEY_VERSION_MISMATCH: 'error',
+    METHOD_NOT_ALLOWED: 'error',
+    NOT_ACCEPTABLE: 'error',
+    DOCUMENT_REVISION_CONFLICT: 'Conflict',
     IDEMPOTENCY_KEY_REUSED: 'error',
     IDEMPOTENCY_WINDOW_EXPIRED: 'error',
+    STATE_TRANSITION_INVALID: 'error',
+    KEY_VERSION_MISMATCH: 'error',
+    FINGERPRINT_CHANGED: 'error',
+    INVITATION_UNAVAILABLE: 'error',
+    LAST_OWNER_REQUIRED: 'role-disabled-explanation',
+    LIFECYCLE_POLICY_UNAVAILABLE: 'error',
+    PAYLOAD_TOO_LARGE: 'error',
+    UNSUPPORTED_MEDIA_TYPE: 'error',
+    UNSUPPORTED_ENVELOPE: 'error',
     RATE_LIMITED: 'error',
-    COLLABORATION_UNAVAILABLE: 'error',
-    VALIDATION_FAILED: 'error',
-    CSRF_REJECTED: 'error'
+    INTERNAL_ERROR: 'error',
+    COLLABORATION_UNAVAILABLE: 'error'
 });
 
 /**
@@ -80,15 +102,15 @@ export const PRESENTATION_BY_CODE = Object.freeze({
  * never be noticed.
  */
 export const CREATE_WORKSPACE_CODES = Object.freeze([
-    'UNAUTHENTICATED', 'RECENT_AUTHENTICATION_REQUIRED', 'OPERATION_NOT_PERMITTED',
+    'AUTHENTICATION_REQUIRED', 'REAUTHENTICATION_REQUIRED', 'OPERATION_NOT_PERMITTED',
     'VALIDATION_FAILED', 'KEY_VERSION_MISMATCH', 'IDEMPOTENCY_KEY_REUSED',
     'IDEMPOTENCY_WINDOW_EXPIRED', 'RATE_LIMITED', 'COLLABORATION_UNAVAILABLE',
     'CSRF_REJECTED'
 ]);
 
 const REASON_BY_CODE = Object.freeze({
-    UNAUTHENTICATED: 'Your session ended. Sign in again to create this workspace.',
-    RECENT_AUTHENTICATION_REQUIRED: 'This action needs a fresh sign-in. Sign in again to continue.',
+    AUTHENTICATION_REQUIRED: 'Your session ended. Sign in again to create this workspace.',
+    REAUTHENTICATION_REQUIRED: 'This action needs a fresh sign-in. Sign in again to continue.',
     OPERATION_NOT_PERMITTED: 'Your account is not allowed to create a workspace.',
     VALIDATION_FAILED: 'The server rejected this workspace name. Try a different one.',
     KEY_VERSION_MISMATCH: 'The workspace key version moved on. Start the journey again.',

@@ -67,45 +67,91 @@ const fail = (code, context) => { throw new ApiClientError(code, context); };
 
 // ── the frozen error taxonomy ────────────────────────────────────────────────
 //
-// CF-P7-001 §4 froze twelve codes and the presentation each one takes. The
-// server catalog in the API contract is larger and uses different names for
-// three of them, because it was written first and for a different audience.
-// Both are correct; they are not the same list. The alias table below is the
-// join, kept explicit so a reader can see that no code was invented here.
+// CF-P7-001 §4 freezes a presentation for every code in the server catalog, and
+// CF-P7-016 made that sentence true: the map covered twelve of the catalog's
+// twenty-nine, and two of the twelve were spellings the catalog does not
+// contain. The names here are now the catalog's own, so this table and
+// `api-contract.md` §8 can be compared code for code.
+//
+// One alias table survives, and it points the other way than it used to. The
+// implemented Workers runtime still puts `UNAUTHENTICATED` and
+// `RECENT_AUTHENTICATION_REQUIRED` on the wire; the catalog those handlers were
+// written against calls the same failures `AUTHENTICATION_REQUIRED` and
+// `REAUTHENTICATION_REQUIRED`. Until the server is reconciled under its own
+// review — nothing in Phase 7 may change a Workers handler — a real 401 or 403
+// arrives under the wire spelling, and without this join it would fall through
+// to the unrecognised bucket and quietly lose its `unauthorized` presentation.
+//
+// `SESSION_EXPIRED` needed no alias once it earned a mapping of its own.
 
-/** Server code → the frozen UI-contract code that presents it. */
+/** Wire spelling → the catalog code that presents it. */
 export const SERVER_CODE_ALIASES = Object.freeze({
-    AUTHENTICATION_REQUIRED: 'UNAUTHENTICATED',
-    SESSION_EXPIRED: 'UNAUTHENTICATED',
-    REAUTHENTICATION_REQUIRED: 'RECENT_AUTHENTICATION_REQUIRED'
+    UNAUTHENTICATED: 'AUTHENTICATION_REQUIRED',
+    RECENT_AUTHENTICATION_REQUIRED: 'REAUTHENTICATION_REQUIRED'
 });
 
-/** The twelve, exactly as CF-P7-001 §4 froze them. */
+/** The catalog, exactly as CF-P7-001 §4 maps it after CF-P7-016. */
 export const ERROR_PRESENTATION = Object.freeze({
-    UNAUTHENTICATED: Object.freeze({
+    INVALID_JSON: Object.freeze({
+        ui: 'error',
+        reason: 'That request could not be read. Reload the page and try again.'
+    }),
+    VALIDATION_FAILED: Object.freeze({
+        ui: 'error',
+        reason: 'That request was not valid. Check the highlighted fields and try again.'
+    }),
+    INVALID_CURSOR: Object.freeze({
+        ui: 'error',
+        reason: 'This list could not be continued from where it left off. Load it again.'
+    }),
+    INVALID_PRECONDITION: Object.freeze({
+        ui: 'error',
+        reason: 'This change was sent without the version it applies to. Nothing was changed.'
+    }),
+    AUTHENTICATION_REQUIRED: Object.freeze({
         ui: 'unauthorized',
         reason: 'Your session has ended. Sign in with GitHub to continue.'
     }),
-    RECENT_AUTHENTICATION_REQUIRED: Object.freeze({
+    SESSION_EXPIRED: Object.freeze({
+        ui: 'unauthorized',
+        reason: 'Your session expired. Sign in with GitHub again to continue.'
+    }),
+    REAUTHENTICATION_REQUIRED: Object.freeze({
         ui: 'unauthorized',
         reason: 'This action needs a recent sign-in. Confirm it is you, then try again.'
+    }),
+    CSRF_REJECTED: Object.freeze({
+        ui: 'error',
+        reason: 'That request could not be verified. Reload the page and try again.'
+    }),
+    DEVICE_NOT_AUTHORIZED: Object.freeze({
+        ui: 'error',
+        reason: 'This device is no longer trusted for this account. Set it up again to continue.'
+    }),
+    KEY_PROVISIONING_REQUIRED: Object.freeze({
+        ui: 'error',
+        reason: 'This device is still waiting for its workspace key. Finish setting it up first.'
     }),
     OPERATION_NOT_PERMITTED: Object.freeze({
         ui: 'role-disabled-explanation',
         reason: 'Your role in this workspace does not allow this action.'
     }),
-    DOCUMENT_REVISION_CONFLICT: Object.freeze({
-        ui: 'Conflict',
-        reason: 'Someone else changed this document. Nothing is merged automatically and '
-            + 'your draft is kept.'
-    }),
     RESOURCE_NOT_FOUND: Object.freeze({
         ui: 'empty-or-access-removed',
         reason: 'Nothing here is available to you.'
     }),
-    KEY_VERSION_MISMATCH: Object.freeze({
+    METHOD_NOT_ALLOWED: Object.freeze({
         ui: 'error',
-        reason: 'This workspace key changed. Reload the workspace before saving again.'
+        reason: 'That action is not available on this item. Nothing was changed.'
+    }),
+    NOT_ACCEPTABLE: Object.freeze({
+        ui: 'error',
+        reason: 'This browser and the server could not agree on a format. Reload the page.'
+    }),
+    DOCUMENT_REVISION_CONFLICT: Object.freeze({
+        ui: 'Conflict',
+        reason: 'Someone else changed this document. Nothing is merged automatically and '
+            + 'your draft is kept.'
     }),
     IDEMPOTENCY_KEY_REUSED: Object.freeze({
         ui: 'error',
@@ -115,21 +161,55 @@ export const ERROR_PRESENTATION = Object.freeze({
         ui: 'error',
         reason: 'This change is too old to reconcile. Review the latest version before retrying.'
     }),
+    STATE_TRANSITION_INVALID: Object.freeze({
+        ui: 'error',
+        reason: 'This item has already moved on from that state. Reload it to see where it is.'
+    }),
+    KEY_VERSION_MISMATCH: Object.freeze({
+        ui: 'error',
+        reason: 'This workspace key changed. Reload the workspace before saving again.'
+    }),
+    FINGERPRINT_CHANGED: Object.freeze({
+        ui: 'error',
+        reason: 'That device key changed while this was in progress. Load it again before '
+            + 'continuing.'
+    }),
+    INVITATION_UNAVAILABLE: Object.freeze({
+        ui: 'error',
+        reason: 'This invitation cannot be used. Ask a workspace owner or admin for a new one.'
+    }),
+    LAST_OWNER_REQUIRED: Object.freeze({
+        ui: 'role-disabled-explanation',
+        reason: 'A workspace must keep at least one Owner, so this one cannot be removed or '
+            + 'demoted.'
+    }),
+    LIFECYCLE_POLICY_UNAVAILABLE: Object.freeze({
+        ui: 'error',
+        reason: 'Export and deletion are not available on this deployment yet.'
+    }),
+    PAYLOAD_TOO_LARGE: Object.freeze({
+        ui: 'error',
+        reason: 'That is larger than this workspace accepts. Nothing was saved.'
+    }),
+    UNSUPPORTED_MEDIA_TYPE: Object.freeze({
+        ui: 'error',
+        reason: 'That request was sent in a format the server does not accept.'
+    }),
+    UNSUPPORTED_ENVELOPE: Object.freeze({
+        ui: 'error',
+        reason: 'This key envelope is a version this workspace cannot use. Nothing was changed.'
+    }),
     RATE_LIMITED: Object.freeze({
         ui: 'error',
         reason: 'Too many requests. Wait a moment and try again.'
     }),
+    INTERNAL_ERROR: Object.freeze({
+        ui: 'error',
+        reason: 'Something went wrong on the server. Nothing was changed; try again shortly.'
+    }),
     COLLABORATION_UNAVAILABLE: Object.freeze({
         ui: 'error',
         reason: 'Team collaboration is not enabled on this deployment.'
-    }),
-    VALIDATION_FAILED: Object.freeze({
-        ui: 'error',
-        reason: 'That request was not valid. Check the highlighted fields and try again.'
-    }),
-    CSRF_REJECTED: Object.freeze({
-        ui: 'error',
-        reason: 'That request could not be verified. Reload the page and try again.'
     })
 });
 
@@ -342,6 +422,59 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
     }
 
     /**
+     * Read a response from one of the two identity-runtime routes whose
+     * success body is not `interpret()`'s `{data, meta}` shape.
+     *
+     * `functions/_lib/identity/runtime-handler.ts` answers `GET
+     * /api/v1/session` and `POST /api/v1/oauth/github/transactions` with their
+     * fields directly at the top level — `{authenticated, user, session,
+     * csrfToken}` and `{authorizationUrl, expiresAt}` respectively — predating
+     * the envelope every CF-P4-through-P6 route uses. Failure responses from
+     * the same runtime do use the shared `{error: {code}}` shape, so only the
+     * success branch differs from `interpret()`; this function is that
+     * difference, shared by both callers rather than duplicated in each.
+     *
+     * On success the caller receives the raw parsed `envelope` and reads
+     * whichever fields its own route promises. On failure the shape already
+     * matches what `interpret()` would have produced.
+     *
+     * Throws, rather than returning `ok: false`, for a non-JSON or unparseable
+     * body — matching `interpret()` exactly, since a response that is secretly
+     * the app shell (the `037fb093` artifact defect) is a transport-boundary
+     * problem, not a request the deployment answered. Both callers below catch
+     * this the same way `request()`'s callers already do.
+     *
+     * @param {Response} response
+     */
+    async function readUnwrappedIdentityResponse(response) {
+        const requestId = typeof response.headers?.get === 'function'
+            ? response.headers.get('X-Request-ID')
+            : null;
+        const contentType = typeof response.headers?.get === 'function'
+            ? response.headers.get('content-type') ?? ''
+            : '';
+        if (!jsonContentType.test(contentType)) {
+            fail('NON_JSON_RESPONSE', { status: response.status, requestId });
+        }
+        let envelope;
+        try {
+            envelope = await response.json();
+        } catch {
+            fail('MALFORMED_RESPONSE', { status: response.status, requestId });
+        }
+        if (!response.ok) {
+            return Object.freeze({
+                ok: false,
+                status: response.status,
+                failure: presentErrorCode(envelope?.error?.code),
+                details: envelope?.error?.details ?? null,
+                requestId: envelope?.meta?.requestId ?? requestId
+            });
+        }
+        return Object.freeze({ ok: true, status: response.status, requestId, envelope });
+    }
+
+    /**
      * Send one request.
      *
      * @param {{method?: string, path: string, query?: object, body?: object|null,
@@ -395,15 +528,45 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
      * The returned view deliberately has no `csrfToken`. The server sends one
      * and it is kept, but handing it back out would put it within reach of
      * every caller and, sooner or later, of a URL.
+     *
+     * This route's success body is not `interpret()`'s shape, the same defect
+     * class `beginSignIn` below carries and for the same reason:
+     * `functions/_lib/identity/runtime-handler.ts` answers `GET
+     * /api/v1/session` with `{authenticated, user, session, csrfToken}`
+     * directly, not the `{data, meta}` envelope every CF-P4-through-P6 route
+     * uses. Reading `result.data` here silently read `null` regardless of the
+     * real answer, so `authenticated: view.authenticated === true` was `false`
+     * unconditionally — the server could say `authenticated: true` and this
+     * function would still report `false`. Found live: a real, valid,
+     * unexpired session existed and `/api/v1/session` answered `authenticated:
+     * true` on the wire, and the composed UI kept showing the sign-in prompt
+     * regardless. Every existing test fixture for this route used the wrong
+     * (enveloped) shape, which is why unit tests never caught it — the
+     * signed-out cases happened to produce the same `false` either way, for
+     * two different reasons, and nothing before now exercised a real
+     * authenticated response through this exact function against the real
+     * deployment.
      */
     async function resolveSession() {
-        let result;
+        const path = assertSameOriginPath(`${API_BASE}/session`);
+        let outcome;
         try {
-            result = await request({ method: 'GET', path: `${API_BASE}/session` });
+            const response = await transport(path, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            outcome = await readUnwrappedIdentityResponse(response);
         } catch (error) {
             // Transport that never reached a server is not the same as a server
             // saying no, and must not be reported as "unavailable here" — the
-            // deployment may be fine and the network not.
+            // deployment may be fine and the network not. An ApiClientError here
+            // means either our own validation refused before ever reaching the
+            // network, or the response was non-JSON or unparseable (the
+            // `037fb093` shape); anything else is a genuine transport failure
+            // and is rethrown for the caller to handle, matching the old
+            // contract.
             if (error instanceof ApiClientError) {
                 return Object.freeze({
                     available: true, reason: 'transport-failed', authenticated: null,
@@ -413,24 +576,24 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
             throw error;
         }
 
-        if (!result.ok) {
-            if (result.failure.code === 'COLLABORATION_UNAVAILABLE') {
+        if (!outcome.ok) {
+            if (outcome.failure.code === 'COLLABORATION_UNAVAILABLE') {
                 sessionResolved = false;
                 csrfToken = null;
                 return Object.freeze({
                     available: false, reason: 'deployment-disabled', authenticated: null,
-                    user: null, session: null, failure: result.failure
+                    user: null, session: null, failure: outcome.failure
                 });
             }
             // Any other failure leaves availability alone: the deployment
             // answered, it simply did not answer yes to this caller.
             return Object.freeze({
                 available: true, reason: 'request-failed', authenticated: null,
-                user: null, session: null, failure: result.failure
+                user: null, session: null, failure: outcome.failure
             });
         }
 
-        const view = result.data ?? {};
+        const view = outcome.envelope ?? {};
         csrfToken = typeof view.csrfToken === 'string' ? view.csrfToken : null;
         sessionResolved = true;
         return Object.freeze({
@@ -440,6 +603,83 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
             user: view.authenticated === true ? Object.freeze({ ...view.user }) : null,
             session: view.authenticated === true ? Object.freeze({ ...view.session }) : null,
             failure: null
+        });
+    }
+
+    /**
+     * Begin sign-in: create a public OAuth transaction and return the GitHub
+     * authorization URL to redirect the browser to.
+     *
+     * The one exemption from `request()`'s CSRF gate above, and only for
+     * exactly this call. `POST /api/v1/oauth/github/transactions` with
+     * `purpose: 'sign_in'` is the one mutation the frozen server contract
+     * accepts before a session exists — signing in cannot itself require
+     * already being signed in (see functions/_lib/identity/request-policy.ts,
+     * which exempts precisely this route and purpose from its own CSRF check).
+     * This bypasses `request()`'s mutation gate rather than weakening it: every
+     * other mutation still requires `sessionResolved` and a live `csrfToken`.
+     *
+     * `purpose: 'reauthenticate'` is deliberately not offered here — the server
+     * does not exempt it, so a caller asking for a fresh sign-in on an existing
+     * session must go through `mutate()` like any other mutation, with the
+     * CSRF token that session already holds.
+     *
+     * This route's success body is not `interpret()`'s shape. Every other route
+     * in this client answers `{data, meta}`; `functions/_lib/identity/
+     * runtime-handler.ts` answers this one with `{authorizationUrl, expiresAt}`
+     * directly, predating that envelope. Calling `interpret()` unmodified reads
+     * a nonexistent `.data` field and silently returns `ok: true, data: null` —
+     * found live, against the real deployment, as a null-dereference in the
+     * caller rather than as a test failure, because every fixture in this
+     * module's own suite necessarily assumes the shape it is testing. Failure
+     * responses do use the shared `{error: {code}}` shape, so only success is
+     * parsed differently here.
+     *
+     * @param {{returnPath?: string}} [input]
+     */
+    async function beginSignIn({ returnPath } = {}) {
+        if (returnPath !== undefined && typeof returnPath !== 'string') {
+            fail('RETURN_PATH_MUST_BE_STRING');
+        }
+        const path = assertSameOriginPath(`${API_BASE}/oauth/github/transactions`);
+        const body = returnPath === undefined
+            ? { purpose: 'sign_in' }
+            : { purpose: 'sign_in', returnPath };
+        let outcome;
+        try {
+            const response = await transport(path, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
+                credentials: 'same-origin',
+                cache: 'no-store',
+                body: JSON.stringify(body)
+            });
+            outcome = await readUnwrappedIdentityResponse(response);
+        } catch (error) {
+            // A transport that never reached a server, or a response that was
+            // secretly the app shell (non-JSON or unparseable) rather than the
+            // deployment answering no.
+            return Object.freeze({
+                ok: false, status: null, requestId: null,
+                failure: presentErrorCode(error instanceof ApiClientError ? error.code : 'TRANSPORT_FAILED')
+            });
+        }
+        if (!outcome.ok) return Object.freeze(outcome);
+        if (typeof outcome.envelope?.authorizationUrl !== 'string'
+            || typeof outcome.envelope?.expiresAt !== 'number') {
+            return Object.freeze({
+                ok: false, status: outcome.status, requestId: outcome.requestId,
+                failure: presentErrorCode('MALFORMED_RESPONSE')
+            });
+        }
+        return Object.freeze({
+            ok: true,
+            status: outcome.status,
+            data: Object.freeze({
+                authorizationUrl: outcome.envelope.authorizationUrl,
+                expiresAt: outcome.envelope.expiresAt
+            }),
+            requestId: outcome.requestId
         });
     }
 
@@ -495,6 +735,7 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
     return Object.freeze({
         request,
         resolveSession,
+        beginSignIn,
         list,
         mutate,
         newIdempotencyKey,
