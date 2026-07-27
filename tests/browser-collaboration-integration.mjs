@@ -289,7 +289,15 @@ async function pickWorkspace(browserName, baseUrl) {
 
         await page.click('.collab-switcher__trigger');
         await page.click('[data-collab-action="workspace-switch"]');
-        await page.waitForSelector('[data-collab-surface="member-list-role-badge"]');
+        // The section exists the instant the panel repaints, in its `loading`
+        // state -- waiting for the selector alone is a race against the stub
+        // fetch's own microtask, real under CI's scheduling and invisible
+        // locally. Wait for the read to have actually landed instead.
+        await page.waitForFunction(() => {
+            const section = document.querySelector(
+                '[data-surface="member-list-role-badge"]');
+            return section !== null && !section.textContent.includes('Loading members');
+        });
 
         return {
             errors,
