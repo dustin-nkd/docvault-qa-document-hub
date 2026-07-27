@@ -72,9 +72,19 @@ code.
   composed shell driven against a recording transport, plus read-only
   measurements on Preview `681ad3ca-f0f7-4f66-8649-c7dab3de798d`. Four evidence
   records, all PARTIAL.
-- **Fifteen `cf:phase7:*` gates** wired into `check:cloudflare` and pinned in
-  `scripts/cloudflare-ci-policy.mjs`, and **24 evidence records** under
-  `docs/collaboration-foundation/evidence/phase-7/`.
+- **Sixteen `cf:phase7:*` gates** wired into `check:cloudflare` and pinned in
+  `scripts/cloudflare-ci-policy.mjs`, and **27 evidence records** under
+  `docs/collaboration-foundation/evidence/phase-7/`. The sixteenth is
+  `cf:phase7:exit:check`, shipped by `CF-P7-014` on 2026-07-27, which closes
+  `R-P7-D` and is the gate that now enforces the story arithmetic below.
+- **The corrected arithmetic.** Phase 7 has **seventeen** stories, `CF-P7-001`
+  through `CF-P7-017`, of which **fifteen** are PASS: `CF-P7-013` is PARTIAL and
+  `CF-P7-017` is OPEN. Earlier drafts of the exit report and of
+  `phase-8-sprint.md` read "13 of 14"; the denominator missed `CF-P7-015`, which
+  took the next free number after the plan was frozen, and the numerator then went
+  stale when `CF-P7-016` landed and `CF-P7-017` was opened. Both terms are now
+  computed by `cf:phase7:exit:check` from the story inventory rather than written
+  by hand.
 
 ## What Phase 7 does not hand over
 

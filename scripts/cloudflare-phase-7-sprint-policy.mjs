@@ -5,7 +5,7 @@ const same = (a, b) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
 export const STORY_IDS = Object.freeze(['CF-P7-001', 'CF-P7-002', 'CF-P7-003', 'CF-P7-004',
     'CF-P7-005', 'CF-P7-006', 'CF-P7-007', 'CF-P7-008', 'CF-P7-009', 'CF-P7-010',
     'CF-P7-011', 'CF-P7-012', 'CF-P7-013', 'CF-P7-014',
-    'CF-P7-015']);
+    'CF-P7-015', 'CF-P7-016', 'CF-P7-017']);
 
 /** The twelve requested surfaces. Dropping one is a scope change, not a detail. */
 export const SURFACES = Object.freeze(['account-menu', 'workspace-switcher', 'create-workspace',
@@ -33,6 +33,8 @@ export function validatePhase7Sprint({ plan, sprintSource, phase6Exit }) {
 
     const stories = plan.stories || [];
     assert(same(stories.map(story => story.id), STORY_IDS), 'Phase 7 story inventory drifted');
+    assert(plan.story_count === STORY_IDS.length && stories.length === STORY_IDS.length,
+        'The declared story count does not match the story inventory');
     for (const story of stories) {
         assert(typeof story.entry_gate === 'string' && typeof story.exit_gate === 'string',
             `${story.id} is missing an entry or exit gate`);
@@ -40,11 +42,22 @@ export function validatePhase7Sprint({ plan, sprintSource, phase6Exit }) {
             `${story.id} names no evidence`);
     }
 
-    // Unbroken chain: no story starts before its predecessor closed. CF-P7-013
-    // is the exception because it enters at the separate remote gate.
-    for (let index = 1; index < stories.length; index += 1) {
-        const previous = stories[index - 1];
-        const current = stories[index];
+    // Unbroken chain: no story starts before its predecessor closed. Two kinds
+    // of story sit outside it and must say so. CF-P7-013 enters at the separate
+    // remote gate. CF-P7-016 and CF-P7-017 were opened after the phase had
+    // already run past the gates they touch — one re-opens the frozen contract
+    // gate, one is a server story a UI phase turned out to need — so they are
+    // excluded from the linear chain and owe a reason for it instead.
+    const outOfSequence = stories.filter(story => story.out_of_sequence === true);
+    for (const story of outOfSequence) {
+        assert(typeof story.out_of_sequence_reason === 'string'
+            && story.out_of_sequence_reason.length > 80,
+        `${story.id} sits outside the gate chain without saying why`);
+    }
+    const sequenced = stories.filter(story => story.out_of_sequence !== true);
+    for (let index = 1; index < sequenced.length; index += 1) {
+        const previous = sequenced[index - 1];
+        const current = sequenced[index];
         if (current.id === 'CF-P7-013') continue;
         assert(current.entry_gate === previous.exit_gate,
             `Gate chain broken between ${previous.id} and ${current.id}`);

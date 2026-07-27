@@ -2,20 +2,28 @@
 
 Status: **PLANNED — awaiting `P8-G0`**
 
-Entry: Phase 7 has **not** closed. `CF-P7-013` is not PASS and `P7-G5` is not
-granted. Phase 7 has **fifteen** stories, `CF-P7-001` through `CF-P7-015`;
-thirteen of them are PASS. Fifteen `cf:phase7:*` gates run inside
-`check:cloudflare` — `sprint`, `contract`, `shell`, `account`, `create`,
-`device`, `members`, `invitations`, `accept`, `sync`, `conflict`, `audit`,
-`qualify`, `api`, `preview`. The status line of
-[`phase-7-exit-report.md`](phase-7-exit-report.md) read "13 of 14" while the
-table directly beneath it listed fifteen rows. **`CF-P7-014` corrected it to
-"13 of 15" on 2026-07-27** and recorded the correction in §2 of that report
-rather than making it silently; `config/cloudflare/phase-7-sprint-plan.json` now
-carries `story_count: 15` so the count is machine-readable instead of a sentence
-that has to be re-derived by eye. The count was available to get wrong because
+Entry: Phase 7 has **not** closed. `CF-P7-013` is not PASS, `CF-P7-017` is not
+started, and `P7-G5` is not granted. Phase 7 has **seventeen** stories,
+`CF-P7-001` through `CF-P7-017`; **fifteen** of them are PASS. Sixteen
+`cf:phase7:*` gates run inside `check:cloudflare` — `sprint`, `contract`,
+`shell`, `account`, `create`, `device`, `members`, `invitations`, `accept`,
+`sync`, `conflict`, `audit`, `qualify`, `api`, `preview`, `exit`.
+
+The status line of [`phase-7-exit-report.md`](phase-7-exit-report.md) once read
+**"13 of 14"** while the table directly beneath it listed more rows than that.
+**`CF-P7-014` corrected it on 2026-07-27**, first to "13 of 15" and then, once
+`CF-P7-016` had landed and `CF-P7-017` had been opened, to the present
+**"15 of 17"**; the correction is recorded in §2 of that report rather than made
+silently. Two things were wrong, not one. The *denominator* was wrong because
 `CF-P7-015` took the next free number after the plan was frozen, so the highest
-identifier is `015` while the last story in *sequence* is `CF-P7-014`.
+identifier ran ahead of the last story in *sequence* and anyone reading the table
+by eye stopped early. The *numerator* then went stale when the two later stories
+arrived. Neither is a sentence any more: `config/cloudflare/phase-7-sprint-plan.json`
+carries `story_count: 17`, and `cf:phase7:exit:check` computes both terms from the
+story inventory and **fails if the exit report's status line does not carry the
+computed string**. `check-cloudflare-phase-7-sprint.mjs` counts rather than
+printing a literal, for the same reason: its literal said "Fifteen stories" while
+the plan held seventeen.
 
 That arithmetic is not a pedantic point. `cf:phase7:preview:check` **passes**
 while `CF-P7-013` is **not PASS**, because the gate correctly asserts a

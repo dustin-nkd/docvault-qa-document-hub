@@ -53,6 +53,18 @@ Each surface is owned by exactly one story. Nothing ships half-owned.
 | CF-P7-015 | Collaboration API client layer over the Phase 3 to Phase 6 services | P7-G3E | P7-G3F |
 | CF-P7-013 | Integrate and qualify the collaboration UI on Preview | P7-G4 | P7-G4A |
 | CF-P7-014 | Assemble Phase 7 exit and Phase 8 handoff | P7-G4A | P7-G5 |
+| CF-P7-016 | Correct the frozen error-to-presentation map | P7-G1 | P7-G1 |
+| CF-P7-017 | Dispatch the API shell when the collaboration flag is on | P7-G4 | P7-G4A |
+
+**Seventeen stories, not fourteen.** The two rows above the line were added after
+this plan was frozen and sit outside its linear gate chain, which is why they
+carry a gate they re-open rather than a new one. CF-P7-016 re-opens and re-closes
+P7-G1, the contract gate, to fix a defect in a frozen Phase 7 contract that the
+Phase 8 plan found. CF-P7-017 shares CF-P7-013's exit gate P7-G4A because
+CF-P7-013 cannot be qualified until the API shell dispatches. Counting the table
+by eye and stopping at the largest number in the *sequence* column is what
+produced "13 of 14" in four documents; `cf:phase7:exit:check` now computes the
+count instead.
 
 CF-P7-015 is numbered after the original fourteen and sequenced before
 CF-P7-013, which looks wrong and is not. It was added after this plan was

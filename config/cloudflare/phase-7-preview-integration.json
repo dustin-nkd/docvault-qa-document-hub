@@ -73,10 +73,12 @@
   },
 
   "blocked_on": {
-    "owner_action": "Set COLLABORATION_ENABLED for the Preview environment of the Pages project and redeploy codex-cf-p3-preview, then report the new deployment id.",
-    "reason": "Both /api/v1/session and /api/v1/workspaces answer 503 COLLABORATION_UNAVAILABLE on the measured deployment, so no authenticated journey exists to qualify. Cloudflare Pages binds environment variables at build time, so setting the variable is not enough on its own -- the branch has to be rebuilt. wrangler pages secret put is refused to an agent by the permission classifier, which makes this an owner action rather than a step this story can take.",
+    "owner_action": "Decide whether functions/_lib/identity/environment.ts line 67 or the Pages Preview COLLABORATION_ENABLED value is the bug, so CF-P7-017 can dispatch the API shell; then rebuild codex-cf-p3-preview and drive the signed-in journeys, which no agent can do because obtaining an OAuth session means entering credentials at github.com.",
+    "reason": "Re-measured 2026-07-27. The originally recorded blocker -- COLLABORATION_ENABLED not set for the Preview environment -- has been cleared by the owner and IT CHANGED NOTHING ON THE WIRE. /api/v1/session on the codex-cf-p3-preview alias and /api/v1/session and /api/v1/workspaces on production all still answer 503 COLLABORATION_UNAVAILABLE. The cause is in the code: functions/_lib/api-shell.mjs lines 285-293 compute hasReviewedDisabledState and then return the identical 503 on BOTH branches, so no value of the flag can make any /api/v1/* route answer anything else. That is CF-P7-017, which is OPEN and blocked on an owner decision because functions/_lib/identity/environment.ts line 67 reads the same flag with the opposite polarity to its name. A third reason survives both: the journeys to be qualified are signed-in journeys and no OAuth session is available to an agent, so qualifying this story is owner-driven regardless.",
     "agent_permitted": false,
-    "blocks": ["journey qualification", "CF-P7-013 PASS", "CF-P7-014"]
+    "owner_action_taken_and_insufficient": "COLLABORATION_ENABLED='true' was set for the Pages Preview environment and D-P7-01 is executed in wrangler.jsonc. Necessary, and not sufficient.",
+    "blocks": ["journey qualification", "CF-P7-013 PASS", "P7-G5"],
+    "requalification_evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-005.md"
   },
 
   "declared_limits": {

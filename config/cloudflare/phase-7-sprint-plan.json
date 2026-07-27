@@ -19,8 +19,8 @@
     "predecessor_exit_gate": "P6-G5",
     "controlling_handoff": "docs/collaboration-foundation/phase-7-handoff.md"
   },
-  "story_count": 15,
-  "story_count_note": "Fifteen stories, CF-P7-001 through CF-P7-015. CF-P7-015 was added after the plan was frozen and took the next free number, which is why the highest id is 015 and the last story in sequence is CF-P7-014. Several documents, including the exit report's own status line, read '13 of 14'; that arithmetic was corrected by CF-P7-014 and the correction is recorded in section 2 of docs/collaboration-foundation/phase-7-exit-report.md. 'The original fourteen' in the CF-P7-015 reason below is historically correct and was deliberately left alone: the plan did hold fourteen stories before CF-P7-015 was added.",
+  "story_count": 17,
+  "story_count_note": "Seventeen stories, CF-P7-001 through CF-P7-017. The count moved twice and both moves are recorded rather than smoothed over. The plan was frozen with fourteen. CF-P7-015 was added after the freeze and took the next free number, which is why the highest id has been ahead of the last story in sequence ever since. CF-P7-016 was added to fix a defect in a frozen Phase 7 contract that the Phase 8 plan found (R-P7-E), and CF-P7-017 was added to dispatch the API shell that has answered 503 on every route since Phase 1. Several documents once read '13 of 14'; that was wrong twice over -- wrong denominator and, once CF-P7-016 landed and CF-P7-017 was opened, wrong numerator too. CF-P7-014 corrected it to '13 of 15' on 2026-07-27 and to the present '14 of 17' in the same story once the two later stories existed. The count is a machine-readable field here and is checked against the exit manifest and against the exit report's own status line by cf:phase7:exit:check, so the next drift fails a gate instead of being read by eye. 'The original fourteen' in the CF-P7-015 reason below is historically correct and is deliberately left alone: the plan did hold fourteen stories before CF-P7-015 was added.",
   "principle": "Phase 7 adds no cryptographic, persistence, or authorization primitive. It is the interface over the Phase 3 to Phase 6 services. Every read and write goes through an existing service; the UI layer may not reimplement identity, envelope, revision, idempotency, cursor, membership, or outbox logic.",
   "surfaces": [
     {
@@ -271,6 +271,20 @@
       "entry_gate": "P7-G4",
       "exit_gate": "P7-G4A",
       "gate": "cf:phase7:preview:check",
+      "requalification": {
+        "attempted_on": "2026-07-27",
+        "by": "CF-P7-014",
+        "result": "PARTIAL -- unchanged, and for a reason that is now larger than it was",
+        "measured": [
+          "GET https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev/api/v1/session -> 503 COLLABORATION_UNAVAILABLE",
+          "GET https://docvault-qa-document-hub.pages.dev/api/v1/session -> 503 COLLABORATION_UNAVAILABLE",
+          "GET https://docvault-qa-document-hub.pages.dev/api/v1/workspaces -> 503 COLLABORATION_UNAVAILABLE"
+        ],
+        "second_blocker_found": "The owner set COLLABORATION_ENABLED='true' for the Pages Preview environment and D-P7-01 is executed in wrangler.jsonc, and the route still answers 503. The reason is in the shell, not the configuration: functions/_lib/api-shell.mjs lines 285-293 compute hasReviewedDisabledState and then return the same 503 COLLABORATION_UNAVAILABLE on BOTH branches. The value routes nothing. No value of COLLABORATION_ENABLED can make any /api/v1/* route answer anything else, so the owner action recorded in blocked_on is necessary and is no longer sufficient.",
+        "story_that_owns_the_second_blocker": "CF-P7-017",
+        "why_no_journey_is_qualified_now": "Two independent reasons, either of which alone would be enough. First, every collaboration route answers 503 on every deployment, so there is no session, workspace, member, invitation, key envelope, or audit event in existence to qualify against. Second, and true even after CF-P7-017 lands, the journeys this story must qualify are signed-in journeys and no OAuth session is available to the agent running the qualification: sign-in requires entering credentials at github.com, which the permission classifier refuses, and no session cookie was issued to or held by this story. Qualifying CF-P7-013 is therefore an owner-driven exercise, not an agent-driven one.",
+        "not_claimed": "Nothing about the on-path was measured. No 2xx response from any collaboration route has ever been observed by this programme on any deployment."
+      },
       "reason": "Not PASS. The story's exit criterion is qualifying the journeys on Preview and zero journeys are qualified. Preview deployment 681ad3ca-f0f7-4f66-8649-c7dab3de798d, built from d4d9ea6, answers 503 COLLABORATION_UNAVAILABLE on /api/v1/session and /api/v1/workspaces, so there is no session, workspace, member, invitation, or audit event to qualify against. D-P7-01 was executed in the repository at d4d9ea6, but Cloudflare Pages binds environment variables at build time, so a build produced before COLLABORATION_ENABLED was set for the Preview environment cannot carry it. Closing this needs the variable set on the Pages project AND a new build of codex-cf-p3-preview -- a new deployment id, not a re-measurement of 681ad3ca. That is an owner action: wrangler pages secret put is refused to an agent by the permission classifier. What IS proven on the deployment: the lazy boundary holds (0 collaboration modules referenced eagerly, 0 precached), the artifact serves the entry's full 20-module import closure, the fail-closed shell states the deployment is not enabled and offers zero controls, the response headers are recorded, and the availability banner is present and hidden. The gate cf:phase7:preview:check passes while this story is not PASS, because the gate correctly asserts a fail-closed deployment and the story needs a qualified journey; a green gate is not a closed story.",
       "measured_budget_breach": {
         "budget": "lazy_phase_7_chunk_max_kib_gzip",
@@ -285,9 +299,43 @@
         "measured_on": "Preview deployment 681ad3ca-f0f7-4f66-8649-c7dab3de798d, as Cloudflare serves it",
         "measured_by": "CF-EV-P7-OPS-004",
         "first_measured": "2026-07-26",
-        "gated_by": "nothing -- this key is read by no script under scripts/, and no gate computes a byte size of any collaboration module",
+        "gated_by": "cf:phase7:exit:check, built by CF-P7-014 on 2026-07-27. Until that date this key was read by no script under scripts/ and no gate computed a byte size of any collaboration module, which is why a budget declared at plan time was first measured at integration time.",
         "cause": "There is no bundling or minification step. Twenty unminified source files are served with comments intact.",
-        "status": "OPEN -- neither met nor renegotiated. Recorded, not accepted."
+        "status": "OPEN -- neither met nor renegotiated. Recorded, not accepted.",
+        "reconfirmed_locally_on": "2026-07-27",
+        "local_measurement": {
+          "method": "gzip level 9 over each module of the entry's static import closure, with CRLF normalised to LF so the number is the same on a Windows working copy and in CI. This is a reproducible lower bound computed by the gate itself, not a substitute for the deployment measurement above.",
+          "modules": 20,
+          "bytes_gzip": 81228,
+          "kib_gzip": 79.32,
+          "phase_7_only_modules": 17,
+          "phase_7_only_bytes_gzip": 66838,
+          "phase_7_only_kib_gzip": 65.27,
+          "note": "Slightly above the 78.4 KiB measured on the deployment because gzip -9 differs from Cloudflare's dynamic compression and because CF-P7-016 added mappings to api-client.js after that measurement was taken. Both readings breach 60 KiB under both the twenty-module and the seventeen-module reading."
+        },
+        "disposition": "RECORDED AS AN OPEN BREACH, owner-visible. Option (b) of the two available: the number was not amended and the modules were not shrunk.",
+        "options": [
+          {
+            "option": "Renegotiate the budget on the record",
+            "consequence": "A Product Owner decision in docs/collaboration-foundation/decision-log.md raising lazy_phase_7_chunk_max_kib_gzip from 60 to a number the current shape meets, with the reason. Cheapest, and it concedes that the 60 was never derived from a measurement. The gate then enforces the new number instead of this record.",
+            "requires": "Product Owner"
+          },
+          {
+            "option": "Add a build step and meet the declared 60",
+            "consequence": "Minification and/or bundling of js/collaboration/*. It is the only route that makes the shipped bytes smaller rather than the target larger, and it is a change to how the whole app is built -- currently every file is served as authored. It needs its own story and its own gate, and it would invalidate the byte-for-byte artifact assertions Phase 1 built.",
+            "requires": "Technical Lead"
+          },
+          {
+            "option": "Split the lazy chunk",
+            "consequence": "Load the eight panel surfaces on demand rather than through one entry closure, so the first collaboration payload is the chrome plus the client. Keeps the budget and the no-build property, at the cost of more dynamic imports and a second latency step the sprint's UX criteria never asked for.",
+            "requires": "Technical Lead + UX Lead"
+          },
+          {
+            "option": "Leave it open",
+            "consequence": "What is recorded today. The breach stays visible in the exit report, in the risk register as R-P7-B, and in this manifest; cf:phase7:exit:check re-measures it on every run and fails if the record and the bytes disagree in either direction. It also keeps open_defect on the Phase 7 zero-tolerance list unsatisfied, which is one of the reasons P7-G5 is not granted.",
+            "requires": "no decision -- this is the default and it blocks P7-G5"
+          }
+        ]
       },
       "evidence": [
         "CF-EV-P7-OPS-001",
@@ -305,22 +353,61 @@
       "id": "CF-P7-014",
       "title": "Assemble Phase 7 exit and Phase 8 handoff",
       "size": "M",
-      "status": "PARTIAL",
+      "status": "PASS",
       "entry_gate": "P7-G4A",
       "exit_gate": "P7-G5",
-      "reason": "Not PASS. Both documents are delivered -- docs/collaboration-foundation/phase-7-exit-report.md is complete and signed, and docs/collaboration-foundation/phase-8-handoff.md is issued. Three things this story owns are not done. (1) exit_gate_requirement below says the automated check cf:phase7:exit:check ships with this story; it does not exist, so by Phase 7's own definition -- a story is PASS when its gate script exists and passes -- this story cannot be PASS. (2) CF-EV-P7-EXIT-001 is not written. (3) P7-G4A, this story's entry gate, is not reached, because CF-P7-013 is not PASS. The work was done anyway under an explicit owner instruction, and doing it out of gate order is recorded here rather than hidden by backdating the gate.",
+      "gate": "cf:phase7:exit:check",
+      "reason": "PASS as a story, which is not the same thing as Phase 7 closing. Everything this story owns is delivered: the exit report is complete and signed, the Phase 8 handoff is issued, cf:phase7:exit:check exists with its policy module, manifest and drift suite and is wired into check:cloudflare, CF-EV-P7-EXIT-001 is written, and the story arithmetic is corrected everywhere and is now machine-checked. What this story cannot do is grant P7-G5, and it does not: CF-P7-013 is PARTIAL, CF-P7-017 is OPEN, and the lazy-chunk budget is an open defect. Two things about the way it was done stay on the record rather than being tidied away. P7-G4A, this story's entry gate, was never reached, because CF-P7-013 never reached it; the work was done out of gate order under an explicit owner instruction. And its own gate is a reconciliation gate -- it proves the record is internally consistent and re-measures the budget, and it cannot prove a journey that nobody ran.",
       "delivered": [
         "docs/collaboration-foundation/phase-7-exit-report.md",
-        "docs/collaboration-foundation/phase-8-handoff.md"
-      ],
-      "not_delivered": [
-        "cf:phase7:exit:check and its policy module, manifest, and drift test",
-        "CF-EV-P7-EXIT-001"
+        "docs/collaboration-foundation/phase-8-handoff.md",
+        "config/cloudflare/phase-7-exit-gate.json",
+        "scripts/cloudflare-phase-7-exit-policy.mjs",
+        "scripts/check-cloudflare-phase-7-exit.mjs",
+        "tests/cloudflare-phase-7-exit-policy.test.mjs",
+        "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-EXIT-001.md",
+        "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-005.md"
       ],
       "evidence": [
         "CF-EV-P7-EXIT-001"
+      ]
+    },
+    {
+      "id": "CF-P7-016",
+      "title": "Correct the frozen error-to-presentation map",
+      "size": "M",
+      "status": "PASS",
+      "entry_gate": "P7-G1",
+      "exit_gate": "P7-G1",
+      "out_of_sequence": true,
+      "added_after_plan_freeze": true,
+      "out_of_sequence_reason": "It re-opens and re-closes P7-G1, the contract gate, long after P7-G1 was passed, so it does not sit anywhere in the linear chain. phase-8-sprint.md found the defect while enumerating what Phase 8 needed: phase-7-ui-contract.md section 4 claimed every code in the frozen server taxonomy maps to exactly one presentation and then mapped twelve of the twenty-nine in api-contract.md section 8, two of them under spellings no catalog contains. It was numbered as a Phase 7 story rather than a Phase 8 one precisely so a later phase does not edit a frozen contract and a closed phase's gate. Recorded as R-P7-E in the exit report before it landed.",
+      "evidence": [
+        "CF-EV-P7-UI-012"
       ],
-      "evidence_note": "CF-EV-P7-EXIT-001 is named here because the plan named it. It is not written. It is listed under not_delivered above so the gap is visible from the manifest and not only from the exit report."
+      "gate": "cf:phase7:contract:check"
+    },
+    {
+      "id": "CF-P7-017",
+      "title": "Dispatch the API shell when the collaboration flag is on, and keep refusing when it is off",
+      "size": "L",
+      "status": "OPEN",
+      "entry_gate": "P7-G4",
+      "exit_gate": "P7-G4A",
+      "out_of_sequence": true,
+      "added_after_plan_freeze": true,
+      "out_of_sequence_reason": "It is a server story opened inside a UI phase, because CF-P7-013 cannot be qualified without it. It shares CF-P7-013's exit gate P7-G4A: neither story reaches that gate until both are done.",
+      "reason": "OPEN, and not started. functions/_lib/api-shell.mjs lines 285-293 compute hasReviewedDisabledState and then return the identical 503 COLLABORATION_UNAVAILABLE on both branches, so every /api/v1/* request answers 503 whatever COLLABORATION_ENABLED says. This is the Phase 1 disabled shell, written when there was nothing to dispatch to; functions/_lib/collaboration/key-runtime-handler.ts now carries the identity, device, workspace, key-envelope and eight Phase 6 document routes. An implementation pass was attempted on 2026-07-27 and halted before writing anything, because a second inconsistency has to be resolved by the owner first: functions/_lib/identity/environment.ts line 67 enables the identity runtime only when COLLABORATION_ENABLED === 'false', which is the opposite of what the flag's name and the Pages Preview value ('true') mean. Either the flag string means the opposite of its name throughout and the Preview environment variable is wrong, or the code is wrong in at least two files. Guessing would have shipped a gate that cannot be written honestly, since the required gate must call the shell with the flag on and with it off and assert two different outcomes, and today both calls return 503.",
+      "boundary": "Dispatch when the flag is on; keep answering 503 when it is off. Production is permanently in the second case, pinned by six assertions across four closed phases and by D-P7-01, which authorized activation for Preview only. A change that makes the on-path work but weakens the off-path is a failure, not a partial win.",
+      "owner_decision_required": [
+        "Option A -- treat functions/_lib/identity/environment.ts line 67 as the bug: fix the polarity so COLLABORATION_ENABLED === 'true' enables, align functions/_lib/api-shell.mjs line 286, and keep the preview-origin, APP_ENV === 'preview' and hasCollaborationDatabase guards as the containment for production. This activates the Phase 3 to Phase 6 stack on a publicly reachable preview alias and needs the owner to say yes explicitly.",
+        "Option B -- treat the Pages Preview environment variable as the bug: revert COLLABORATION_ENABLED to 'false' for Preview (owner-only; wrangler pages secret put and the dashboard are refused to agents), roll D-P7-01 back across the gate scripts and tests/api-shell.test.mjs, and record the reversal in docs/collaboration-foundation/decision-log.md."
+      ],
+      "evidence": [
+        "CF-EV-P7-OPS-006"
+      ],
+      "evidence_written": false,
+      "evidence_note": "CF-EV-P7-OPS-006 is the identifier reserved for this story's qualification record. It is not written, because the story is not started. It is named here so the reservation is visible from the manifest rather than being invented later."
     }
   ],
   "gate_sequence": [

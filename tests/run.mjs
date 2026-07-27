@@ -93,3 +93,4 @@ import './collaboration-entry.test.mjs';
 import './collaboration-integration.test.mjs';
 import './cloudflare-phase-7-preview-policy.test.mjs';
 import './collaboration-surface-panel.test.mjs';
+import './cloudflare-phase-7-exit-policy.test.mjs';

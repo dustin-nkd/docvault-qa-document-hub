@@ -1,16 +1,24 @@
 # Collaboration Foundation Phase 7 — exit report
 
-Status: **COMPLETE — 13 of 15 stories PASS; `P7-G5` NOT granted; Phase 7 does not close**
+Status: **COMPLETE — 15 of 17 stories PASS; `P7-G5` NOT granted; Phase 7 does not close**
 
 Story: `CF-P7-014`
-Assembled against: `d4d9ea6` (the commit that executed `D-P7-01`)
+Assembled against: `c08ccf1` (the commit that landed `CF-P7-016`), plus this story's own changes
 Assembled on: 2026-07-27
+Gate: `cf:phase7:exit:check`
 
 This report is complete in the sense that every claim it can support is made and
 every claim it cannot is named. It is **not** a closing report. Phase 7 stays
-open because `CF-P7-013` is not PASS, and no signature in section 9 changes
-that. The Phase 5 precedent is followed throughout: a report that fills its own
-gaps is worth less than one that names them.
+open because `CF-P7-013` is not PASS, `CF-P7-017` is not started, and the
+lazy-chunk budget is breached; no signature in section 9 changes any of that. The
+Phase 5 precedent is followed throughout: a report that fills its own gaps is
+worth less than one that names them.
+
+`CF-P7-014` is itself **PASS** as of this revision, which is a claim about a
+story and not about a phase. It shipped `cf:phase7:exit:check` — the gate its own
+plan required and the previous draft had to record as missing — so the
+reconciliation below is now enforced by a script rather than asserted by a
+document. §3 says exactly what that gate does and does not prove.
 
 ## 1. Decision
 
@@ -21,42 +29,64 @@ gaps is worth less than one that names them.
 - Collaboration activation in production: **NO-GO** (unchanged)
 - Production identity, production D1, production document routes: **NO-GO** (unchanged)
 
-Phase 7 delivered twelve collaboration surfaces, a single-door API client, and a
-composed shell, all behind a lazy boundary that keeps Personal startup free of
-collaboration code. Thirteen automated gates hold them. What Phase 7 did **not**
-deliver is the one thing `CF-P7-013` exists to produce: a journey exercised
-end-to-end against a deployment with collaboration switched on.
+Phase 7 delivered twelve collaboration surfaces, a single-door API client, a
+composed shell, and a corrected error-to-presentation map, all behind a lazy
+boundary that keeps Personal startup free of collaboration code. Sixteen
+automated gates hold them. What Phase 7 did **not** deliver is the one thing
+`CF-P7-013` exists to produce: a journey exercised end-to-end against a
+deployment with collaboration switched on. Three months of surface work sit
+behind an API that has answered `503` to every request since Phase 1 and still
+does.
 
 ## 2. A correction to the arithmetic, recorded rather than made quietly
 
-The previous draft of this document carried the status line
-**"13 of 14 stories PASS"**. That is wrong, and it is wrong in the direction that
-flatters: it counted a phase of fourteen stories with one outstanding, when the
-phase has **fifteen** stories with **two** outstanding.
+An earlier draft of this document carried the status line
+**"13 of 14 stories PASS"**. It was wrong in *both* terms, and both errors ran in
+the direction that flatters.
 
-Phase 7 has fifteen stories, `CF-P7-001` through `CF-P7-015`. The count reached
-fifteen when `CF-P7-015` was added after the plan was frozen and took the next
-free number, which is why the highest identifier is `015` while the last story in
-sequence is `CF-P7-014`. Anyone reading the story table by eye and stopping at
-the largest number in the *sequence* column arrives at fourteen. That is exactly
-how this slipped through, and it is why the corrected count is now a machine-
-readable field (`story_count: 15`) in
-`config/cloudflare/phase-7-sprint-plan.json` rather than a sentence.
+**The denominator.** Phase 7 has **seventeen** stories, `CF-P7-001` through
+`CF-P7-017`. The plan was frozen with fourteen. `CF-P7-015` was added afterwards
+and took the next free number, which is why the highest identifier ran ahead of
+the last story in *sequence*: anyone reading the story table by eye and stopping
+at the largest number in the sequence column arrives at fourteen. That is exactly
+how it slipped through.
+
+**The numerator.** Once the denominator was corrected to fifteen, the count went
+stale a second time within the same day: `CF-P7-016` landed at `c08ccf1` (PASS)
+and `CF-P7-017` was opened (OPEN, not started). Thirteen became fourteen and
+fifteen became seventeen.
+
+The honest reading today is **15 of 17 stories PASS**, with `CF-P7-013` PARTIAL
+and `CF-P7-017` OPEN. "13 of 14" read as one story outstanding. It was two
+then and it is two now — but not the same two: `CF-P7-014` closed and
+`CF-P7-017` opened.
 
 Corrected in this pass:
 
 | Location | Was | Now |
 |---|---|---|
-| this report, status line | "13 of 14 stories PASS" | "13 of 15 stories PASS" |
-| this report, §3 closing note | "All thirteen gates run inside `check:cloudflare`" | the precise gate accounting in §3 |
-| `phase-8-sprint.md` §entry | "reads '13 of 14' … `CF-P7-014` owns correcting its own status line" | records that the correction was made, and by whom |
-| `phase-7-sprint-plan.json` | no story count | `story_count: 15` with the reason the miscount was available |
+| this report, status line | "13 of 14", then "13 of 15" | "15 of 17 stories PASS" |
+| this report, §3 story table and gate accounting | fifteen rows, fifteen gates | seventeen rows, sixteen gates |
+| `phase-8-sprint.md` §entry | "fifteen stories … thirteen of them are PASS" | seventeen stories, fifteen PASS, with both errors explained |
+| `phase-8-handoff.md` §what Phase 7 hands over | "Fifteen `cf:phase7:*` gates … 24 evidence records" | sixteen gates, 27 evidence records, and the corrected count |
+| `phase-7-sprint.md` §story table | fifteen rows | seventeen rows, with the two out-of-sequence stories and why they sit outside the chain |
+| `phase-7-sprint-plan.json` | `story_count: 15` | `story_count: 17`, and `STORY_IDS` in the sprint policy extended to match |
+| `check-cloudflare-phase-7-sprint.mjs` | printed the literal "Fifteen stories" | counts, because that literal was itself wrong by the time it printed |
+
+**It is no longer a sentence anywhere that matters.** `cf:phase7:exit:check`
+computes both terms from the story inventory in
+`scripts/cloudflare-phase-7-exit-policy.mjs` and **fails unless this report's
+status line contains the computed string**. It also requires `story_count` in
+`phase-7-exit-gate.json` and `phase-7-sprint-plan.json` to equal the inventory
+length, and requires every story's status to be identical in both files. The
+drift suite includes the exact historical failure as a case — a fourteen-story
+manifest with the status line "13 of 14" is rejected by name.
 
 **Deliberately not changed.** `phase-7-sprint.md` and the `CF-P7-015` entry in
 the sprint plan both say the story is "numbered after the original fourteen".
 That is historically accurate — the plan really did hold fourteen stories before
-`CF-P7-015` was added — and rewriting it to fifteen would erase the fact the
-sentence exists to preserve.
+`CF-P7-015` was added — and rewriting it would erase the fact the sentence exists
+to preserve.
 
 Two further numbers in this report were checked against their evidence during
 this pass rather than carried forward on trust: 60 explained role-disabled
@@ -80,37 +110,56 @@ controls (`CF-EV-P7-A11Y-002`) and a lowest focus-ring contrast of 5.48:1
 | CF-P7-011 | Audit activity | `cf:phase7:audit:check` | passes | `UI-010` | **PASS** |
 | CF-P7-012 | Responsive and keyboard/focus qualification | `cf:phase7:qualify:check` | passes | `A11Y-004`, `UI-011` | **PASS** |
 | CF-P7-015 | Collaboration API client layer | `cf:phase7:api:check` | passes | `API-001` | **PASS** |
-| **CF-P7-013** | **Integrate and qualify on Preview** | `cf:phase7:preview:check` | **passes** | `OPS-001`, `OPS-002`, `OPS-003`, `OPS-004` — all four **PARTIAL** | **PARTIAL** |
-| **CF-P7-014** | **Exit and Phase 8 handoff** | `cf:phase7:exit:check` | **does not exist** | `CF-EV-P7-EXIT-001` — **not written** | **PARTIAL** |
+| CF-P7-016 | Correct the frozen error-to-presentation map | `cf:phase7:contract:check` | passes | `UI-012` | **PASS** |
+| **CF-P7-013** | **Integrate and qualify on Preview** | `cf:phase7:preview:check` | **passes** | `OPS-001`…`OPS-005` — all five **PARTIAL** | **PARTIAL** |
+| CF-P7-014 | Exit and Phase 8 handoff | `cf:phase7:exit:check` | passes | `EXIT-001` | **PASS** |
+| **CF-P7-017** | **Dispatch the API shell on the flag** | none yet | **not started** | `CF-EV-P7-OPS-006` — reserved, **not written** | **OPEN** |
 
 All evidence identifiers are `CF-EV-P7-…` under
-`docs/collaboration-foundation/evidence/phase-7/`; 24 records are committed there
-and all 24 are reconciled above. A story is PASS when its gate script exists and
-passes, never on assertion.
+`docs/collaboration-foundation/evidence/phase-7/`; **27** records are committed
+there and all 27 are reconciled above. A story is PASS when its gate script
+exists and passes, never on assertion — and, as of this story, when every
+evidence record it names exists on disk, reads `Status: PASS`, and mentions the
+story. `cf:phase7:exit:check` checks all three.
 
-**Gate accounting, stated precisely because the previous version of this line was
-imprecise.** Fifteen `cf:phase7:*` gates run inside `check:cloudflare`:
+**Gate accounting.** Sixteen `cf:phase7:*` gates run inside `check:cloudflare`:
 `sprint`, `contract`, `shell`, `account`, `create`, `device`, `members`,
 `invitations`, `accept`, `sync`, `conflict`, `audit`, `qualify`, `api`,
-`preview`. Thirteen of those are the story gates of the thirteen PASS stories.
-`cf:phase7:preview:check` is the fourteenth and it **passes while its story does
-not** — the gate asserts a fail-closed deployment truthfully, and the story needs
-a qualified journey. A green gate is not a closed story. `cf:phase7:sprint:check`
-is the fifteenth; it gates this plan and has no stated story owner, a hole the
-same shape as the one `CF-P7-015` was created to close, and one Phase 8 closes by
-naming an owner rather than by adding a story that does nothing else.
+`preview`, `exit`. Fourteen of the sixteen are story gates of the fifteen PASS stories
+— `contract` is shared, since `CF-P7-016` re-opened and re-closed the frozen
+contract `CF-P7-001` had frozen, and `exit` belongs to `CF-P7-014`.
+`cf:phase7:preview:check` **passes while its story does not**: the gate asserts a
+fail-closed deployment truthfully, and the story needs a qualified journey. A
+green gate is not a closed story. `cf:phase7:sprint:check` gates the plan and has
+no stated story owner, a hole the same shape as the one `CF-P7-015` was created
+to close, and one Phase 8 closes by naming an owner rather than by adding a story
+that does nothing else.
 
-**Three manifest corrections made by this story**, each because the manifest
-named something that does not exist:
+**What `cf:phase7:exit:check` proves, and what it cannot.** It proves the record
+is internally consistent — the count, the story statuses across two manifests, the
+journey claim across two manifests, the gate-and-evidence backing behind every
+PASS, the sign-off provenance, the four `NO-GO` boundary keys — and it
+re-measures the lazy chunk from the working tree on every run. It **cannot**
+prove a journey nobody ran, and it is written so that it cannot appear to: it
+refuses `CF-P7-013 = PASS` while `journeys_qualified` is `false`, and it computes
+`P7-G5` from its conditions rather than reading a field. A reconciliation gate is
+the weakest kind of gate in this programme and is labelled as such.
 
-1. `CF-P7-013` was `PLANNED` and is now `PARTIAL`, with the reason and the
-   measured budget breach recorded inline.
+**Manifest corrections made by this story**, each because the manifest named
+something that does not exist or no longer holds:
+
+1. `CF-P7-013` remains `PARTIAL`, with the 2026-07-27 re-measurement and the
+   second, deeper blocker recorded inline (§6.1).
 2. `CF-P7-013`'s evidence list named `CF-EV-P7-QA-001` and `CF-EV-P7-PERF-002`.
-   Neither was ever written. It now names the four `OPS` records that were, with
-   the planned-but-unwritten pair retained in
-   `evidence_planned_but_never_written` so the substitution is visible.
-3. `CF-P7-014` was `PLANNED` and is now `PARTIAL`, listing what it delivered and
-   what it did not.
+   Neither was ever written. It names the five `OPS` records that were, with the
+   planned-but-unwritten pair retained in `evidence_planned_but_never_written` so
+   the substitution stays visible.
+3. `CF-P7-014` was `PARTIAL` and is now `PASS`: its gate, its manifest, its drift
+   suite and `CF-EV-P7-EXIT-001` all exist. What it could not do — grant `P7-G5`
+   — it does not do.
+4. `CF-P7-016` and `CF-P7-017` were added to the plan. Both sit outside the
+   linear gate chain and both say why; the sprint policy now requires that
+   `out_of_sequence_reason` rather than silently accepting a broken chain.
 
 ## 4. Gate UX criteria
 
@@ -167,9 +216,57 @@ and the consequence — that nothing performed any transport at all — was invi
 to every one of them. That is what `CF-P7-015` exists to close, and it is the
 reason Phase 8 is a verification phase rather than a feature phase.
 
-## 6. OPEN — `CF-P7-013`, and a budget that fails
+## 6. OPEN — `CF-P7-013`, `CF-P7-017`, and a budget that fails
 
-`CF-P7-013` is **not PASS**. Two distinct things are open under it.
+`CF-P7-013` is **not PASS**. Three distinct things are open, two of them under it.
+
+### 6.0 The re-qualification, and the blocker that turned out to be bigger
+
+The previous draft named one blocker: `COLLABORATION_ENABLED` was not carried by
+the measured Preview build, and setting it plus rebuilding was an owner action.
+**That action has been taken.** The owner set `COLLABORATION_ENABLED` to `'true'`
+for the Pages **Preview** environment, and `D-P7-01` is executed in
+`wrangler.jsonc` (`local=false, preview=true, production=false`, asserted by
+`cf:config:check` on every run).
+
+Re-measured 2026-07-27, read-only:
+
+| Request | Status |
+|---|---|
+| `GET …codex-cf-p3-preview.docvault-qa-document-hub.pages.dev/api/v1/session` | **503 `COLLABORATION_UNAVAILABLE`** |
+| `GET …docvault-qa-document-hub.pages.dev/api/v1/session` | **503 `COLLABORATION_UNAVAILABLE`** |
+| `GET …docvault-qa-document-hub.pages.dev/api/v1/workspaces` | **503 `COLLABORATION_UNAVAILABLE`** |
+
+Nothing changed, and the reason is in the code rather than in the configuration.
+`functions/_lib/api-shell.mjs` lines 285–293 compute `hasReviewedDisabledState`
+and then return the **identical** `503 COLLABORATION_UNAVAILABLE` on **both**
+branches. The value that is computed routes nothing. No value of
+`COLLABORATION_ENABLED` can make any `/api/v1/*` route answer anything else. This
+is the Phase 1 "disabled API shell", written when there was nothing to dispatch
+to; `functions/_lib/collaboration/key-runtime-handler.ts` now carries the
+identity, device, workspace, key-envelope and eight Phase 6 document routes it
+could dispatch to.
+
+That is **`CF-P7-017`**, opened by this story and **not started**. An
+implementation pass on 2026-07-27 halted before writing a line, and the reason it
+halted is worth more than the story would have been: `functions/_lib/identity/
+environment.ts` line 67 enables the identity runtime **only when
+`COLLABORATION_ENABLED === 'false'`** — the opposite of what the flag's name means
+and the opposite of the value now set on Preview. `api-shell.mjs:286` uses the
+same `=== 'false'` convention, so the two files agree with each other and
+disagree with the deployment. Either the flag string means the opposite of its
+name throughout and the Preview environment variable is wrong, or the code is
+wrong in at least two files. The gate `CF-P7-017` must ship has to call the shell
+with the flag on and with it off and assert **two different outcomes**; on today's
+source both calls return `503`, so that gate cannot be written honestly yet.
+Shipping it anyway would have produced a green, vacuous suite — the exact failure
+this programme has already had sixteen of. The two coherent options are recorded
+under `CF-P7-017` in `config/cloudflare/phase-7-sprint-plan.json` and both need
+the owner.
+
+**The boundary is intact and was measured, not assumed.** Production answers
+`503` on `/api/v1/session` and `/api/v1/workspaces`. No regression — nothing was
+deployed.
 
 ### 6.1 No journey is qualified
 
@@ -196,23 +293,35 @@ conflict resolution, and audit activity. There is no session, workspace, member,
 invitation, or audit event on a deployment answering `503`, so there is nothing
 to qualify against. Nothing was invented to fill the gap.
 
-**Why the deployment is off, and what is not claimed about it.** `d4d9ea6`
-executed `D-P7-01` across the repository and every gate. Cloudflare Pages binds
-environment variables at **build time**, so a build produced before
-`COLLABORATION_ENABLED` was set on the Pages project cannot carry it, whatever
-the repository says. Whether the variable is unset, set to something other than
-`'true'`, or was set after this build began cannot be distinguished from outside
-— all three produce an identical `503` — and wrangler exposes no read path for
-Pages environment variables. **Deployment behaviour was measured; the project
-variable was not.** "The variable is not set" is an inference and is not recorded
-here as a fact.
+**Two independent reasons, either sufficient on its own.** The first is §6.0: the
+API answers `503` to everything, on every deployment, and will until `CF-P7-017`
+lands. The second survives `CF-P7-017` and needs saying plainly, because it is the
+one that determines *who* can close this story:
 
-**What closes it.** `COLLABORATION_ENABLED` set for the **Preview environment**
-of the Pages project, then `codex-cf-p3-preview` **rebuilt** — a new deployment
-id, not a re-measurement of `681ad3ca` — and the journeys qualified against the
-result. This is an owner action: `wrangler pages secret put` is refused to an
-agent by the permission classifier. It is on record at
-`config/cloudflare/phase-7-preview-integration.json` under `blocked_on`.
+> **The journeys `CF-P7-013` must qualify are signed-in journeys, and no OAuth
+> session is available to the agent.** Every one of them begins at an
+> authenticated session. Obtaining one means entering GitHub credentials at
+> `github.com`, which the permission boundary prohibits outright, and no session
+> cookie was issued to or held by this story. **Qualifying `CF-P7-013` is an
+> owner-driven exercise and always was.**
+
+This is why `CF-P7-013` is recorded **PARTIAL** and not PASS, and why marking it
+PASS "now that Preview is enabled" was measured against and refused: Preview is
+not enabled in any sense visible on the wire, and even if it were, nobody signed
+in. Recorded in `CF-EV-P7-OPS-005`.
+
+**What is not claimed about the Pages project variable.** Wrangler exposes no read
+path for Pages environment variables, so the owner's report that Preview carries
+`'true'` is taken as given rather than verified from outside. It makes no
+difference to the result: the shell does not route on it (§6.0). **Deployment
+behaviour was measured; the project variable was not.**
+
+**What closes it,** in order: `CF-P7-017` resolved and landed, so a route can
+answer something other than `503`; `codex-cf-p3-preview` rebuilt — a new
+deployment id, not a re-measurement; and then the journeys driven by someone who
+can sign in. The first needs an owner decision, the third needs an owner. On
+record at `config/cloudflare/phase-7-preview-integration.json` under `blocked_on`
+and at `phase-7-sprint-plan.json` under `CF-P7-013.requalification`.
 
 ### 6.2 The lazy-chunk budget fails, measured for the first time
 
@@ -233,22 +342,58 @@ the lazy path also pulls (`device-key-lifecycle.js` 5,212 B, `outbox.js`
 are 65,872 B = **64.3 KiB**. There is no definition of "the Phase 7 chunk" under
 which this passes.
 
-Three things about it matter more than the number:
+**Reconfirmed locally, and now by a gate.** `cf:phase7:exit:check` walks the
+static import closure of `js/collaboration/entry.js`, gzips each module at level 9
+with CRLF normalised to LF, and sums:
 
-- **No gate measures it.** The key is read by nothing; no script under
-  `scripts/` computes a byte size of any collaboration module.
+| Reading | Modules | gzip |
+|---|---:|---:|
+| Entry closure, recomputed locally on every gate run | 20 | **79.32 KiB** |
+| Phase 7 modules only, recomputed locally | 17 | **65.27 KiB** |
+
+Slightly above the deployment figures because `gzip -9` differs from Cloudflare's
+dynamic compression and because `CF-P7-016` added mappings to `api-client.js`
+after the deployment measurement was taken. Every reading breaches.
+
+Four things about it matter more than the number:
+
+- **Until this story, no gate measured it.** The key was read by nothing; no
+  script under `scripts/` computed a byte size of any collaboration module.
   `CF-EV-P7-PERF-001` deferred the measurement to `CF-P7-013` in as many words,
-  and this is it. The budget was never wrong — it was never checked.
+  and `CF-P7-013` was the first time anyone looked. The budget was never wrong —
+  it was never checked. **A budget no script reads is not a budget.**
 - **The cause is structural.** There is no bundling or minification step. Twenty
   unminified source files are served with their comments intact. The figures are
   Cloudflare's dynamic compression of that, not a property of a build artifact,
   and the breach is stated about the configuration that currently ships.
 - **It is neither met nor renegotiated.** It is recorded as OPEN. Renegotiating a
   budget to match what shipped is a decision, not an edit, and no such decision
-  exists.
+  exists. `cf:phase7:exit:check` rejects any manifest or plan that changes the
+  declared 60, and rejects a record that says `OPEN` once the measurement comes
+  under — the check runs in both directions, so it cannot rot into a permanent
+  excuse.
+- **What the gate enforces is the record, not the size.** It fails if the recorded
+  figure drifts more than 2 KiB from the recomputed one, if the breach disappears
+  from this report or from the risk register, or if the options table is emptied.
+  It deliberately does **not** fail the release chain on the breach itself: that
+  would turn a recorded defect into a red build and force a decision this story
+  has no authority to make. Enforcing the record is weaker than enforcing the
+  size, and is labelled as such.
 
-Phase 7's zero-tolerance list includes `open_defect`. This is one. It is the
-proximate reason, alongside §6.1, that `P7-G5` is not granted.
+**Disposition: recorded as an open, owner-visible breach — option (b).** The
+number was not amended and the modules were not shrunk. The options, none chosen:
+
+| Option | Requires | Consequence |
+|---|---|---|
+| Renegotiate the budget on the record | Product Owner | A decision-log entry raising 60 to a number the current shape meets, with the reason. Cheapest, and it concedes the 60 was never derived from a measurement. |
+| Add a build step and meet the declared 60 | Technical Lead | Minification and/or bundling of `js/collaboration/*` — the only route that shrinks the shipped bytes rather than enlarging the target. It changes how the whole app is built and would invalidate Phase 1's byte-for-byte artifact assertions. Needs its own story and gate. |
+| Split the lazy chunk | Technical Lead + UX Lead | Load the eight panel surfaces on demand rather than through one entry closure. Keeps both the budget and the no-build property, at the cost of more dynamic imports and a second latency step the UX criteria never asked for. |
+| Leave it open | no decision | The status quo. It stays visible here, in the risk register as **R-P7-B**, and in `phase-7-exit-gate.json`, and it keeps `open_defect` unsatisfied. |
+
+Carried in the risk register as **R-P7-B** with the measurement and these
+options, so it outlives this document. Phase 7's zero-tolerance list includes
+`open_defect`. This is one. It is the proximate reason, alongside §6.0 and §6.1,
+that `P7-G5` is not granted.
 
 ## 7. Residual risks
 
@@ -259,10 +404,14 @@ by moving up a level of integration rather than by inspecting a module in place;
 there is one level left, and it has not been reached. Owner: Product Owner.
 Closed by `CF-P7-013` reaching PASS.
 
-**R-P7-B — The lazy budget is breached by 31% and nothing enforces it.** §6.2.
-Whatever is decided, the gap that allowed it — a declared budget no script reads
-— outlives the number. Phase 8 carries the enforcing budget row. Owner:
-Technical Lead.
+**R-P7-B — The lazy budget is breached by 31%. OPEN.** §6.2. Since this story a
+gate re-measures it on every run and refuses to let the record drift or the
+number be amended, which is enforcement of the *record* and not of the size. The
+gap that allowed it — a declared budget no script read for the whole of a phase —
+outlives the number, and Phase 8 carries the enforcing budget row for the rest of
+the programme's declared limits. Carried in the risk register as **R-P7-B** with
+the measurement and four options, so it is visible to the owner outside this
+document. Owner: Technical Lead. **Not accepted; recorded.**
 
 **R-P7-C — "Correctly excluded" and "missing" are the same 200 on the wire.**
 `document-envelope.js` and `storage-provider.js` both return `200` with
@@ -278,15 +427,31 @@ risk is the next commit: the first Phase 7 or Phase 8 surface to import either
 module gets a working local build and a broken deployment, and the content-type
 is the only place it shows. Nothing gates that transition. Owner: Technical Lead.
 
-**R-P7-D — `CF-P7-014` shipped without its own gate.** The plan requires
-`cf:phase7:exit:check` to ship with this story, in the pattern Phases 2 through 6
-each followed. It does not exist, so the reconciliation in §3 is asserted by this
-document rather than enforced by a script, and it can drift the moment anything
-below it changes. Phase 5's exit gate rejects 55 mutation cases; Phase 7 has
-none. Owner: Senior QA.
+**R-P7-D — `CF-P7-014` shipped without its own gate. CLOSED.**
+`cf:phase7:exit:check` now exists: `scripts/cloudflare-phase-7-exit-policy.mjs`,
+`scripts/check-cloudflare-phase-7-exit.mjs`,
+`config/cloudflare/phase-7-exit-gate.json` and
+`tests/cloudflare-phase-7-exit-policy.test.mjs`, wired into `check:cloudflare` and
+into the pinned chain in `scripts/cloudflare-ci-policy.mjs`. The reconciliation in
+§3 is enforced rather than asserted. The drift suite opens with a **no-op
+control** — the unmutated repository must be accepted — because sixteen suites in
+this programme were once green and vacuous for want of exactly that. Owner:
+Senior QA. **Residual:** a reconciliation gate is the weakest kind, and §3 says so
+in the gate's own terms.
 
-**R-P7-E — The Phase 7 error-to-state map is incomplete, and Phase 8 cannot
-start until Phase 7 fixes it.** `phase-7-ui-contract.md` §4 opens "Every code in
+**R-P7-E — The Phase 7 error-to-state map is incomplete. CLOSED by `CF-P7-016`
+at `c08ccf1`,** which renamed the two non-existent spellings, mapped the seventeen
+uncovered codes, and rewrote `cf:phase7:contract:check` to parse the catalog out
+of `api-contract.md` and check coverage in **both** directions — the hole was that
+the gate only checked codes that were *in* the map and never asked whether the
+catalog held one the map lacked. A second hardcoded copy in the create-workspace
+policy was removed the same way. Evidence `CF-EV-P7-UI-012`. The original
+description follows, unedited, because it is the entry precondition Phase 8 was
+told to wait for and the record of what was wrong is worth more than a struck-out
+line. **The story is counted in the seventeen** — a sentence the previous draft
+had to write the other way round.
+
+`phase-7-ui-contract.md` §4 opened "Every code in
 the frozen server taxonomy maps to exactly one presentation" and then maps
 twelve, two of which (`UNAUTHENTICATED`, `RECENT_AUTHENTICATION_REQUIRED`) are
 spellings in no catalog. The frozen catalog in `api-contract.md` §8 holds **29**
@@ -294,9 +459,8 @@ codes, so after the two renames the map covers twelve of twenty-nine and
 seventeen server codes have no presentation at all. Three of the seventeen are
 load-bearing in Phase 8's own scenarios. `phase-8-sprint.md` names the fix as a
 **Phase 7** story, `CF-P7-016`, precisely so a later phase does not edit a frozen
-contract and a closed phase's gate. That story is not in this plan and is not
-counted in the fifteen. Owner: Technical Lead. **This is an entry precondition
-for Phase 8, not a Phase 8 story.**
+contract and a closed phase's gate. Owner: Technical Lead. **This is an entry
+precondition for Phase 8, not a Phase 8 story.**
 
 **R-P7-F — Preview residue carried forward from Phase 6 and added to by Phase 7.**
 Revisions and audit events are append-only by trigger, the Preview surface
@@ -319,114 +483,117 @@ contract against a twelve-item copy of itself kept in the gate.
 
 Three consequences, stated rather than smoothed over:
 
-1. **This report reconciles the committed state at `d4d9ea6`** and makes no claim
-   about the uncommitted work. If `CF-P7-016` lands, Phase 7 has **sixteen**
-   stories, and §2, §3 and R-P7-E must be amended.
-2. **The gate results in §8.1 were measured against a tree that kept changing
-   underneath them.** They are true of the tree at the moment each gate ran and
-   are not a claim about any commit.
-3. **Nobody should commit this tree as one change.** It contains two agents'
-   work, and only one of them is described by this report.
+1. **That draft reconciled the committed state at `d4d9ea6`** and made no claim
+   about the uncommitted work. **`CF-P7-016` has since landed at `c08ccf1`**, so
+   §2, §3 and R-P7-E are amended in this revision exactly as that sentence
+   required. The prediction is left standing because it came true, and because a
+   report that quietly deletes its own contingency is worth less than one that
+   shows it being discharged.
+2. **The gate results in the previous §8.1 were measured against a tree that kept
+   changing underneath them.** They were true of the tree at the moment each gate
+   ran and were not a claim about any commit. The run recorded in §8.1 of *this*
+   revision is not in that position: `git status` was clean at `c08ccf1` when this
+   story began, and the only changes in the tree are this story's own.
+3. **Nobody should have committed that tree as one change.** Nobody did. The two
+   agents' work landed as separate commits and this revision reconciles both.
 
-Owner: Product Owner.
+**RESOLVED.** Owner: Product Owner.
 
-**R-P7-H — The authoritative gate cannot complete in this working copy.**
-`npm run check` exits **127** at `cf:types:check`, on a pure CRLF-versus-LF
-mismatch in a generated types file whose content and configuration hash are
-unchanged (§8.1). Every individual gate passes, so no Phase 7 claim depends on
-it — but `cf:types:check` is the **third of the seventy-two** gates in
-`check:cloudflare`, and a chain that aborts there cannot be the thing that
-certifies the other seventy-one. "Green with a real exit code" is a stated
-`P7-G5` condition. Two further points make it worse than cosmetic: the failure mode is
-*silent staleness in the other direction*, since a genuinely drifted
-`worker-configuration.d.ts` would produce the same message, and the crash is a
-libuv abort rather than a clean non-zero exit, which is exactly the class of
-result that is easy to mistake for infrastructure noise. Owner: Operations.
+**R-P7-H — The authoritative gate could not complete in the previous working
+copy. CLOSED.** `npm run check` exited **127** at `cf:types:check`, on a pure
+CRLF-versus-LF mismatch in a generated types file whose content and configuration
+hash were unchanged. It now reports *"Types at `worker-configuration.d.ts` are up
+to date"* and exits **0**, and the full chain completes (§8.1). This is recorded
+as an environment condition that no longer holds rather than as a defect fixed
+here: nothing in this story regenerated that file. The observation that made it
+worse than cosmetic still stands and is worth carrying forward — a genuinely
+drifted `worker-configuration.d.ts` produces the same message as a line-ending
+mismatch, so the failure mode is *silent staleness in the other direction*, and a
+libuv abort is easy to mistake for infrastructure noise. Owner: Operations.
+
+**R-P7-I — The API shell has never dispatched, and nothing noticed for seven
+phases.** `functions/_lib/api-shell.mjs` returns the identical `503
+COLLABORATION_UNAVAILABLE` on **both** branches of its own feature check (§6.0),
+so every `/api/v1/*` request has answered `503` since Phase 1 regardless of
+configuration. Phases 3 through 6 built identity, workspaces, RBAC, device and
+workspace keys, and eight document routes behind it; all of them were qualified at
+the persistence layer or through the Workers test harness, never through the shell
+that fronts them in production. This is the same shape as finding #4 and #5 in §5 —
+**a correct part-wise check is not a whole-system check** — at the largest scale
+the programme has produced it. Tracked as `CF-P7-017`, which is OPEN and blocked
+on an owner decision about the flag's polarity. Owner: Technical Lead.
 
 The programme risk register carries 22 rows, `R01` through `R22`, with no open
-unowned risk. Phase 7 opened none of them and closed none of them; the **eight**
-above (`R-P7-A` through `R-P7-H`) are Phase 7 exit conditions, tracked here, and
-`R23` — designated Preview identities are build-time configuration — is opened by
-`CF-P8-001`.
+unowned risk. Phase 7 opened none of them and closed none of them. The **nine**
+above (`R-P7-A` through `R-P7-I`) are Phase 7 exit conditions: three are now
+closed (`R-P7-D`, `R-P7-E`, `R-P7-H`), one is resolved (`R-P7-G`), one is newly
+opened (`R-P7-I`), and `R-P7-B` is additionally carried in the risk register
+itself under §4A so that the open budget breach is visible to the owner outside
+this report. `R23` — designated Preview identities are build-time configuration —
+is opened by `CF-P8-001`.
 
 ## 8. Local verification
 
 - `node scripts/check-cloudflare-phase-7-sprint.mjs` → passes on the amended
-  plan: fifteen stories, twelve owned surfaces, an unbroken gate chain, remote
-  work behind `P7-G4`.
+  plan: **15 of 17 stories PASS**, twelve owned surfaces, an unbroken gate chain
+  over the sequenced stories, remote work behind `P7-G4`. The line it prints is
+  now counted rather than spelled — the literal it used to print said "Fifteen
+  stories" and was wrong by the time this story ran.
+- `node scripts/check-cloudflare-phase-7-exit.mjs` → the new gate, passing, and
+  printing the open budget defect and the five open items on every run.
 - `npm run check` — the authoritative gate, run at the close of this story with
   its exit code captured directly and never through a pipe
   (`npm run check > file 2>&1; echo $?`). Result in §8.1.
 
 ### 8.1 The gate run that closes this story
 
-Run on 2026-07-27 against the working tree described in **R-P7-G** — that is,
-`d4d9ea6` plus this story's documentation and manifest edits **plus another
-agent's in-flight `CF-P7-016` changes**, which this story neither made nor
-controls.
+Run on 2026-07-27 against `c08ccf1` plus this story's own changes and nothing
+else. Unlike the previous draft's run (**R-P7-G**), the tree was not moving: it
+was clean at `c08ccf1` when this story began, and every modified file below is
+this story's.
 
 ```
-npm run check > /tmp/c.txt 2>&1; echo $?
-127
+npm run check > /tmp/close.txt 2>&1; echo $?
+0
 ```
 
-**The real exit code is 127. It is not green, and it is not recorded as green.**
-The exit code was captured with `; echo $?` after a redirect and never through a
-pipe. The chain was run twice, at the start and at the close of assembly, and
-returned 127 at the same gate both times.
+**The real exit code is 0.** It was captured with `; echo $?` after a redirect
+and never through a pipe. The whole chain ran to completion; no gate was skipped
+and none was run individually to substitute for it.
 
 | Stage | Result |
 |---|---|
 | `check:base` → `scripts/quality-check.mjs` | passed — 23 JavaScript files, 30 local HTML references, 36 offline shell assets, 375 static UI strings |
 | `check:base` → `check:functions` (`tsc --project tsconfig.functions.json`) | passed, no output |
-| `check:base` → `npm test` (`node --test tests/run.mjs`) | **0 fail, 0 skipped, 0 todo.** 1081 tests in the first run and **1086** in the final one — the count moved because another agent added tests to this tree mid-assembly (R-P7-G), which is itself worth recording |
+| `check:base` → `npm test` (`node --test tests/run.mjs`) | **1152 tests, 1152 pass, 0 fail, 0 skipped, 0 todo.** 1086 before this story; the 66 added are the `cf:phase7:exit:check` drift suite |
 | `check:cloudflare` → `cf:toolchain:check` | passed |
 | `check:cloudflare` → `cf:config:check` | passed — `local=false, preview=true, production=false`; one approved Preview D1 binding, zero production bindings |
-| `check:cloudflare` → **`cf:types:check`** | **FAILED, exit 127. The chain stopped here and no later gate ran in this invocation.** |
+| `check:cloudflare` → `cf:types:check` | **passed** — *"Types at `worker-configuration.d.ts` are up to date"* |
+| `check:cloudflare` → `cf:burst:*`, `test:collab:unit`, `cf:test`, `cf:rollback:rehearse`, `cf:pages:dry-run` | all passed; `cf:test` = 20 tests, 20 pass |
+| `check:cloudflare` → `cf:phase1:*` … `cf:phase6:*` | all passed |
+| `check:cloudflare` → `cf:phase7:*` — `sprint`, `contract`, `shell`, `account`, `create`, `device`, `members`, `invitations`, `accept`, `sync`, `conflict`, `audit`, `qualify`, `api`, `preview`, `exit` | **16 of 16 exit 0**, including the new exit gate |
 
-**What failed, measured rather than assumed.** `cf:types:check` runs
-`wrangler types worker-configuration.d.ts --check`, which reported *"Types at
-`worker-configuration.d.ts` are out of date"* and then crashed inside wrangler
-with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file
-src\win\async.c, line 76`. The 127 is that abort, not an ordinary gate rejection.
-It reproduces: running `cf:types:check` alone returns 127 again.
+**`R-P7-H` is closed, and how it closed matters.** The previous draft recorded
+`cf:types:check` aborting with exit **127** — `wrangler types --check` reporting
+the types out of date and then crashing inside libuv with
+`Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`. It was diagnosed there
+as a CRLF-versus-LF mismatch in a generated file whose content and configuration
+hash were unchanged, and deliberately not fixed, on the grounds that quietly
+regenerating a tracked file would make a report's gate run look green without any
+Phase 7 claim becoming more true. It now passes. **Nothing in this story touched
+`worker-configuration.d.ts` or `wrangler.jsonc`**, so this is recorded as an
+environment condition that stopped holding, not as a fix. The observation that
+made it worth recording still stands: a genuinely stale types file produces the
+same message as a line-ending mismatch, so a passing `cf:types:check` is weaker
+evidence than it looks.
 
-**The types are not stale.** Regenerating them to a scratch path outside the
-repository produced a file that is **identical to the committed one once carriage
-returns are removed**, carrying the **same** configuration hash
-`3f3f2b1a99e6a4b9c2e2272f6fc208fb`. Both files are 14,737 lines; the on-disk file
-is 566,988 bytes and the regenerated one 552,402, and the entire difference is CR
-bytes plus the output path wrangler echoes into its own header comment. Git is
-configured `core.autocrlf=true`, so the LF blob becomes CRLF on checkout, while
-`wrangler types` emits LF and `--check` compares bytes. **This gate fails on line
-endings, not on content.** It is an environment condition of this working copy,
-not a drift in the Cloudflare configuration.
-
-**It is not caused by this story.** `CF-P7-014` wrote three markdown documents
-and `config/cloudflare/phase-7-sprint-plan.json`. None of them is an input to
-`wrangler types`, which reads `wrangler.jsonc` — unmodified at `d4d9ea6`. The
-regenerated hash being unchanged is the direct evidence for that.
-
-**It is not fixed here, deliberately.** The fix is to rewrite a tracked generated
-file with LF endings. That file belongs to no Phase 7 story, the working tree
-holds another agent's uncommitted work, and quietly regenerating it would make
-this report's gate run look green without any Phase 7 claim becoming more true.
-Recorded as an open environment defect instead.
-
-**Every other gate in the chain was then run individually, and every one
-passes:**
-
-| Gate group | Result |
-|---|---|
-| `cf:burst:config:check`, `cf:burst:types:check`, `cf:burst:build` | 3 of 3 exit 0 |
-| `test:collab:unit`, `cf:test`, `cf:rollback:rehearse`, `cf:pages:dry-run` | 4 of 4 exit 0; `cf:test` = 2 files, 7 tests, 7 pass |
-| `cf:phase1:*` through `cf:phase6:*` | 47 of 47 exit 0 |
-| `cf:phase7:*` — `sprint`, `contract`, `shell`, `account`, `create`, `device`, `members`, `invitations`, `accept`, `sync`, `conflict`, `audit`, `qualify`, `api`, `preview` | **15 of 15 exit 0**, including the amended sprint plan; re-run at the close of assembly against the changed tree and still 15 of 15 |
-
-So: **every Phase 7 gate passes, and the authoritative chain does not.** Both
-sentences are true and neither is a substitute for the other. The chain was not
-re-run to green — the gates above were run one at a time — and no claim in this
-report rests on a green `npm run check`.
+**What a green chain does and does not establish.** It establishes that every
+gate this programme has written agrees with the repository. It establishes
+nothing about the deployment, because no gate in the chain makes a network
+request — `cf:phase7:preview:check` reconciles a manifest of measurements taken
+by hand, and `cf:pages:dry-run` does not deploy. The one Phase 7 claim that a
+green chain cannot support is the one Phase 7 is missing (§6.1), and the chain
+being green is not offered as consolation for it.
 
 ## 9. Owner authorization
 
@@ -469,6 +636,18 @@ them beyond what they say.
 - It authorizes **signing this report**. It is not a grant of `P7-G5`, and it is
   not read as one. The owner did not say `P7-G5`, and a signature cannot supply a
   journey that was never run. See §10.
+- It is **not** read as authorization for `CF-P7-017`, which needs a separate,
+  specific decision about the collaboration flag's polarity and about activating
+  the Phase 3–6 stack on a publicly reachable preview alias (§6.0). A blanket
+  instruction to finish the exit paperwork is not consent to switch a system on.
+
+Every one of these constraints is pinned in
+`config/cloudflare/phase-7-exit-gate.json` under `sign_off`, where
+`independent_reviewers_exist`, `independent_security_or_privacy_review_performed`,
+`line_by_line_reading` and `grants_p7_g5` are all `false` and
+`cf:phase7:exit:check` rejects any of them being flipped to `true`. The record
+cannot be quietly upgraded into a claim of seven independent reviews later, which
+is the only durable protection a single-maintainer sign-off has.
 
 | Role | Sign-off | Basis | Date |
 |---|---|---|---|
@@ -490,23 +669,44 @@ The seven roles are signed. The objective conditions are not met:
 
 | Condition | State |
 |---|---|
-| Every story PASS | **no** — `CF-P7-013` PARTIAL, `CF-P7-014` PARTIAL |
+| Every story PASS | **no** — `CF-P7-013` PARTIAL, `CF-P7-017` OPEN |
 | Zero open defect | **no** — the lazy chunk budget is breached by 31% (§6.2) |
-| Every gate exists and passes | **no** — `cf:phase7:exit:check` does not exist |
+| Every gate exists and passes | yes — `cf:phase7:exit:check` shipped with this story; sixteen `cf:phase7:*` gates run inside `check:cloudflare` |
 | Sprint gate criteria U1–U6 qualified | **partial** — U1 measured on the deployment; U2–U6 held locally only (§4) |
-| Zero unowned or expired Critical/High risk | yes — 22 register rows, all owned |
-| `npm run check` green with a real exit code | **no** — exit **127**, `cf:types:check` failing on line endings (§8.1). Every Phase 7 gate passes individually; the chain does not complete. |
+| Zero unowned or expired Critical/High risk | yes — 22 register rows, all owned; nine Phase 7 exit risks, all owned |
+| `npm run check` green with a real exit code | yes — exit **0** (§8.1), captured after a redirect and never through a pipe |
 
-`P7-G5` is therefore **NOT GRANTED**. Phase 7 remains open, and
-[`phase-8-handoff.md`](phase-8-handoff.md) — issued by this story — becomes
-controlling on the grant and not before.
+Two of the six conditions moved to met in this revision and two remain
+categorically unmet. **`P7-G5` is therefore NOT GRANTED**, and no combination of
+paperwork can change that: the two open conditions both require a journey to be
+run and a size decision to be taken, and neither is a document. Phase 7 remains
+open, and [`phase-8-handoff.md`](phase-8-handoff.md) — issued by this story —
+becomes controlling on the grant and not before.
 
-Granting it needs, in order: `COLLABORATION_ENABLED` set for the Preview
-environment and `codex-cf-p3-preview` rebuilt; the journeys qualified against the
-new deployment id; the 60 KiB budget met or renegotiated **on the record** and,
-either way, given a gate that reads it; `CF-P7-016` closing the error-map gap
-(R-P7-E); and `cf:phase7:exit:check` built so this reconciliation is enforced
-rather than asserted.
+The gate refuses to record it otherwise. `cf:phase7:exit:check` computes
+grantability from every story being PASS, no open defect, and every row of this
+table being met, and rejects the manifest if `exit_gate_granted` disagrees with
+what it computed. Setting the flag by hand fails the release chain.
+
+Granting it needs, in order:
+
+1. **An owner decision on the collaboration flag's polarity** (§6.0) — either the
+   code is wrong in two files or the Pages Preview variable is, and no one but the
+   owner can say which.
+2. **`CF-P7-017` implemented and gated**, so the shell dispatches when the flag is
+   on and still refuses when it is off, with a gate that calls it both ways and
+   asserts two different outcomes.
+3. **`codex-cf-p3-preview` rebuilt** — a new deployment id, not a re-measurement.
+4. **The journeys qualified by someone who can sign in.** No agent can do this; it
+   is the one item on this list that is structurally owner-only.
+5. **The 60 KiB budget met or renegotiated on the record** (§6.2). Four options,
+   none chosen.
+
+Two items from the previous draft's list are now done and are struck from it:
+`CF-P7-016` closed the error-map gap (R-P7-E), and `cf:phase7:exit:check` exists
+so this reconciliation is enforced rather than asserted (R-P7-D). Setting
+`COLLABORATION_ENABLED` for the Preview environment is also done — and it changed
+nothing on the wire, which is how items 1 and 2 were found.
 
 ## 11. Boundaries held
 
@@ -521,9 +721,18 @@ deployment and not inferred from the source.
 `D-P7-01` relaxed exactly one thing — `COLLABORATION_ENABLED` may be `'true'` for
 the `preview` environment — and the boundary that matters, **production never
 activates collaboration**, is unchanged and still machine-enforced by six
-assertions across four closed phases.
+assertions across four closed phases, plus the four `NO-GO` keys this story's own
+gate now checks. Measured on 2026-07-27 rather than assumed: production answers
+`503 COLLABORATION_UNAVAILABLE` on `/api/v1/session` and `/api/v1/workspaces`.
 
-Every measurement behind this report was read-only against a Preview deployment.
-No write request was issued, no database was touched, no secret was read or set,
-no credential was entered, and no authenticated session was obtained or
-attempted.
+`CF-P7-017` is the one open story that could move this boundary, and the
+requirement written into it is explicit: **dispatch when the flag is on, keep
+answering `503` when it is off.** A change that makes the on-path work and weakens
+the off-path is a failure, not a partial win. It is recorded that way in the
+sprint plan so the next agent to pick it up inherits the constraint and not just
+the task.
+
+Every measurement behind this report was read-only. No write request was issued,
+no database was touched, no secret was read or set, no credential was entered,
+and no authenticated session was obtained or attempted. Nothing was deployed by
+this story: no push to `codex-cf-p3-preview`, no merge, no new Pages deployment.

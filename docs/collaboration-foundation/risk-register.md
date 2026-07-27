@@ -71,6 +71,50 @@ Accepted limitations must be visible in UX/documentation: the server cannot insp
 5. `Closed` requires passing evidence in all applicable local, preview, production-smoke, supported-browser, and fallback environments.
 6. This register is reviewed at every phase gate, algorithm/schema/role change, provider/security incident, migration, supported-browser change, and before rollout expansion.
 
+## 4A. Phase 7 exit risks
+
+Phase 7 exit risks are numbered `R-P7-*` and are deliberately **not** folded into the
+`R01`–`R22` programme table. That table is the residual-risk contract approved at Gate G3;
+a phase may not renumber it, and `cf:phase5:exit:check` and `cf:phase7:exit:check` both
+assert it is still exactly 22 rows. The full set `R-P7-A` through `R-P7-H` is in
+[`phase-7-exit-report.md`](phase-7-exit-report.md) §7. One of them is carried here because
+it is an **open defect against a zero-tolerance list**, and an open defect that lives only
+in an exit report is one nobody sees again.
+
+| ID | Risk | Inherent | Approved control | Owner | Acceptance / prohibition | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| R-P7-B | The Phase 7 lazy collaboration chunk exceeds its declared size budget by 31%, and until 2026-07-27 no gate read the budget key at all (P2 quality/availability). | 3x3=9 Medium | `cf:phase7:exit:check` re-measures the entry's static import closure on every run, requires the recorded figure to stay within 2 KiB of the recomputed one, and requires the breach to be recorded `OPEN` exactly while it breaches. | Technical Lead | **Not accepted.** Recorded as an open breach pending an owner decision. The declared number may not be amended to match what shipped — renegotiating a budget is a decision, not an edit. It blocks `P7-G5` while it stands. | Open |
+
+**The measurement.** `config/cloudflare/phase-7-sprint-plan.json` declares
+`lazy_phase_7_chunk_max_kib_gzip: 60`.
+
+| Reading | Modules | gzip | Against 60 KiB |
+|---|---:|---:|---|
+| Entry closure, on Preview deployment `681ad3ca` as Cloudflare serves it | 20 | **78.4 KiB** | over by 18.4 (+31%) |
+| Phase 7 modules only, same deployment | 17 | **64.3 KiB** | over by 4.3 |
+| Entry closure, recomputed locally by the gate (gzip -9, CRLF normalised) | 20 | **79.32 KiB** | over by 19.32 |
+| Phase 7 modules only, recomputed locally | 17 | **65.27 KiB** | over by 5.27 |
+
+There is no definition of "the Phase 7 chunk" under which this passes. First measured
+2026-07-26 by `CF-EV-P7-OPS-004`; reconfirmed 2026-07-27 by `CF-EV-P7-EXIT-001`.
+
+**The cause is structural.** There is no bundling or minification step in this project.
+Twenty unminified source files are served exactly as authored, comments included.
+
+**The options, none of which has been chosen.**
+
+| Option | Requires | Consequence |
+|---|---|---|
+| Renegotiate the budget on the record | Product Owner | A decision-log entry raising 60 to a number the current shape meets, with the reason. Cheapest, and it concedes the 60 was never derived from a measurement. |
+| Add a build step and meet the declared 60 | Technical Lead | Minification and/or bundling of `js/collaboration/*` — the only route that shrinks the shipped bytes rather than enlarging the target. It changes how the whole app is built and would invalidate Phase 1's byte-for-byte artifact assertions. Needs its own story and gate. |
+| Split the lazy chunk | Technical Lead + UX Lead | Load the eight panel surfaces on demand rather than through one entry closure. Keeps both the budget and the no-build property, at the cost of more dynamic imports and a second latency step. |
+| Leave it open | no decision | The status quo. The breach stays visible here, in the exit report §6.2, and in `config/cloudflare/phase-7-exit-gate.json`, and it keeps `open_defect` on the Phase 7 zero-tolerance list unsatisfied. |
+
+**What generalises past the number.** A budget that no script reads is not a budget. Phase
+8 carries the enforcing budget row for the rest of the programme's declared limits; this
+one is now enforced as a record, which is weaker than enforcing the size and is recorded
+as such.
+
 ## 5. Gate G3 acceptance
 
 - [x] Every inherent Critical/High risk has a named contract owner and evidence owner.
