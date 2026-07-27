@@ -7,19 +7,29 @@
   "next_gate": "P7-G4A",
   "authorizes_on_approval": "CF-P7-014",
   "environment": "preview",
-
   "composition": {
     "entry": "js/collaboration/entry.js",
     "panel": "js/collaboration/surface-panel.js",
     "adapter": "js/collaboration/services.js",
     "client": "js/collaboration/api-client.js",
-    "surfaces_in_chrome": ["account-menu", "workspace-switcher"],
+    "surfaces_in_chrome": [
+      "account-menu",
+      "workspace-switcher"
+    ],
     "surfaces_in_panel": [
-      "create-workspace", "device-key-initialization", "member-list-role-badge",
-      "invitation-manage", "invitation-accept", "sync-state", "conflict-dialog",
+      "create-workspace",
+      "device-key-initialization",
+      "member-list-role-badge",
+      "invitation-manage",
+      "invitation-accept",
+      "sync-state",
+      "conflict-dialog",
       "audit-activity"
     ],
-    "shared_surfaces": ["base-states", "github-pages-banner"],
+    "shared_surfaces": [
+      "base-states",
+      "github-pages-banner"
+    ],
     "routes_exercised": [
       "/api/v1/session",
       "/api/v1/workspaces",
@@ -33,19 +43,28 @@
     "adds_primitive": false,
     "reimplements_service": false
   },
-
   "budgets": {
     "collaboration_modules_on_personal_startup": 0,
     "surfaces_left_on_loading_after_reads": 0,
     "personal_storage_keys_touched": 0,
     "horizontal_page_scroll": false
   },
-
   "local_qualification": {
     "harness": "tests/browser-collaboration-integration.mjs",
-    "browsers": ["chromium", "firefox", "webkit"],
-    "widths_px": [320, 768, 1024],
-    "themes": ["dark", "light"],
+    "browsers": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "widths_px": [
+      320,
+      768,
+      1024
+    ],
+    "themes": [
+      "dark",
+      "light"
+    ],
     "surfaces_mounted": 8,
     "routes_called": 6,
     "surfaces_left_on_loading": 0,
@@ -55,7 +74,6 @@
       "The chrome overflowed the page at 320 px with a long workspace name: .collab-switcher and .collab-account are flex items and default to min-width auto, so the context name could not shrink and its ellipsis never applied. CF-P7-012 could not see it because it qualified the switcher on its own, with no flex parent to refuse; the composed chrome is the only place it appears."
     ]
   },
-
   "preview": {
     "deployment": "4c5d7c8a-17ec-4469-bcb7-b266bce91aa6",
     "source_commit": "fe0fa2e",
@@ -71,16 +89,19 @@
     "journeys_qualified": false,
     "evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-002.md"
   },
-
   "blocked_on": {
-    "owner_action": "Decide whether functions/_lib/identity/environment.ts line 67 or the Pages Preview COLLABORATION_ENABLED value is the bug, so CF-P7-017 can dispatch the API shell; then rebuild codex-cf-p3-preview and drive the signed-in journeys, which no agent can do because obtaining an OAuth session means entering credentials at github.com.",
-    "reason": "Re-measured 2026-07-27. The originally recorded blocker -- COLLABORATION_ENABLED not set for the Preview environment -- has been cleared by the owner and IT CHANGED NOTHING ON THE WIRE. /api/v1/session on the codex-cf-p3-preview alias and /api/v1/session and /api/v1/workspaces on production all still answer 503 COLLABORATION_UNAVAILABLE. The cause is in the code: functions/_lib/api-shell.mjs lines 285-293 compute hasReviewedDisabledState and then return the identical 503 on BOTH branches, so no value of the flag can make any /api/v1/* route answer anything else. That is CF-P7-017, which is OPEN and blocked on an owner decision because functions/_lib/identity/environment.ts line 67 reads the same flag with the opposite polarity to its name. A third reason survives both: the journeys to be qualified are signed-in journeys and no OAuth session is available to an agent, so qualifying this story is owner-driven regardless.",
+    "owner_action": "Push a commit carrying the CF-P7-017 fix (functions/_lib/identity/environment.ts, functions/_lib/api-shell.mjs) and trigger a new codex-cf-p3-preview build -- Cloudflare Pages binds code at build time, so the existing deployment cannot show it -- then drive the signed-in journeys, which no agent can do because obtaining an OAuth session means entering credentials at github.com.",
+    "reason": "Re-measured 2026-07-27. The originally recorded blocker -- COLLABORATION_ENABLED not set for the Preview environment -- was cleared by the owner and changed nothing on the wire. The second, deeper blocker was in the code: functions/_lib/api-shell.mjs computed hasReviewedDisabledState and returned the identical 503 on both branches, while functions/_lib/identity/environment.ts gated the three real dispatch doors on a flag read with the opposite polarity to its name. That was CF-P7-017, and it is now PASS: D-P7-02 (decision-log.md) decided environment.ts was the bug, the polarity is corrected, and api-shell.mjs's dead branch is removed, verified against the local Workers-runtime harness (CF-EV-P7-OPS-006). Nothing about that fix has been observed on a deployment, because no agent pushed a commit or triggered a new Preview build -- Cloudflare Pages binds code at build time, so the deployment recorded below still reflects the pre-fix behaviour. A third reason survives the fix entirely: the journeys to be qualified are signed-in journeys and no OAuth session is available to an agent, so qualifying this story remains owner-driven regardless of the deployment.",
     "agent_permitted": false,
-    "owner_action_taken_and_insufficient": "COLLABORATION_ENABLED='true' was set for the Pages Preview environment and D-P7-01 is executed in wrangler.jsonc. Necessary, and not sufficient.",
-    "blocks": ["journey qualification", "CF-P7-013 PASS", "P7-G5"],
-    "requalification_evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-005.md"
+    "owner_action_taken_and_insufficient": "COLLABORATION_ENABLED='true' was set for the Pages Preview environment (D-P7-01) and the dispatch bug was fixed in the working tree (CF-P7-017, D-P7-02). Both necessary. Neither sufficient without a new deployment and a signed-in session.",
+    "blocks": [
+      "journey qualification",
+      "CF-P7-013 PASS",
+      "P7-G5"
+    ],
+    "requalification_evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-005.md",
+    "dispatch_bug_status": "FIXED in the working tree by CF-P7-017; not yet observed on any deployment."
   },
-
   "declared_limits": {
     "journeys_not_completable_in_this_build": [
       {
@@ -114,11 +135,17 @@
         "reason": "POST /api/v1/oauth/github/transactions is public and CSRF-exempt, and the CF-P7-015 client requires a CSRF token on every mutation -- a refusal its own gate proves. Carving an exemption into it is a change to that client under its own review. The control CF-P7-015 shipped on the unauthorized state is therefore not wired here."
       }
     ],
-    "sync_states_reachable": ["saved", "access-removed"],
-    "sync_states_not_reachable": ["saving", "offline", "conflict"],
+    "sync_states_reachable": [
+      "saved",
+      "access-removed"
+    ],
+    "sync_states_not_reachable": [
+      "saving",
+      "offline",
+      "conflict"
+    ],
     "sync_reason": "Saving, Offline, and Conflict are all derived from outbox entries for an open document, and there is no document surface in the frozen inventory to create one. Saved and Access removed do not need one: Saved is the empty queue, and Access removed is reached from a real workspace-scoped denial followed by a membership re-check, which this build performs."
   },
-
   "tests": {
     "adapter": "tests/collaboration-services.test.mjs",
     "integration": "tests/collaboration-integration.test.mjs",

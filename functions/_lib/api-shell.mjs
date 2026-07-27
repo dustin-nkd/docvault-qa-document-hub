@@ -282,14 +282,21 @@ export async function handleApiRequest(request, env, dependencies) {
 
         await dependencies.failures.checkpoint('api.before-disabled-boundary');
 
-        // Inspect the environment/feature boundary without dispatching.
-        const hasReviewedDisabledState = env.COLLABORATION_ENABLED === 'false'
-            && env.APP_ENV === env.ORIGIN_POLICY_MODE
-            && ['local', 'preview', 'production'].includes(env.APP_ENV)
-            && env.CANONICAL_PRODUCTION_ORIGIN === 'https://docvault-qa-document-hub.pages.dev';
-        if (!hasReviewedDisabledState) {
-            return errorResponse(503, 'COLLABORATION_UNAVAILABLE', requestId);
-        }
+        // CF-P7-017: this shell is never the door collaboration dispatches
+        // through. functions/api/v1/[[path]].ts gives handleIdentityRuntime,
+        // handlePreviewKeyFoundationApi, and handlePreviewCollaborationApi
+        // first refusal on every request, and each of them actually inspects
+        // COLLABORATION_ENABLED and dispatches when it is 'true' for a valid
+        // Preview request. This function only runs once every one of them has
+        // returned null - either because collaboration is genuinely disabled
+        // (production and the default `vars` are pinned to 'false' by six
+        // gates, see docs/collaboration-foundation/decision-log.md), or
+        // because the route matched here (workspaces/:id/exports,
+        // workspaces/:id/deletion-requests) has no backing capability yet
+        // (deferred; see docs/collaboration-foundation/phase-8-sprint.md).
+        // Both reasons answer the same way, so there is one path, not a
+        // branch that computes a flag and discards it - the earlier version
+        // of this function did exactly that, which is what CF-P7-017 fixed.
         return errorResponse(503, 'COLLABORATION_UNAVAILABLE', requestId);
     } catch (error) {
         if (error instanceof ApiError) {

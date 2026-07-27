@@ -66,7 +66,7 @@ function previewEnvironment(overrides: Partial<IdentityEnvironmentInput> = {}): 
     return {
         APP_ENV: 'preview',
         IDENTITY_RUNTIME_MODE: 'preview-only',
-        COLLABORATION_ENABLED: 'false',
+        COLLABORATION_ENABLED: 'true',
         GITHUB_OAUTH_CLIENT_ID: 'synthetic-client-id',
         GITHUB_OAUTH_CLIENT_SECRET: 'synthetic-client-secret',
         OAUTH_TRANSACTION_KEY: KEYRING,
@@ -203,8 +203,23 @@ describe('CF-P3-002 redirect, cookie, and environment boundaries', () => {
             [previewEnvironment({ APP_ENV: 'production' }), { requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: true }],
             [previewEnvironment({ OAUTH_TRANSACTION_KEY: undefined }), { requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: true }],
             [previewEnvironment(), { requestOrigin: 'https://other-preview.example', hasCollaborationDatabase: true }],
-            [previewEnvironment(), { requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: false }]
+            [previewEnvironment(), { requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: false }],
+            // CF-P7-017: the flag itself is the switch, not an inert value. An
+            // otherwise-exact Preview configuration must disable the instant
+            // COLLABORATION_ENABLED reads anything but 'true' - this is the
+            // "false" half of the on/off pair the story's fix has to prove.
+            [previewEnvironment({ COLLABORATION_ENABLED: 'false' }), { requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: true }],
+            [previewEnvironment({ COLLABORATION_ENABLED: undefined }), { requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: true }],
+            [previewEnvironment({ COLLABORATION_ENABLED: 'TRUE' }), { requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: true }]
         ] as const) expect(resolveIdentityRuntime(input, options)).toEqual({ enabled: false, mode: 'disabled' });
+
+        // The "true" half of the same pair: the exact configuration above,
+        // with nothing but the flag changed, is what the first assertion in
+        // this test already proves enables. Restated here so the on/off
+        // contrast is one assertion pair apart rather than one screen apart.
+        expect(resolveIdentityRuntime(previewEnvironment({ COLLABORATION_ENABLED: 'true' }), {
+            requestOrigin: IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin, hasCollaborationDatabase: true
+        })).toMatchObject({ enabled: true, mode: 'preview-only' });
 
         const local = resolveIdentityRuntime({ ...previewEnvironment(), APP_ENV: 'local',
             IDENTITY_RUNTIME_MODE: 'local-test-only' }, {

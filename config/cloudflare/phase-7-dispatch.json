@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "phase": "CF-P7",
+  "story": "CF-P7-017",
+  "status": "PASS",
+  "entry_gate": "P7-G4",
+  "exit_gate": "P7-G4A",
+  "chosen_option": "A",
+  "chosen_option_summary": "environment.ts was the bug, not the Pages Preview variable. Fixed the polarity to require COLLABORATION_ENABLED === 'true' to enable, matching D-P7-01's already-executed intent, and removed the dead double-branch in api-shell.mjs's fallback that discarded the boolean it computed.",
+  "decided_by": "Product Owner, 2026-07-27, via explicit choice between the two options this story was blocked on",
+  "root_cause": "functions/_lib/identity/environment.ts line 67 read COLLABORATION_ENABLED with the opposite polarity to its name: it enabled the identity runtime only when the flag equalled 'false'. functions/api/v1/[[path]].ts already composed handleIdentityRuntime, handlePreviewKeyFoundationApi, and handlePreviewCollaborationApi ahead of the api-shell.mjs fallback, and all three gate on resolveIdentityRuntime(...).enabled -- so the inverted polarity made every one of them report disabled on Preview (where the flag is 'true'), and every request fell through to the fallback's unconditional 503.",
+  "fix": {
+    "files_changed": ["functions/_lib/identity/environment.ts", "functions/_lib/api-shell.mjs"],
+    "environment_ts": "Line 67's condition changed from `COLLABORATION_ENABLED !== 'false'` to `COLLABORATION_ENABLED !== 'true'`. This is the entire functional fix: the three dispatch doors already existed and were already composed correctly in [[path]].ts.",
+    "api_shell_mjs": "Removed the dead `hasReviewedDisabledState` double-branch, which computed a boolean from the flag and then returned the identical 503 regardless of its value. Collapsed to one documented return, with no observable behaviour change -- tests/api-shell.test.mjs's NO-OP CONTROL (which calls handleApiRequest in isolation, outside [[path]].ts, and requires 503 even with the flag 'true') was re-run unmutated and still passes, because this function is deliberately never the dispatch door."
+  },
+  "no_new_dispatch_logic_written": true,
+  "no_new_dispatch_logic_reason": "The three doors this fix activates already existed, built by CF-P3-008 (identity), CF-P5/CF-P6 (key foundation), and CF-P4/CF-P6 (collaboration/membership), and were already composed in the correct order in functions/api/v1/[[path]].ts. This story is a one-line polarity fix plus a dead-code removal, not new dispatch.",
+  "verification": {
+    "method": "source-level and local Workers-runtime tests; no live deployment was pushed, built, or observed by this story",
+    "workers_tests_updated": ["tests/cloudflare/identity-runtime.workers.test.ts",
+      "tests/cloudflare/identity-primitives.workers.test.ts",
+      "tests/cloudflare/preview-key-foundation.workers.test.ts",
+      "tests/cloudflare/preview-api-integration.workers.test.ts",
+      "tests/cloudflare/document-routes.workers.test.ts"],
+    "reason_five_files_needed_updating": "Each carried a base fixture with COLLABORATION_ENABLED: 'false' representing what the OLD, buggy polarity required to be 'enabled'. Fixing the polarity without updating these fixtures would have broken all five suites; the fixtures now read 'true', matching the corrected code and D-P7-01.",
+    "on_off_contrast_added": "identity-runtime.workers.test.ts gained a test that calls handleIdentityRuntime with nothing but COLLABORATION_ENABLED changed and requires null with it false or undefined, and a real 200 dispatched response with it true. identity-primitives.workers.test.ts gained the equivalent unit-level pair against resolveIdentityRuntime directly.",
+    "node_test_suite": "1152 passing before this story; unaffected, since this story touches only Workers-runtime tests and two functions/_lib files with no Node-level test coverage of their own beyond tests/api-shell.test.mjs, which was re-run unmutated.",
+    "production_unaffected": "Production and the default vars keep COLLABORATION_ENABLED='false', pinned by six gates across four closed phases (see decision-log.md, D-P7-01). This story changes nothing that those six gates check; the fix only changes behaviour when the flag is 'true', which is Preview alone."
+  },
+  "what_this_story_does_not_close": {
+    "cf_p7_013": "Still PARTIAL. This fix has not been observed on a live deployment: Cloudflare Pages binds code at build time, so the existing measured deployment (built before this fix) cannot show it, and no agent pushed a new commit or triggered a new Preview build during this story. Even against a rebuilt deployment, the journeys CF-P7-013 must qualify are signed-in journeys, and no OAuth session is available to an agent -- that constraint is independent of this fix and was true before it and remains true after it.",
+    "p7_g5": "Not granted. Every-story-PASS is now met by fifteen of seventeen non-CF-P7-013 stories plus this one closing -- sixteen of seventeen -- but CF-P7-013 alone still blocks the every-story-PASS condition, and the lazy-chunk budget breach (recorded under CF-P7-013's sibling defect, tracked as R-P7-B) is untouched by this story."
+  },
+  "gate": "cf:phase7:dispatch:check",
+  "evidence": ["CF-EV-P7-OPS-006"]
+}

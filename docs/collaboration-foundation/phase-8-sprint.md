@@ -2,19 +2,22 @@
 
 Status: **PLANNED — awaiting `P8-G0`**
 
-Entry: Phase 7 has **not** closed. `CF-P7-013` is not PASS, `CF-P7-017` is not
-started, and `P7-G5` is not granted. Phase 7 has **seventeen** stories,
-`CF-P7-001` through `CF-P7-017`; **fifteen** of them are PASS. Sixteen
-`cf:phase7:*` gates run inside `check:cloudflare` — `sprint`, `contract`,
-`shell`, `account`, `create`, `device`, `members`, `invitations`, `accept`,
-`sync`, `conflict`, `audit`, `qualify`, `api`, `preview`, `exit`.
+Entry: Phase 7 has **not** closed. `CF-P7-013` is not PASS, and `P7-G5` is not
+granted. Phase 7 has **seventeen** stories, `CF-P7-001` through `CF-P7-017`;
+**sixteen** of them are PASS — `CF-P7-017` closed on 2026-07-27 (`D-P7-02`),
+after this entry section was first written, leaving `CF-P7-013` as the sole
+non-PASS story. Seventeen `cf:phase7:*` gates run inside `check:cloudflare` —
+`sprint`, `contract`, `shell`, `account`, `create`, `device`, `members`,
+`invitations`, `accept`, `sync`, `conflict`, `audit`, `qualify`, `api`,
+`dispatch`, `preview`, `exit`.
 
 The status line of [`phase-7-exit-report.md`](phase-7-exit-report.md) once read
 **"13 of 14"** while the table directly beneath it listed more rows than that.
-**`CF-P7-014` corrected it on 2026-07-27**, first to "13 of 15" and then, once
-`CF-P7-016` had landed and `CF-P7-017` had been opened, to the present
-**"15 of 17"**; the correction is recorded in §2 of that report rather than made
-silently. Two things were wrong, not one. The *denominator* was wrong because
+**`CF-P7-014` corrected it on 2026-07-27**, first to "13 of 15", then, once
+`CF-P7-016` had landed and `CF-P7-017` had been opened, to "15 of 17", and then,
+once `CF-P7-017` closed the same day, to the present **"16 of 17"**; each
+correction is recorded in §2 and §2A of that report rather than made silently.
+Two things were wrong at first, not one. The *denominator* was wrong because
 `CF-P7-015` took the next free number after the plan was frozen, so the highest
 identifier ran ahead of the last story in *sequence* and anyone reading the table
 by eye stopped early. The *numerator* then went stale when the two later stories

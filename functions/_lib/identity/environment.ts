@@ -64,7 +64,14 @@ export function resolveIdentityRuntime(input: IdentityEnvironmentInput, options:
     if (mode !== 'disabled' && mode !== 'local-test-only' && mode !== 'preview-only') {
         return { enabled: false, mode: 'disabled' };
     }
-    if (mode === 'disabled' || input.COLLABORATION_ENABLED !== 'false') {
+    // CF-P7-017: this used to require COLLABORATION_ENABLED === 'false' to
+    // enable, backwards from the flag's name and from D-P7-01 (which set the
+    // flag to 'true' for Preview precisely to turn this on). Production and
+    // the default `vars` stay pinned to 'false' by six gates across four
+    // closed phases (see docs/collaboration-foundation/decision-log.md), so
+    // this correction only changes what happens when the flag is 'true' -
+    // production's fail-closed path is untouched.
+    if (mode === 'disabled' || input.COLLABORATION_ENABLED !== 'true') {
         return { enabled: false, mode: 'disabled' };
     }
     const previewValid = mode === 'preview-only' && input.APP_ENV === 'preview'

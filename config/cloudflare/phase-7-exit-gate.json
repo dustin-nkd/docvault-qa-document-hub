@@ -7,8 +7,7 @@
   "exit_gate_granted": false,
   "assembled_on": "2026-07-27",
   "story_count": 17,
-  "pass_count": 15,
-
+  "pass_count": 16,
   "decision": {
     "phase_7_collaboration_ui_in_repository": "GO",
     "phase_7_qualified_on_a_deployment": "NO-GO",
@@ -18,46 +17,162 @@
     "production_d1": "NO-GO",
     "production_document_routes": "NO-GO"
   },
-
   "authorization_boundary": {
     "collaboration_activation": "NO-GO",
     "production_identity": "NO-GO",
     "production_d1": "NO-GO",
     "production_document_routes": "NO-GO"
   },
-
   "stories": [
-    { "id": "CF-P7-001", "status": "PASS", "gate": "cf:phase7:contract:check", "evidence": ["CF-EV-P7-STA-001", "CF-EV-P7-A11Y-001"] },
-    { "id": "CF-P7-002", "status": "PASS", "gate": "cf:phase7:shell:check", "evidence": ["CF-EV-P7-UI-001", "CF-EV-P7-PERF-001"] },
-    { "id": "CF-P7-003", "status": "PASS", "gate": "cf:phase7:account:check", "evidence": ["CF-EV-P7-UI-002"] },
-    { "id": "CF-P7-004", "status": "PASS", "gate": "cf:phase7:create:check", "evidence": ["CF-EV-P7-UI-003"] },
-    { "id": "CF-P7-005", "status": "PASS", "gate": "cf:phase7:device:check", "evidence": ["CF-EV-P7-UI-004", "CF-EV-P7-SEC-001"] },
-    { "id": "CF-P7-006", "status": "PASS", "gate": "cf:phase7:members:check", "evidence": ["CF-EV-P7-UI-005", "CF-EV-P7-A11Y-002"] },
-    { "id": "CF-P7-007", "status": "PASS", "gate": "cf:phase7:invitations:check", "evidence": ["CF-EV-P7-UI-006", "CF-EV-P7-SEC-002"] },
-    { "id": "CF-P7-008", "status": "PASS", "gate": "cf:phase7:accept:check", "evidence": ["CF-EV-P7-UI-007"] },
-    { "id": "CF-P7-009", "status": "PASS", "gate": "cf:phase7:sync:check", "evidence": ["CF-EV-P7-UI-008"] },
-    { "id": "CF-P7-010", "status": "PASS", "gate": "cf:phase7:conflict:check", "evidence": ["CF-EV-P7-UI-009", "CF-EV-P7-A11Y-003"] },
-    { "id": "CF-P7-011", "status": "PASS", "gate": "cf:phase7:audit:check", "evidence": ["CF-EV-P7-UI-010"] },
-    { "id": "CF-P7-012", "status": "PASS", "gate": "cf:phase7:qualify:check", "evidence": ["CF-EV-P7-A11Y-004", "CF-EV-P7-UI-011"] },
+    {
+      "id": "CF-P7-001",
+      "status": "PASS",
+      "gate": "cf:phase7:contract:check",
+      "evidence": [
+        "CF-EV-P7-STA-001",
+        "CF-EV-P7-A11Y-001"
+      ]
+    },
+    {
+      "id": "CF-P7-002",
+      "status": "PASS",
+      "gate": "cf:phase7:shell:check",
+      "evidence": [
+        "CF-EV-P7-UI-001",
+        "CF-EV-P7-PERF-001"
+      ]
+    },
+    {
+      "id": "CF-P7-003",
+      "status": "PASS",
+      "gate": "cf:phase7:account:check",
+      "evidence": [
+        "CF-EV-P7-UI-002"
+      ]
+    },
+    {
+      "id": "CF-P7-004",
+      "status": "PASS",
+      "gate": "cf:phase7:create:check",
+      "evidence": [
+        "CF-EV-P7-UI-003"
+      ]
+    },
+    {
+      "id": "CF-P7-005",
+      "status": "PASS",
+      "gate": "cf:phase7:device:check",
+      "evidence": [
+        "CF-EV-P7-UI-004",
+        "CF-EV-P7-SEC-001"
+      ]
+    },
+    {
+      "id": "CF-P7-006",
+      "status": "PASS",
+      "gate": "cf:phase7:members:check",
+      "evidence": [
+        "CF-EV-P7-UI-005",
+        "CF-EV-P7-A11Y-002"
+      ]
+    },
+    {
+      "id": "CF-P7-007",
+      "status": "PASS",
+      "gate": "cf:phase7:invitations:check",
+      "evidence": [
+        "CF-EV-P7-UI-006",
+        "CF-EV-P7-SEC-002"
+      ]
+    },
+    {
+      "id": "CF-P7-008",
+      "status": "PASS",
+      "gate": "cf:phase7:accept:check",
+      "evidence": [
+        "CF-EV-P7-UI-007"
+      ]
+    },
+    {
+      "id": "CF-P7-009",
+      "status": "PASS",
+      "gate": "cf:phase7:sync:check",
+      "evidence": [
+        "CF-EV-P7-UI-008"
+      ]
+    },
+    {
+      "id": "CF-P7-010",
+      "status": "PASS",
+      "gate": "cf:phase7:conflict:check",
+      "evidence": [
+        "CF-EV-P7-UI-009",
+        "CF-EV-P7-A11Y-003"
+      ]
+    },
+    {
+      "id": "CF-P7-011",
+      "status": "PASS",
+      "gate": "cf:phase7:audit:check",
+      "evidence": [
+        "CF-EV-P7-UI-010"
+      ]
+    },
+    {
+      "id": "CF-P7-012",
+      "status": "PASS",
+      "gate": "cf:phase7:qualify:check",
+      "evidence": [
+        "CF-EV-P7-A11Y-004",
+        "CF-EV-P7-UI-011"
+      ]
+    },
     {
       "id": "CF-P7-013",
       "status": "PARTIAL",
       "gate": "cf:phase7:preview:check",
-      "evidence": ["CF-EV-P7-OPS-001", "CF-EV-P7-OPS-002", "CF-EV-P7-OPS-003", "CF-EV-P7-OPS-004", "CF-EV-P7-OPS-005"],
-      "reason": "Zero journeys are qualified, which is the whole of this story's exit criterion. Re-measured on 2026-07-27 and still PARTIAL: every collaboration route on every deployment answers 503 COLLABORATION_UNAVAILABLE, so no session, workspace, member, invitation, key envelope or audit event exists to qualify against. The gate cf:phase7:preview:check passes while this story does not, because the gate truthfully asserts a fail-closed deployment and the story needs a qualified journey. A green gate is not a closed story."
+      "evidence": [
+        "CF-EV-P7-OPS-001",
+        "CF-EV-P7-OPS-002",
+        "CF-EV-P7-OPS-003",
+        "CF-EV-P7-OPS-004",
+        "CF-EV-P7-OPS-005"
+      ],
+      "reason": "Zero journeys are qualified, which is the whole of this story's exit criterion. CF-P7-017 landed on 2026-07-27 (D-P7-02) and fixed the dispatch bug in the working tree, but the fix has not been observed on a live deployment: Cloudflare Pages binds code at build time, so the existing measured deployment -- built before this fix existed -- cannot show it, and no agent pushed a commit or triggered a new Preview build. Even against a rebuilt deployment, the journeys this story must qualify are signed-in journeys and no OAuth session is available to an agent. The gate cf:phase7:preview:check passes while this story does not, because the gate truthfully asserts a fail-closed deployment and the story needs a qualified journey. A green gate is not a closed story."
     },
-    { "id": "CF-P7-014", "status": "PASS", "gate": "cf:phase7:exit:check", "evidence": ["CF-EV-P7-EXIT-001"] },
-    { "id": "CF-P7-015", "status": "PASS", "gate": "cf:phase7:api:check", "evidence": ["CF-EV-P7-API-001"] },
-    { "id": "CF-P7-016", "status": "PASS", "gate": "cf:phase7:contract:check", "evidence": ["CF-EV-P7-UI-012"] },
+    {
+      "id": "CF-P7-014",
+      "status": "PASS",
+      "gate": "cf:phase7:exit:check",
+      "evidence": [
+        "CF-EV-P7-EXIT-001"
+      ]
+    },
+    {
+      "id": "CF-P7-015",
+      "status": "PASS",
+      "gate": "cf:phase7:api:check",
+      "evidence": [
+        "CF-EV-P7-API-001"
+      ]
+    },
+    {
+      "id": "CF-P7-016",
+      "status": "PASS",
+      "gate": "cf:phase7:contract:check",
+      "evidence": [
+        "CF-EV-P7-UI-012"
+      ]
+    },
     {
       "id": "CF-P7-017",
-      "status": "OPEN",
-      "evidence": ["CF-EV-P7-OPS-006"],
-      "evidence_written": false,
-      "reason": "Not started. functions/_lib/api-shell.mjs lines 285-293 compute hasReviewedDisabledState and then return the identical 503 on both branches, so no value of COLLABORATION_ENABLED can make any /api/v1/* route answer anything but 503. An implementation pass on 2026-07-27 halted before writing anything because functions/_lib/identity/environment.ts line 67 enables the identity runtime only when COLLABORATION_ENABLED === 'false' -- the opposite of the flag's name and of the 'true' the owner set for the Pages Preview environment. Which of the two is the bug is an owner decision, and the gate this story must ship has to call the shell with the flag on and with it off and assert two different outcomes, which cannot be written honestly while both calls return 503."
+      "status": "PASS",
+      "evidence": [
+        "CF-EV-P7-OPS-006"
+      ],
+      "gate": "cf:phase7:dispatch:check"
     }
   ],
-
   "story_count_corrections": [
     {
       "was": "13 of 14 stories PASS",
@@ -79,25 +194,36 @@
       "now_enforced_by": "cf:phase7:exit:check, which computes the count from the story inventory and requires the exit report's status line to carry the computed number"
     }
   ],
-
   "qualification": {
     "story": "CF-P7-013",
     "journeys_qualified": false,
     "journeys_attempted": 0,
     "signed_in_session_available_to_the_agent": false,
     "verdict": "PARTIAL",
-    "reason": "Two independent reasons, either sufficient on its own. (1) Every collaboration route answers 503 COLLABORATION_UNAVAILABLE on every deployment measured on 2026-07-27 -- the Preview branch alias and production alike -- so there is nothing on the other side of the API to qualify a journey against. The cause is not configuration: the owner has set COLLABORATION_ENABLED='true' for the Pages Preview environment and D-P7-01 is executed in wrangler.jsonc, and functions/_lib/api-shell.mjs still returns the same 503 on both branches of its own feature check. CF-P7-017 owns that and is OPEN. (2) Even with the API answering, the journeys this story must qualify are signed-in journeys, and no OAuth session is available to the agent: signing in requires entering credentials at github.com, which is prohibited, and no session cookie was issued to or held by this story. Qualification is an owner-driven exercise.",
+    "reason": "Two independent reasons, one of which changed today. (1) Every collaboration route answered 503 COLLABORATION_UNAVAILABLE on every deployment measured on 2026-07-27, and the cause was in the code, not configuration: functions/_lib/api-shell.mjs returned the same 503 on both branches of its own feature check while functions/_lib/identity/environment.ts read COLLABORATION_ENABLED with the opposite polarity to its name. CF-P7-017 fixed both on 2026-07-27 (D-P7-02) and is now PASS -- but the fix lives in the working tree only. No agent pushed a commit or triggered a new Preview build, and Cloudflare Pages binds code at build time, so the measured deployment above still reflects the pre-fix behaviour and cannot be re-measured to show otherwise without a new build. (2) Independent of the dispatch bug and unaffected by fixing it: the journeys this story must qualify are signed-in journeys, and no OAuth session is available to the agent -- signing in requires entering credentials at github.com, which is prohibited, and no session cookie was issued to or held by this story. Qualification remains an owner-driven exercise.",
     "not_claimed": "No 2xx response from any collaboration route has been observed by this programme on any deployment. Nothing about the on-path is asserted here.",
     "measured_on": "2026-07-27",
     "measurements": [
-      { "url": "https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev/api/v1/session", "status": 503, "code": "COLLABORATION_UNAVAILABLE" },
-      { "url": "https://docvault-qa-document-hub.pages.dev/api/v1/session", "status": 503, "code": "COLLABORATION_UNAVAILABLE" },
-      { "url": "https://docvault-qa-document-hub.pages.dev/api/v1/workspaces", "status": 503, "code": "COLLABORATION_UNAVAILABLE" }
+      {
+        "url": "https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev/api/v1/session",
+        "status": 503,
+        "code": "COLLABORATION_UNAVAILABLE"
+      },
+      {
+        "url": "https://docvault-qa-document-hub.pages.dev/api/v1/session",
+        "status": 503,
+        "code": "COLLABORATION_UNAVAILABLE"
+      },
+      {
+        "url": "https://docvault-qa-document-hub.pages.dev/api/v1/workspaces",
+        "status": 503,
+        "code": "COLLABORATION_UNAVAILABLE"
+      }
     ],
     "production_still_refuses": true,
-    "evidence": "CF-EV-P7-OPS-005"
+    "evidence": "CF-EV-P7-OPS-005",
+    "dispatch_bug_status": "FIXED in the working tree by CF-P7-017 (D-P7-02); not yet observed on a deployment because none was rebuilt."
   },
-
   "lazy_chunk_budget": {
     "budget_key": "lazy_phase_7_chunk_max_kib_gzip",
     "declared_kib_gzip": 60,
@@ -153,7 +279,6 @@
       }
     ]
   },
-
   "sign_off": {
     "model": "single-maintainer-owner-authorization",
     "independent_reviewers_exist": false,
@@ -161,7 +286,15 @@
     "blanket_in_session_instruction": true,
     "line_by_line_reading": false,
     "authorization_date": "2026-07-26",
-    "roles_covered": ["Product Owner", "Senior QA", "Security Reviewer", "Operations", "Privacy Reviewer", "UX Lead", "Technical Lead"],
+    "roles_covered": [
+      "Product Owner",
+      "Senior QA",
+      "Security Reviewer",
+      "Operations",
+      "Privacy Reviewer",
+      "UX Lead",
+      "Technical Lead"
+    ],
     "verbatim": [
       "tôi cấp quyền cho bạn thực hiện luôn việc 2 3",
       "duyệt"
@@ -169,31 +302,66 @@
     "note": "DocVault is a single-maintainer project. The seven review roles named in the sprint are held by one person, the project owner. Following the Phase 5 exit precedent this is recorded as ONE owner authorization covering all seven roles, not as seven independent reviews, because seven independent reviewers do not exist on this project. It was given as a blanket in-session instruction and not after a line-by-line reading of this report, which did not exist in its present form when the words were spoken. No independent security review occurred and no independent privacy review occurred. It authorizes signing the exit report; it is not a grant of P7-G5 and is not read as one.",
     "grants_p7_g5": false
   },
-
   "p7_g5": {
     "granted": false,
     "conditions": [
-      { "condition": "Every story PASS", "met": false, "state": "CF-P7-013 PARTIAL, CF-P7-017 OPEN" },
-      { "condition": "Zero open defect", "met": false, "state": "the lazy chunk budget is breached by 31% and recorded OPEN" },
-      { "condition": "Every gate exists and passes", "met": true, "state": "cf:phase7:exit:check shipped with this story; sixteen cf:phase7:* gates run inside check:cloudflare" },
-      { "condition": "Sprint gate criteria U1-U6 qualified", "met": false, "state": "U1 measured on the deployment; U2-U6 held locally only" },
-      { "condition": "Zero unowned or expired Critical/High risk", "met": true, "state": "22 programme register rows, all owned; eight Phase 7 exit risks, all owned" },
-      { "condition": "npm run check green with a real exit code", "met": true, "state": "exit 0 on 2026-07-27, captured with a redirect and echo $? and never through a pipe" }
+      {
+        "condition": "Every story PASS",
+        "met": false,
+        "state": "CF-P7-013 PARTIAL"
+      },
+      {
+        "condition": "Zero open defect",
+        "met": false,
+        "state": "the lazy chunk budget is breached by 31% and recorded OPEN"
+      },
+      {
+        "condition": "Every gate exists and passes",
+        "met": true,
+        "state": "cf:phase7:exit:check shipped with this story; sixteen cf:phase7:* gates run inside check:cloudflare"
+      },
+      {
+        "condition": "Sprint gate criteria U1-U6 qualified",
+        "met": false,
+        "state": "U1 measured on the deployment; U2-U6 held locally only"
+      },
+      {
+        "condition": "Zero unowned or expired Critical/High risk",
+        "met": true,
+        "state": "22 programme register rows, all owned; eight Phase 7 exit risks, all owned"
+      },
+      {
+        "condition": "npm run check green with a real exit code",
+        "met": true,
+        "state": "exit 0 on 2026-07-27, captured with a redirect and echo $? and never through a pipe"
+      }
     ]
   },
-
   "open_items": [
-    { "item": "CF-P7-013 has no qualified journey", "owner": "Product Owner", "detail": "Every collaboration route answers 503 on every deployment, and no OAuth session is available to an agent. Closed by CF-P7-017 landing and then by the owner driving the journeys on Preview." },
-    { "item": "CF-P7-017 is not started and needs an owner decision first", "owner": "Technical Lead", "detail": "functions/_lib/api-shell.mjs returns the same 503 on both branches of its feature check, and functions/_lib/identity/environment.ts line 67 reads the flag with the opposite polarity to its name. Either the code is wrong in two files or the Pages Preview variable is. Guessing would ship a gate that cannot be written honestly." },
-    { "item": "The lazy-chunk budget is breached by 31% and is recorded, not met", "owner": "Technical Lead", "detail": "60 KiB gzip declared; 78.4 KiB measured on the deployment and 79.32 KiB locally. Four options are recorded under lazy_chunk_budget.options and none has been chosen." },
-    { "item": "U2 to U6 are held for the composed surfaces and were never exercised against a live workspace, role, conflict, or viewport", "owner": "UX Lead", "detail": "Local qualification used a stubbed or recording transport. The deployment measurement covered U1 only." },
-    { "item": "Correctly excluded and missing are the same 200 on the wire", "owner": "Technical Lead", "detail": "document-envelope.js and storage-provider.js are deliberately outside the entry closure and answer 200 text/html on the deployment, the exact signature of the 037fb093 artifact defect. Nothing gates the first commit that imports either." }
+    {
+      "item": "CF-P7-013 has no qualified journey",
+      "owner": "Product Owner",
+      "detail": "CF-P7-017 landed 2026-07-27 (D-P7-02) and fixed the dispatch bug in the working tree. Closing this now needs a new Preview build from a commit carrying the fix -- an owner/CI action, since Pages binds code at build time -- and then the owner driving the signed-in journeys, which no agent can do."
+    },
+    {
+      "item": "The lazy-chunk budget is breached by 31% and is recorded, not met",
+      "owner": "Technical Lead",
+      "detail": "60 KiB gzip declared; 78.4 KiB measured on the deployment and 79.32 KiB locally. Four options are recorded under lazy_chunk_budget.options and none has been chosen."
+    },
+    {
+      "item": "U2 to U6 are held for the composed surfaces and were never exercised against a live workspace, role, conflict, or viewport",
+      "owner": "UX Lead",
+      "detail": "Local qualification used a stubbed or recording transport. The deployment measurement covered U1 only."
+    },
+    {
+      "item": "Correctly excluded and missing are the same 200 on the wire",
+      "owner": "Technical Lead",
+      "detail": "document-envelope.js and storage-provider.js are deliberately outside the entry closure and answer 200 text/html on the deployment, the exact signature of the 037fb093 artifact defect. Nothing gates the first commit that imports either."
+    }
   ],
-
   "evidence": "CF-EV-P7-EXIT-001",
-
   "gate_accounting": {
-    "cf_phase7_gates_in_check_cloudflare": 16,
-    "note": "sprint, contract, shell, account, create, device, members, invitations, accept, sync, conflict, audit, qualify, api, preview, exit. Fourteen of them are story gates of PASS stories -- contract is shared by CF-P7-001 and CF-P7-016, and exit belongs to CF-P7-014. cf:phase7:preview:check passes while CF-P7-013 does not, because it asserts a fail-closed deployment truthfully. cf:phase7:sprint:check gates the plan and has no story owner, a hole Phase 8 closes by naming an owner rather than by adding a story that does nothing else."
+    "cf_phase7_gates_in_check_cloudflare": 17,
+    "note": "sprint, contract, shell, account, create, device, members, invitations, accept, sync, conflict, audit, qualify, api, dispatch, preview, exit. Fifteen of them are story gates of PASS stories -- contract is shared by CF-P7-001 and CF-P7-016, dispatch belongs to CF-P7-017, and exit belongs to CF-P7-014. cf:phase7:preview:check passes while CF-P7-013 does not, because it asserts a fail-closed deployment truthfully. cf:phase7:sprint:check gates the plan and has no story owner, a hole Phase 8 closes by naming an owner rather than by adding a story that does nothing else."
   }
 }

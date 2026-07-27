@@ -25,7 +25,7 @@ function keyring(prefix: string, start: number): string {
 
 function runtimeBindings(overrides: Record<string, unknown> = {}): object {
     return {
-        APP_ENV: 'preview', IDENTITY_RUNTIME_MODE: 'preview-only', COLLABORATION_ENABLED: 'false',
+        APP_ENV: 'preview', IDENTITY_RUNTIME_MODE: 'preview-only', COLLABORATION_ENABLED: 'true',
         GITHUB_OAUTH_CLIENT_ID: 'preview-client', GITHUB_OAUTH_CLIENT_SECRET: 'preview-secret',
         OAUTH_TRANSACTION_KEY: keyring('oauth', 1), SESSION_TOKEN_PEPPER: keyring('session', 2),
         CSRF_TOKEN_KEY: keyring('csrf', 3), RATE_LIMIT_KEY: keyring('rate', 4),
@@ -93,6 +93,26 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         expect(await handleIdentityRuntime(request('/api/v1/session'), runtimeBindings({ RATE_LIMIT_KEY: undefined })))
             .toBeNull();
         expect(await handleIdentityRuntime(request('/api/v1/workspaces'), runtimeBindings())).toBeNull();
+    });
+
+    // CF-P7-017. The bug this closes made every call here return null
+    // regardless of COLLABORATION_ENABLED, so functions/api/v1/[[path]].ts
+    // always fell through to the api-shell.mjs stub's unconditional 503. This
+    // test calls the same door with nothing but the flag changed and requires
+    // two different outcomes: null with it off, a real dispatched response
+    // with it on. A regression back to the old polarity fails on the second
+    // assertion, not just the first.
+    it('dispatches when COLLABORATION_ENABLED is true and refuses when it is anything else', async () => {
+        expect(await handleIdentityRuntime(request('/api/v1/session'),
+            runtimeBindings({ COLLABORATION_ENABLED: 'false' }))).toBeNull();
+        expect(await handleIdentityRuntime(request('/api/v1/session'),
+            runtimeBindings({ COLLABORATION_ENABLED: undefined }))).toBeNull();
+
+        const response = await handleIdentityRuntime(request('/api/v1/session'),
+            runtimeBindings({ COLLABORATION_ENABLED: 'true' }));
+        expect(response).not.toBeNull();
+        expect(response?.status).toBe(200);
+        expect(await response?.json()).toEqual({ authenticated: false });
     });
 
     it('creates a bounded OAuth transaction and returns only the GitHub authorization URL', async () => {

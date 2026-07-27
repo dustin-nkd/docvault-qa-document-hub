@@ -122,3 +122,55 @@ sprint plan asked for rather than leaving it to a manual, unrecorded flip.
 `wrangler.jsonc` change, so no window exists in which the configuration and the
 gates disagree. Any story doing so must re-run `npm run check` and capture the
 real exit code.
+
+## D-P7-02 — `environment.ts`, not the Preview variable, was the bug
+
+**Status:** APPROVED by the Product Owner, 2026-07-27. Authorizes `CF-P7-017`.
+
+**Decision.** `functions/_lib/identity/environment.ts` line 67 is the defect.
+Its condition is corrected from `COLLABORATION_ENABLED !== 'false'` (enable only
+when the flag reads `'false'`) to `COLLABORATION_ENABLED !== 'true'` (enable
+only when the flag reads `'true'`). `D-P7-01`'s value for Preview — `'true'` —
+is left exactly as it stands.
+
+**Why this needed a decision rather than an edit.** Two files agreed with each
+other and disagreed with the deployment: `environment.ts:67` and
+`api-shell.mjs:286` both read the flag with the same, opposite-of-its-name
+polarity. Read on its own, that consistency could as easily mean the *code*
+encodes the intended meaning and `D-P7-01`'s `'true'` is the mistake, as it
+could mean the code is wrong. Only the owner could break the tie, because it
+turns on what the flag was always meant to say, not on anything a gate or a
+test can observe from inside the repository.
+
+**The tie-break.** `D-P7-01` is dated 2026-07-26, one day before this decision,
+and its own text says `COLLABORATION_ENABLED` is set to `'true'` for Preview
+*so that collaboration would be enabled there*. A reading of `environment.ts`
+under which `'true'` disables is a reading under which `D-P7-01` accomplished
+the opposite of what it said and was approved to do. Option A treats that as
+decisive: the code is corrected to match the intent the Product Owner already
+approved and executed, rather than reopening and reversing a decision made and
+acted on the day before.
+
+**What changes, and what does not.** `environment.ts:67`'s condition is
+corrected. `api-shell.mjs`'s own disabled-boundary check — which never gated
+dispatch, only a terminal fallback reached after three other handlers already
+declined the request — had its dead double-branch removed in the same change,
+with no observable behaviour change (`tests/api-shell.test.mjs`'s NO-OP CONTROL
+was re-run unmutated and still passes). Production and the default `vars`
+remain pinned to `'false'` by the same six gates `D-P7-01` amended; this
+decision does not touch them and changes nothing for either.
+
+**Residual risk.** Identical to `D-P7-01`'s: Preview becomes a live
+collaboration environment with real identities and real D1 rows, the instant a
+deployment is built from a commit carrying this fix. No such deployment was
+built or pushed as part of this decision — the fix landed in the working tree
+and was verified against the local Workers-runtime test harness only.
+Qualifying a journey against a rebuilt Preview deployment remains `CF-P7-013`'s
+open work, and requires a signed-in session no agent can obtain.
+
+**How to apply it.** `functions/_lib/identity/environment.ts` and
+`functions/_lib/api-shell.mjs` were amended in the same change as the five
+Workers-runtime test fixtures that modelled the old polarity, so no window
+exists in which the code and its own tests disagree about what "enabled"
+means. `npm run check` and the full Workers-runtime suite were re-run and
+captured directly, per the same rule `D-P7-01` recorded.

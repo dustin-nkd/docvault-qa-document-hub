@@ -1,18 +1,21 @@
 # Collaboration Foundation Phase 7 — exit report
 
-Status: **COMPLETE — 15 of 17 stories PASS; `P7-G5` NOT granted; Phase 7 does not close**
+Status: **COMPLETE — 16 of 17 stories PASS; `P7-G5` NOT granted; Phase 7 does not close**
 
 Story: `CF-P7-014`
-Assembled against: `c08ccf1` (the commit that landed `CF-P7-016`), plus this story's own changes
+Assembled against: `c08ccf1` (the commit that landed `CF-P7-016`), amended after
+`CF-P7-017` landed (`D-P7-02`), plus this story's own changes
 Assembled on: 2026-07-27
 Gate: `cf:phase7:exit:check`
 
 This report is complete in the sense that every claim it can support is made and
 every claim it cannot is named. It is **not** a closing report. Phase 7 stays
-open because `CF-P7-013` is not PASS, `CF-P7-017` is not started, and the
-lazy-chunk budget is breached; no signature in section 9 changes any of that. The
-Phase 5 precedent is followed throughout: a report that fills its own gaps is
-worth less than one that names them.
+open because `CF-P7-013` is not PASS and the lazy-chunk budget is breached; no
+signature in section 9 changes either. `CF-P7-017` — the third reason the
+previous revision of this report gave — landed on 2026-07-27 and is now PASS;
+§2A and §6.0 record what changed and what did not. The Phase 5 precedent is
+followed throughout: a report that fills its own gaps is worth less than one
+that names them.
 
 `CF-P7-014` is itself **PASS** as of this revision, which is a claim about a
 story and not about a phase. It shipped `cf:phase7:exit:check` — the gate its own
@@ -30,13 +33,15 @@ document. §3 says exactly what that gate does and does not prove.
 - Production identity, production D1, production document routes: **NO-GO** (unchanged)
 
 Phase 7 delivered twelve collaboration surfaces, a single-door API client, a
-composed shell, and a corrected error-to-presentation map, all behind a lazy
-boundary that keeps Personal startup free of collaboration code. Sixteen
-automated gates hold them. What Phase 7 did **not** deliver is the one thing
-`CF-P7-013` exists to produce: a journey exercised end-to-end against a
-deployment with collaboration switched on. Three months of surface work sit
-behind an API that has answered `503` to every request since Phase 1 and still
-does.
+composed shell, a corrected error-to-presentation map, and — as of this
+revision — a corrected dispatch boundary that no longer answers `503`
+regardless of configuration. Seventeen automated gates hold them. What Phase 7
+did **not** deliver is the one thing `CF-P7-013` exists to produce: a journey
+exercised end-to-end against a deployment with collaboration switched on. Three
+months of surface work sit behind an API that answered `503` to every request
+from Phase 1 until `CF-P7-017` landed in the working tree on 2026-07-27 — and
+still does on every deployment that exists today, because none has been
+rebuilt from a commit carrying the fix.
 
 ## 2. A correction to the arithmetic, recorded rather than made quietly
 
@@ -56,10 +61,11 @@ stale a second time within the same day: `CF-P7-016` landed at `c08ccf1` (PASS)
 and `CF-P7-017` was opened (OPEN, not started). Thirteen became fourteen and
 fifteen became seventeen.
 
-The honest reading today is **15 of 17 stories PASS**, with `CF-P7-013` PARTIAL
-and `CF-P7-017` OPEN. "13 of 14" read as one story outstanding. It was two
-then and it is two now — but not the same two: `CF-P7-014` closed and
-`CF-P7-017` opened.
+The honest reading at that revision was **15 of 17 stories PASS**, with
+`CF-P7-013` PARTIAL and `CF-P7-017` OPEN. "13 of 14" read as one story
+outstanding. It was two then and it was two at that revision — but not the same
+two: `CF-P7-014` closed and `CF-P7-017` opened. It is one now: §2A records
+`CF-P7-017` closing the same day, moving the count to **16 of 17**.
 
 Corrected in this pass:
 
@@ -93,6 +99,54 @@ this pass rather than carried forward on trust: 60 explained role-disabled
 controls (`CF-EV-P7-A11Y-002`) and a lowest focus-ring contrast of 5.48:1
 (`CF-EV-P7-A11Y-004`, corroborated in `CF-EV-P7-UI-011`). Both hold.
 
+## 2A. A second correction: `CF-P7-017` lands, and the count moves to 16 of 17
+
+The revision of this report assembled at `c08ccf1` read **15 of 17**, with
+`CF-P7-013` PARTIAL and `CF-P7-017` OPEN. On 2026-07-27, in the same session,
+`CF-P7-017` was decided and landed: `D-P7-02` in
+[`decision-log.md`](decision-log.md) records the Product Owner choosing
+**Option A** — `functions/_lib/identity/environment.ts` was the bug, not the
+Pages Preview variable — over the two options the previous revision recorded
+as blocking (§6.0 as it then read; superseded below).
+
+The fix is two files and no new dispatch logic:
+
+- `environment.ts` line 67's condition corrected from
+  `COLLABORATION_ENABLED !== 'false'` to `COLLABORATION_ENABLED !== 'true'`.
+  This alone is the functional fix: `functions/api/v1/[[path]].ts` already
+  composed `handleIdentityRuntime`, `handlePreviewKeyFoundationApi`, and
+  `handlePreviewCollaborationApi` ahead of the `api-shell.mjs` fallback, and
+  all three gate on the function this line governs. Nothing needed to learn to
+  dispatch; the doors already existed.
+- `api-shell.mjs`'s dead `hasReviewedDisabledState` double-branch — which
+  computed a boolean from the flag and returned the identical `503` regardless
+  of its value — was removed, with **no observable behaviour change**:
+  `tests/api-shell.test.mjs`'s NO-OP CONTROL, which calls `handleApiRequest`
+  directly and requires `503` even with the flag `'true'`, was re-run
+  unmutated and still passes, because that function is deliberately never the
+  dispatch door.
+
+Five Workers-runtime test fixtures that modelled the old, inverted polarity as
+"enabled" were updated to the corrected one, and an explicit on/off contrast
+was added at both the unit level (`identity-primitives.workers.test.ts`,
+against `resolveIdentityRuntime` directly) and the integration level
+(`identity-runtime.workers.test.ts`, against `handleIdentityRuntime`): the
+same configuration returns `null` with the flag `'false'` or `undefined`, and a
+real dispatched `200` with it `'true'`. Full detail, including the exact
+before/after test counts, is in `CF-EV-P7-OPS-006`.
+
+**What this does not do.** No deployment was pushed, built, or rebuilt. The fix
+lives in the working tree and was verified against the local Workers-runtime
+harness only; Cloudflare Pages binds code at build time, so the deployment
+measured in §6.1 predates this fix and cannot show it without a new build.
+`CF-P7-013`'s second, independent blocker — no OAuth session is available to an
+agent — is untouched by this fix and remains open regardless of it.
+
+The honest reading is now **16 of 17 stories PASS**, with `CF-P7-013` the sole
+remaining non-`PASS` story. §3, §6, §7, §10, and §11 below are amended
+accordingly; nothing about the arithmetic-correction narrative in §2 above is
+rewritten, because it is a historical record of a different, earlier mistake.
+
 ## 3. Story reconciliation — every story, its gate, its evidence
 
 | Story | Title | Gate | Gate state | Evidence | Status |
@@ -113,27 +167,28 @@ controls (`CF-EV-P7-A11Y-002`) and a lowest focus-ring contrast of 5.48:1
 | CF-P7-016 | Correct the frozen error-to-presentation map | `cf:phase7:contract:check` | passes | `UI-012` | **PASS** |
 | **CF-P7-013** | **Integrate and qualify on Preview** | `cf:phase7:preview:check` | **passes** | `OPS-001`…`OPS-005` — all five **PARTIAL** | **PARTIAL** |
 | CF-P7-014 | Exit and Phase 8 handoff | `cf:phase7:exit:check` | passes | `EXIT-001` | **PASS** |
-| **CF-P7-017** | **Dispatch the API shell on the flag** | none yet | **not started** | `CF-EV-P7-OPS-006` — reserved, **not written** | **OPEN** |
+| CF-P7-017 | Dispatch the API shell on the flag | `cf:phase7:dispatch:check` | passes | `OPS-006` | **PASS** |
 
 All evidence identifiers are `CF-EV-P7-…` under
-`docs/collaboration-foundation/evidence/phase-7/`; **27** records are committed
-there and all 27 are reconciled above. A story is PASS when its gate script
+`docs/collaboration-foundation/evidence/phase-7/`; **28** records are committed
+there and all 28 are reconciled above. A story is PASS when its gate script
 exists and passes, never on assertion — and, as of this story, when every
 evidence record it names exists on disk, reads `Status: PASS`, and mentions the
 story. `cf:phase7:exit:check` checks all three.
 
-**Gate accounting.** Sixteen `cf:phase7:*` gates run inside `check:cloudflare`:
+**Gate accounting.** Seventeen `cf:phase7:*` gates run inside `check:cloudflare`:
 `sprint`, `contract`, `shell`, `account`, `create`, `device`, `members`,
 `invitations`, `accept`, `sync`, `conflict`, `audit`, `qualify`, `api`,
-`preview`, `exit`. Fourteen of the sixteen are story gates of the fifteen PASS stories
-— `contract` is shared, since `CF-P7-016` re-opened and re-closed the frozen
-contract `CF-P7-001` had frozen, and `exit` belongs to `CF-P7-014`.
-`cf:phase7:preview:check` **passes while its story does not**: the gate asserts a
-fail-closed deployment truthfully, and the story needs a qualified journey. A
-green gate is not a closed story. `cf:phase7:sprint:check` gates the plan and has
-no stated story owner, a hole the same shape as the one `CF-P7-015` was created
-to close, and one Phase 8 closes by naming an owner rather than by adding a story
-that does nothing else.
+`dispatch`, `preview`, `exit`. Fifteen of the seventeen are story gates of the
+sixteen PASS stories — `contract` is shared, since `CF-P7-016` re-opened and
+re-closed the frozen contract `CF-P7-001` had frozen, `dispatch` belongs to
+`CF-P7-017`, and `exit` belongs to `CF-P7-014`. `cf:phase7:preview:check`
+**passes while its story does not**: the gate asserts a fail-closed deployment
+truthfully, and the story needs a qualified journey. A green gate is not a
+closed story. `cf:phase7:sprint:check` gates the plan and has no stated story
+owner, a hole the same shape as the one `CF-P7-015` was created to close, and
+one Phase 8 closes by naming an owner rather than by adding a story that does
+nothing else.
 
 **What `cf:phase7:exit:check` proves, and what it cannot.** It proves the record
 is internally consistent — the count, the story statuses across two manifests, the
@@ -160,6 +215,10 @@ something that does not exist or no longer holds:
 4. `CF-P7-016` and `CF-P7-017` were added to the plan. Both sit outside the
    linear gate chain and both say why; the sprint policy now requires that
    `out_of_sequence_reason` rather than silently accepting a broken chain.
+5. `CF-P7-017` was `OPEN` and is now `PASS`: `D-P7-02` decided the owner
+   question it was blocked on, its gate `cf:phase7:dispatch:check` and drift
+   suite exist, and `CF-EV-P7-OPS-006` is written. §2A and §6.0 record what
+   changed.
 
 ## 4. Gate UX criteria
 
@@ -216,20 +275,23 @@ and the consequence — that nothing performed any transport at all — was invi
 to every one of them. That is what `CF-P7-015` exists to close, and it is the
 reason Phase 8 is a verification phase rather than a feature phase.
 
-## 6. OPEN — `CF-P7-013`, `CF-P7-017`, and a budget that fails
+## 6. OPEN — `CF-P7-013` and a budget that fails
 
-`CF-P7-013` is **not PASS**. Three distinct things are open, two of them under it.
+`CF-P7-013` is **not PASS**. Two distinct things are open under it, plus the
+budget in §6.2. A third — the dispatch bug this section used to carry as open —
+closed within this same session and is recorded below as history, not as a
+current blocker.
 
-### 6.0 The re-qualification, and the blocker that turned out to be bigger
+### 6.0 CLOSED — the dispatch bug, and the blocker that turned out to be bigger
 
 The previous draft named one blocker: `COLLABORATION_ENABLED` was not carried by
 the measured Preview build, and setting it plus rebuilding was an owner action.
-**That action has been taken.** The owner set `COLLABORATION_ENABLED` to `'true'`
+**That action was taken.** The owner set `COLLABORATION_ENABLED` to `'true'`
 for the Pages **Preview** environment, and `D-P7-01` is executed in
 `wrangler.jsonc` (`local=false, preview=true, production=false`, asserted by
 `cf:config:check` on every run).
 
-Re-measured 2026-07-27, read-only:
+Re-measured 2026-07-27, read-only, **before the fix below existed**:
 
 | Request | Status |
 |---|---|
@@ -237,36 +299,46 @@ Re-measured 2026-07-27, read-only:
 | `GET …docvault-qa-document-hub.pages.dev/api/v1/session` | **503 `COLLABORATION_UNAVAILABLE`** |
 | `GET …docvault-qa-document-hub.pages.dev/api/v1/workspaces` | **503 `COLLABORATION_UNAVAILABLE`** |
 
-Nothing changed, and the reason is in the code rather than in the configuration.
-`functions/_lib/api-shell.mjs` lines 285–293 compute `hasReviewedDisabledState`
-and then return the **identical** `503 COLLABORATION_UNAVAILABLE` on **both**
-branches. The value that is computed routes nothing. No value of
-`COLLABORATION_ENABLED` can make any `/api/v1/*` route answer anything else. This
-is the Phase 1 "disabled API shell", written when there was nothing to dispatch
-to; `functions/_lib/collaboration/key-runtime-handler.ts` now carries the
-identity, device, workspace, key-envelope and eight Phase 6 document routes it
-could dispatch to.
+Nothing changed at that measurement, and the reason was in the code rather than
+the configuration. `functions/_lib/api-shell.mjs` lines 285–293 computed
+`hasReviewedDisabledState` and then returned the **identical** `503
+COLLABORATION_UNAVAILABLE` on **both** branches. The value computed routed
+nothing. But `api-shell.mjs` was never the actual door: `functions/api/v1/
+[[path]].ts` already composed `handleIdentityRuntime`,
+`handlePreviewKeyFoundationApi`, and `handlePreviewCollaborationApi` ahead of
+it, and all three gate on `resolveIdentityRuntime(...).enabled`.
+`functions/_lib/identity/environment.ts` line 67 enabled the identity runtime
+**only when `COLLABORATION_ENABLED === 'false'`** — the opposite of what the
+flag's name means and the opposite of the value `D-P7-01` set on Preview — so
+all three doors reported disabled on Preview regardless, and every request fell
+through to the always-`503` fallback.
 
-That is **`CF-P7-017`**, opened by this story and **not started**. An
-implementation pass on 2026-07-27 halted before writing a line, and the reason it
-halted is worth more than the story would have been: `functions/_lib/identity/
-environment.ts` line 67 enables the identity runtime **only when
-`COLLABORATION_ENABLED === 'false'`** — the opposite of what the flag's name means
-and the opposite of the value now set on Preview. `api-shell.mjs:286` uses the
-same `=== 'false'` convention, so the two files agree with each other and
-disagree with the deployment. Either the flag string means the opposite of its
-name throughout and the Preview environment variable is wrong, or the code is
-wrong in at least two files. The gate `CF-P7-017` must ship has to call the shell
-with the flag on and with it off and assert **two different outcomes**; on today's
-source both calls return `503`, so that gate cannot be written honestly yet.
-Shipping it anyway would have produced a green, vacuous suite — the exact failure
-this programme has already had sixteen of. The two coherent options are recorded
-under `CF-P7-017` in `config/cloudflare/phase-7-sprint-plan.json` and both need
-the owner.
+**Resolved as `CF-P7-017`, `D-P7-02` in [`decision-log.md`](decision-log.md),
+2026-07-27.** The two files agreeing with each other and disagreeing with the
+deployment could have meant either was the mistake; the Product Owner broke the
+tie as **Option A** — `environment.ts` is the bug — because `D-P7-01` is dated
+one day earlier and its own text says the flag was set to `'true'` for Preview
+*so that collaboration would be enabled there*. Reversing that the next day
+would mean `D-P7-01` accomplished the opposite of what it was approved and
+executed to do. `environment.ts:67`'s condition is corrected to
+`COLLABORATION_ENABLED !== 'true'`; `api-shell.mjs`'s dead double-branch is
+removed, with no observable behaviour change (`tests/api-shell.test.mjs`'s
+NO-OP CONTROL, which requires `503` from that function alone even with the flag
+`'true'`, was re-run unmutated and still passes). Full detail in
+`CF-EV-P7-OPS-006`.
+
+**What this closes and what it does not.** It closes the reason no `/api/v1/*`
+route could ever answer anything but `503` regardless of configuration — that
+reason is gone from the source as of this revision. It does **not** put a
+working route on the wire: no deployment has been rebuilt from a commit
+carrying the fix, and Cloudflare Pages binds code at build time, so the
+deployment measured in §6.1 still shows the pre-fix behaviour and will continue
+to until someone rebuilds it. §6.1 restates why that, and a second, independent
+reason, keep `CF-P7-013` PARTIAL regardless.
 
 **The boundary is intact and was measured, not assumed.** Production answers
 `503` on `/api/v1/session` and `/api/v1/workspaces`. No regression — nothing was
-deployed.
+deployed, then or in landing this fix.
 
 ### 6.1 No journey is qualified
 
@@ -293,10 +365,14 @@ conflict resolution, and audit activity. There is no session, workspace, member,
 invitation, or audit event on a deployment answering `503`, so there is nothing
 to qualify against. Nothing was invented to fill the gap.
 
-**Two independent reasons, either sufficient on its own.** The first is §6.0: the
-API answers `503` to everything, on every deployment, and will until `CF-P7-017`
-lands. The second survives `CF-P7-017` and needs saying plainly, because it is the
-one that determines *who* can close this story:
+**Two independent reasons, each sufficient on its own — one of them changed
+today.** The first was §6.0: the API answered `503` to everything, on every
+deployment, because of a dispatch bug. `CF-P7-017` closed that bug in the
+working tree on 2026-07-27, but no deployment has been rebuilt to carry it, so
+every deployment that exists today still answers exactly as measured above.
+The second reason is independent of the dispatch bug, survives it being fixed,
+and needs saying plainly, because it is the one that determines *who* can close
+this story regardless of what else changes:
 
 > **The journeys `CF-P7-013` must qualify are signed-in journeys, and no OAuth
 > session is available to the agent.** Every one of them begins at an
@@ -316,12 +392,16 @@ path for Pages environment variables, so the owner's report that Preview carries
 difference to the result: the shell does not route on it (§6.0). **Deployment
 behaviour was measured; the project variable was not.**
 
-**What closes it,** in order: `CF-P7-017` resolved and landed, so a route can
-answer something other than `503`; `codex-cf-p3-preview` rebuilt — a new
-deployment id, not a re-measurement; and then the journeys driven by someone who
-can sign in. The first needs an owner decision, the third needs an owner. On
-record at `config/cloudflare/phase-7-preview-integration.json` under `blocked_on`
-and at `phase-7-sprint-plan.json` under `CF-P7-013.requalification`.
+**What closes it, in order, and what is already done.** `CF-P7-017` resolved
+and landed **(done, this revision)** — a route can now answer something other
+than `503`, once it is on a deployment. What remains: `codex-cf-p3-preview`
+rebuilt from a commit carrying the fix — a new deployment id, not a
+re-measurement of the one in the table above, since Pages binds code at build
+time — and then the journeys driven by someone who can sign in. Both remaining
+steps need an owner; no agent can push a commit that triggers a Pages build or
+enter GitHub credentials. On record at `config/cloudflare/
+phase-7-preview-integration.json` under `blocked_on` and at
+`phase-7-sprint-plan.json` under `CF-P7-013.requalification`.
 
 ### 6.2 The lazy-chunk budget fails, measured for the first time
 
@@ -511,31 +591,38 @@ drifted `worker-configuration.d.ts` produces the same message as a line-ending
 mismatch, so the failure mode is *silent staleness in the other direction*, and a
 libuv abort is easy to mistake for infrastructure noise. Owner: Operations.
 
-**R-P7-I — The API shell has never dispatched, and nothing noticed for seven
-phases.** `functions/_lib/api-shell.mjs` returns the identical `503
-COLLABORATION_UNAVAILABLE` on **both** branches of its own feature check (§6.0),
-so every `/api/v1/*` request has answered `503` since Phase 1 regardless of
-configuration. Phases 3 through 6 built identity, workspaces, RBAC, device and
-workspace keys, and eight document routes behind it; all of them were qualified at
-the persistence layer or through the Workers test harness, never through the shell
-that fronts them in production. This is the same shape as finding #4 and #5 in §5 —
-**a correct part-wise check is not a whole-system check** — at the largest scale
-the programme has produced it. Tracked as `CF-P7-017`, which is OPEN and blocked
-on an owner decision about the flag's polarity. Owner: Technical Lead.
+**R-P7-I — The API shell never dispatched, and nothing noticed for seven
+phases. CLOSED in the working tree; not yet observed on a deployment.**
+`functions/_lib/api-shell.mjs` returned the identical `503
+COLLABORATION_UNAVAILABLE` on **both** branches of its own feature check, and
+independently, `functions/_lib/identity/environment.ts` gated the three real
+dispatch doors on a flag read with the opposite polarity to its name, so every
+`/api/v1/*` request answered `503` since Phase 1 regardless of configuration.
+Phases 3 through 6 built identity, workspaces, RBAC, device and workspace keys,
+and eight document routes behind it; all of them were qualified at the
+persistence layer or through the Workers test harness, never through the shell
+that fronts them in production. This is the same shape as finding #4 and #5 in
+§5 — **a correct part-wise check is not a whole-system check** — at the largest
+scale the programme has produced it. Closed as `CF-P7-017`, `D-P7-02`,
+2026-07-27 (§6.0, `CF-EV-P7-OPS-006`): the polarity is corrected and the dead
+branch is gone, verified against the local Workers-runtime harness. **Residual:**
+no deployment has been rebuilt to carry the fix, so it has not been observed on
+the wire, and `CF-P7-013`'s independent no-agent-session blocker is untouched.
+Owner: Technical Lead.
 
 The programme risk register carries 22 rows, `R01` through `R22`, with no open
 unowned risk. Phase 7 opened none of them and closed none of them. The **nine**
-above (`R-P7-A` through `R-P7-I`) are Phase 7 exit conditions: three are now
-closed (`R-P7-D`, `R-P7-E`, `R-P7-H`), one is resolved (`R-P7-G`), one is newly
-opened (`R-P7-I`), and `R-P7-B` is additionally carried in the risk register
-itself under §4A so that the open budget breach is visible to the owner outside
-this report. `R23` — designated Preview identities are build-time configuration —
-is opened by `CF-P8-001`.
+above (`R-P7-A` through `R-P7-I`) are Phase 7 exit conditions: four are now
+closed (`R-P7-D`, `R-P7-E`, `R-P7-H`, `R-P7-I`), one is resolved (`R-P7-G`), and
+`R-P7-B` is additionally carried in the risk register itself under §4A so that
+the open budget breach is visible to the owner outside this report. `R23` —
+designated Preview identities are build-time configuration — is opened by
+`CF-P8-001`.
 
 ## 8. Local verification
 
 - `node scripts/check-cloudflare-phase-7-sprint.mjs` → passes on the amended
-  plan: **15 of 17 stories PASS**, twelve owned surfaces, an unbroken gate chain
+  plan: **16 of 17 stories PASS**, twelve owned surfaces, an unbroken gate chain
   over the sequenced stories, remote work behind `P7-G4`. The line it prints is
   now counted rather than spelled — the literal it used to print said "Fifteen
   stories" and was wrong by the time this story ran.
@@ -595,6 +682,33 @@ by hand, and `cf:pages:dry-run` does not deploy. The one Phase 7 claim that a
 green chain cannot support is the one Phase 7 is missing (§6.1), and the chain
 being green is not offered as consolation for it.
 
+### 8.2 The gate run that closes `CF-P7-017`, in the same session
+
+Run on 2026-07-27 against this story's own changes on top of `c08ccf1`, in the
+same working tree §8.1 describes, with `CF-P7-017` decided (`D-P7-02`) and
+landed in between.
+
+```
+npm run check > /tmp/close-cf-p7-017.txt 2>&1; echo $?
+0
+```
+
+**The real exit code is 0.** Captured the same way as §8.1: a redirect, then
+`; echo $?`, never a pipe.
+
+| Stage | Result |
+|---|---|
+| `check:base` → `npm test` (`node --test tests/run.mjs`) | **1162 tests, 1162 pass, 0 fail, 0 skipped, 0 todo.** 1152 before this story; the 10 added are `cloudflare-phase-7-dispatch-policy.test.mjs`'s drift suite |
+| `check:cloudflare` → Workers-runtime suite (`node_modules/vitest` across all 35 `*.workers.test.ts` files) | **249 tests, 249 pass** across all 35 files, including the two files this story amended |
+| `check:cloudflare` → `node --test tests/api-shell.test.mjs` (run standalone to confirm no drift) | **13 tests, 13 pass** — unchanged from before this story |
+| `check:cloudflare` → `cf:phase7:*` — the same sixteen gates as §8.1, plus `cf:phase7:dispatch:check` | **17 of 17 exit 0** |
+
+**What moved and what did not, compared to §8.1.** The story-gate count moved
+from sixteen to seventeen; the story-PASS count moved from fifteen to sixteen
+(§2A); the Node test count moved from 1152 to 1162. `P7-G5` did not move: it was
+`NOT GRANTED` at `c08ccf1` and is `NOT GRANTED` now, for `CF-P7-013` and the
+lazy-chunk budget, neither of which this story touched.
+
 ## 9. Owner authorization
 
 `CF-P7-014` acceptance requires Product Owner, Senior QA, Security Reviewer,
@@ -636,10 +750,13 @@ them beyond what they say.
 - It authorizes **signing this report**. It is not a grant of `P7-G5`, and it is
   not read as one. The owner did not say `P7-G5`, and a signature cannot supply a
   journey that was never run. See §10.
-- It is **not** read as authorization for `CF-P7-017`, which needs a separate,
+- It was **not** read as authorization for `CF-P7-017`, which needed a separate,
   specific decision about the collaboration flag's polarity and about activating
-  the Phase 3–6 stack on a publicly reachable preview alias (§6.0). A blanket
-  instruction to finish the exit paperwork is not consent to switch a system on.
+  the Phase 3–6 stack on a publicly reachable preview alias (§6.0). That separate
+  decision was subsequently obtained and is recorded as `D-P7-02` in
+  `decision-log.md`, dated 2026-07-27 — distinct from, and later than, the
+  blanket instruction above. A blanket instruction to finish the exit paperwork
+  was not, and is not read as having been, consent to switch a system on.
 
 Every one of these constraints is pinned in
 `config/cloudflare/phase-7-exit-gate.json` under `sign_off`, where
@@ -669,9 +786,9 @@ The seven roles are signed. The objective conditions are not met:
 
 | Condition | State |
 |---|---|
-| Every story PASS | **no** — `CF-P7-013` PARTIAL, `CF-P7-017` OPEN |
+| Every story PASS | **no** — `CF-P7-013` PARTIAL |
 | Zero open defect | **no** — the lazy chunk budget is breached by 31% (§6.2) |
-| Every gate exists and passes | yes — `cf:phase7:exit:check` shipped with this story; sixteen `cf:phase7:*` gates run inside `check:cloudflare` |
+| Every gate exists and passes | yes — `cf:phase7:exit:check` shipped with this story; seventeen `cf:phase7:*` gates run inside `check:cloudflare` |
 | Sprint gate criteria U1–U6 qualified | **partial** — U1 measured on the deployment; U2–U6 held locally only (§4) |
 | Zero unowned or expired Critical/High risk | yes — 22 register rows, all owned; nine Phase 7 exit risks, all owned |
 | `npm run check` green with a real exit code | yes — exit **0** (§8.1), captured after a redirect and never through a pipe |
@@ -690,23 +807,28 @@ what it computed. Setting the flag by hand fails the release chain.
 
 Granting it needs, in order:
 
-1. **An owner decision on the collaboration flag's polarity** (§6.0) — either the
-   code is wrong in two files or the Pages Preview variable is, and no one but the
-   owner can say which.
-2. **`CF-P7-017` implemented and gated**, so the shell dispatches when the flag is
-   on and still refuses when it is off, with a gate that calls it both ways and
-   asserts two different outcomes.
-3. **`codex-cf-p3-preview` rebuilt** — a new deployment id, not a re-measurement.
+1. ~~An owner decision on the collaboration flag's polarity~~ **(done —
+   `D-P7-02`, §6.0)**: the Product Owner decided `environment.ts` was the bug.
+2. ~~`CF-P7-017` implemented and gated~~ **(done)**: the shell's real dispatch
+   doors now activate when the flag is on and still refuse when it is off,
+   proved both ways by `identity-runtime.workers.test.ts` and
+   `identity-primitives.workers.test.ts`, and gated by `cf:phase7:dispatch:check`.
+3. **`codex-cf-p3-preview` rebuilt** — a new deployment id, not a
+   re-measurement, from a commit carrying the `CF-P7-017` fix. Not done; no
+   agent can push a commit that triggers a Pages build.
 4. **The journeys qualified by someone who can sign in.** No agent can do this; it
-   is the one item on this list that is structurally owner-only.
+   is the one item on this list that is structurally owner-only, and was true
+   before item 2 closed and remains true after.
 5. **The 60 KiB budget met or renegotiated on the record** (§6.2). Four options,
    none chosen.
 
-Two items from the previous draft's list are now done and are struck from it:
-`CF-P7-016` closed the error-map gap (R-P7-E), and `cf:phase7:exit:check` exists
-so this reconciliation is enforced rather than asserted (R-P7-D). Setting
-`COLLABORATION_ENABLED` for the Preview environment is also done — and it changed
-nothing on the wire, which is how items 1 and 2 were found.
+Four items from earlier drafts' lists are now done and are struck from it:
+`CF-P7-016` closed the error-map gap (R-P7-E), `cf:phase7:exit:check` exists so
+this reconciliation is enforced rather than asserted (R-P7-D), setting
+`COLLABORATION_ENABLED` for the Preview environment is done (which is how items
+1 and 2 above were found to be necessary but not sufficient), and `CF-P7-017`
+itself is now done. What remains needs an owner in every case: a new deployment
+and a signed-in session.
 
 ## 11. Boundaries held
 
@@ -725,14 +847,19 @@ assertions across four closed phases, plus the four `NO-GO` keys this story's ow
 gate now checks. Measured on 2026-07-27 rather than assumed: production answers
 `503 COLLABORATION_UNAVAILABLE` on `/api/v1/session` and `/api/v1/workspaces`.
 
-`CF-P7-017` is the one open story that could move this boundary, and the
-requirement written into it is explicit: **dispatch when the flag is on, keep
-answering `503` when it is off.** A change that makes the on-path work and weakens
-the off-path is a failure, not a partial win. It is recorded that way in the
-sprint plan so the next agent to pick it up inherits the constraint and not just
-the task.
+`CF-P7-017` was the one story that could move this boundary, and the
+requirement written into it was explicit: **dispatch when the flag is on, keep
+answering `503` when it is off.** It closed against exactly that requirement,
+not a looser one: `tests/api-shell.test.mjs`'s NO-OP CONTROL, which requires
+`503` from the fallback shell alone even with the flag `'true'`, was re-run
+unmutated and still passes, so the fix did not weaken the off-path to make the
+on-path work. It moved the boundary in the working tree only — no deployment
+was rebuilt, so production's own boundary (still `503`, still measured above)
+is unchanged, and Preview's boundary moves only once someone rebuilds it.
 
 Every measurement behind this report was read-only. No write request was issued,
 no database was touched, no secret was read or set, no credential was entered,
 and no authenticated session was obtained or attempted. Nothing was deployed by
 this story: no push to `codex-cf-p3-preview`, no merge, no new Pages deployment.
+`CF-P7-017`'s fix was committed to the local working tree and verified against
+the local Workers-runtime harness; it was not pushed or deployed either.

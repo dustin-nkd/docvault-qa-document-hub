@@ -45,7 +45,7 @@ const CSRF_RING: IdentityKeyring = parseIdentityKeyring(CSRF_KEY);
 
 function bindings(overrides: Record<string, unknown> = {}): object {
     return {
-        APP_ENV: 'preview', IDENTITY_RUNTIME_MODE: 'preview-only', COLLABORATION_ENABLED: 'false',
+        APP_ENV: 'preview', IDENTITY_RUNTIME_MODE: 'preview-only', COLLABORATION_ENABLED: 'true',
         GITHUB_OAUTH_CLIENT_ID: 'preview-client', GITHUB_OAUTH_CLIENT_SECRET: 'preview-secret',
         OAUTH_TRANSACTION_KEY: keyring('oauth', 1), SESSION_TOKEN_PEPPER: SESSION_KEY,
         CSRF_TOKEN_KEY: CSRF_KEY, RATE_LIMIT_KEY: keyring('rate', 4), COLLAB_DB: env.COLLAB_DB,

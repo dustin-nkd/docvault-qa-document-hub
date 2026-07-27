@@ -126,7 +126,7 @@ test('an exit report whose status line contradicts the computed count is rejecte
     const drifted = input();
     // Every occurrence, not the first: the count appears in the status line and
     // again in §2, and replacing one would leave the gate satisfied by the other.
-    drifted.exitReport = mutated(drifted.exitReport, /15 of 17 stories PASS/g,
+    drifted.exitReport = mutated(drifted.exitReport, /16 of 17 stories PASS/g,
         '13 of 14 stories PASS');
     assert.throws(() => validatePhase7Exit(drifted), /does not carry the computed count/);
 });
@@ -184,16 +184,19 @@ test('evidence downgraded to PARTIAL under a PASS story is rejected', () => {
 });
 
 test('a story that is not PASS without a substantive reason is rejected', () => {
+    // CF-P7-017 closed in this pass (see CF-EV-P7-OPS-006), leaving CF-P7-013 as
+    // the only non-PASS story to exercise this path against.
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
-    storyIn(drifted.manifest, 'CF-P7-017').reason = 'todo';
+    storyIn(drifted.manifest, 'CF-P7-013').reason = 'todo';
     assert.throws(() => validatePhase7Exit(drifted), /without a substantive reason/);
 });
 
-test('an open story naming unwritten evidence without saying so is rejected', () => {
+test('a non-PASS story naming unwritten evidence without saying so is rejected', () => {
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
-    storyIn(drifted.manifest, 'CF-P7-017').evidence_written = true;
+    const story = storyIn(drifted.manifest, 'CF-P7-013');
+    story.evidence = [...story.evidence, 'CF-EV-P7-OPS-999'];
     assert.throws(() => validatePhase7Exit(drifted), /names unwritten evidence without saying so/);
 });
 
@@ -213,8 +216,8 @@ test('claiming CF-P7-013 PASS without a qualified journey is rejected', () => {
     drifted.manifest.pass_count += 1;
     drifted.sprintPlan = clone(drifted.sprintPlan);
     drifted.sprintPlan.stories.find(story => story.id === 'CF-P7-013').status = 'PASS';
-    drifted.exitReport = mutated(drifted.exitReport, /15 of 17 stories PASS/g,
-        '16 of 17 stories PASS');
+    drifted.exitReport = mutated(drifted.exitReport, /16 of 17 stories PASS/g,
+        '17 of 17 stories PASS');
     assert.throws(() => validatePhase7Exit(drifted), /cannot be PASS without a qualified journey/);
 });
 
