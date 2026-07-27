@@ -33,14 +33,14 @@ const respond = (status, body, contentType = 'application/json; charset=utf-8') 
     json: async () => body
 });
 
+// /api/v1/session answers with its fields directly at the top level, not the
+// {data, meta} envelope every other route in this suite uses -- see
+// js/collaboration/api-client.js's resolveSession().
 const SESSION = respond(200, {
-    data: {
-        authenticated: true,
-        user: { userId: USER, login: 'octocat' },
-        session: {},
-        csrfToken: 'csrf-token-value'
-    },
-    meta: {}
+    authenticated: true,
+    user: { userId: USER, login: 'octocat' },
+    session: {},
+    csrfToken: 'csrf-token-value'
 });
 
 /** A signed-in adapter over a transport that records instead of sending. */

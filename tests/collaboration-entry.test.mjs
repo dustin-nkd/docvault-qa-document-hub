@@ -227,7 +227,7 @@ test('a signed-out visitor on an enabled deployment is offered a sign-in', async
     const doc = documentWithRoot();
     await startCollaboration({
         document: doc, deployment: available,
-        client: clientAnswering([respond(200, { data: { authenticated: false }, meta: {} })])
+        client: clientAnswering([respond(200, { authenticated: false })])
     });
     const state = doc.container.children[0];
     assert.equal(state.getAttribute('data-collab-state'), 'unauthorized');
@@ -242,7 +242,7 @@ test('clicking sign-in redirects the browser to the returned authorization URL',
     await startCollaboration({
         document: doc, deployment: available,
         client: clientAnswering([
-            respond(200, { data: { authenticated: false }, meta: {} }),
+            respond(200, { authenticated: false }),
             // This route's real body is {authorizationUrl, expiresAt} at the
             // top level, not the {data, meta} envelope every other route
             // uses -- see the REGRESSION test in collaboration-api-client
@@ -265,7 +265,7 @@ test('a refused sign-in shows its own reason rather than navigating anywhere', a
     await startCollaboration({
         document: doc, deployment: available,
         client: clientAnswering([
-            respond(200, { data: { authenticated: false }, meta: {} }),
+            respond(200, { authenticated: false }),
             respond(429, { error: { code: 'RATE_LIMITED' }, meta: {} })
         ])
     });
@@ -285,7 +285,7 @@ test('clicking sign-in twice before the first answer returns sends only one requ
     let calls = 0;
     const client = createApiClient({
         fetch: async () => {
-            if (calls === 0) { calls += 1; return respond(200, { data: { authenticated: false }, meta: {} }); }
+            if (calls === 0) { calls += 1; return respond(200, { authenticated: false }); }
             calls += 1;
             return respond(201, { authorizationUrl: 'https://github.com/x', expiresAt: 1 });
         },
@@ -306,10 +306,8 @@ test('a signed-in visitor gets the chrome built from the real session', async ()
         document: doc, deployment: available,
         client: clientAnswering([
             respond(200, {
-                data: {
-                    authenticated: true, user: { userId: 'u_1', login: 'dustin-nkd' },
-                    session: {}, csrfToken: 'csrf'
-                }, meta: {}
+                authenticated: true, user: { userId: 'u_1', login: 'dustin-nkd' },
+                session: {}, csrfToken: 'csrf'
             }),
             respond(200, { data: { items: workspaces }, meta: { page: { nextCursor: null } } })
         ])
@@ -325,8 +323,7 @@ test('a workspace list that fails leaves the session standing and the list empty
         document: doc, deployment: available,
         client: clientAnswering([
             respond(200, {
-                data: { authenticated: true, user: { userId: 'u_1', login: 'x' }, session: {} },
-                meta: {}
+                authenticated: true, user: { userId: 'u_1', login: 'x' }, session: {}
             }),
             respond(500, { error: { code: 'INTERNAL_ERROR' }, meta: {} })
         ])
@@ -351,8 +348,7 @@ test('a workspace record the surfaces refuse is an error state, not a stuck load
         document: doc, deployment: available,
         client: clientAnswering([
             respond(200, {
-                data: { authenticated: true, user: { userId: 'u_1', login: 'x' }, session: {} },
-                meta: {}
+                authenticated: true, user: { userId: 'u_1', login: 'x' }, session: {}
             }),
             // Not the shape the server issues, so workspace-context refuses it.
             respond(200, { data: { items: [{ workspaceId: 'ws_1', displayName: 'X' }] }, meta: {} })

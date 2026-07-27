@@ -243,11 +243,11 @@
       "evidence": "CF-EV-P7-OPS-004"
     },
     "local_measurement": {
-      "kib_gzip": 79.32,
-      "bytes_gzip": 81228,
+      "kib_gzip": 81.74,
+      "bytes_gzip": 83705,
       "modules": 20,
-      "phase_7_only_kib_gzip": 65.27,
-      "phase_7_only_bytes_gzip": 66838,
+      "phase_7_only_kib_gzip": 67.69,
+      "phase_7_only_bytes_gzip": 69315,
       "phase_7_only_modules": 17,
       "method": "gzip level 9 over every module in the static import closure of js/collaboration/entry.js, with CRLF normalised to LF so the figure is identical on a Windows working copy and in CI. Recomputed by cf:phase7:exit:check on every run; the gate fails if this record and the bytes disagree by more than 2 KiB in either direction, and fails if the measurement drops under the declared budget while this record still says OPEN.",
       "measured_on": "2026-07-27",

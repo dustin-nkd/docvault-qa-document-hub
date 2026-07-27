@@ -422,6 +422,59 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
     }
 
     /**
+     * Read a response from one of the two identity-runtime routes whose
+     * success body is not `interpret()`'s `{data, meta}` shape.
+     *
+     * `functions/_lib/identity/runtime-handler.ts` answers `GET
+     * /api/v1/session` and `POST /api/v1/oauth/github/transactions` with their
+     * fields directly at the top level — `{authenticated, user, session,
+     * csrfToken}` and `{authorizationUrl, expiresAt}` respectively — predating
+     * the envelope every CF-P4-through-P6 route uses. Failure responses from
+     * the same runtime do use the shared `{error: {code}}` shape, so only the
+     * success branch differs from `interpret()`; this function is that
+     * difference, shared by both callers rather than duplicated in each.
+     *
+     * On success the caller receives the raw parsed `envelope` and reads
+     * whichever fields its own route promises. On failure the shape already
+     * matches what `interpret()` would have produced.
+     *
+     * Throws, rather than returning `ok: false`, for a non-JSON or unparseable
+     * body — matching `interpret()` exactly, since a response that is secretly
+     * the app shell (the `037fb093` artifact defect) is a transport-boundary
+     * problem, not a request the deployment answered. Both callers below catch
+     * this the same way `request()`'s callers already do.
+     *
+     * @param {Response} response
+     */
+    async function readUnwrappedIdentityResponse(response) {
+        const requestId = typeof response.headers?.get === 'function'
+            ? response.headers.get('X-Request-ID')
+            : null;
+        const contentType = typeof response.headers?.get === 'function'
+            ? response.headers.get('content-type') ?? ''
+            : '';
+        if (!jsonContentType.test(contentType)) {
+            fail('NON_JSON_RESPONSE', { status: response.status, requestId });
+        }
+        let envelope;
+        try {
+            envelope = await response.json();
+        } catch {
+            fail('MALFORMED_RESPONSE', { status: response.status, requestId });
+        }
+        if (!response.ok) {
+            return Object.freeze({
+                ok: false,
+                status: response.status,
+                failure: presentErrorCode(envelope?.error?.code),
+                details: envelope?.error?.details ?? null,
+                requestId: envelope?.meta?.requestId ?? requestId
+            });
+        }
+        return Object.freeze({ ok: true, status: response.status, requestId, envelope });
+    }
+
+    /**
      * Send one request.
      *
      * @param {{method?: string, path: string, query?: object, body?: object|null,
@@ -475,15 +528,45 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
      * The returned view deliberately has no `csrfToken`. The server sends one
      * and it is kept, but handing it back out would put it within reach of
      * every caller and, sooner or later, of a URL.
+     *
+     * This route's success body is not `interpret()`'s shape, the same defect
+     * class `beginSignIn` below carries and for the same reason:
+     * `functions/_lib/identity/runtime-handler.ts` answers `GET
+     * /api/v1/session` with `{authenticated, user, session, csrfToken}`
+     * directly, not the `{data, meta}` envelope every CF-P4-through-P6 route
+     * uses. Reading `result.data` here silently read `null` regardless of the
+     * real answer, so `authenticated: view.authenticated === true` was `false`
+     * unconditionally — the server could say `authenticated: true` and this
+     * function would still report `false`. Found live: a real, valid,
+     * unexpired session existed and `/api/v1/session` answered `authenticated:
+     * true` on the wire, and the composed UI kept showing the sign-in prompt
+     * regardless. Every existing test fixture for this route used the wrong
+     * (enveloped) shape, which is why unit tests never caught it — the
+     * signed-out cases happened to produce the same `false` either way, for
+     * two different reasons, and nothing before now exercised a real
+     * authenticated response through this exact function against the real
+     * deployment.
      */
     async function resolveSession() {
-        let result;
+        const path = assertSameOriginPath(`${API_BASE}/session`);
+        let outcome;
         try {
-            result = await request({ method: 'GET', path: `${API_BASE}/session` });
+            const response = await transport(path, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            outcome = await readUnwrappedIdentityResponse(response);
         } catch (error) {
             // Transport that never reached a server is not the same as a server
             // saying no, and must not be reported as "unavailable here" — the
-            // deployment may be fine and the network not.
+            // deployment may be fine and the network not. An ApiClientError here
+            // means either our own validation refused before ever reaching the
+            // network, or the response was non-JSON or unparseable (the
+            // `037fb093` shape); anything else is a genuine transport failure
+            // and is rethrown for the caller to handle, matching the old
+            // contract.
             if (error instanceof ApiClientError) {
                 return Object.freeze({
                     available: true, reason: 'transport-failed', authenticated: null,
@@ -493,24 +576,24 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
             throw error;
         }
 
-        if (!result.ok) {
-            if (result.failure.code === 'COLLABORATION_UNAVAILABLE') {
+        if (!outcome.ok) {
+            if (outcome.failure.code === 'COLLABORATION_UNAVAILABLE') {
                 sessionResolved = false;
                 csrfToken = null;
                 return Object.freeze({
                     available: false, reason: 'deployment-disabled', authenticated: null,
-                    user: null, session: null, failure: result.failure
+                    user: null, session: null, failure: outcome.failure
                 });
             }
             // Any other failure leaves availability alone: the deployment
             // answered, it simply did not answer yes to this caller.
             return Object.freeze({
                 available: true, reason: 'request-failed', authenticated: null,
-                user: null, session: null, failure: result.failure
+                user: null, session: null, failure: outcome.failure
             });
         }
 
-        const view = result.data ?? {};
+        const view = outcome.envelope ?? {};
         csrfToken = typeof view.csrfToken === 'string' ? view.csrfToken : null;
         sessionResolved = true;
         return Object.freeze({
@@ -562,67 +645,41 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
         const body = returnPath === undefined
             ? { purpose: 'sign_in' }
             : { purpose: 'sign_in', returnPath };
-        let response;
+        let outcome;
         try {
-            response = await transport(path, {
+            const response = await transport(path, {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
                 credentials: 'same-origin',
                 cache: 'no-store',
                 body: JSON.stringify(body)
             });
-        } catch {
-            // A transport that never reached a server, not the server saying no.
+            outcome = await readUnwrappedIdentityResponse(response);
+        } catch (error) {
+            // A transport that never reached a server, or a response that was
+            // secretly the app shell (non-JSON or unparseable) rather than the
+            // deployment answering no.
             return Object.freeze({
                 ok: false, status: null, requestId: null,
-                failure: presentErrorCode('TRANSPORT_FAILED')
+                failure: presentErrorCode(error instanceof ApiClientError ? error.code : 'TRANSPORT_FAILED')
             });
         }
-
-        const requestId = typeof response.headers?.get === 'function'
-            ? response.headers.get('X-Request-ID')
-            : null;
-        const contentType = typeof response.headers?.get === 'function'
-            ? response.headers.get('content-type') ?? ''
-            : '';
-        if (!jsonContentType.test(contentType)) {
+        if (!outcome.ok) return Object.freeze(outcome);
+        if (typeof outcome.envelope?.authorizationUrl !== 'string'
+            || typeof outcome.envelope?.expiresAt !== 'number') {
             return Object.freeze({
-                ok: false, status: response.status, requestId,
-                failure: presentErrorCode('NON_JSON_RESPONSE')
-            });
-        }
-        let envelope;
-        try {
-            envelope = await response.json();
-        } catch {
-            return Object.freeze({
-                ok: false, status: response.status, requestId,
-                failure: presentErrorCode('MALFORMED_RESPONSE')
-            });
-        }
-
-        if (!response.ok) {
-            return Object.freeze({
-                ok: false,
-                status: response.status,
-                failure: presentErrorCode(envelope?.error?.code),
-                details: envelope?.error?.details ?? null,
-                requestId: envelope?.meta?.requestId ?? requestId
-            });
-        }
-        if (typeof envelope?.authorizationUrl !== 'string' || typeof envelope?.expiresAt !== 'number') {
-            return Object.freeze({
-                ok: false, status: response.status, requestId,
+                ok: false, status: outcome.status, requestId: outcome.requestId,
                 failure: presentErrorCode('MALFORMED_RESPONSE')
             });
         }
         return Object.freeze({
             ok: true,
-            status: response.status,
+            status: outcome.status,
             data: Object.freeze({
-                authorizationUrl: envelope.authorizationUrl, expiresAt: envelope.expiresAt
+                authorizationUrl: outcome.envelope.authorizationUrl,
+                expiresAt: outcome.envelope.expiresAt
             }),
-            requestId
+            requestId: outcome.requestId
         });
     }
 

@@ -85,14 +85,15 @@ const respond = (status, body, contentType = 'application/json; charset=utf-8') 
 
 const okPage = items => respond(200, { data: { items }, meta: { page: { nextCursor: null } } });
 
+// /api/v1/session answers with its fields directly at the top level, not the
+// {data, meta} envelope every other route in this suite's fixtures uses --
+// see js/collaboration/api-client.js's resolveSession() for why that
+// distinction is load-bearing.
 const sessionBody = {
-    data: {
-        authenticated: true,
-        user: { userId: OWNER, login: 'dustin-nkd' },
-        session: {},
-        csrfToken: 'csrf'
-    },
-    meta: {}
+    authenticated: true,
+    user: { userId: OWNER, login: 'dustin-nkd' },
+    session: {},
+    csrfToken: 'csrf'
 };
 
 const workspaceRecord = role => ({

@@ -40,14 +40,18 @@ function recorder(responses) {
     return { calls, transport };
 }
 
+// /api/v1/session answers with its fields directly at the top level --
+// {authenticated, user, session, csrfToken} -- not the {data, meta} envelope
+// every other route in this client uses. functions/_lib/identity/
+// runtime-handler.ts predates that convention. This is the real shape: found
+// live, against the rebuilt Preview deployment, as a real authenticated
+// session that resolveSession() still reported as signed out, because every
+// fixture in this file used to assume the wrong (enveloped) shape too.
 const SESSION_OK = jsonResponse(200, {
-    data: {
-        authenticated: true,
-        user: { userId: 'u_1', login: 'dustin-nkd', avatarUrl: 'https://example.test/a.png' },
-        session: { authenticatedAt: '2026-07-26T00:00:00.000Z' },
-        csrfToken: 'csrf-token-value'
-    },
-    meta: { requestId: 'req_1', apiVersion: 'v1' }
+    authenticated: true,
+    user: { userId: 'u_1', login: 'dustin-nkd', avatarUrl: 'https://example.test/a.png' },
+    session: { authenticatedAt: '2026-07-26T00:00:00.000Z' },
+    csrfToken: 'csrf-token-value'
 });
 
 const KEY = 'a'.repeat(36);
@@ -332,9 +336,7 @@ test('a mutation before the session is resolved is refused, not sent bare', asyn
 });
 
 test('a mutation with no CSRF token held is refused', async () => {
-    const anonymous = jsonResponse(200, {
-        data: { authenticated: false }, meta: { requestId: 'req_a' }
-    });
+    const anonymous = jsonResponse(200, { authenticated: false });
     const { transport } = recorder([anonymous, jsonResponse(201, { data: {}, meta: {} })]);
     const client = createApiClient({ fetch: transport, randomId: () => KEY });
     await client.resolveSession();
@@ -474,10 +476,30 @@ test('the session view reports who is signed in', async () => {
     assert.equal(resolved.user.login, 'dustin-nkd');
 });
 
+test('REGRESSION: an enveloped {data, meta} session response reports authenticated false regardless of the real answer', async () => {
+    // This is the exact shape the earlier, buggy resolveSession() required and
+    // the real deployment has never sent. Found live: a real, valid, unexpired
+    // session existed and /api/v1/session answered authenticated: true on the
+    // wire, and this exact parsing path still reported false, because it read
+    // a nonexistent envelope.data. Every fixture in this file used this wrong
+    // shape until then, which is why nothing here ever caught it.
+    const { transport } = recorder([jsonResponse(200, {
+        data: {
+            authenticated: true,
+            user: { userId: 'u_1', login: 'dustin-nkd' },
+            session: {},
+            csrfToken: 'csrf-token-value'
+        },
+        meta: {}
+    })]);
+    const resolved = await createApiClient({ fetch: transport }).resolveSession();
+    assert.equal(resolved.authenticated, false,
+        'an enveloped body must not be silently read as an authenticated session');
+    assert.equal(resolved.user, null);
+});
+
 test('a signed-out session is authenticated false, not unknown', async () => {
-    const { transport } = recorder([
-        jsonResponse(200, { data: { authenticated: false }, meta: {} })
-    ]);
+    const { transport } = recorder([jsonResponse(200, { authenticated: false })]);
     const resolved = await createApiClient({ fetch: transport }).resolveSession();
     assert.equal(resolved.authenticated, false);
     assert.equal(resolved.user, null);

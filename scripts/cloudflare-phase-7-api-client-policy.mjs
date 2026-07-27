@@ -69,14 +69,14 @@ function respond(status, body, contentType = 'application/json; charset=utf-8') 
     };
 }
 
+// /api/v1/session answers with its fields directly at the top level, not the
+// {data, meta} envelope every other route this gate exercises uses --
+// js/collaboration/api-client.js's resolveSession() reads this shape raw.
 const SESSION_BODY = {
-    data: {
-        authenticated: true,
-        user: { userId: 'u_1', login: 'octocat' },
-        session: { authenticatedAt: '2026-07-26T00:00:00.000Z' },
-        csrfToken: 'csrf-token-value'
-    },
-    meta: { requestId: 'req_1', apiVersion: 'v1' }
+    authenticated: true,
+    user: { userId: 'u_1', login: 'octocat' },
+    session: { authenticatedAt: '2026-07-26T00:00:00.000Z' },
+    csrfToken: 'csrf-token-value'
 };
 
 /** Record every call instead of making one. */
@@ -215,9 +215,7 @@ export async function validatePhase7ApiClient({ manifest, contract, clientSource
             'The CSRF token is readable from the client surface');
     }
     {
-        const recorder = transportRecorder([
-            respond(200, { data: { authenticated: false }, meta: {} })
-        ]);
+        const recorder = transportRecorder([respond(200, { authenticated: false })]);
         const client = create({ fetch: recorder.fetch, randomId: () => KEY });
         await client.resolveSession();
         assert(await refusal(() => client.mutate({ path: `${base}/devices`, body: {} }))

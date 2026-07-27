@@ -96,14 +96,20 @@ const ROUTES = Object.freeze({
 });
 
 const deployment = (overrides = {}) => ({
+    // /api/v1/session answers with its fields directly at the top level, not
+    // the {data, meta} envelope every other route below uses --
+    // functions/_lib/identity/runtime-handler.ts predates that convention.
+    // This gate drove the composed UI against the wrong (enveloped) shape
+    // until a real, live authenticated session exposed it: resolveSession()
+    // read a nonexistent .data and reported authenticated: false regardless of
+    // what the deployment actually said, so this simulated deployment was
+    // silently exercising the signed-out path even where it claimed to
+    // exercise the signed-in one.
     [ROUTES.session]: respond(200, {
-        data: {
-            authenticated: true,
-            user: { userId: OWNER, login: 'dustin-nkd' },
-            session: {},
-            csrfToken: 'csrf'
-        },
-        meta: {}
+        authenticated: true,
+        user: { userId: OWNER, login: 'dustin-nkd' },
+        session: {},
+        csrfToken: 'csrf'
     }),
     [ROUTES.workspaces]: okPage([{
         workspaceId: WORKSPACE, displayName: 'Platform QA', role: 'owner',
