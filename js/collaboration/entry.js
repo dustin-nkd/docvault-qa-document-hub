@@ -279,9 +279,9 @@ export async function startCollaboration({ document: doc, deployment, client, fe
         ? openDeviceStore({ storage, environment, subject: identity })
         : null;
     const storedDevice = deviceStore?.read() ?? null;
-    let currentDevice = storedDevice === null ? null : {
-        deviceId: storedDevice.deviceId, fingerprint: storedDevice.fingerprint, state: storedDevice.state
-    };
+    let currentDevice = storedDevice === null
+        ? null
+        : deviceModelFor(storedDevice.deviceId, storedDevice.fingerprint, storedDevice.state);
     let lifecycle = null;
 
     let lastPaintData = {};
@@ -327,7 +327,7 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 unlockSecret: decodeUnlockSecret(unlockSecret),
                 onStep: status => repaint({ deviceStatus: status })
             });
-            currentDevice = { deviceId: result.deviceId, fingerprint: result.fingerprint, state: 'active' };
+            currentDevice = deviceModelFor(result.deviceId, result.fingerprint, 'active');
             deviceStore?.write({
                 deviceId: result.deviceId, fingerprint: result.fingerprint, state: 'active',
                 publicJwk: result.publicJwk, unlockSecret
@@ -542,6 +542,19 @@ function openSelection({ storage, environment, subject }) {
     } catch {
         return null;
     }
+}
+
+/**
+ * The `device` object handed to both `create-workspace.js` and
+ * `device-initialization.js`.
+ *
+ * The two disagree on the field name for the same fact: `create-workspace.js`
+ * reads `device.status`, `device-initialization.js` reads `device.state`. Both
+ * are frozen, gated modules from earlier stories, so rather than picking one
+ * name and quietly breaking the other's blocked-reasoning, this carries both.
+ */
+function deviceModelFor(deviceId, fingerprint, deviceState) {
+    return { deviceId, fingerprint, state: deviceState, status: deviceState };
 }
 
 /** Open this browser's device record store, or answer that there is none. */
