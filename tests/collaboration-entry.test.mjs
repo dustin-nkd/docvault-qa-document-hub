@@ -243,10 +243,11 @@ test('clicking sign-in redirects the browser to the returned authorization URL',
         document: doc, deployment: available,
         client: clientAnswering([
             respond(200, { data: { authenticated: false }, meta: {} }),
-            respond(201, {
-                data: { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 },
-                meta: {}
-            })
+            // This route's real body is {authorizationUrl, expiresAt} at the
+            // top level, not the {data, meta} envelope every other route
+            // uses -- see the REGRESSION test in collaboration-api-client
+            // .test.mjs for why that distinction is load-bearing here.
+            respond(201, { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 })
         ])
     });
     withParents(doc.container);
@@ -286,9 +287,7 @@ test('clicking sign-in twice before the first answer returns sends only one requ
         fetch: async () => {
             if (calls === 0) { calls += 1; return respond(200, { data: { authenticated: false }, meta: {} }); }
             calls += 1;
-            return respond(201, {
-                data: { authorizationUrl: 'https://github.com/x', expiresAt: 1 }, meta: {}
-            });
+            return respond(201, { authorizationUrl: 'https://github.com/x', expiresAt: 1 });
         },
         randomId: () => 'a'.repeat(36)
     });

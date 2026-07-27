@@ -343,12 +343,23 @@ test('a mutation with no CSRF token held is refused', async () => {
 });
 
 // ── beginSignIn: the one CSRF-exempt mutation ────────────────────────────────
+//
+// This route's success body is `{authorizationUrl, expiresAt}` at the top
+// level, not the `{data, meta}` envelope every other route in this client
+// answers with. Every fixture below uses the real shape on purpose: an
+// earlier version of this function called interpret() unmodified, which reads
+// a nonexistent `.data` and returns `ok: true, data: null` -- a bug this
+// suite's own fixtures could not have caught had they used the wrong
+// (enveloped) shape, because that is not what the deployment actually sends.
+// Found live, against the rebuilt Preview deployment, as a null-dereference
+// in the caller. See the regression test below for the failure mode itself.
+
+const authorizeBody = (overrides = {}) => jsonResponse(201, {
+    authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1, ...overrides
+});
 
 test('beginSignIn succeeds with no session resolved, unlike every other mutation', async () => {
-    const { transport } = recorder([jsonResponse(201, {
-        data: { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 },
-        meta: {}
-    })]);
+    const { transport } = recorder([authorizeBody()]);
     // A fresh client: resolveSession() was never called, so sessionResolved is
     // false and csrfToken is null. Every other mutation would refuse here
     // (see 'a mutation before the session is resolved is refused' below).
@@ -356,12 +367,25 @@ test('beginSignIn succeeds with no session resolved, unlike every other mutation
     const result = await client.beginSignIn();
     assert.equal(result.ok, true);
     assert.equal(result.data.authorizationUrl, 'https://github.com/login/oauth/authorize?x=1');
+    assert.equal(result.data.expiresAt, 1);
+});
+
+test('REGRESSION: an enveloped {data, meta} response is not silently read as success', async () => {
+    // This is the exact shape the earlier, buggy version of beginSignIn
+    // required and the real deployment has never sent. It must not parse as
+    // ok: true with a null payload -- that was the live bug.
+    const { transport } = recorder([jsonResponse(201, {
+        data: { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 },
+        meta: {}
+    })]);
+    const client = createApiClient({ fetch: transport, randomId: () => KEY });
+    const result = await client.beginSignIn();
+    assert.equal(result.ok, false, 'an enveloped body must not be mistaken for the real success shape');
+    assert.equal(result.failure.code, 'UNRECOGNISED');
 });
 
 test('beginSignIn posts purpose sign_in to the transactions route without a CSRF header', async () => {
-    const { transport, calls } = recorder([jsonResponse(201, {
-        data: { authorizationUrl: 'https://github.com/login/oauth/authorize?x=1', expiresAt: 1 }, meta: {}
-    })]);
+    const { transport, calls } = recorder([authorizeBody()]);
     const client = createApiClient({ fetch: transport, randomId: () => KEY });
     await client.beginSignIn();
     assert.equal(calls.length, 1);
@@ -375,9 +399,7 @@ test('beginSignIn posts purpose sign_in to the transactions route without a CSRF
 });
 
 test('beginSignIn carries an optional returnPath and nothing else in the body', async () => {
-    const { transport, calls } = recorder([jsonResponse(201, {
-        data: { authorizationUrl: 'https://github.com/x', expiresAt: 1 }, meta: {}
-    })]);
+    const { transport, calls } = recorder([authorizeBody({ authorizationUrl: 'https://github.com/x' })]);
     const client = createApiClient({ fetch: transport, randomId: () => KEY });
     await client.beginSignIn({ returnPath: '/dashboard' });
     assert.deepEqual(JSON.parse(calls[0].init.body), { purpose: 'sign_in', returnPath: '/dashboard' });
@@ -394,7 +416,7 @@ test('beginSignIn refuses a non-string returnPath before any request is sent', a
 test('beginSignIn never reaches a hostile or cross-origin path', async () => {
     // The path is a module constant, not caller input, but the same guard that
     // protects every other call is exercised here rather than assumed silent.
-    const client = createApiClient({ fetch: async () => jsonResponse(201, { data: {}, meta: {} }) });
+    const client = createApiClient({ fetch: async () => authorizeBody() });
     await client.beginSignIn();
     // No assertion needed beyond "did not throw": assertSameOriginPath runs
     // unconditionally inside beginSignIn, and a broken constant would fail here.
@@ -408,6 +430,14 @@ test('beginSignIn presents a server refusal like any other failure', async () =>
     const result = await client.beginSignIn();
     assert.equal(result.ok, false);
     assert.equal(result.failure.code, 'RATE_LIMITED');
+});
+
+test('beginSignIn refuses a non-JSON response rather than throwing', async () => {
+    const { transport } = recorder([jsonResponse(201, '<!doctype html>', { 'content-type': 'text/html' })]);
+    const client = createApiClient({ fetch: transport, randomId: () => KEY });
+    const result = await client.beginSignIn();
+    assert.equal(result.ok, false);
+    assert.equal(result.failure.ui, 'error');
 });
 
 test('beginSignIn on a network failure returns a failure rather than throwing', async () => {

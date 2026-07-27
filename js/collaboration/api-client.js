@@ -541,6 +541,17 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
      * session must go through `mutate()` like any other mutation, with the
      * CSRF token that session already holds.
      *
+     * This route's success body is not `interpret()`'s shape. Every other route
+     * in this client answers `{data, meta}`; `functions/_lib/identity/
+     * runtime-handler.ts` answers this one with `{authorizationUrl, expiresAt}`
+     * directly, predating that envelope. Calling `interpret()` unmodified reads
+     * a nonexistent `.data` field and silently returns `ok: true, data: null` —
+     * found live, against the real deployment, as a null-dereference in the
+     * caller rather than as a test failure, because every fixture in this
+     * module's own suite necessarily assumes the shape it is testing. Failure
+     * responses do use the shared `{error: {code}}` shape, so only success is
+     * parsed differently here.
+     *
      * @param {{returnPath?: string}} [input]
      */
     async function beginSignIn({ returnPath } = {}) {
@@ -567,7 +578,52 @@ export function createApiClient({ fetch: injected, randomId, now } = {}) {
                 failure: presentErrorCode('TRANSPORT_FAILED')
             });
         }
-        return interpret(response);
+
+        const requestId = typeof response.headers?.get === 'function'
+            ? response.headers.get('X-Request-ID')
+            : null;
+        const contentType = typeof response.headers?.get === 'function'
+            ? response.headers.get('content-type') ?? ''
+            : '';
+        if (!jsonContentType.test(contentType)) {
+            return Object.freeze({
+                ok: false, status: response.status, requestId,
+                failure: presentErrorCode('NON_JSON_RESPONSE')
+            });
+        }
+        let envelope;
+        try {
+            envelope = await response.json();
+        } catch {
+            return Object.freeze({
+                ok: false, status: response.status, requestId,
+                failure: presentErrorCode('MALFORMED_RESPONSE')
+            });
+        }
+
+        if (!response.ok) {
+            return Object.freeze({
+                ok: false,
+                status: response.status,
+                failure: presentErrorCode(envelope?.error?.code),
+                details: envelope?.error?.details ?? null,
+                requestId: envelope?.meta?.requestId ?? requestId
+            });
+        }
+        if (typeof envelope?.authorizationUrl !== 'string' || typeof envelope?.expiresAt !== 'number') {
+            return Object.freeze({
+                ok: false, status: response.status, requestId,
+                failure: presentErrorCode('MALFORMED_RESPONSE')
+            });
+        }
+        return Object.freeze({
+            ok: true,
+            status: response.status,
+            data: Object.freeze({
+                authorizationUrl: envelope.authorizationUrl, expiresAt: envelope.expiresAt
+            }),
+            requestId
+        });
     }
 
     /**

@@ -19,7 +19,10 @@
     "corrected_by": "CF-P7-016",
     "unknown_code_presentation": "error",
     "unknown_code_echoed": false,
-    "server_aliases": ["UNAUTHENTICATED", "RECENT_AUTHENTICATION_REQUIRED"],
+    "server_aliases": [
+      "UNAUTHENTICATED",
+      "RECENT_AUTHENTICATION_REQUIRED"
+    ],
     "alias_rationale": "This table used to run the other way, and CF-P7-016 turned it around. The old reasoning was that the frozen UI contract and the API contract named three failures differently and neither could be edited to match the other. That was wrong about which document was in error: the UI contract's UNAUTHENTICATED and RECENT_AUTHENTICATION_REQUIRED are spellings the API catalog does not contain at all, so the map was aliasing real catalog codes onto invented ones. CF-P7-016 renamed them to AUTHENTICATION_REQUIRED and REAUTHENTICATION_REQUIRED and mapped the whole catalog. What remains is a genuine wire join in the opposite direction: the implemented Workers handlers emit UNAUTHENTICATED and RECENT_AUTHENTICATION_REQUIRED on the wire, and no Phase 7 story may change a handler. Without these two entries a real 401 or 403 from Preview would reach the unrecognised bucket and lose its unauthorized presentation. SESSION_EXPIRED no longer needs an alias because it now has a mapping of its own, and it is emitted nowhere in functions/ in any case."
   },
   "session": {
@@ -65,9 +68,18 @@
     "personal_provider_fallback": false
   },
   "declared_limits": {
-    "surfaces_reachable_from_entry": ["account-menu", "workspace-switcher", "create-workspace",
-      "device-key-initialization", "member-list-role-badge", "invitation-manage",
-      "invitation-accept", "sync-state", "conflict-dialog", "audit-activity"],
+    "surfaces_reachable_from_entry": [
+      "account-menu",
+      "workspace-switcher",
+      "create-workspace",
+      "device-key-initialization",
+      "member-list-role-badge",
+      "invitation-manage",
+      "invitation-accept",
+      "sync-state",
+      "conflict-dialog",
+      "audit-activity"
+    ],
     "surfaces_not_yet_composed": [],
     "closed_by": "CF-P7-013",
     "closed_on": "2026-07-26",
@@ -75,7 +87,7 @@
   },
   "tests": {
     "unit": "tests/collaboration-api-client.test.mjs",
-    "unit_count": 65,
+    "unit_count": 67,
     "wiring": "tests/collaboration-entry.test.mjs",
     "policy": "tests/cloudflare-phase-7-api-client-policy.test.mjs"
   },
@@ -84,6 +96,7 @@
     "reason": "Discovered live against the rebuilt Preview deployment (91e68f21, commit 42a9bee): the composed unauthorized state rendered a 'Sign in with GitHub' control with data-collab-action=\"sign-in\", but nothing in js/collaboration/ ever listened for a click on it -- the exact 'missing a CSRF-exempt path through the API client' limit CF-P7-013 had already declared, now closed rather than left recorded.",
     "fix": "js/collaboration/api-client.js gained beginSignIn(), the one function permitted to send a mutation before a session is resolved and without a CSRF token -- POST /api/v1/oauth/github/transactions with purpose 'sign_in' is the one mutation the frozen server contract (functions/_lib/identity/request-policy.ts) accepts unauthenticated. Every other mutation is unaffected: mutate() still refuses without a resolved session and a live CSRF token. js/collaboration/entry.js gained bindSignIn(), delegated on the shell container in the same pattern as the workspace switcher, which calls it and navigates the browser to the returned authorizationUrl.",
     "reauthenticate_not_exempted": "purpose 'reauthenticate' is not offered through beginSignIn and is not exempt server-side; it must go through mutate() like any other mutation, with the CSRF token an existing session already holds.",
-    "verified_live": "Confirmed against the real Preview deployment: POST /api/v1/oauth/github/transactions with purpose sign_in returned 201 with a valid GitHub authorizationUrl, 3/3 attempts, after the CSRF-exempt path was added. The click itself was verified structurally (a simulated click on the rendered control redirects to the returned URL; a refused attempt shows its own reason and does not navigate; a second click while the control is disabled is ignored) rather than against the live deployment, which requires entering GitHub credentials no agent may supply."
+    "verified_live": "Confirmed against the real Preview deployment: POST /api/v1/oauth/github/transactions with purpose sign_in returned 201 with a valid GitHub authorizationUrl, 3/3 attempts, after the CSRF-exempt path was added. The click itself was verified structurally (a simulated click on the rendered control redirects to the returned URL; a refused attempt shows its own reason and does not navigate; a second click while the control is disabled is ignored) rather than against the live deployment, which requires entering GitHub credentials no agent may supply.",
+    "regression_found_and_fixed": "The first version of beginSignIn() called interpret(), which reads envelope.data -- correct for every other route, but functions/_lib/identity/runtime-handler.ts answers this one route with {authorizationUrl, expiresAt} at the top level, predating the {data, meta} envelope. That mismatch parsed as ok:true, data:null and crashed the caller with \"Cannot read properties of null (reading authorizationUrl)\" -- found live, by clicking the real button on the rebuilt Preview deployment, not by a test, because every fixture the original suite used also assumed the wrong (enveloped) shape. beginSignIn() now parses this route's real success shape directly; a REGRESSION test in tests/collaboration-api-client.test.mjs asserts an enveloped body is rejected rather than silently read as success."
   }
 }
