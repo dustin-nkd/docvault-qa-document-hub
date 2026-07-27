@@ -243,15 +243,16 @@
       "evidence": "CF-EV-P7-OPS-004"
     },
     "local_measurement": {
-      "kib_gzip": 81.74,
-      "bytes_gzip": 83705,
-      "modules": 20,
-      "phase_7_only_kib_gzip": 67.69,
-      "phase_7_only_bytes_gzip": 69315,
-      "phase_7_only_modules": 17,
+      "kib_gzip": 89.66,
+      "bytes_gzip": 91814,
+      "modules": 22,
+      "phase_7_only_kib_gzip": 75.61,
+      "phase_7_only_bytes_gzip": 77424,
+      "phase_7_only_modules": 19,
       "method": "gzip level 9 over every module in the static import closure of js/collaboration/entry.js, with CRLF normalised to LF so the figure is identical on a Windows working copy and in CI. Recomputed by cf:phase7:exit:check on every run; the gate fails if this record and the bytes disagree by more than 2 KiB in either direction, and fails if the measurement drops under the declared budget while this record still says OPEN.",
       "measured_on": "2026-07-27",
-      "tolerance_kib": 2
+      "tolerance_kib": 2,
+      "grew_since_prior_reading": "CF-P7-013's two mutation journeys (device registration, workspace creation) were wired for the first time this session, adding device-record.js and workspace-key-envelope.js and expanding entry.js. The prior reading (81.74 KiB) measured a chrome that composed these surfaces but could not act on either."
     },
     "narrowest_reading": "Excluding the three inherited Phase 5/6 service modules the lazy path also pulls -- device-key-lifecycle.js, outbox.js and conflict-resolution.js -- the seventeen Phase 7 modules alone are 65.27 KiB gzip locally and were 64.3 KiB on the deployment. There is no reading of 'the Phase 7 chunk' under which this passes.",
     "cause": "There is no bundling or minification step anywhere in this project. Twenty unminified source files are served exactly as authored, comments included. The breach is a property of the shape that currently ships, not of a build artifact.",

@@ -260,8 +260,8 @@ test('recording that production stopped refusing collaboration is rejected', () 
 
 test('the measurement walks a real closure and breaches the declared budget', () => {
     const measured = measureLazyChunk(collaborationSources());
-    assert.equal(measured.modules, 20);
-    assert.equal(measured.phase7Modules, 17);
+    assert.equal(measured.modules, 22);
+    assert.equal(measured.phase7Modules, 19);
     assert.ok(measured.kib > 60, 'the breach this gate exists to record is real');
     assert.ok(measured.phase7Bytes / 1024 > 60, 'it breaches under the narrowest reading too');
 });
@@ -327,7 +327,7 @@ test('a chunk that comes under budget while the record still says OPEN is reject
             `${source.split(/\r?\n/).filter(line => /from\s*'\.\//.test(line)).join('\n')}\n`]));
     drifted.manifest = clone(drifted.manifest);
     const measured = measureLazyChunk(drifted.collaborationSources);
-    assert.equal(measured.modules, 20, 'the shrunken fixture must keep the whole closure');
+    assert.equal(measured.modules, 22, 'the shrunken fixture must keep the whole closure');
     assert.ok(measured.kib < 60, 'the shrunken fixture must actually come under budget');
     drifted.manifest.lazy_chunk_budget.local_measurement.kib_gzip = measured.kib;
     drifted.manifest.lazy_chunk_budget.local_measurement.modules = measured.modules;

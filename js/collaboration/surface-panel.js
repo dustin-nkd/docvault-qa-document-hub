@@ -164,15 +164,19 @@ function build(doc, surface, { context, session, device, data }) {
     switch (surface) {
         case 'create-workspace':
             return renderCreateWorkspace(doc, createWorkspaceModel({
-                session, device, name: data.workspaceName ?? ''
+                session, device, name: data.workspaceName ?? '',
+                status: data.createStatus ?? 'naming',
+                failure: data.createFailure ?? null
             }));
 
         case 'device-key-initialization':
             return renderDeviceInitialization(doc, deviceInitializationModel({
                 session,
-                status: device === null ? 'unregistered' : 'registered',
+                status: data.deviceStatus ?? (device === null ? 'unregistered' : 'registered'),
                 device,
-                readiness: data.keyReadiness ?? null
+                readiness: data.keyReadiness ?? null,
+                guidance: data.deviceGuidance ?? null,
+                failure: data.deviceFailure ?? null
             }));
 
         case 'member-list-role-badge':

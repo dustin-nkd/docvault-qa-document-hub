@@ -366,6 +366,10 @@ export async function runDeviceRegistration({ lifecycle, api, newDeviceId, newId
         status: 'registered',
         deviceId: registered.deviceId,
         fingerprint: enrolled.fingerprint,
+        // Carried so a caller can seal a workspace envelope to this device
+        // without re-deriving a public key from a non-extractable private one.
+        // Never secret: this is the value `POST /devices` was just handed.
+        publicJwk: enrolled.publicJwk,
         idempotencyKey: requestKey
     });
 }
