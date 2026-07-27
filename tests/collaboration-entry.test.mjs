@@ -144,6 +144,61 @@ test('a failed load re-enables the opener rather than breaking the page', () => 
     assert.match(read('js/deployment.js'), /catch\(function \(\) \{[\s\S]{0,200}opener\.disabled = false;/);
 });
 
+// ── the panel is an overlay, and the opener is the way back out ─────────────
+
+// The collaboration panel used to be a block in the document flow, which
+// pushed the Personal Vault app down by its own height: measured live, a real
+// workspace panel left the app zero pixels tall and ran past the bottom of a
+// viewport whose body clips overflow, so the end of the panel could not be
+// reached at all. As an overlay it covers the app instead of deforming it --
+// but only if it scrolls itself, since the body still cannot.
+test('the collaboration panel is a self-scrolling overlay, not a block in the flow', () => {
+    const css = read('style.css');
+    const rule = css.match(/\.collab-root\s*\{[^}]*\}/);
+    assert.notEqual(rule, null, 'the panel has no rule of its own');
+    assert.match(rule[0], /position:\s*fixed/, 'in the flow it deforms the app around it');
+    assert.match(rule[0], /overflow-y:\s*auto/, 'the body clips, so the panel must scroll itself');
+});
+
+// An overlay with no exit is a trap: nothing anywhere renders a close control,
+// so the control that opens it has to be the one that closes it.
+test('the opener closes the panel it opened, rather than trapping the user', () => {
+    const source = read('js/deployment.js');
+    assert.match(source, /closeCollaboration\(/,
+        'nothing closes the overlay, so the only way back is a page reload');
+    assert.match(source, /aria-expanded/,
+        'a toggle that does not say which state it is in is not announced');
+});
+
+test('the opener sits above the overlay, or it cannot be pressed to close it', () => {
+    const css = read('style.css');
+    const rootRule = css.match(/\.collab-root\s*\{[^}]*\}/)[0];
+    const openRule = css.match(/\.collab-open\s*\{[^}]*\}/)[0];
+    const zOf = rule => Number((rule.match(/z-index:\s*(\d+)/) || [])[1] ?? NaN);
+    assert.ok(zOf(openRule) > zOf(rootRule),
+        `the toggle (${zOf(openRule)}) must stack above the panel (${zOf(rootRule)})`);
+});
+
+// The regression the app shell itself carried: `h-screen` on the shell plus a
+// banner or opener above it made the page taller than the viewport by exactly
+// their height, and the body clips, so the end of the sidebar -- the Lock /
+// Theme / Settings row -- fell off the bottom on both deployments.
+test('the app shell takes the height left over, not a second full viewport', () => {
+    const html = read('index.html');
+    const shell = html.match(/<div class="[^"]*app-shell[^"]*"/);
+    assert.notEqual(shell, null, 'the app shell is not identifiable');
+    assert.equal(/h-screen/.test(shell[0]), false,
+        'a hard 100vh here is exactly what pushed the sidebar off the bottom');
+    const rule = read('style.css').match(/\.app-shell\s*\{[^}]*\}/);
+    assert.notEqual(rule, null);
+    // Written as real CSS rather than Tailwind's `min-h-0`, which the prebuilt
+    // vendor/tailwind/tailwind.generated.css does not contain -- the utility
+    // would silently do nothing and the flex item would refuse to shrink.
+    assert.match(rule[0], /min-height:\s*0/);
+    assert.equal(/min-h-0/.test(read('vendor/tailwind/tailwind.generated.css')), false,
+        'if this class now exists the note above is stale, but the rule stays correct');
+});
+
 // ── what the entry renders ───────────────────────────────────────────────────
 
 test('refuses to mount where the deployment cannot support collaboration', () => {

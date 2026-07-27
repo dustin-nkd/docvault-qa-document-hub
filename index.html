@@ -329,7 +329,7 @@
         .dp-foot-btn.dp-today-btn:hover { background: rgba(16,185,129,.1); }
     </style>
 </head>
-<body class="bg-[var(--bg)] text-[var(--tx)] h-screen w-screen overflow-hidden font-sans">
+<body class="bg-[var(--bg)] text-[var(--tx)] h-screen w-screen overflow-hidden font-sans flex flex-col">
     <div id="debug-err" style="position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:99999;font-size:12px;padding:5px;display:none;"></div>
     <!-- Toasts -->
     <div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2" style="pointer-events:none;" aria-live="polite" aria-relevant="additions"></div>
@@ -449,7 +449,14 @@
         </div>
     </div>
 
-    <div class="flex h-screen w-full">
+    <!--
+      `flex-1 min-h-0`, not `h-screen`: the collaboration banner and opener are
+      siblings above this in the flow, and a hard 100vh here made the page
+      taller than the viewport by exactly their height. The body clips its
+      overflow, so what fell off the bottom was the end of the sidebar — the
+      Lock / Theme / Settings row. This takes the height that is actually left.
+    -->
+    <div class="app-shell flex w-full">
         <!-- Sidebar -->
         <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300 w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);" aria-label="Primary navigation">
             <div class="sidebar-line h-[2px] w-full shrink-0"></div>
