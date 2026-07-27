@@ -455,10 +455,13 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 return;
             }
             if (action === 'device-setup-open') {
-                // Not a submission of anything — points the person at the
-                // control that starts the journey this one is blocked on.
-                doc.getElementById(CHROME_ID)?.parentElement
-                    ?.querySelector('[data-collab-action="register-device"]')?.focus();
+                // This is the same journey the real "Set up this device"
+                // control runs, reached from inside the blocked message rather
+                // than from the device surface further down the panel. It must
+                // actually run it: a shortcut that only moves focus is
+                // indistinguishable from doing nothing on a page where every
+                // surface is already visible at once.
+                void registerThisDevice();
             }
         });
 
@@ -475,6 +478,27 @@ export async function startCollaboration({ document: doc, deployment, client, fe
             if (submitControl?.disabled === true) return;
             const nameInput = form.querySelector('#collab-create-name');
             void submitCreateWorkspace(nameInput ? nameInput.value : '');
+        });
+
+        // Keeps the submit control in sync with what was actually typed,
+        // without repainting the panel on every keystroke (which would replace
+        // the input node and drop focus mid-word). createWorkspaceModel's own
+        // canSubmit reads data.workspaceName, which nothing sets until a
+        // submit is attempted — so left unpatched, the control stays disabled
+        // no matter what is typed, since enabling it and learning the name are
+        // the same event. This mirrors that one check, directly on the node.
+        container.addEventListener('input', event => {
+            const input = event.target;
+            if (!input || input.id !== 'collab-create-name') return;
+            const form = typeof input.closest === 'function'
+                ? input.closest('[data-collab-surface="create-workspace"]')
+                : null;
+            const submitControl = form?.querySelector('[data-collab-action="workspace-create-submit"]');
+            if (!submitControl) return;
+            const deviceReady = currentDevice !== null && currentDevice.state === 'active';
+            const canSubmit = deviceReady && validateDisplayName(input.value).valid;
+            submitControl.disabled = !canSubmit;
+            submitControl.setAttribute('aria-disabled', String(!canSubmit));
         });
     }
 
