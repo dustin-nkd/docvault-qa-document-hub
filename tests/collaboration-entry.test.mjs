@@ -59,6 +59,23 @@ function simulateClick(root, target) {
     return event;
 }
 
+/** Simulate typing: sets `.value` and dispatches a bubbling `input` event. */
+function simulateInput(root, target, value) {
+    target.value = value;
+    const event = {
+        target: Object.assign(target, {
+            closest(selector) {
+                for (let node = target; node; node = node.parent) {
+                    if (matches(selector)(node)) return node;
+                }
+                return null;
+            }
+        })
+    };
+    for (const handler of root.listeners.get('input') ?? []) handler(event);
+    return event;
+}
+
 /** Wire `child.parent` for every descendant, so `closest` can walk upward. */
 function withParents(root) {
     for (const child of root.children) {
@@ -69,6 +86,7 @@ function withParents(root) {
 }
 const descendants = node => node.children.flatMap(child => [child, ...descendants(child)]);
 const matches = selector => node => {
+    if (selector.startsWith('#')) return node.id === selector.slice(1);
     if (selector.startsWith('.')) return node.className.split(' ').includes(selector.slice(1));
     const attribute = selector.match(/^\[([^=\]]+)(?:="([^"]*)")?\]$/);
     if (attribute) {
@@ -205,6 +223,25 @@ const clientAnswering = responses => {
         randomId: () => 'a'.repeat(36)
     });
 };
+
+/** An in-memory `Storage`, so a pre-registered device can be seeded for a test. */
+function fakeStorage(initial = {}) {
+    const map = new Map(Object.entries(initial));
+    return {
+        getItem: key => (map.has(key) ? map.get(key) : null),
+        setItem: (key, value) => { map.set(key, String(value)); },
+        removeItem: key => { map.delete(key); }
+    };
+}
+
+const DEVICE_ID = '44444444-4444-4444-8444-444444444444';
+const CANONICAL_PUBLIC_JWK = Object.freeze({
+    crv: 'P-256', ext: true, key_ops: [], kty: 'EC', x: 'x-value', y: 'y-value'
+});
+const signedInSession = () => respond(200, {
+    authenticated: true, user: { userId: 'u_1', login: 'dustin-nkd' }, session: {}, csrfToken: 'csrf'
+});
+const emptyWorkspaceList = () => respond(200, { data: { items: [] }, meta: { page: { nextCursor: null } } });
 
 test('the deployment opener reaches startCollaboration, not the hand-fed entry', () => {
     assert.match(read('js/deployment.js'), /module\.startCollaboration\(/);
@@ -369,4 +406,81 @@ test('an unsupported deployment is still refused before any request is made', as
     });
     assert.equal(result, null);
     assert.equal(reached, false);
+});
+
+// ── register-device / create-workspace wiring (reported live, 2026-07-28) ───
+
+// REGRESSION: createWorkspaceModel's own canSubmit reads data.workspaceName,
+// which nothing set until a submit was attempted -- so the control stayed
+// disabled no matter what was typed, since enabling it and learning the name
+// were the same event. Reported live: the "Create workspace" button never
+// responded to a click after a valid name was typed, because it was still
+// disabled and a disabled button fires no click or submit event at all.
+test('REGRESSION: the create-workspace submit control enables once a valid name is typed', async () => {
+    const doc = documentWithRoot();
+    const storage = fakeStorage({
+        'docvault:collab:preview:u_1:device': JSON.stringify({
+            deviceId: DEVICE_ID, fingerprint: 'fp', state: 'active',
+            publicJwk: CANONICAL_PUBLIC_JWK, unlockSecret: 'secret'
+        })
+    });
+    await startCollaboration({
+        document: doc, deployment: available, storage, environment: 'preview',
+        client: clientAnswering([signedInSession(), emptyWorkspaceList()])
+    });
+    withParents(doc.container);
+    const submitControl = doc.container.querySelector('[data-collab-action="workspace-create-submit"]');
+    assert.notEqual(submitControl, null);
+    assert.equal(submitControl.disabled, true,
+        'starts disabled: the model has not been told a name yet, even with a ready device');
+    const nameInput = doc.container.querySelector('#collab-create-name');
+    assert.notEqual(nameInput, null);
+    simulateInput(doc.container, nameInput, 'Marketing');
+    assert.equal(submitControl.disabled, false,
+        'a valid typed name must enable the control without repainting the panel');
+});
+
+test('an invalid typed name keeps the submit control disabled', async () => {
+    const doc = documentWithRoot();
+    const storage = fakeStorage({
+        'docvault:collab:preview:u_1:device': JSON.stringify({
+            deviceId: DEVICE_ID, fingerprint: 'fp', state: 'active',
+            publicJwk: CANONICAL_PUBLIC_JWK, unlockSecret: 'secret'
+        })
+    });
+    await startCollaboration({
+        document: doc, deployment: available, storage, environment: 'preview',
+        client: clientAnswering([signedInSession(), emptyWorkspaceList()])
+    });
+    withParents(doc.container);
+    const submitControl = doc.container.querySelector('[data-collab-action="workspace-create-submit"]');
+    const nameInput = doc.container.querySelector('#collab-create-name');
+    simulateInput(doc.container, nameInput, '   ');
+    assert.equal(submitControl.disabled, true);
+});
+
+// REGRESSION: the "Set up this device" shortcut inside create-workspace's
+// blocked message called `.focus()` on the real register button and nothing
+// else -- indistinguishable from doing nothing on a page where every surface
+// is already visible at once. Reported live as "vẫn không bấm được" after a
+// device was revoked. This environment has no IndexedDB, so a real attempt
+// fails visibly (data-device-status becomes "failed"); a mere focus() would
+// leave the surface exactly as it started.
+test('the create-workspace "Set up this device" shortcut starts registration, not a mere focus', async () => {
+    const doc = documentWithRoot();
+    const storage = fakeStorage();
+    await startCollaboration({
+        document: doc, deployment: available, storage, environment: 'preview',
+        client: clientAnswering([signedInSession(), emptyWorkspaceList()])
+    });
+    withParents(doc.container);
+    const shortcut = doc.container.querySelector('[data-collab-action="device-setup-open"]');
+    assert.notEqual(shortcut, null);
+    const deviceSurfaceBefore = doc.container.querySelector('[data-collab-surface="device-key-initialization"]');
+    assert.equal(deviceSurfaceBefore.getAttribute('data-device-status'), 'unregistered');
+    simulateClick(doc.container, shortcut);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    withParents(doc.container);
+    const deviceSurfaceAfter = doc.container.querySelector('[data-collab-surface="device-key-initialization"]');
+    assert.equal(deviceSurfaceAfter.getAttribute('data-device-status'), 'failed');
 });
