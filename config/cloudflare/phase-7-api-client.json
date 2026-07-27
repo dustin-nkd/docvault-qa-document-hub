@@ -87,7 +87,7 @@
   },
   "tests": {
     "unit": "tests/collaboration-api-client.test.mjs",
-    "unit_count": 69,
+    "unit_count": 73,
     "wiring": "tests/collaboration-entry.test.mjs",
     "policy": "tests/cloudflare-phase-7-api-client-policy.test.mjs"
   },
@@ -106,5 +106,12 @@
     "fix": "request() now always sends Content-Type: application/json; charset=utf-8 and JSON.stringify(body ?? {}) for every mutation, regardless of whether the caller supplied a body.",
     "verified_live": "Reported by the user after clicking the real Revoke button on the rebuilt Preview deployment; reproduced the exact server error code from functions/_lib/collaboration/key-runtime-handler.ts's device-revoke handler before writing the fix.",
     "unit_count_change": "68 -> 69: one new regression test asserts a body-less DELETE still carries the header and an empty JSON object."
+  },
+  "acting_device_header_fix": {
+    "added_by": "CF-P7-013 follow-up, 2026-07-28",
+    "reason": "Discovered live: creating a workspace on the rebuilt Preview deployment failed with 'The server rejected this workspace name. Try a different one.' The name was valid and was never the problem -- that string is simply what this client's REASON_BY_CODE maps VALIDATION_FAILED to, and the real refusal was the missing X-DocVault-Device-ID header. Every workspace-scoped route in functions/_lib/collaboration/key-runtime-handler.ts and runtime-handler.ts is declared requiresDevice: true, and actingDevice() refuses a request without that header before the route's own fields are read, so the refusal carries no indication of what was actually absent. This client never sent the header at all; only tests/cloudflare/preview-api-integration.workers.test.ts and preview-key-foundation.workers.test.ts ever set it, by hand, which is why every server-side test passed while no browser request could succeed.",
+    "fix": "js/collaboration/api-client.js gained setActingDevice(deviceId|null) and sends X-DocVault-Device-ID on every request -- reads included, since the workspace-scoped reads are declared requiresDevice too. js/collaboration/entry.js names the device at open (from the stored record, so a reload still carries it), after a successful registration, and clears it on revoke, so a header naming a revoked device cannot outlive the device it names.",
+    "not_an_identity_claim": "The session cookie remains the identity. The server independently checks that the named device belongs to that session and is still active, so this header widens nothing: naming another user's device fails there, not here.",
+    "unit_count_change": "69 -> 73: four new tests covering the header on mutations, on reads, its absence before a device is named and after one is cleared, and refusal of a malformed device id."
   }
 }

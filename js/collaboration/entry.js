@@ -284,6 +284,12 @@ export async function startCollaboration({ document: doc, deployment, client, fe
         : deviceModelFor(storedDevice.deviceId, storedDevice.fingerprint, storedDevice.state);
     let lifecycle = null;
 
+    // Every workspace-scoped route requires the acting device in a header, so
+    // the client has to be told which device this browser is before any of
+    // them is called — including on a reload, where the device was registered
+    // in an earlier session and only the stored record remembers it.
+    api.setActingDevice(currentDevice?.state === 'active' ? currentDevice.deviceId : null);
+
     let lastPaintData = {};
     const paint = data => {
         lastPaintData = data;
@@ -328,6 +334,7 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 onStep: status => repaint({ deviceStatus: status })
             });
             currentDevice = deviceModelFor(result.deviceId, result.fingerprint, 'active');
+            api.setActingDevice(result.deviceId);
             deviceStore?.write({
                 deviceId: result.deviceId, fingerprint: result.fingerprint, state: 'active',
                 publicJwk: result.publicJwk, unlockSecret
@@ -352,6 +359,7 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 onStep: status => repaint({ deviceStatus: status })
             });
             currentDevice = null;
+            api.setActingDevice(null);
             deviceStore?.clear();
             repaint({ deviceStatus: 'revoked', deviceFailure: null });
         } catch (error) {

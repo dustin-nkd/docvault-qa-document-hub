@@ -333,6 +333,51 @@ test('a body-less mutation still sends Content-Type and a parseable empty object
     assert.deepEqual(JSON.parse(calls[1].init.body), {});
 });
 
+// REGRESSION: every workspace-scoped route the server exposes is declared
+// `requiresDevice: true` (functions/_lib/collaboration/key-runtime-handler.ts
+// and runtime-handler.ts), and both refuse a request whose
+// X-DocVault-Device-ID header is absent -- before the route's own fields are
+// read, so the refusal arrives as a bare VALIDATION_FAILED naming nothing.
+// This client never sent the header at all, so creating a workspace failed on
+// the real deployment with "The server rejected this workspace name", which is
+// simply what this client's table maps VALIDATION_FAILED to. Only the server
+// tests ever sent it, by hand.
+test('the acting device is sent on mutations once it is named', async () => {
+    const { client, calls } = await signedInClient([jsonResponse(200, { data: {}, meta: {} })]);
+    client.setActingDevice('44444444-4444-4444-8444-444444444444');
+    await client.mutate({ path: `${API_BASE}/workspaces`, body: { displayName: 'x' } });
+    assert.equal(calls[1].init.headers['X-DocVault-Device-ID'],
+        '44444444-4444-4444-8444-444444444444');
+});
+
+test('the acting device is sent on reads too, which also require it', async () => {
+    const { client, calls } = await signedInClient([
+        jsonResponse(200, { data: { items: [] }, meta: {} })
+    ]);
+    client.setActingDevice('44444444-4444-4444-8444-444444444444');
+    await client.list({ path: `${API_BASE}/workspaces/w_1/members` });
+    assert.equal(calls[1].init.headers['X-DocVault-Device-ID'],
+        '44444444-4444-4444-8444-444444444444');
+});
+
+test('no device header is sent before one is named, or after it is cleared', async () => {
+    const { client, calls } = await signedInClient([jsonResponse(200, { data: {}, meta: {} })]);
+    await client.mutate({ path: `${API_BASE}/devices`, body: {} });
+    assert.equal(calls[1].init.headers['X-DocVault-Device-ID'], undefined,
+        'registering the first device cannot name one yet');
+    client.setActingDevice('44444444-4444-4444-8444-444444444444');
+    client.setActingDevice(null);
+    await client.mutate({ path: `${API_BASE}/devices`, body: {} });
+    assert.equal(calls[2].init.headers['X-DocVault-Device-ID'], undefined,
+        'a header naming a revoked device would be refused; it must not outlive it');
+});
+
+test('a device id that is not the shape the server issues is refused', async () => {
+    const { client } = await signedInClient();
+    assert.throws(() => client.setActingDevice('not-a-uuid'),
+        error => error.code === 'INVALID_DEVICE');
+});
+
 test('a read cannot be sent through mutate', async () => {
     const { client } = await signedInClient();
     await assert.rejects(client.mutate({ method: 'GET', path: `${API_BASE}/workspaces` }),
