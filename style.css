@@ -1832,6 +1832,23 @@ button[aria-busy="true"] { cursor:progress !important; }
 
 .collab-invites { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-width: 100%; }
 .collab-invites__heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--tx); }
+.collab-invites__label { font-size: 13px; color: var(--tx-m); }
+.collab-invites__login-input,
+.collab-invites__role-input {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--brd-l);
+    background: var(--card);
+    color: var(--tx);
+    font: inherit;
+    font-size: 13px;
+}
+.collab-invites__role-input { cursor: pointer; }
+.collab-invites__login-input[aria-invalid="true"] { border-color: var(--collab-danger); }
+.collab-invites__login-input:disabled,
+.collab-invites__role-input:disabled { opacity: .6; cursor: not-allowed; }
 .collab-invites__create,
 .collab-invites__copy,
 .collab-invites__revoke {
@@ -1854,6 +1871,8 @@ button[aria-busy="true"] { cursor:progress !important; }
 .collab-invites__create:focus-visible,
 .collab-invites__copy:focus-visible,
 .collab-invites__revoke:focus-visible,
+.collab-invites__login-input:focus-visible,
+.collab-invites__role-input:focus-visible,
 .collab-invites__url:focus-visible { outline: 2px solid var(--collab-focus); outline-offset: 2px; }
 
 /* The one-time value. Given its own block, an assertive warning, and a field

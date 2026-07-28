@@ -194,7 +194,10 @@ function build(doc, surface, { context, session, device, data }) {
             }
             return renderInvitations(doc, invitationModel({
                 actorRole: data.actor?.role, invitations: data.invitations,
-                issued: data.issuedInvitation ?? null
+                issued: data.issuedInvitation ?? null,
+                displayLogin: data.inviteLogin ?? '',
+                role: data.inviteRole ?? 'editor',
+                status: data.inviteStatus ?? 'idle'
             }), 'panel-invites');
 
         case 'invitation-accept':
