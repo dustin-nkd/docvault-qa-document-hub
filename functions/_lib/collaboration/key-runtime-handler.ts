@@ -104,7 +104,7 @@ const ROUTES: readonly Route[] = Object.freeze([
 ]);
 
 type ErrorCode = 'VALIDATION_FAILED' | 'INVALID_JSON' | 'INVALID_CURSOR' | 'CSRF_REJECTED'
-    | 'UNAUTHENTICATED' | 'OPERATION_NOT_PERMITTED' | 'RESOURCE_NOT_FOUND' | 'METHOD_NOT_ALLOWED'
+    | 'UNAUTHENTICATED' | 'OPERATION_NOT_PERMITTED' | 'RESOURCE_NOT_FOUND'
     | 'NOT_ACCEPTABLE' | 'UNSUPPORTED_MEDIA_TYPE' | 'PAYLOAD_TOO_LARGE' | 'RATE_LIMITED'
     | 'COLLABORATION_UNAVAILABLE';
 
@@ -116,7 +116,6 @@ const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = Object.freeze({
     UNAUTHENTICATED: 'Authentication is required.',
     OPERATION_NOT_PERMITTED: 'The operation is not permitted.',
     RESOURCE_NOT_FOUND: 'The requested resource was not found.',
-    METHOD_NOT_ALLOWED: 'The request method is not supported for this route.',
     NOT_ACCEPTABLE: 'The requested response media type is not supported.',
     UNSUPPORTED_MEDIA_TYPE: 'Content-Type must be application/json; charset=utf-8.',
     PAYLOAD_TOO_LARGE: 'The request payload exceeds the allowed size.',
@@ -167,16 +166,16 @@ function bindings(source: object): RuntimeBindings {
 }
 
 function routeFor(pathname: string, method: string): { route: Route; params: readonly string[] } | null {
+    // This handler is followed by the control-plane handler and the terminal
+    // API shell. It may claim only an exact path-and-method pair: a path-only
+    // match can belong to the next handler (GET /workspaces is the concrete
+    // case). The terminal shell remains responsible for the final 405 and its
+    // contract-wide Allow header when no specialized handler owns the method.
     const matches = ROUTES.flatMap(route => {
         const match = pathname.match(route.pattern);
         return match === null ? [] : [{ route, params: match.slice(1) }];
     });
-    if (matches.length === 0) return null;
-    const exact = matches.find(match => match.route.methods.includes(method));
-    if (exact) return exact;
-    const first = matches[0];
-    if (!first) return null;
-    return { route: { ...first.route, methods: [...new Set(matches.flatMap(match => match.route.methods))] }, params: first.params };
+    return matches.find(match => match.route.methods.includes(method)) ?? null;
 }
 
 function acceptsJson(value: string | null): boolean {
@@ -684,9 +683,6 @@ export async function handlePreviewKeyFoundationApi(request: Request, source: ob
     let id: string;
     try { id = requestId(dependencies); } catch { id = crypto.randomUUID(); }
     try {
-        if (!matched.route.methods.includes(request.method)) {
-            throw new PreviewKeyApiError(405, 'METHOD_NOT_ALLOWED', { Allow: matched.route.methods.join(', ') });
-        }
         if (!acceptsJson(request.headers.get('Accept'))) throw new PreviewKeyApiError(406, 'NOT_ACCEPTABLE');
         if (new TextEncoder().encode(url.search.startsWith('?') ? url.search.slice(1) : url.search).byteLength
             > MAXIMUM_QUERY_BYTES) throw new PreviewKeyApiError(400, 'VALIDATION_FAILED');

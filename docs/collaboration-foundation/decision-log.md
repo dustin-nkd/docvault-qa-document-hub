@@ -255,3 +255,51 @@ because the callback origin is authenticated additional data. Focused identity,
 collaboration, and callback tests and the full `npm run check` gate must pass on
 the final working tree. Remote qualification follows only after review,
 commit, deployment, and the owner-controlled GitHub OAuth callback update.
+
+**Post-deployment correction, 2026-07-29.** The stale-runtime diagnosis above
+was falsified after the v2 deployment made the runtime reachable on its exact
+canonical origin. Worker version metadata showed version
+`d67e484f-5c58-483f-ba3c-97e6ae6b7054`, built from commit `c2c84ef`, active at
+100 percent on `pages-worker--16371130-preview` with the expected Preview
+bindings. The `405` came from application dispatch, not an old Worker version:
+the earlier key-foundation handler claimed the shared `/api/v1/workspaces` path
+for its `POST` route and returned before the later collaboration handler could
+serve `GET`. The alias rotation remains in place to avoid another unnecessary
+origin and OAuth callback change, but it is not evidence of a Cloudflare
+platform fault. `D-P7-05` records the corrective implementation.
+
+## D-P7-05 — an early specialized handler may claim only methods it owns
+
+**Status:** APPROVED by the Product Owner, 2026-07-29. Authorizes the
+exact-method ownership correction and its deployment to Preview.
+
+**Decision.** `handlePreviewKeyFoundationApi` yields `null` unless both the path
+and method match one of its routes. It no longer emits a path-only `405`.
+`handlePreviewCollaborationApi`, which follows it, can therefore own
+`GET /api/v1/workspaces`; the terminal API shell remains responsible for a
+contract-wide `405` and complete `Allow` header when no specialized handler
+owns the requested method. Identity remains first and the established handler
+order is otherwise unchanged.
+
+**Why.** The key-foundation and collaboration handlers intentionally share
+`/api/v1/workspaces`: keyed creation owns `POST`, while reload-safe workspace
+listing owns `GET`. Their isolated tests both passed, but the production
+entrypoint invokes key foundation first. Its former route resolver treated a
+path match as ownership even when the method did not match, so `GET` terminated
+with `405 Allow: POST` and never reached the implemented list operation.
+
+**Boundaries.** Exact key-foundation methods retain all existing authentication,
+origin, CSRF, media-type, D1, and cryptographic checks. Unsupported key-route
+methods still receive `405` from the terminal shell; they merely stop being
+answered prematurely by a non-terminal handler. Production remains disabled,
+and this decision changes no bindings, secrets, databases, Access policies, or
+OAuth configuration.
+
+**Verification.** A Workers-runtime regression test calls the real
+`functions/api/v1/[[path]].ts` entrypoint, not either handler in isolation. It
+first reproduced the live `405`, then required unauthenticated
+`GET /api/v1/workspaces` to reach the collaboration boundary and return `401
+UNAUTHENTICATED`. It also keeps the terminal `405` and `Allow: GET, POST`
+contract for an unsupported document-route method. Focused key, collaboration,
+document, and composition suites pass; the full gate remains required before
+review.

@@ -97,13 +97,13 @@ describe('CF-P6-008 document route surface on the Preview runtime', () => {
         }
     });
 
-    it('refuses an unsupported method on a document path', async () => {
+    it('yields unsupported methods so the terminal API shell can emit the contract-wide 405', async () => {
         for (const path of [
             `/api/v1/workspaces/${WORKSPACE}/documents/${DOCUMENT}/revisions`,
             `/api/v1/workspaces/${WORKSPACE}/mutations/${MUTATION}`
         ]) {
             const response = await call('DELETE', path);
-            expect(response?.status).toBe(405);
+            expect(response).toBeNull();
         }
     });
 

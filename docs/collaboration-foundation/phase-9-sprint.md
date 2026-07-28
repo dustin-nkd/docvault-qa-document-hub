@@ -64,8 +64,9 @@ away.
 **1. The runtime is compiled against the Preview origin.**
 `functions/_lib/identity/environment.ts` line 38 fixes
 `const PREVIEW_ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev'`.
-`D-P7-04` records why this replaces the retired Preview branch alias after
-Cloudflare Pages kept serving its stale Functions runtime.
+`D-P7-04` records the alias rotation. `D-P7-05` corrects its preliminary
+stale-runtime diagnosis and records the route-ownership defect exposed by the
+first deployment on the new origin.
 Lines 70–71 enable identity only when `mode === 'preview-only'`,
 `APP_ENV === 'preview'`, and `options.requestOrigin === PREVIEW_ORIGIN`. Line 79
 fixes the session cookie at `'__Host-docvault-preview-session'`.
