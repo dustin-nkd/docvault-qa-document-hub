@@ -264,7 +264,9 @@ function measureInPage() {
         return node.scrollWidth > node.clientWidth + 1 && node.clientWidth > 0
             && style.textOverflow !== 'ellipsis' && style.overflowWrap !== 'anywhere';
     }).map(node => node.className || node.tagName);
-    const controls = [...document.querySelectorAll('main button, main input, main [tabindex]')];
+    const controls = [...document.querySelectorAll(
+        'main button, main input, main select, main [tabindex]'
+    )];
     const tooSmall = controls.filter(node => {
         const box = node.getBoundingClientRect();
         return box.width > 0 && (box.height < 24 || box.width < 24);
@@ -306,7 +308,9 @@ function auditFocusInPage() {
     // Controls inside a closed disclosure are not rendered, cannot take focus,
     // and are correctly unreachable by Tab. Auditing their focus ring would
     // measure a style that never applies.
-    const focusable = [...document.querySelectorAll('main button:not(:disabled), main input:not(:disabled)')]
+    const focusable = [...document.querySelectorAll(
+        'main button:not(:disabled), main input:not(:disabled), main select:not(:disabled)'
+    )]
         .filter(node => node.getClientRects().length > 0);
     const rings = [];
     for (const node of focusable) {

@@ -205,7 +205,7 @@ function measureInPage() {
             && style.textOverflow !== 'ellipsis' && style.overflowWrap !== 'anywhere';
     }).map(node => node.className || node.tagName);
     const tooSmall = [...document.querySelectorAll('#collaboration-root button, '
-        + '#collaboration-root input')].filter(node => {
+        + '#collaboration-root input, #collaboration-root select')].filter(node => {
         const box = node.getBoundingClientRect();
         return box.width > 0 && (box.height < 24 || box.width < 24);
     }).map(node => node.className);
