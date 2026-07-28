@@ -5,7 +5,8 @@ const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const CONTEXT = 'docvault:control-plane-cursor:v1:';
 const TTL_MS = 15 * 60 * 1_000;
 const MAXIMUM_LENGTH = 2_048;
-const ROUTES = Object.freeze(['members', 'invitations', 'devices', 'workspace-devices'] as const);
+const ROUTES = Object.freeze(['members', 'invitations', 'devices', 'workspace-devices',
+    'user-workspaces'] as const);
 type CursorRoute = typeof ROUTES[number];
 
 interface CursorPayload {
@@ -45,6 +46,12 @@ function validPosition(route: CursorRoute, value: unknown): value is Record<stri
     if (route === 'devices') {
         return Object.keys(value).sort().join('|') === 'createdAt|deviceId'
             && time(value.createdAt) && typeof value.deviceId === 'string' && UUID_V4.test(value.deviceId);
+    }
+    // Keyed by the caller, not by a workspace: this cursor paginates the answer
+    // to which workspaces exist for them, so it cannot be scoped to one.
+    if (route === 'user-workspaces') {
+        return Object.keys(value).length === 1 && typeof value.workspaceId === 'string'
+            && UUID_V4.test(value.workspaceId);
     }
     if (route === 'workspace-devices') {
         return Object.keys(value).length === 1 && typeof value.deviceId === 'string'

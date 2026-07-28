@@ -89,6 +89,26 @@ export interface ListMembersResult {
     readonly nextCursor: { readonly userId: string } | null;
 }
 
+export interface ListUserWorkspacesInput {
+    readonly actorUserId: string;
+    readonly limit?: number;
+    readonly afterWorkspaceId?: string;
+}
+
+export interface UserWorkspaceView {
+    readonly workspaceId: string;
+    readonly displayName: string;
+    readonly role: WorkspaceRole;
+    readonly state: MembershipState;
+    readonly keyReady: boolean;
+    readonly currentKeyVersion: number;
+}
+
+export interface ListUserWorkspacesResult {
+    readonly items: readonly UserWorkspaceView[];
+    readonly nextCursor: { readonly workspaceId: string } | null;
+}
+
 interface TargetRow {
     role: string;
     state: string;
@@ -531,4 +551,70 @@ export async function transferOwnership(database: D1Database,
         JSON.stringify({ priorOwnerUserId: input.actorUserId, priorTargetRole: target.role })),
     resultStatement(database, input.mutationResultId)];
     return executeMutation(database, input, 'ownership.transfer', resultRecipe(statements));
+}
+
+/**
+ * Every workspace the caller is still a member of (`GET /api/v1/workspaces`).
+ *
+ * The API contract has declared this route since Phase 4 — "list caller's
+ * non-removed memberships and readiness" — and nothing implemented it, so the
+ * collaboration UI's workspace list was empty on every page load and a
+ * workspace was visible only in the session that created it. Its selection
+ * therefore could not survive a reload, which is the half of gate criterion U2
+ * that matters most.
+ *
+ * There is no `authorizeWorkspaceAction` call here, and that is the point
+ * rather than an omission: this is the route that answers *which* workspaces
+ * the caller may ask about at all, so there is no workspace to authorise
+ * against yet. The scope is the caller's own membership rows and nothing else —
+ * `m.user_id = ?` is the whole authorisation, and it cannot leak another
+ * account's workspaces because it never selects any.
+ *
+ * `keyReady` is computed exactly as `listWorkspaceMembers` computes it, so the
+ * same fact is not derived two different ways: an unrevoked envelope for this
+ * user at the workspace's *current* key version, held by a device that is still
+ * active. A stale envelope reads `false`, which is correct — it cannot open the
+ * workspace as it stands today.
+ */
+export async function listUserWorkspaces(database: D1Database,
+    input: ListUserWorkspacesInput): Promise<ListUserWorkspacesResult> {
+    requireUuid(input.actorUserId);
+    const after = input.afterWorkspaceId ?? '00000000-0000-4000-8000-000000000000';
+    requireUuid(after);
+    const limit = input.limit ?? 50;
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAXIMUM_PAGE_SIZE) invalid();
+
+    const rows = await readBounded(openAuthorizationSession(database).prepare(
+        `SELECT w.id AS workspace_id, w.display_name, w.current_key_version,
+                m.role, m.state,
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM workspace_key_envelopes e
+                    JOIN devices d ON d.id = e.target_device_id
+                    WHERE e.workspace_id = w.id AND e.target_user_id = m.user_id
+                      AND e.key_version = w.current_key_version AND e.revoked_at IS NULL
+                      AND d.state = 'active'
+                ) THEN 1 ELSE 0 END AS key_ready
+         FROM memberships m JOIN workspaces w ON w.id = m.workspace_id
+         WHERE m.user_id = ? AND m.state <> 'removed' AND w.id > ?
+         ORDER BY w.id ASC LIMIT ?`
+    ).bind(input.actorUserId, after, limit), limit, row => {
+        if (typeof row.workspace_id !== 'string' || typeof row.display_name !== 'string'
+            || !['owner', 'admin', 'editor', 'viewer'].includes(String(row.role))
+            || !['active', 'pending_key'].includes(String(row.state))
+            || typeof row.current_key_version !== 'number'
+            || ![0, 1].includes(Number(row.key_ready))) throw new PersistenceError('PERSISTENCE_INTEGRITY');
+        return {
+            workspaceId: row.workspace_id,
+            displayName: row.display_name,
+            role: row.role as WorkspaceRole,
+            state: row.state as MembershipState,
+            keyReady: row.key_ready === 1,
+            currentKeyVersion: row.current_key_version
+        };
+    });
+    const hasMore = rows.length === limit;
+    return {
+        items: rows,
+        nextCursor: hasMore ? { workspaceId: rows.at(-1)?.workspaceId ?? after } : null
+    };
 }

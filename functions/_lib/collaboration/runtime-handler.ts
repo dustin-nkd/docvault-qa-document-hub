@@ -29,6 +29,7 @@ import {
 } from '../invitations/index';
 import {
     changeMemberRole,
+    listUserWorkspaces,
     listWorkspaceMembers,
     MembershipAdministrationError,
     removeMember,
@@ -49,7 +50,7 @@ const CSRF_HEADER = 'X-CSRF-Token';
 const DEVICE_HEADER = 'X-DocVault-Device-ID';
 const IDEMPOTENCY_HEADER = 'Idempotency-Key';
 
-type RouteId = 'workspace-create' | 'member-list' | 'member-change' | 'member-remove'
+type RouteId = 'workspace-list' | 'workspace-create' | 'member-list' | 'member-change' | 'member-remove'
     | 'ownership-transfer' | 'invitation-list' | 'invitation-create' | 'invitation-revoke'
     | 'invitation-bootstrap' | 'invitation-accept' | 'audit-list';
 
@@ -62,6 +63,14 @@ interface Route {
 }
 
 const ROUTES: readonly Route[] = Object.freeze([
+    // Shares a path with workspace-create below, which is fine: routeFor
+    // collects every pattern match and then picks the one whose methods
+    // include the request's, so the two coexist in either order. Declared by
+    // the API contract since Phase 4 and implemented by nothing until now --
+    // GET /api/v1/workspaces answered METHOD_NOT_ALLOWED, so the collaboration
+    // UI's workspace list was empty on every load and a workspace was visible
+    // only in the session that created it.
+    { id: 'workspace-list', pattern: /^\/api\/v1\/workspaces$/, methods: ['GET'], mutation: false, public: false },
     { id: 'workspace-create', pattern: /^\/api\/v1\/workspaces$/, methods: ['POST'], mutation: true, public: false },
     { id: 'member-list', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/members$/, methods: ['GET'], mutation: false, public: false },
     { id: 'member-change', pattern: /^\/api\/v1\/workspaces\/([^/]+)\/members\/([^/]+)$/, methods: ['PATCH'], mutation: true, public: false },
@@ -437,6 +446,26 @@ async function dispatch(database: D1Database, request: Request, matched: { route
     }
     if (actor === null) throw new PreviewApiError(401, 'UNAUTHENTICATED');
     const actorUserId = actor.userId;
+
+    if (matched.route.id === 'workspace-list') {
+        assertQueryKeys(query, ['limit', 'cursor']);
+        const limit = integer(query.get('limit'), 50, 1, 100);
+        let afterWorkspaceId: string | undefined;
+        const token = query.get('cursor');
+        if (token !== null) {
+            // Scoped to the caller rather than to a workspace, because this is
+            // the route that answers which workspaces there are: there is no
+            // workspace to scope a cursor to until it has replied.
+            const position = await controlCursor.verify('user-workspaces', actorUserId, token, now);
+            afterWorkspaceId = requireUuid(position.workspaceId);
+        }
+        const result = await listUserWorkspaces(database, { actorUserId, limit,
+            ...(afterWorkspaceId === undefined ? {} : { afterWorkspaceId }) });
+        const nextCursor = result.nextCursor === null ? null
+            : await controlCursor.issue('user-workspaces', actorUserId, result.nextCursor, now);
+        return success(persistentRequestId, 200, { items: result.items }, { limit, nextCursor },
+            authorization.setCookie);
+    }
 
     if (matched.route.id === 'workspace-create') {
         if (url.search !== '') throw new PreviewApiError(400, 'VALIDATION_FAILED');

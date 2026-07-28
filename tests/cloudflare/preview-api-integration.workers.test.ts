@@ -167,6 +167,29 @@ describe('CF-P4-007 preview collaboration API integration', () => {
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM workspaces WHERE id = ?')
             .bind(workspaceId).first<number>('count')).toBe(1);
 
+        // GET /api/v1/workspaces was declared by the API contract from Phase 4
+        // and implemented by nothing until 2026-07-28: it answered
+        // METHOD_NOT_ALLOWED, so the collaboration UI's workspace list was
+        // empty on every page load and a workspace was visible only inside the
+        // session that created it -- its selection could not survive a reload.
+        const listed = await api('/api/v1/workspaces', { token: OWNER_TOKEN });
+        expect(listed?.status).toBe(200);
+        const listedBody = await listed?.json<{ data: { items: Array<{ workspaceId: string;
+            role: string; keyReady: boolean; displayName: string }> } }>();
+        expect(listedBody?.data.items.some(item => item.workspaceId === workspaceId)).toBe(true);
+        const own = listedBody?.data.items.find(item => item.workspaceId === workspaceId);
+        expect(own).toMatchObject({ role: 'owner', displayName: 'Preview Control Plane' });
+        // Readiness travels with the row, which is what the member list and the
+        // key-provisioning controls read to decide what the caller may do.
+        expect(typeof own?.keyReady).toBe('boolean');
+
+        // It is the caller's own memberships and nothing else: a second account
+        // that is a member of no workspace sees an empty list rather than this one.
+        const stranger = await api('/api/v1/workspaces', { token: TARGET_TOKEN });
+        expect(stranger?.status).toBe(200);
+        const strangerBody = await stranger?.json<{ data: { items: Array<{ workspaceId: string }> } }>();
+        expect(strangerBody?.data.items.some(item => item.workspaceId === workspaceId)).toBe(false);
+
         const members = await api(`/api/v1/workspaces/${workspaceId}/members?limit=1`, { token: OWNER_TOKEN });
         expect(members?.status).toBe(200);
         const memberBody = await members?.json<{ data: { items: Array<{ userId: string; role: string }> };

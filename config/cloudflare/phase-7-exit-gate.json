@@ -214,7 +214,8 @@
     ],
     "not_completed": [
       "invite someone and have them accept -- needs a second real GitHub account",
-      "resolve a conflict -- needs two devices editing one document, and the document surfaces are not Phase 7"
+      "resolve a conflict -- needs two devices editing one document, and the document surfaces are not Phase 7",
+      "the selection surviving a reload -- the route that makes it possible was only implemented on 2026-07-28 and no reload has been driven against a deployment carrying it"
     ],
     "corroboration": "Read-only SQL against the Preview D1 database, which an agent can gather but cannot manufacture: workspaces holds 7 rows created through this UI, each at current_key_version 1 with its creator as sole member; devices holds 9 rows, 1 active and 8 revoked; audit_events holds workspace.created x10; workspace_key_envelopes holds 10 unrevoked rows. The envelopes are the load-bearing part -- each was sealed in the browser by the hand-written port in js/collaboration/workspace-key-envelope.js and accepted by the server parser, so the port and functions/_lib/e2ee agree on live data and not only in a round-trip test.",
     "why_the_agent_could_not_do_this": "Qualifying these journeys needs a real OAuth session, and obtaining one means entering credentials at github.com. No agent did so at any point. What the agent contributed was the seven fixes the journey exposed, each of which was invisible to the entire test suite beforehand.",
@@ -331,7 +332,7 @@
       {
         "condition": "Sprint gate criteria U1-U6 qualified",
         "met": false,
-        "state": "U1 and U2 are qualified against live data on the deployment: switching workspaces moved both the context indicator and the panel below it. U3 to U6 are not -- they need a role change, an invitation accepted by a second GitHub account, and a conflict between two devices, none of which this journey reached."
+        "state": "U1 and within-session switching are qualified against live data. The survives-a-reload half of U2 is not: the route that lists a caller's workspaces did not exist until 2026-07-28 and no reload has been driven against a deployment carrying it. U3 to U6 need a role change, an invitation accepted by a second account, and a conflict."
       },
       {
         "condition": "Zero unowned or expired Critical/High risk",
@@ -347,9 +348,9 @@
   },
   "open_items": [
     {
-      "item": "U3 to U6 were not exercised against a live role change, invitation, or conflict",
+      "item": "U2 survives-reload and U3 to U6 were not exercised against a live deployment",
       "owner": "UX Lead",
-      "detail": "U1 and U2 are now qualified against live data: the owner switched workspaces on the deployment and both the context indicator and the panel below it followed the selection, which is the half of U2 that is easiest to lose. U3 to U6 are not, and need a role change, an invitation accepted by a second account, and a conflict between two devices. Recorded rather than claimed."
+      "detail": "CORRECTED 2026-07-28. U1 and switching within a session are qualified. The half of U2 that matters most -- the selection survives a reload rather than silently defaulting -- was recorded as qualified earlier today and was not: GET /api/v1/workspaces was contract-declared from Phase 4 and implemented by nothing, so the workspace list was empty on every load and a workspace was visible only in the session that created it. The route and its service now exist and are covered by a workers test proven to fail without them, but no owner has driven a reload against a deployment carrying them. U3 to U6 additionally need a role change, an invitation accepted by a second GitHub account, and a conflict between two devices."
     }
   ],
   "closed_open_items": [
