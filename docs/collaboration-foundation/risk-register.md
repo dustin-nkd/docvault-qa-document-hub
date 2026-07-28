@@ -83,10 +83,11 @@ in an exit report is one nobody sees again.
 
 | ID | Risk | Inherent | Approved control | Owner | Acceptance / prohibition | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| R-P7-B | The Phase 7 lazy collaboration chunk exceeds its declared size budget by 31%, and until 2026-07-27 no gate read the budget key at all (P2 quality/availability). | 3x3=9 Medium | `cf:phase7:exit:check` re-measures the entry's static import closure on every run, requires the recorded figure to stay within 2 KiB of the recomputed one, and requires the breach to be recorded `OPEN` exactly while it breaches. | Technical Lead | **Not accepted.** Recorded as an open breach pending an owner decision. The declared number may not be amended to match what shipped — renegotiating a budget is a decision, not an edit. It blocks `P7-G5` while it stands. | Open |
+| R-P7-B | The Phase 7 lazy collaboration chunk exceeded its declared size budget by 31%, and until 2026-07-27 no gate read the budget key at all (P2 quality/availability). | 3x3=9 Medium | `cf:phase7:exit:check` re-measures the entry's static import closure on every run, requires the recorded figure to stay within 2 KiB of the recomputed one, requires the status to track the measurement in both directions, and since `D-P7-03` also refuses a declared figure that moved without a decision-log entry naming it. | Technical Lead | **Renegotiated on the record by `D-P7-03`, 2026-07-28: 60 to 100 KiB.** The closure measures 91.93 KiB, so the budget reads `MET`. Not met by shrinking -- the payload did not change and no build step was added; the programme carries 91.93 KiB knowingly, at a figure an owner set with the measurement in front of them. | Closed |
 
-**The measurement.** `config/cloudflare/phase-7-sprint-plan.json` declares
-`lazy_phase_7_chunk_max_kib_gzip: 60`.
+**The measurement.** `config/cloudflare/phase-7-sprint-plan.json` now declares
+`lazy_phase_7_chunk_max_kib_gzip: 100`, raised from 60 by `D-P7-03`. The readings below
+are what that decision was taken against.
 
 | Reading | Modules | gzip | Against 60 KiB |
 |---|---:|---:|---|
@@ -95,25 +96,28 @@ in an exit report is one nobody sees again.
 | Entry closure, recomputed locally by the gate (gzip -9, CRLF normalised) | 20 | **79.32 KiB** | over by 19.32 |
 | Phase 7 modules only, recomputed locally | 17 | **65.27 KiB** | over by 5.27 |
 
-There is no definition of "the Phase 7 chunk" under which this passes. First measured
-2026-07-26 by `CF-EV-P7-OPS-004`; reconfirmed 2026-07-27 by `CF-EV-P7-EXIT-001`.
+There was no definition of "the Phase 7 chunk" under which 60 passed. First measured
+2026-07-26 by `CF-EV-P7-OPS-004`; reconfirmed 2026-07-27 by `CF-EV-P7-EXIT-001`. The closure
+has since grown to 91.93 KiB across 22 modules, the two mutation journeys wired on 2026-07-27
+being most of it; against the renegotiated 100 every reading passes, with roughly 8 KiB of headroom.
 
 **The cause is structural.** There is no bundling or minification step in this project.
 Twenty unminified source files are served exactly as authored, comments included.
 
-**The options, none of which has been chosen.**
+**The options weighed before the decision.** The first was chosen.
 
 | Option | Requires | Consequence |
 |---|---|---|
-| Renegotiate the budget on the record | Product Owner | A decision-log entry raising 60 to a number the current shape meets, with the reason. Cheapest, and it concedes the 60 was never derived from a measurement. |
+| **Renegotiate the budget on the record -- CHOSEN, `D-P7-03`** | Product Owner | A decision-log entry raising 60 to a number the current shape meets, with the reason. Cheapest, and it concedes the 60 was never derived from a measurement. 100 was set deliberately above the 91.93 KiB measurement rather than at it: a budget at the measurement is unfalsifiable. |
 | Add a build step and meet the declared 60 | Technical Lead | Minification and/or bundling of `js/collaboration/*` — the only route that shrinks the shipped bytes rather than enlarging the target. It changes how the whole app is built and would invalidate Phase 1's byte-for-byte artifact assertions. Needs its own story and gate. |
 | Split the lazy chunk | Technical Lead + UX Lead | Load the eight panel surfaces on demand rather than through one entry closure. Keeps both the budget and the no-build property, at the cost of more dynamic imports and a second latency step. |
-| Leave it open | no decision | The status quo. The breach stays visible here, in the exit report §6.2, and in `config/cloudflare/phase-7-exit-gate.json`, and it keeps `open_defect` on the Phase 7 zero-tolerance list unsatisfied. |
+| Leave it open | no decision | Rejected. The breach would stay visible here, in the exit report §6.2, and in `config/cloudflare/phase-7-exit-gate.json`, and would keep `open_defect` on the Phase 7 zero-tolerance list unsatisfied. |
 
 **What generalises past the number.** A budget that no script reads is not a budget. Phase
 8 carries the enforcing budget row for the rest of the programme's declared limits; this
-one is now enforced as a record, which is weaker than enforcing the size and is recorded
-as such.
+one is enforced as a record, which is weaker than enforcing the size and is recorded as
+such. Renegotiating the figure did not change that: what the gate guarantees is that the
+number cannot move without a decision, not that the bytes are small.
 
 ## 5. Gate G3 acceptance
 

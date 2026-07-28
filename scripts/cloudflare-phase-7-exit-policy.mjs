@@ -61,7 +61,7 @@ export function measureLazyChunk(sources) {
 }
 
 export function validatePhase7Exit({ manifest, sprintPlan, previewManifest, exitReport, handoff,
-    riskRegister, packageJson, evidenceSources, collaborationSources }) {
+    riskRegister, packageJson, evidenceSources, collaborationSources, decisionLog }) {
     assert(manifest?.schema_version === 1 && manifest.phase === 'CF-P7'
         && manifest.story === 'CF-P7-014' && manifest.exit_gate === 'P7-G5',
     'Unsupported Phase 7 exit manifest');
@@ -156,15 +156,33 @@ export function validatePhase7Exit({ manifest, sprintPlan, previewManifest, exit
 
     // ── the lazy chunk, re-measured on every run ─────────────────────────────
 
-    const budget = manifest.lazy_chunk_budget || {};
-    const declared = sprintPlan.quality_budgets?.lazy_phase_7_chunk_max_kib_gzip;
-    assert(declared === 60 && budget.declared_kib_gzip === declared,
-        'The declared lazy-chunk budget was amended rather than met or renegotiated');
-    assert(budget.amended === false, 'The lazy-chunk budget records itself as amended');
-
+    // The figure may move, but only the way D-P7-03 moved it: with a decision
+    // recorded, the measurement stated, and the old number kept visible. An
+    // amendment is the thing this still refuses -- quietly relocating the target
+    // to wherever the code happens to have landed, which is indistinguishable
+    // from having no budget while looking exactly like a green gate.
     const measured = measureLazyChunk(collaborationSources || {});
     assert(measured.modules >= 15,
         'The entry import closure could not be walked, so nothing was measured');
+
+    const budget = manifest.lazy_chunk_budget || {};
+    const declared = sprintPlan.quality_budgets?.lazy_phase_7_chunk_max_kib_gzip;
+    assert(declared === 100 && budget.declared_kib_gzip === declared,
+        'The declared lazy-chunk budget was amended rather than met or renegotiated');
+    assert(budget.amended === false, 'The lazy-chunk budget records itself as amended');
+
+    const renegotiated = budget.renegotiated || {};
+    assert(renegotiated.from_kib_gzip === 60 && renegotiated.to_kib_gzip === declared,
+        'The renegotiation does not say which number was moved, or to where');
+    assert(typeof renegotiated.decision === 'string' && /^D-P7-\d+$/.test(renegotiated.decision),
+        'The renegotiated budget names no decision');
+    assert(decisionLog.includes(renegotiated.decision),
+        `${renegotiated.decision} raised the budget but is not in the decision log`);
+    assert(decisionLog.includes(`lazy_phase_7_chunk_max_kib_gzip`)
+        && decisionLog.includes(String(declared)),
+    'The decision log does not state the budget it moved, or the figure it moved to');
+    assert(typeof renegotiated.reason === 'string' && renegotiated.reason.length > 200,
+        'A renegotiated budget with no stated reasoning is an amendment wearing a decision id');
     const recorded = budget.local_measurement || {};
     const tolerance = recorded.tolerance_kib ?? 2;
     assert(Math.abs(measured.kib - recorded.kib_gzip) <= tolerance,
@@ -178,6 +196,19 @@ export function validatePhase7Exit({ manifest, sprintPlan, previewManifest, exit
         `The lazy-chunk budget is recorded ${budget.status} while measuring `
         + `${measured.kib.toFixed(2)} KiB against ${declared} KiB`);
 
+    if (budget.status === 'MET') {
+        // How much room the renegotiated figure actually leaves, stated rather
+        // than left to be worked out. A budget sitting on its own measurement
+        // is one byte from being renegotiated again, so the number that says
+        // how far away it is has to be in the record and has to be true.
+        const headroom = declared - recorded.kib_gzip;
+        assert(typeof renegotiated.headroom_kib_gzip === 'number'
+            && Math.abs(renegotiated.headroom_kib_gzip - headroom) < 0.5,
+        `The recorded headroom (${renegotiated.headroom_kib_gzip}) is not the declared `
+        + `figure minus the measurement (${headroom.toFixed(2)})`);
+        assert(headroom > 0, 'A budget recorded MET does not sit above its own measurement');
+    }
+
     if (budget.status === 'OPEN') {
         assert(budget.enforced_by_gate === 'cf:phase7:exit:check',
             'The breached budget names no enforcing gate');
@@ -189,8 +220,14 @@ export function validatePhase7Exit({ manifest, sprintPlan, previewManifest, exit
                 && typeof option.requires === 'string',
             `A budget option is not stated well enough to choose: ${option.option}`);
         }
+        // The deployment reading stays on the record whatever the number is.
+        // It used to have to exceed the declared figure, which read as proof
+        // the breach was real; the gate now recomputes the breach itself on
+        // every run, and after D-P7-03 raised the figure to 100 a deployment
+        // reading of 78.4 cannot exceed it while still being the measurement
+        // that started all of this.
         assert(typeof budget.deployment_measurement?.kib_gzip === 'number'
-            && budget.deployment_measurement.kib_gzip > declared,
+            && budget.deployment_measurement.kib_gzip > 0,
         'The deployment measurement behind the breach was dropped');
         // Owner-visible in both places, not only in a manifest nobody reads.
         const shown = String(budget.deployment_measurement.kib_gzip);

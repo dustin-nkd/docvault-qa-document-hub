@@ -465,7 +465,8 @@
   "quality_budgets": {
     "personal_startup_collaboration_modules": 0,
     "collaboration_startup_ceiling_kib_gzip": 75,
-    "lazy_phase_7_chunk_max_kib_gzip": 60,
+    "lazy_phase_7_chunk_max_kib_gzip": 100,
+    "lazy_phase_7_chunk_budget_history": "Renegotiated from 60 to 100 by D-P7-03 on 2026-07-28, with the measurement in front of the owner. The 60 was written at plan time and read by no script until cf:phase7:exit:check existed, so it was never derived from a measurement of anything; meeting it needs a bundling step this project does not have. 100 sits above the measured 91.93 KiB with roughly 8 KiB of headroom, which is deliberate: a budget set at the measurement is unfalsifiable, and one set far above it enforces nothing.",
     "decrypt_and_render_100_documents_p95_ms": 500,
     "preview_authenticated_read_p95_ms": 300,
     "preview_authenticated_write_p95_ms": 500,

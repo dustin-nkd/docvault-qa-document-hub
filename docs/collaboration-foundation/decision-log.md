@@ -174,3 +174,47 @@ Workers-runtime test fixtures that modelled the old polarity, so no window
 exists in which the code and its own tests disagree about what "enabled"
 means. `npm run check` and the full Workers-runtime suite were re-run and
 captured directly, per the same rule `D-P7-01` recorded.
+
+## D-P7-03 — the lazy-chunk budget is renegotiated to 100 KiB, not met
+
+**Status:** APPROVED by the Product Owner, 2026-07-28. Closes the open defect
+`R-P7-B` recorded against `CF-P7-014`.
+
+**Decision.** `lazy_phase_7_chunk_max_kib_gzip` is raised from **60** to **100**.
+The declared figure now sits above what the shipped shape measures, so the
+budget reads `MET` rather than `OPEN`. This is a renegotiation of the number, on
+the record; it is **not** an amendment that quietly moves a target to wherever
+the code happens to be, and it is not a claim that the code got smaller.
+
+**Why the 60 could not simply be met.** It was written into
+`config/cloudflare/phase-7-sprint-plan.json` at plan time and read by no script
+until `cf:phase7:exit:check` existed, which is to say it was never derived from
+a measurement of anything. When something finally measured it, the closure was
+78.4 KiB on the deployment. Meeting 60 from there is not a matter of trimming:
+this project has no bundling or minification step anywhere, so twenty-two
+unminified source files are served exactly as authored, comments included.
+Reaching 60 means adding a build step for the whole application, which is a
+larger change than the budget was ever meant to force and one that would have to
+be re-qualified against every surface.
+
+**Why 100 rather than the measurement.** The closure measures 91.93 KiB, and
+the nineteen Phase 7 modules alone are 77.88 KiB. Setting the budget at the
+measurement would make it unfalsifiable — the next byte breaches it, so it would
+be renegotiated again rather than enforced. 100 leaves roughly 8 KiB of headroom:
+enough that ordinary work does not trip it, tight enough that another growth of
+the size this phase saw (78.4 → 91.93 KiB, most of it the two mutation journeys
+wired in on 2026-07-27) reaches it and forces this conversation again. That is
+what a budget is for.
+
+**What this does not license.** The gate keeps measuring on every run and keeps
+failing on drift in either direction: recording `MET` while measuring above 100
+is rejected, and so is recording `OPEN` once the measurement is under it. The
+`amended: false` flag stays false, because amending and renegotiating are
+different acts and the gate must keep refusing the first. A future change to
+this number needs its own decision entry here; the gate reads the figure and
+requires the decision that moved it.
+
+**Still not claimed.** Nothing here says the payload is small, or that a build
+step would not be worth adding later. It says the programme is carrying 91.93
+KiB knowingly, at a number an owner set with the measurement in front of them,
+rather than carrying a breach of a number nobody ever measured.

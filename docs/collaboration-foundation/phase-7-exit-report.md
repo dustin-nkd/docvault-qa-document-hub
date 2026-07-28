@@ -484,14 +484,23 @@ by moving up a level of integration rather than by inspecting a module in place;
 there is one level left, and it has not been reached. Owner: Product Owner.
 Closed by `CF-P7-013` reaching PASS.
 
-**R-P7-B — The lazy budget is breached by 31%. OPEN.** §6.2. Since this story a
-gate re-measures it on every run and refuses to let the record drift or the
-number be amended, which is enforcement of the *record* and not of the size. The
-gap that allowed it — a declared budget no script read for the whole of a phase —
-outlives the number, and Phase 8 carries the enforcing budget row for the rest of
-the programme's declared limits. Carried in the risk register as **R-P7-B** with
-the measurement and four options, so it is visible to the owner outside this
-document. Owner: Technical Lead. **Not accepted; recorded.**
+**R-P7-B — The lazy budget was renegotiated to 100 KiB. CLOSED.** §6.2. It was
+breached by 31% against a declared 60, and `D-P7-03` raised the figure to 100 on
+2026-07-28 with the measurement in front of the owner: the closure measures 91.93
+KiB, so the budget now reads `MET`. The renegotiation is not a claim that the
+payload shrank — it did not, and no build step was added. It records that the
+programme carries 91.93 KiB knowingly, at a number an owner set, rather than
+carrying a breach of a number nobody ever measured. 100 was chosen *against* the
+measurement rather than from it: at 91.93 the budget would be unfalsifiable, since
+the next byte breaches it.
+
+The gate did not get weaker. It still re-measures on every run, still fails on
+drift in either direction, and now also refuses a figure that moved without a
+decision-log entry naming it — so the number can be renegotiated again, but not
+quietly. The gap that allowed the original breach — a declared budget no script
+read for the whole of a phase — outlives the number, and Phase 8 carries the
+enforcing budget row for the rest of the programme's declared limits. Owner:
+Technical Lead. **Renegotiated on the record, not met by shrinking.**
 
 **R-P7-C — "Correctly excluded" and "missing" are the same 200 on the wire.**
 `document-envelope.js` and `storage-provider.js` both return `200` with
@@ -503,9 +512,32 @@ exclude both; nothing under `js/` imports either (their only importers are Node
 tests and gate scripts); and the exclusion is asserted deliberately, at
 `tests/cloudflare-phase-7-api-client-policy.test.mjs:574`, under a test named
 *the import closure follows the entry rather than the directory*. The residual
-risk is the next commit: the first Phase 7 or Phase 8 surface to import either
+risk was the next commit: the first Phase 7 or Phase 8 surface to import either
 module gets a working local build and a broken deployment, and the content-type
-is the only place it shows. Nothing gates that transition. Owner: Technical Lead.
+is the only place it shows. Owner: Technical Lead. **CLOSED 2026-07-28.**
+
+`validateDeploymentArtifact` now asserts the artifact's own import closure is
+complete — every relative specifier in every shipped `.js` resolves to a file the
+artifact contains — and it runs inside both `build-pages.mjs` and
+`check-deployment-boundary.mjs`, so it checks the artifact however it was
+assembled rather than trusting the script that assembled it.
+
+Writing that gate found that the recorded mechanism was not the whole story.
+`build-pages.mjs` walks the module graph to a fixpoint, so it *does* pick up a
+newly imported module — but its specifier pattern matched `from '…'` and
+`import('…')` and **not** a bare `import './x.js';`. A module reached only by a
+side-effect import was therefore left out of the artifact while the build
+reported success: the deployment-only failure this risk describes, reachable
+without anyone touching the excluded files. Confirmed by adding such an import to
+`entry.js` — before the fix the module was absent from `_site`, after it is
+present. Both patterns are now one expression, so the set the gate requires to be
+present is the set the build decides to include; if they ever diverge, the
+artifact is being checked against a graph nobody built it from.
+
+Verified three ways on the real artifact: a clean build passes; an artifact whose
+entry imports a module that is not there is rejected with the offending edge
+named; and the previously-missed side-effect form is now both followed by the
+build and caught by the gate.
 
 **R-P7-D — `CF-P7-014` shipped without its own gate. CLOSED.**
 `cf:phase7:exit:check` now exists: `scripts/cloudflare-phase-7-exit-policy.mjs`,
@@ -787,7 +819,7 @@ The seven roles are signed. The objective conditions are not met:
 | Condition | State |
 |---|---|
 | Every story PASS | **no** — `CF-P7-013` PARTIAL |
-| Zero open defect | **no** — the lazy chunk budget is breached by 31% (§6.2) |
+| Zero open defect | **yes** — the lazy chunk budget was renegotiated to 100 KiB by `D-P7-03` and measures 91.93 KiB, so it is `MET` (§6.2); no other defect is open |
 | Every gate exists and passes | yes — `cf:phase7:exit:check` shipped with this story; seventeen `cf:phase7:*` gates run inside `check:cloudflare` |
 | Sprint gate criteria U1–U6 qualified | **partial** — U1 measured on the deployment; U2–U6 held locally only (§4) |
 | Zero unowned or expired Critical/High risk | yes — 22 register rows, all owned; nine Phase 7 exit risks, all owned |

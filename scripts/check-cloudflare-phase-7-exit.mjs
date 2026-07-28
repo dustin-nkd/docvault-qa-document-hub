@@ -29,7 +29,8 @@ validatePhase7Exit({
         .filter(name => /^CF-EV-P7-.*\.md$/.test(name))
         .map(name => [name.replace(/\.md$/, ''),
             fs.readFileSync(path.join(evidenceDirectory, name), 'utf8')])),
-    collaborationSources
+    collaborationSources,
+    decisionLog: read('docs/collaboration-foundation/decision-log.md')
 });
 
 const passing = manifest.stories.filter(story => story.status === 'PASS').length;

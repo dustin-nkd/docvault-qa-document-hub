@@ -69,7 +69,14 @@ while (queue.length > 0) {
 //
 // Walking the graph rather than listing paths means a new lazy entry point is
 // picked up by adding its `import()`, not by remembering to edit this file.
-const SPECIFIER = /(?:\bfrom\s*|(?:^|[^.\w])import\s*\(\s*)(['"])([^'"]+)\1/g;
+// Covers every form that creates an edge: `from '...'` (static import and
+// re-export alike), `import('...')` (dynamic), and `import '...'` on its own —
+// the side-effect import, which an earlier version of this pattern did not
+// match. A module reached only that way was left out of the artifact while the
+// build reported success, which is the deployment-only failure R-P7-C names:
+// on disk locally so the graph resolves, absent on Pages so the path answers
+// the SPA fallback with 200 text/html where a module was expected.
+const SPECIFIER = /(?:\bfrom\s*|(?:^|[^.\w])import\s*(?:\(\s*)?)(['"])([^'"]+)\1/gm;
 let scanned = 0;
 while (scanned < included.size) {
     scanned = included.size;

@@ -91,8 +91,56 @@ export function validateDeploymentArtifact(outputDirectory, expectedRuntimeFiles
         });
     }
 
+    assertImportClosureIsComplete(outputDirectory, files);
     validatePagesRoutesDocument(JSON.parse(fs.readFileSync(path.join(outputDirectory, '_routes.json'), 'utf8')));
     return { schema_version: 1, files: manifestFiles, total_bytes: totalBytes };
+}
+
+/**
+ * A relative module edge, in every form that creates one: `from '...'` (static
+ * import and re-export), `import('...')` (dynamic), and `import '...'` alone
+ * (side effect). Deliberately the same pattern `build-pages.mjs` walks with, so
+ * the set this asserts is present is the set that decides inclusion; if the two
+ * ever disagree, the artifact is checked against a graph nobody built it from.
+ */
+const MODULE_SPECIFIER = /(?:\bfrom\s*|(?:^|[^.\w])import\s*(?:\(\s*)?)(['"])(\.[^'"]*)\1/gm;
+
+/**
+ * Every module the artifact imports is in the artifact (closes R-P7-C).
+ *
+ * A missing module does not 404 on Cloudflare Pages. The SPA fallback answers
+ * `200 text/html` with the app shell, so the browser asks for JavaScript and is
+ * handed a web page — an import that fails with a MIME error and no route in the
+ * server logs to point at. That is exactly how the `037fb093` artifact defect
+ * shipped, and it is a class of failure that cannot be seen from a local run at
+ * all: every file is on disk locally, so the graph resolves, and only the
+ * deployment is broken.
+ *
+ * `build-pages.mjs` walks the module graph to a fixpoint and so cannot leave a
+ * reachable module behind — but nothing proved that, which is what the risk
+ * register recorded as the residual risk. This is the proof, and it is checked
+ * against the built artifact rather than against the build script, so it also
+ * bites if the artifact is assembled some other way.
+ *
+ * Files under `js/collaboration/` that nothing imports are correctly absent and
+ * are not the subject here: the rule is about edges, not about membership.
+ */
+function assertImportClosureIsComplete(outputDirectory, files) {
+    const present = new Set(files);
+    for (const relativePath of files) {
+        if (!relativePath.endsWith('.js') && !relativePath.endsWith('.mjs')) continue;
+        const source = fs.readFileSync(
+            path.join(outputDirectory, ...relativePath.split('/')), 'utf8');
+        for (const match of source.matchAll(MODULE_SPECIFIER)) {
+            const resolved = path.posix.normalize(
+                path.posix.join(path.posix.dirname(relativePath), match[2]));
+            assert(present.has(resolved),
+                `Deployment artifact imports a module it does not contain: ${relativePath} `
+                + `imports ${match[2]} (${resolved}). Cloudflare Pages answers the SPA fallback `
+                + `for that path -- a 200 of text/html where the browser expected a module -- so `
+                + `this builds and runs locally and is broken only once deployed.`);
+        }
+    }
 }
 
 export function writeDeploymentManifest(targetPath, manifest) {

@@ -44,7 +44,8 @@ const input = () => ({
         .filter(name => /^CF-EV-P7-.*\.md$/.test(name))
         .map(name => [name.replace(/\.md$/, ''),
             fs.readFileSync(path.join(evidenceDirectory, name), 'utf8')])),
-    collaborationSources: collaborationSources()
+    collaborationSources: collaborationSources(),
+    decisionLog: read('docs/collaboration-foundation/decision-log.md')
 });
 
 /** Replace and prove the replacement landed, so a no-op mutation cannot pass. */
@@ -307,72 +308,135 @@ test('a recorded module count that disagrees with the closure is rejected', () =
     assert.throws(() => validatePhase7Exit(drifted), /module count disagrees/);
 });
 
-test('recording the breached budget as met is rejected', () => {
+// D-P7-03 renegotiated the budget from 60 to 100, so it now measures MET. The
+// gate must still bite in both directions, which means these cases have to
+// manufacture a breach rather than rely on one being present. `overBudget`
+// pads one module until the closure exceeds the declared figure, leaving the
+// import graph — and so the module count — exactly as it was.
+const overBudget = () => {
     const drifted = input();
+    const [file, source] = Object.entries(drifted.collaborationSources)
+        .find(([name]) => name.endsWith('/shell.js'));
+    // A linear congruential sequence, not a repeating one: `index * k % 26`
+    // cycles with period 26 and gzip removes it almost entirely, which is how
+    // an earlier version of this fixture padded 60,000 characters and moved the
+    // measurement by nothing at all.
+    let padding = '';
+    let seed = 20260728;
+    // 60,000 lands at 99.90 KiB — under the 100 it is meant to breach, which
+    // would make every case below pass for the wrong reason.
+    for (let index = 0; index < 150_000; index += 1) {
+        seed = (seed * 1103515245 + 12345) % 2147483648;
+        padding += String.fromCharCode(97 + seed % 26);
+    }
+    drifted.collaborationSources = {
+        ...drifted.collaborationSources,
+        [file]: `${source}\n// ${padding}\n`
+    };
+    const measured = measureLazyChunk(drifted.collaborationSources);
+    assert.ok(measured.kib > 100, 'the padded fixture must actually breach the budget');
+    assert.equal(measured.modules, 22, 'padding must not change the import graph');
     drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.lazy_chunk_budget.status = 'OPEN';
+    drifted.manifest.lazy_chunk_budget.local_measurement.kib_gzip = measured.kib;
+    return drifted;
+};
+
+test('recording a breached budget as met is rejected', () => {
+    const drifted = overBudget();
     drifted.manifest.lazy_chunk_budget.status = 'MET';
     assert.throws(() => validatePhase7Exit(drifted), /is recorded MET while measuring/);
 });
 
 test('a chunk that comes under budget while the record still says OPEN is rejected', () => {
-    // The other direction, which is the one a stale record fails silently in:
-    // if the modules ever shrink, an OPEN breach must be closed, not carried.
+    // The direction a stale record fails silently in: once the measurement is
+    // under the number, an OPEN breach must be closed rather than carried.
     const drifted = input();
-    // Every module keeps its import lines and loses its body, so the graph is
-    // still the real twenty-module closure and only the bytes shrink. Stubbing
-    // the bodies away entirely would break the transitive walk and trip the
-    // could-not-be-walked guard instead, which is a different case.
-    drifted.collaborationSources = Object.fromEntries(
-        Object.entries(drifted.collaborationSources).map(([file, source]) => [file,
-            `${source.split(/\r?\n/).filter(line => /from\s*'\.\//.test(line)).join('\n')}\n`]));
     drifted.manifest = clone(drifted.manifest);
-    const measured = measureLazyChunk(drifted.collaborationSources);
-    assert.equal(measured.modules, 22, 'the shrunken fixture must keep the whole closure');
-    assert.ok(measured.kib < 60, 'the shrunken fixture must actually come under budget');
-    drifted.manifest.lazy_chunk_budget.local_measurement.kib_gzip = measured.kib;
-    drifted.manifest.lazy_chunk_budget.local_measurement.modules = measured.modules;
+    drifted.manifest.lazy_chunk_budget.status = 'OPEN';
     assert.throws(() => validatePhase7Exit(drifted), /is recorded OPEN while measuring/);
 });
 
-test('an open breach with fewer than two options is rejected', () => {
+// ── the renegotiation itself, which is the new way this number can move ──────
+
+test('a budget that moved with no decision behind it is rejected', () => {
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
+    delete drifted.manifest.lazy_chunk_budget.renegotiated.decision;
+    assert.throws(() => validatePhase7Exit(drifted), /names no decision/);
+});
+
+test('a renegotiation citing a decision the log does not contain is rejected', () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.lazy_chunk_budget.renegotiated.decision = 'D-P7-99';
+    assert.throws(() => validatePhase7Exit(drifted), /is not in the decision log/);
+});
+
+test('a renegotiation that does not say which number moved is rejected', () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.lazy_chunk_budget.renegotiated.from_kib_gzip = 100;
+    assert.throws(() => validatePhase7Exit(drifted), /does not say which number was moved/);
+});
+
+test('a renegotiation with no stated reasoning is an amendment and is rejected', () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.lazy_chunk_budget.renegotiated.reason = 'too small';
+    assert.throws(() => validatePhase7Exit(drifted),
+        /amendment wearing a decision id/);
+});
+
+// How much room the renegotiated figure leaves has to be stated, and has to be
+// true. A budget sitting on its own measurement is one byte from being
+// renegotiated again, so overstating the distance is how a tight number gets
+// presented as a comfortable one.
+test('a headroom figure that is not the declared figure minus the measurement is rejected', () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.lazy_chunk_budget.renegotiated.headroom_kib_gzip = 40;
+    assert.throws(() => validatePhase7Exit(drifted), /is not the declared figure minus/);
+});
+
+// ── what an open breach would still have to carry ───────────────────────────
+
+test('an open breach with fewer than two options is rejected', () => {
+    const drifted = overBudget();
     drifted.manifest.lazy_chunk_budget.options =
-        drifted.manifest.lazy_chunk_budget.options.slice(0, 1);
+        drifted.manifest.lazy_chunk_budget.options_weighed_before_the_decision.slice(0, 1);
     assert.throws(() => validatePhase7Exit(drifted), /fewer than two options/);
 });
 
 test('an option with no stated consequence is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = overBudget();
+    drifted.manifest.lazy_chunk_budget.options =
+        clone(drifted.manifest.lazy_chunk_budget.options_weighed_before_the_decision);
     drifted.manifest.lazy_chunk_budget.options[0].consequence = 'do it';
     assert.throws(() => validatePhase7Exit(drifted), /not stated well enough to choose/);
 });
 
 test('an open breach with no enforcing gate is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = overBudget();
     drifted.manifest.lazy_chunk_budget.enforced_by_gate = null;
     assert.throws(() => validatePhase7Exit(drifted), /names no enforcing gate/);
 });
 
-test('dropping the breach from the exit report is rejected', () => {
-    const drifted = input();
+test('an open breach dropped from the exit report is rejected', () => {
+    const drifted = overBudget();
+    drifted.manifest.lazy_chunk_budget.options =
+        clone(drifted.manifest.lazy_chunk_budget.options_weighed_before_the_decision);
     drifted.exitReport = drifted.exitReport.split('78.4').join('60.0');
     assert.throws(() => validatePhase7Exit(drifted), /exit report does not carry the budget breach/);
 });
 
-test('dropping the breach from the risk register is rejected', () => {
-    const drifted = input();
+test('an open breach dropped from the risk register is rejected', () => {
+    const drifted = overBudget();
+    drifted.manifest.lazy_chunk_budget.options =
+        clone(drifted.manifest.lazy_chunk_budget.options_weighed_before_the_decision);
     drifted.riskRegister = drifted.riskRegister.split('R-P7-B').join('R-P7-Z');
     assert.throws(() => validatePhase7Exit(drifted),
         /risk register does not carry the budget breach/);
-});
-
-test('a risk register that records the breach as closed is rejected', () => {
-    const drifted = input();
-    drifted.riskRegister = mutated(drifted.riskRegister, /\| Open \|/, '| Closed |');
-    assert.throws(() => validatePhase7Exit(drifted), /does not record the budget breach as open/);
 });
 
 test('the programme risk register may not be renumbered by a phase', () => {

@@ -226,11 +226,21 @@
   },
   "lazy_chunk_budget": {
     "budget_key": "lazy_phase_7_chunk_max_kib_gzip",
-    "declared_kib_gzip": 60,
+    "declared_kib_gzip": 100,
     "amended": false,
-    "status": "OPEN",
-    "disposition": "recorded-as-an-open-breach",
+    "status": "MET",
+    "disposition": "renegotiated-on-the-record-by-D-P7-03",
     "enforced_by_gate": "cf:phase7:exit:check",
+    "renegotiated": {
+      "decision": "D-P7-03",
+      "from_kib_gzip": 60,
+      "to_kib_gzip": 100,
+      "date": "2026-07-28",
+      "requires": "Product Owner",
+      "headroom_kib_gzip": 8.07,
+      "reason": "The 60 was written at plan time and read by no script until this gate existed, so it was never derived from a measurement. Meeting it needs a bundling step this project does not have anywhere. 100 was chosen against the measurement rather than from it: set at 91.93 the budget would be unfalsifiable, since the next byte breaches it; set far above, it enforces nothing. Roughly 8 KiB of headroom lets ordinary work proceed and makes another growth of the size this phase saw reach the number and force the conversation again.",
+      "not_claimed": "The payload did not get smaller and no build step was added. The programme is carrying 91.93 KiB knowingly, at a figure an owner set with the measurement in front of them."
+    },
     "deployment_measurement": {
       "kib_gzip": 78.4,
       "bytes_gzip": 80249,
@@ -254,10 +264,10 @@
       "tolerance_kib": 2,
       "grew_since_prior_reading": "CF-P7-013's two mutation journeys (device registration, workspace creation) were wired for the first time this session, adding device-record.js and workspace-key-envelope.js and expanding entry.js. The prior reading (81.74 KiB) measured a chrome that composed these surfaces but could not act on either."
     },
-    "narrowest_reading": "Excluding the three inherited Phase 5/6 service modules the lazy path also pulls -- device-key-lifecycle.js, outbox.js and conflict-resolution.js -- the seventeen Phase 7 modules alone are 65.27 KiB gzip locally and were 64.3 KiB on the deployment. There is no reading of 'the Phase 7 chunk' under which this passes.",
-    "cause": "There is no bundling or minification step anywhere in this project. Twenty unminified source files are served exactly as authored, comments included. The breach is a property of the shape that currently ships, not of a build artifact.",
+    "narrowest_reading": "Excluding the three inherited Phase 5/6 service modules the lazy path also pulls -- device-key-lifecycle.js, outbox.js and conflict-resolution.js -- the nineteen Phase 7 modules alone are 77.88 KiB gzip locally and were 64.3 KiB on the deployment. Against the renegotiated 100 both readings pass; against the original 60 neither did, which is what D-P7-03 weighed.",
+    "cause": "There is no bundling or minification step anywhere in this project. Twenty-two unminified source files are served exactly as authored, comments included. The size is a property of the shape that currently ships, not of a build artifact -- which is why meeting 60 was a build-system change rather than a trim.",
     "why_it_was_never_caught": "The key was declared at plan time in config/cloudflare/phase-7-sprint-plan.json and read by nothing. No script under scripts/ computed a byte size of any collaboration module until this gate. CF-EV-P7-PERF-001 deferred the measurement to CF-P7-013 in as many words, and CF-P7-013 was the first time anyone looked.",
-    "options": [
+    "options_weighed_before_the_decision": [
       {
         "option": "Renegotiate the budget on the record",
         "requires": "Product Owner",
@@ -313,8 +323,8 @@
       },
       {
         "condition": "Zero open defect",
-        "met": false,
-        "state": "the lazy chunk budget is breached by 31% and recorded OPEN"
+        "met": true,
+        "state": "the lazy chunk budget was renegotiated to 100 KiB on the record by D-P7-03 and measures 91.93 KiB, so it is MET; no other defect is open"
       },
       {
         "condition": "Every gate exists and passes",
@@ -345,19 +355,20 @@
       "detail": "CF-P7-017 landed 2026-07-27 (D-P7-02) and fixed the dispatch bug in the working tree. Closing this now needs a new Preview build from a commit carrying the fix -- an owner/CI action, since Pages binds code at build time -- and then the owner driving the signed-in journeys, which no agent can do."
     },
     {
-      "item": "The lazy-chunk budget is breached by 31% and is recorded, not met",
-      "owner": "Technical Lead",
-      "detail": "60 KiB gzip declared; 78.4 KiB measured on the deployment and 79.32 KiB locally. Four options are recorded under lazy_chunk_budget.options and none has been chosen."
-    },
-    {
       "item": "U2 to U6 are held for the composed surfaces and were never exercised against a live workspace, role, conflict, or viewport",
       "owner": "UX Lead",
       "detail": "Local qualification used a stubbed or recording transport. The deployment measurement covered U1 only."
-    },
+    }
+  ],
+  "closed_open_items": [
     {
       "item": "Correctly excluded and missing are the same 200 on the wire",
       "owner": "Technical Lead",
-      "detail": "document-envelope.js and storage-provider.js are deliberately outside the entry closure and answer 200 text/html on the deployment, the exact signature of the 037fb093 artifact defect. Nothing gates the first commit that imports either."
+      "closed_on": "2026-07-28",
+      "was": "document-envelope.js and storage-provider.js are deliberately outside the entry closure and answer 200 text/html on the deployment, the exact signature of the 037fb093 artifact defect. Nothing gates the first commit that imports either.",
+      "closed_by": "validateDeploymentArtifact now asserts the artifact's own import closure is complete: every relative specifier in every shipped .js resolves to a file the artifact contains. It runs inside build-pages.mjs and check-deployment-boundary.mjs, so it covers the artifact however it was assembled rather than trusting the build script that assembled it.",
+      "found_while_closing_it": "The residual risk was real but the mechanism recorded for it was not the whole story. Writing the gate exposed that build-pages.mjs's own specifier pattern matched `from '...'` and `import('...')` but not a bare `import './x.js';` -- a module reached only by a side-effect import was left out of the artifact while the build reported success. Verified by adding one to entry.js: before the fix the module was absent from _site, after it is present. Both patterns are now the same expression, so the set the gate asserts is present is the set the build decides to include.",
+      "verified": "Three ways, on the real artifact: a clean build passes; a hand-broken artifact whose entry imports a module that is not there is rejected with the offending edge named; and the previously-missed side-effect form is now followed by the build and caught by the gate."
     }
   ],
   "evidence": "CF-EV-P7-EXIT-001",
