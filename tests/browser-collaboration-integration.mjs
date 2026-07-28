@@ -147,11 +147,17 @@ globalThis.fetch = async (url) => {
 };
 globalThis.__collabCalls = calls;
 
-// The ?pick query starts with nothing remembered, so the switcher must be used.
-if (!new URLSearchParams(location.search).has('pick')) {
+// The ?pick journey starts with nothing remembered, so the switcher must be
+// used. sessionStorage survives the reload exercised by the journey, which
+// prevents this test-only bootstrap from deleting the choice we are proving
+// survives that reload.
+const PICKING = new URLSearchParams(location.search).has('pick');
+const PICK_STARTED = 'docvault:collab:test:pick-started';
+if (!PICKING) {
     localStorage.setItem('docvault:collab:preview:${OWNER}:active-workspace', '${WORKSPACE}');
-} else {
+} else if (sessionStorage.getItem(PICK_STARTED) !== 'true') {
     localStorage.removeItem('docvault:collab:preview:${OWNER}:active-workspace');
+    sessionStorage.setItem(PICK_STARTED, 'true');
 }
 
 const module = await import('/js/collaboration/entry.js');
@@ -303,13 +309,36 @@ async function pickWorkspace(browserName, baseUrl) {
             return section !== null && !section.textContent.includes('Loading members');
         });
 
+        const after = await page.evaluate(() => [...(globalThis.__collabCalls ?? [])]);
+        const text = await page.evaluate(() =>
+            document.getElementById('collaboration-root').textContent);
+        const remembered = await page.evaluate(() =>
+            localStorage.getItem(
+                [...Array(localStorage.length).keys()]
+                    .map(index => localStorage.key(index))
+                    .find(key => key.endsWith(':active-workspace')) ?? ''));
+
+        // Rebuild the page and the shipped collaboration graph. This catches
+        // regressions where the click updates the current DOM and storage but
+        // startup never restores the selected workspace.
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('body[data-ready="true"]');
+        await page.waitForFunction(() => {
+            const section = document.querySelector(
+                '[data-surface="member-list-role-badge"]');
+            return section !== null && !section.textContent.includes('Loading members');
+        });
+
         return {
             errors,
             before,
-            after: await page.evaluate(() => [...(globalThis.__collabCalls ?? [])]),
-            text: await page.evaluate(() =>
+            after,
+            text,
+            remembered,
+            afterReload: await page.evaluate(() => [...(globalThis.__collabCalls ?? [])]),
+            textAfterReload: await page.evaluate(() =>
                 document.getElementById('collaboration-root').textContent),
-            remembered: await page.evaluate(() =>
+            rememberedAfterReload: await page.evaluate(() =>
                 localStorage.getItem(
                     [...Array(localStorage.length).keys()]
                         .map(index => localStorage.key(index))
@@ -391,7 +420,13 @@ try {
         assert.match(picked.text, /octocat/,
             `${browserName}: the chosen workspace's members never rendered`);
         assert.equal(picked.remembered, WORKSPACE,
-            `${browserName}: the choice was not remembered, so a reload would lose it`);
+            `${browserName}: the choice was not remembered before reload`);
+        assert.ok(picked.afterReload.includes(`/api/v1/workspaces/${WORKSPACE}/members`),
+            `${browserName}: reload did not restore the chosen workspace`);
+        assert.match(picked.textAfterReload, /octocat/,
+            `${browserName}: the restored workspace's members never rendered`);
+        assert.equal(picked.rememberedAfterReload, WORKSPACE,
+            `${browserName}: reload lost the remembered workspace`);
 
         summary.push({
             browser: browserName,
