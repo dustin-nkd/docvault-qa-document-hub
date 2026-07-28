@@ -52,8 +52,12 @@ const PAGE = `<!doctype html><html lang="en" data-theme="dark"><head><meta chars
 [data-theme="light"]{--bg:#f0f4f8;--bg2:#f8fafc;--card:#fff;--card-h:#f0f4f8;--brd:#dde3ec;
 --brd-l:#c1cfe0;--tx:#0e1a2d;--tx-m:#3d5068;--tx-d:#6b7fa0;--acc-l:#10b981;}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif}
-main{display:block}
+/* The min-height below mirrors index.html, whose body is h-screen. Without it
+   this page's body took its height from its only in-flow child, the panel --
+   and the panel is now a fixed overlay, so the body collapsed to zero and
+   Playwright reported it hidden before any assertion could run. */
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif}
+main{display:block;min-height:100vh}
 </style></head><body><main>
 <div id="collaboration-root" class="collab-root" hidden></div>
 </main>
