@@ -2,7 +2,7 @@
   "schema_version": 1,
   "phase": "CF-P7",
   "story": "CF-P7-013",
-  "status": "PARTIAL",
+  "status": "PASS",
   "approved_entry_gate": "P7-G4",
   "next_gate": "P7-G4A",
   "authorizes_on_approval": "CF-P7-014",
@@ -75,64 +75,33 @@
     ]
   },
   "preview": {
-    "deployment": "4c5d7c8a-17ec-4469-bcb7-b266bce91aa6",
-    "source_commit": "fe0fa2e",
+    "deployment": "b2520460-8d70-4f83-972b-bc31f56f5a3a",
+    "source_commit": "1ef0b06",
     "branch": "codex-cf-p3-preview",
-    "url": "https://4c5d7c8a.docvault-qa-document-hub.pages.dev",
-    "collaboration_enabled": false,
+    "url": "https://b2520460.docvault-qa-document-hub.pages.dev",
+    "collaboration_enabled": true,
     "modules_before_opener": 0,
-    "modules_after_opener": 19,
+    "modules_after_opener": 22,
     "shell_mounted": true,
-    "rendered_state": "error",
-    "rendered_title": "Collaboration is not enabled here",
+    "rendered_state": "active",
+    "rendered_title": "Members",
     "horizontal_page_scroll": false,
-    "journeys_qualified": false,
+    "journeys_qualified": true,
     "evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-002.md"
-  },
-  "blocked_on": {
-    "owner_action": "Push a commit carrying the CF-P7-017 fix (functions/_lib/identity/environment.ts, functions/_lib/api-shell.mjs) and trigger a new codex-cf-p3-preview build -- Cloudflare Pages binds code at build time, so the existing deployment cannot show it -- then drive the signed-in journeys, which no agent can do because obtaining an OAuth session means entering credentials at github.com.",
-    "reason": "Re-measured 2026-07-27. The originally recorded blocker -- COLLABORATION_ENABLED not set for the Preview environment -- was cleared by the owner and changed nothing on the wire. The second, deeper blocker was in the code: functions/_lib/api-shell.mjs computed hasReviewedDisabledState and returned the identical 503 on both branches, while functions/_lib/identity/environment.ts gated the three real dispatch doors on a flag read with the opposite polarity to its name. That was CF-P7-017, and it is now PASS: D-P7-02 (decision-log.md) decided environment.ts was the bug, the polarity is corrected, and api-shell.mjs's dead branch is removed, verified against the local Workers-runtime harness (CF-EV-P7-OPS-006). Nothing about that fix has been observed on a deployment, because no agent pushed a commit or triggered a new Preview build -- Cloudflare Pages binds code at build time, so the deployment recorded below still reflects the pre-fix behaviour. A third reason survives the fix entirely: the journeys to be qualified are signed-in journeys and no OAuth session is available to an agent, so qualifying this story remains owner-driven regardless of the deployment.",
-    "agent_permitted": false,
-    "owner_action_taken_and_insufficient": "COLLABORATION_ENABLED='true' was set for the Pages Preview environment (D-P7-01) and the dispatch bug was fixed in the working tree (CF-P7-017, D-P7-02). Both necessary. Neither sufficient without a new deployment and a signed-in session.",
-    "blocks": [
-      "journey qualification",
-      "CF-P7-013 PASS",
-      "P7-G5"
-    ],
-    "requalification_evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-005.md",
-    "dispatch_bug_status": "FIXED in the working tree by CF-P7-017; not yet observed on any deployment."
   },
   "declared_limits": {
     "journeys_not_completable_in_this_build": [
       {
-        "journey": "register this device",
-        "surface": "device-key-initialization",
-        "missing": "an unlock secret to protect the device key",
-        "reason": "DeviceKeyLifecycle.enroll takes an unlock secret, and the passphrase surface that would collect one is not among the twelve CF-P7-001 froze. Adding it is a contract change under its own story, not an implementation detail of this one."
-      },
-      {
-        "journey": "create a workspace",
-        "surface": "create-workspace",
-        "missing": "a client-side workspace-DEK sealer, and an active device to seal to",
-        "reason": "runCreateWorkspace needs keys.sealCreatorEnvelope, which exists nowhere in the browser: Phase 5 shipped the device key pair and the server-side envelope services, and Phase 6 drove the sealing by hand. Writing one here would be a new cryptographic primitive, which the Phase 7 governing principle forbids. The surface states the nearer half of the reason itself -- there is no active device -- and holds its submit control disabled rather than failing on press."
-      },
-      {
-        "journey": "accept an invitation",
-        "surface": "invitation-accept",
-        "missing": "an active device to bind the membership to",
-        "reason": "InvitationAcceptRequest carries a device id, and device registration is unavailable for the reason above. The review half is composed and reads live: the token is taken from the fragment, the address bar is cleared by replacement, and the invitation is described. Only the final accept is held, with the surface stating why."
+        "journey": "invite someone and have them accept",
+        "surface": "invitation-manage",
+        "missing": "a second real GitHub account to invite",
+        "reason": "The controls are wired and the routes answer, but qualifying acceptance end to end needs a second person signing in to their own account and binding their own device. The invitation.created and invitation.accepted rows in the Preview database are from the CF-P6-008 and G2-G3 qualification runs of earlier phases and are not claimed by this story."
       },
       {
         "journey": "resolve a conflict",
         "surface": "conflict-dialog",
-        "missing": "an open workspace document",
-        "reason": "A conflict is raised by a document mutation, and no document surface exists in the frozen Phase 7 inventory -- the handoff scoped the document experience but CF-P7-001 froze twelve surfaces without one. The dialog composes and renders its own no-conflict state; it cannot be reached by a user in this build."
-      },
-      {
-        "journey": "sign in",
-        "surface": "base-states",
-        "missing": "an actual signed-in GitHub session, which no agent may obtain",
-        "reason": "CF-P7-013's follow-up work closed the original gap: js/collaboration/api-client.js now carries beginSignIn(), the one CSRF-exempt mutation the frozen server contract accepts before a session exists, and js/collaboration/entry.js wires the rendered control to it -- verified structurally (simulated click, refusal, and double-click cases) and against the real Preview deployment's POST /api/v1/oauth/github/transactions (201, a valid authorizationUrl, 3/3 attempts). What remains is not a code gap: the deployment measured below (4c5d7c8a) predates both this fix and CF-P7-017's dispatch fix, and completing the journey end to end requires entering GitHub credentials at github.com, which no agent may do regardless of what the code does."
+        "missing": "two devices editing one workspace document at the same time",
+        "reason": "The dialog and its resolution vocabulary are built and gated, but reaching one needs concurrent edits to a document, and the document surfaces are not among the twelve CF-P7-001 froze for this phase. It stays absent-by-state, which is what the surface renders."
       }
     ],
     "sync_states_reachable": [
@@ -144,7 +113,38 @@
       "offline",
       "conflict"
     ],
-    "sync_reason": "Saving, Offline, and Conflict are all derived from outbox entries for an open document, and there is no document surface in the frozen inventory to create one. Saved and Access removed do not need one: Saved is the empty queue, and Access removed is reached from a real workspace-scoped denial followed by a membership re-check, which this build performs."
+    "sync_reason": "Saving, Offline, and Conflict are all derived from outbox entries for an open document, and there is no document surface in the frozen inventory to create one. Saved and Access removed do not need one: Saved is the empty queue, and Access removed is reached from a real workspace-scoped denial followed by a membership re-check, which this build performs.",
+    "previously_declared_now_closed": {
+      "closed_on": "2026-07-28",
+      "note": "Five limits recorded on 2026-07-26 said these journeys could not complete in the build as it then stood. Four were closed by building what was missing and one by the owner doing what no agent may: all are now qualified and recorded under qualified_journeys.completed.",
+      "limits": [
+        {
+          "journey": "register this device",
+          "was_missing": "an unlock secret to protect the device key",
+          "closed_by": "js/collaboration/device-record.js generates one per browser and stores it with the device record. An accepted MVP tradeoff over a passphrase surface, taken with the owner on the record; devices table shows 9 registrations."
+        },
+        {
+          "journey": "create a workspace",
+          "was_missing": "a client-side workspace-DEK sealer, and an active device to seal to",
+          "closed_by": "js/collaboration/workspace-key-envelope.js ports wrapWorkspaceKey to the browser and is verified against the server's own unwrapWorkspaceKey; 7 workspaces and 10 unrevoked envelopes exist in Preview D1."
+        },
+        {
+          "journey": "accept an invitation",
+          "was_missing": "an active device to bind the membership to",
+          "closed_by": "Partially: an active device now exists, so this is no longer what blocks it. It remains not completable for a different and honest reason -- there is no second account -- and is re-declared above under that reason rather than dropped."
+        },
+        {
+          "journey": "sign in",
+          "was_missing": "an actual signed-in GitHub session, which no agent may obtain",
+          "closed_by": "The owner signed in themselves. This limit was always going to be closed by a person rather than by code, and it was."
+        },
+        {
+          "journey": "resolve a conflict",
+          "was_missing": "an open workspace document",
+          "closed_by": "Not closed. Re-declared above, unchanged."
+        }
+      ]
+    }
   },
   "tests": {
     "adapter": "tests/collaboration-services.test.mjs",
@@ -152,5 +152,49 @@
     "panel": "tests/collaboration-surface-panel.test.mjs",
     "browser": "tests/browser-collaboration-integration.mjs",
     "policy": "tests/cloudflare-phase-7-preview-policy.test.mjs"
+  },
+  "qualified_journeys": {
+    "driven_by": "the Product Owner, in their own browser, signed in to their own GitHub account",
+    "why_not_an_agent": "Qualifying these journeys needs a real OAuth session, and obtaining one means entering credentials at github.com. No agent did so at any point; every step below was performed by the owner and is corroborated here by read-only queries against the Preview D1 database rather than by anything an agent could have written.",
+    "dates": "2026-07-27 to 2026-07-28",
+    "spanned_builds": "The journey was driven across successive Preview builds while defects it exposed were fixed. Workspace creation first completed on 06c53f9f (218927c); the member list first rendered on 1c2cea77 (0b9455b); the state recorded here was re-confirmed by the owner on the deployment named above. The workspaces persist in D1, so every build after creation observes the same records.",
+    "completed": [
+      {
+        "journey": "sign in with GitHub",
+        "surface": "account-menu",
+        "evidence": "A session cookie was issued and GET /api/v1/session answered authenticated: true with the owner login. The composed chrome rendered the account trigger with that login."
+      },
+      {
+        "journey": "register this device",
+        "surface": "device-key-initialization",
+        "evidence": "devices table: 9 rows, 1 active and 8 revoked. Each registration generated a P-256 key pair in the browser, protected it under a locally generated unlock secret, sent only the public JWK, and re-bound the local key onto the device id the server assigned. The surface rendered the fingerprint in four-character groups."
+      },
+      {
+        "journey": "create a workspace",
+        "surface": "create-workspace",
+        "evidence": "workspaces table: 7 workspaces created through this UI (ádsadasd, đâsdasd, sádasdasd, ádasdas x2, ádasdasdas, ádasdasdasd), each at current_key_version 1 with the creator as its single member. audit_events records workspace.created x10 across the database. workspace_key_envelopes holds 10 unrevoked envelopes, which is the part that could not be faked: each was sealed in the browser by js/collaboration/workspace-key-envelope.js and accepted by the server parser, so the ECDH/HKDF/AES-GCM port agrees with functions/_lib/e2ee byte for byte on live data."
+      },
+      {
+        "journey": "revoke this device",
+        "surface": "device-key-initialization",
+        "evidence": "devices table: 8 rows in state revoked. The server was called first and the local key deleted only after it accepted, so a failed revocation leaves the device working rather than half dead."
+      },
+      {
+        "journey": "switch workspace",
+        "surface": "workspace-switcher",
+        "evidence": "Owner-reported: after switching, both the context indicator and the panel below it showed the newly selected workspace. This is U2 exercised against live data rather than a fixture — the half of U2 that is easiest to lose is the panel following the chrome, and it did."
+      }
+    ],
+    "not_completed": [
+      {
+        "journey": "invite someone and have them accept",
+        "reason": "Not attempted. It needs a second real GitHub account, and the invitation.created/invitation.accepted rows present in this database are from the CF-P6-008 and G2-G3 qualification runs of earlier phases, not from this one. Nothing here claims otherwise."
+      },
+      {
+        "journey": "resolve a conflict",
+        "reason": "Not reachable: it needs two devices editing one document concurrently, and the document surfaces are not part of Phase 7."
+      }
+    ],
+    "defects_this_journey_exposed": "Seven, each found only by a real signed-in session and each fixed and pushed during it: resolveSession read an enveloped body for a route that answers unenveloped (so authenticated was always false); beginSignIn had the same defect; every mutation with no body omitted Content-Type and was refused 415; the acting-device header was never sent; create-workspace and device-initialization disagreed on device.state vs device.status; the create-workspace submit control could never enable because its model was only told the typed name on submit; and the member list refused every row because it read a keyReadiness field the route does not send. None was visible to any test in the repository beforehand."
   }
 }

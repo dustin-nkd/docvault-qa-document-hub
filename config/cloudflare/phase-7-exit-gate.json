@@ -7,7 +7,7 @@
   "exit_gate_granted": false,
   "assembled_on": "2026-07-27",
   "story_count": 17,
-  "pass_count": 16,
+  "pass_count": 17,
   "decision": {
     "phase_7_collaboration_ui_in_repository": "GO",
     "phase_7_qualified_on_a_deployment": "NO-GO",
@@ -129,7 +129,7 @@
     },
     {
       "id": "CF-P7-013",
-      "status": "PARTIAL",
+      "status": "PASS",
       "gate": "cf:phase7:preview:check",
       "evidence": [
         "CF-EV-P7-OPS-001",
@@ -138,7 +138,7 @@
         "CF-EV-P7-OPS-004",
         "CF-EV-P7-OPS-005"
       ],
-      "reason": "Zero journeys are qualified, which is the whole of this story's exit criterion. CF-P7-017 landed on 2026-07-27 (D-P7-02) and fixed the dispatch bug in the working tree, but the fix has not been observed on a live deployment: Cloudflare Pages binds code at build time, so the existing measured deployment -- built before this fix existed -- cannot show it, and no agent pushed a commit or triggered a new Preview build. Even against a rebuilt deployment, the journeys this story must qualify are signed-in journeys and no OAuth session is available to an agent. The gate cf:phase7:preview:check passes while this story does not, because the gate truthfully asserts a fail-closed deployment and the story needs a qualified journey. A green gate is not a closed story."
+      "qualified": "Driven by the Product Owner on Preview deployment b2520460 (1ef0b06), 2026-07-28: sign-in, device registration, workspace creation, device revocation and workspace switching all completed. Corroborated by read-only queries against the Preview D1 database -- 7 workspaces created through the UI, 9 device registrations, 8 revocations, and 10 unrevoked workspace key envelopes sealed in the browser and accepted by the server parser. Invitation acceptance and conflict resolution remain declared limits with stated reasons. See CF-EV-P7-OPS-002."
     },
     {
       "id": "CF-P7-014",
@@ -196,33 +196,30 @@
   ],
   "qualification": {
     "story": "CF-P7-013",
-    "journeys_qualified": false,
-    "journeys_attempted": 0,
+    "journeys_qualified": true,
+    "journeys_attempted": 5,
+    "journeys_completed": 5,
     "signed_in_session_available_to_the_agent": false,
-    "verdict": "PARTIAL",
-    "reason": "Two independent reasons, one of which changed today. (1) Every collaboration route answered 503 COLLABORATION_UNAVAILABLE on every deployment measured on 2026-07-27, and the cause was in the code, not configuration: functions/_lib/api-shell.mjs returned the same 503 on both branches of its own feature check while functions/_lib/identity/environment.ts read COLLABORATION_ENABLED with the opposite polarity to its name. CF-P7-017 fixed both on 2026-07-27 (D-P7-02) and is now PASS -- but the fix lives in the working tree only. No agent pushed a commit or triggered a new Preview build, and Cloudflare Pages binds code at build time, so the measured deployment above still reflects the pre-fix behaviour and cannot be re-measured to show otherwise without a new build. (2) Independent of the dispatch bug and unaffected by fixing it: the journeys this story must qualify are signed-in journeys, and no OAuth session is available to the agent -- signing in requires entering credentials at github.com, which is prohibited, and no session cookie was issued to or held by this story. Qualification remains an owner-driven exercise.",
-    "not_claimed": "No 2xx response from any collaboration route has been observed by this programme on any deployment. Nothing about the on-path is asserted here.",
-    "measured_on": "2026-07-27",
-    "measurements": [
-      {
-        "url": "https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev/api/v1/session",
-        "status": 503,
-        "code": "COLLABORATION_UNAVAILABLE"
-      },
-      {
-        "url": "https://docvault-qa-document-hub.pages.dev/api/v1/session",
-        "status": 503,
-        "code": "COLLABORATION_UNAVAILABLE"
-      },
-      {
-        "url": "https://docvault-qa-document-hub.pages.dev/api/v1/workspaces",
-        "status": 503,
-        "code": "COLLABORATION_UNAVAILABLE"
-      }
+    "driven_by": "the Product Owner, in their own browser",
+    "verdict": "PASS",
+    "deployment": "b2520460-8d70-4f83-972b-bc31f56f5a3a",
+    "source_commit": "1ef0b06",
+    "qualified_on": "2026-07-28",
+    "completed": [
+      "sign in with GitHub",
+      "register this device",
+      "create a workspace",
+      "revoke this device",
+      "switch workspace"
     ],
+    "not_completed": [
+      "invite someone and have them accept -- needs a second real GitHub account",
+      "resolve a conflict -- needs two devices editing one document, and the document surfaces are not Phase 7"
+    ],
+    "corroboration": "Read-only SQL against the Preview D1 database, which an agent can gather but cannot manufacture: workspaces holds 7 rows created through this UI, each at current_key_version 1 with its creator as sole member; devices holds 9 rows, 1 active and 8 revoked; audit_events holds workspace.created x10; workspace_key_envelopes holds 10 unrevoked rows. The envelopes are the load-bearing part -- each was sealed in the browser by the hand-written port in js/collaboration/workspace-key-envelope.js and accepted by the server parser, so the port and functions/_lib/e2ee agree on live data and not only in a round-trip test.",
+    "why_the_agent_could_not_do_this": "Qualifying these journeys needs a real OAuth session, and obtaining one means entering credentials at github.com. No agent did so at any point. What the agent contributed was the seven fixes the journey exposed, each of which was invisible to the entire test suite beforehand.",
     "production_still_refuses": true,
-    "evidence": "CF-EV-P7-OPS-005",
-    "dispatch_bug_status": "FIXED in the working tree by CF-P7-017 (D-P7-02); not yet observed on a deployment because none was rebuilt."
+    "evidence": "CF-EV-P7-OPS-002"
   },
   "lazy_chunk_budget": {
     "budget_key": "lazy_phase_7_chunk_max_kib_gzip",
@@ -318,8 +315,8 @@
     "conditions": [
       {
         "condition": "Every story PASS",
-        "met": false,
-        "state": "CF-P7-013 PARTIAL"
+        "met": true,
+        "state": "All 17 stories PASS; CF-P7-013 qualified by the owner on 2026-07-28"
       },
       {
         "condition": "Zero open defect",
@@ -334,7 +331,7 @@
       {
         "condition": "Sprint gate criteria U1-U6 qualified",
         "met": false,
-        "state": "U1 measured on the deployment; U2-U6 held locally only"
+        "state": "U1 and U2 are qualified against live data on the deployment: switching workspaces moved both the context indicator and the panel below it. U3 to U6 are not -- they need a role change, an invitation accepted by a second GitHub account, and a conflict between two devices, none of which this journey reached."
       },
       {
         "condition": "Zero unowned or expired Critical/High risk",
@@ -350,14 +347,9 @@
   },
   "open_items": [
     {
-      "item": "CF-P7-013 has no qualified journey",
-      "owner": "Product Owner",
-      "detail": "CF-P7-017 landed 2026-07-27 (D-P7-02) and fixed the dispatch bug in the working tree. Closing this now needs a new Preview build from a commit carrying the fix -- an owner/CI action, since Pages binds code at build time -- and then the owner driving the signed-in journeys, which no agent can do."
-    },
-    {
-      "item": "U2 to U6 are held for the composed surfaces and were never exercised against a live workspace, role, conflict, or viewport",
+      "item": "U3 to U6 were not exercised against a live role change, invitation, or conflict",
       "owner": "UX Lead",
-      "detail": "Local qualification used a stubbed or recording transport. The deployment measurement covered U1 only."
+      "detail": "U1 and U2 are now qualified against live data: the owner switched workspaces on the deployment and both the context indicator and the panel below it followed the selection, which is the half of U2 that is easiest to lose. U3 to U6 are not, and need a role change, an invitation accepted by a second account, and a conflict between two devices. Recorded rather than claimed."
     }
   ],
   "closed_open_items": [

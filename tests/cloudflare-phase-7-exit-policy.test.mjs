@@ -127,7 +127,7 @@ test('an exit report whose status line contradicts the computed count is rejecte
     const drifted = input();
     // Every occurrence, not the first: the count appears in the status line and
     // again in §2, and replacing one would leave the gate satisfied by the other.
-    drifted.exitReport = mutated(drifted.exitReport, /16 of 17 stories PASS/g,
+    drifted.exitReport = mutated(drifted.exitReport, /17 of 17 stories PASS/g,
         '13 of 14 stories PASS');
     assert.throws(() => validatePhase7Exit(drifted), /does not carry the computed count/);
 });
@@ -170,9 +170,12 @@ test('a PASS story naming evidence that was never written is rejected', () => {
 });
 
 test('a PASS story resting on PARTIAL evidence is rejected', () => {
+    // Every Phase 7 evidence record reads PASS as of 2026-07-28, so one is
+    // pushed back to PARTIAL rather than found already there.
     const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
-    storyIn(drifted.manifest, 'CF-P7-014').evidence = ['CF-EV-P7-OPS-005'];
+    drifted.evidenceSources = { ...drifted.evidenceSources };
+    drifted.evidenceSources['CF-EV-P7-OPS-005'] =
+        drifted.evidenceSources['CF-EV-P7-OPS-005'].replace(/^Status: PASS.*$/m, 'Status: PARTIAL');
     assert.throws(() => validatePhase7Exit(drifted), /is not PASS evidence/);
 });
 
@@ -184,19 +187,48 @@ test('evidence downgraded to PARTIAL under a PASS story is rejected', () => {
     assert.throws(() => validatePhase7Exit(drifted), /is not PASS evidence|exit evidence record/);
 });
 
-test('a story that is not PASS without a substantive reason is rejected', () => {
-    // CF-P7-017 closed in this pass (see CF-EV-P7-OPS-006), leaving CF-P7-013 as
-    // the only non-PASS story to exercise this path against.
+/** All seventeen stories are PASS, so a non-PASS one has to be made. */
+const withPartialStory = () => {
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
+    drifted.sprintPlan = clone(drifted.sprintPlan);
+    storyIn(drifted.manifest, 'CF-P7-013').status = 'PARTIAL';
+    drifted.sprintPlan.stories.find(story => story.id === 'CF-P7-013').status = 'PARTIAL';
+    drifted.manifest.pass_count -= 1;
+    // A coherent unqualified manifest, not just a flipped flag: the gate
+    // requires an unqualified verdict to carry the reason, the measurements it
+    // rests on, and the production boundary it leaves untouched.
+    drifted.manifest.qualification = {
+        ...drifted.manifest.qualification,
+        journeys_qualified: false,
+        verdict: 'PARTIAL',
+        signed_in_session_available_to_the_agent: false,
+        production_still_refuses: true,
+        measurements: [{ route: '/api/v1/session', status: 503 }],
+        reason: 'The journeys this story must qualify are signed-in journeys and no OAuth session '
+            + 'is available to the agent: signing in means entering credentials at github.com, which '
+            + 'is prohibited, and no session cookie was issued to or held by this story. Every '
+            + 'collaboration route also answered 503 until the dispatch polarity was corrected, so '
+            + 'there was nothing to qualify against either.'
+    };
+    drifted.previewManifest = clone(drifted.previewManifest);
+    drifted.previewManifest.preview.journeys_qualified = false;
+    drifted.exitReport = mutated(drifted.exitReport, /17 of 17 stories PASS/g,
+        '16 of 17 stories PASS');
+    return drifted;
+};
+
+test('a story that is not PASS without a substantive reason is rejected', () => {
+    const drifted = withPartialStory();
     storyIn(drifted.manifest, 'CF-P7-013').reason = 'todo';
     assert.throws(() => validatePhase7Exit(drifted), /without a substantive reason/);
 });
 
 test('a non-PASS story naming unwritten evidence without saying so is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = withPartialStory();
     const story = storyIn(drifted.manifest, 'CF-P7-013');
+    story.reason = 'The journeys are signed-in journeys and no OAuth session is available to an agent, '
+        + 'so qualifying this story is owner-driven rather than agent-driven.';
     story.evidence = [...story.evidence, 'CF-EV-P7-OPS-999'];
     assert.throws(() => validatePhase7Exit(drifted), /names unwritten evidence without saying so/);
 });
@@ -211,12 +243,10 @@ test('two stories claiming one evidence record is rejected', () => {
 // ── CF-P7-013 and the journey claim ─────────────────────────────────────────
 
 test('claiming CF-P7-013 PASS without a qualified journey is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = withPartialStory();
     storyIn(drifted.manifest, 'CF-P7-013').status = 'PASS';
-    drifted.manifest.pass_count += 1;
-    drifted.sprintPlan = clone(drifted.sprintPlan);
     drifted.sprintPlan.stories.find(story => story.id === 'CF-P7-013').status = 'PASS';
+    drifted.manifest.pass_count += 1;
     drifted.exitReport = mutated(drifted.exitReport, /16 of 17 stories PASS/g,
         '17 of 17 stories PASS');
     assert.throws(() => validatePhase7Exit(drifted), /cannot be PASS without a qualified journey/);
@@ -225,34 +255,30 @@ test('claiming CF-P7-013 PASS without a qualified journey is rejected', () => {
 test('claiming a journey the Preview manifest does not record is rejected', () => {
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
-    drifted.manifest.qualification.journeys_qualified = true;
+    drifted.manifest.qualification.journeys_qualified = false;
     assert.throws(() => validatePhase7Exit(drifted), /disagree about whether a journey ran/);
 });
 
 test('an unqualified verdict that claims a session was available is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = withPartialStory();
     drifted.manifest.qualification.signed_in_session_available_to_the_agent = true;
     assert.throws(() => validatePhase7Exit(drifted), /cannot claim a session was available/);
 });
 
 test('an unqualified verdict resting on no measurement is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = withPartialStory();
     drifted.manifest.qualification.measurements = [];
     assert.throws(() => validatePhase7Exit(drifted), /rests on no measurement/);
 });
 
 test('an unqualified verdict with a vague reason is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = withPartialStory();
     drifted.manifest.qualification.reason = 'blocked on the owner';
     assert.throws(() => validatePhase7Exit(drifted), /records no substantive reason/);
 });
 
 test('recording that production stopped refusing collaboration is rejected', () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = withPartialStory();
     drifted.manifest.qualification.production_still_refuses = false;
     assert.throws(() => validatePhase7Exit(drifted), /Production must still refuse/);
 });

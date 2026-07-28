@@ -1,6 +1,6 @@
 # CF-EV-P7-OPS-003 The composed shell, filled from the deployment
 
-Status: PARTIAL — the composition is proven; no journey is qualified
+Status: PASS — amended 2026-07-28. Recorded `PARTIAL — the composition is proven; no journey is qualified` when written; the condition that held it short has since been cleared. See the amendment at the end.
 
 Story: `CF-P7-013`, under `P7-G4` authorized by the owner on 2026-07-26
 
@@ -105,3 +105,24 @@ owner action: Pages binds environment variables at build time, and
 
 Until then `CF-P7-013` is **not PASS**, `P7-G4A` is not reached, and `CF-P7-014`
 is not authorized to begin.
+
+## Amendment — 2026-07-28
+
+**This record was written while `CF-P7-013` had no qualified journey, and it
+said so.** What it measured was the composition driven against a recording transport, with no live session to drive it with. Nothing in it is withdrawn: those
+measurements were correct on the day, and the 503 it records really was what the
+deployment answered.
+
+What changed is not this record but the thing it was waiting on. `CF-P7-017`
+corrected the dispatch polarity (`D-P7-02`), a Preview build carrying that fix
+was deployed, and on 2026-07-28 the Product Owner drove the journeys on
+deployment `b2520460-8d70-4f83-972b-bc31f56f5a3a` in their own browser, signed in
+to their own GitHub account: sign-in, device registration, workspace creation,
+device revocation and workspace switching all completed. `CF-EV-P7-OPS-002`
+carries that qualification and the read-only D1 corroboration behind it.
+
+This record's status therefore reads PASS as part of a PASS story, with the
+PARTIAL it originally carried preserved in the line above rather than
+overwritten. Two journeys remain unqualified and are named in
+`CF-EV-P7-OPS-002`: inviting someone and having them accept, and resolving a
+conflict.

@@ -259,13 +259,22 @@ test('a sync state in neither coverage list is rejected', async () => {
 // ── the one dishonest combination ────────────────────────────────────────────
 
 test('claiming PASS without a qualified journey is rejected', async () => {
+    // The story is PASS as of 2026-07-28, so this drifts the other half of the
+    // pair: everything else about a deployment can be true while collaboration
+    // is switched off, and a journey cannot.
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
-    drifted.manifest.status = 'PASS';
-    // Everything else about the deployment can be true while collaboration is
-    // switched off; a journey cannot.
+    drifted.manifest.preview.journeys_qualified = false;
     await assert.rejects(() => validatePhase7Preview(drifted),
         /PASS without a journey qualified/);
+});
+
+test('a journey claimed against a deployment with collaboration off is rejected', async () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.preview.collaboration_enabled = false;
+    await assert.rejects(() => validatePhase7Preview(drifted),
+        /cannot be qualified against a deployment with collaboration disabled/);
 });
 
 test('claiming a journey against a deployment with collaboration off is rejected', async () => {
@@ -277,16 +286,29 @@ test('claiming a journey against a deployment with collaboration off is rejected
         /cannot be qualified against a deployment with collaboration disabled/);
 });
 
-test('a story that is not PASS and records no owner action is rejected', async () => {
+/** The manifest as it stood while the journey was still outstanding. */
+const unqualified = () => {
     const drifted = input();
     drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.status = 'PARTIAL';
+    drifted.manifest.preview.journeys_qualified = false;
+    drifted.manifest.blocked_on = {
+        owner_action: 'Drive the signed-in journeys on a Preview build, which no agent can do because obtaining an OAuth session means entering credentials at github.com.',
+        reason: 'The journeys this story must qualify are signed-in journeys and no OAuth session is available to an agent. Every collaboration route also answered 503 until CF-P7-017 corrected the dispatch polarity, so there was nothing to qualify against either.',
+        agent_permitted: false
+    };
+    drifted.evidence = drifted.evidence.replace(/^Status: PASS.*$/m, 'Status: PARTIAL — pending');
+    return drifted;
+};
+
+test('a story that is not PASS and records no owner action is rejected', async () => {
+    const drifted = unqualified();
     drifted.manifest.blocked_on.owner_action = 'ask someone';
     await assert.rejects(() => validatePhase7Preview(drifted), /records no owner action/);
 });
 
 test('a blocker an agent could clear itself is rejected', async () => {
-    const drifted = input();
-    drifted.manifest = clone(drifted.manifest);
+    const drifted = unqualified();
     drifted.manifest.blocked_on.agent_permitted = true;
     await assert.rejects(() => validatePhase7Preview(drifted), /is not a blocker/);
 });
@@ -309,7 +331,7 @@ test('a lazy measurement that measured nothing is rejected', async () => {
 
 test('evidence that disagrees with the manifest status is rejected', async () => {
     const drifted = input();
-    drifted.evidence = mutated(drifted.evidence, /^Status: PARTIAL/m, 'Status: PASS');
+    drifted.evidence = mutated(drifted.evidence, /^Status: PASS/m, 'Status: PARTIAL');
     await assert.rejects(() => validatePhase7Preview(drifted), /the manifest says/);
 });
 

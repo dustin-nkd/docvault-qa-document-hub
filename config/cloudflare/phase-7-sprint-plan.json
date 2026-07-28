@@ -267,7 +267,7 @@
       "id": "CF-P7-013",
       "title": "Integrate and qualify the collaboration UI on Preview",
       "size": "L",
-      "status": "PARTIAL",
+      "status": "PASS",
       "entry_gate": "P7-G4",
       "exit_gate": "P7-G4A",
       "gate": "cf:phase7:preview:check",
@@ -286,7 +286,6 @@
         "not_claimed": "Nothing about the on-path was measured. No 2xx response from any collaboration route has ever been observed by this programme on any deployment.",
         "followup": "CF-P7-017 landed 2026-07-27 (D-P7-02): the dispatch bug named above is fixed in the working tree. Not observed on a deployment -- no agent pushed a commit or triggered a new Preview build, and Cloudflare Pages binds code at build time. The no-agent-OAuth-session blocker is independent and unaffected."
       },
-      "reason": "Not PASS. The story's exit criterion is qualifying the journeys on Preview and zero journeys are qualified. Preview deployment 681ad3ca-f0f7-4f66-8649-c7dab3de798d, built from d4d9ea6, answers 503 COLLABORATION_UNAVAILABLE on /api/v1/session and /api/v1/workspaces, so there is no session, workspace, member, invitation, or audit event to qualify against. D-P7-01 was executed in the repository at d4d9ea6, but Cloudflare Pages binds environment variables at build time, so a build produced before COLLABORATION_ENABLED was set for the Preview environment cannot carry it. Closing this needs the variable set on the Pages project AND a new build of codex-cf-p3-preview -- a new deployment id, not a re-measurement of 681ad3ca. That is an owner action: wrangler pages secret put is refused to an agent by the permission classifier. What IS proven on the deployment: the lazy boundary holds (0 collaboration modules referenced eagerly, 0 precached), the artifact serves the entry's full 20-module import closure, the fail-closed shell states the deployment is not enabled and offers zero controls, the response headers are recorded, and the availability banner is present and hidden. The gate cf:phase7:preview:check passes while this story is not PASS, because the gate correctly asserts a fail-closed deployment and the story needs a qualified journey; a green gate is not a closed story.",
       "measured_budget_breach": {
         "budget": "lazy_phase_7_chunk_max_kib_gzip",
         "declared_limit_kib_gzip": 60,
@@ -348,7 +347,9 @@
         "CF-EV-P7-QA-001",
         "CF-EV-P7-PERF-002"
       ],
-      "evidence_note": "The two identifiers this story was planned with were never written. The four OPS records above are what was actually produced, and every one of them is PARTIAL. CF-P7-014 corrected the manifest to name the records that exist rather than the records that were planned."
+      "evidence_note": "The two identifiers this story was planned with were never written. The four OPS records above are what was actually produced, and every one of them is PARTIAL. CF-P7-014 corrected the manifest to name the records that exist rather than the records that were planned.",
+      "qualified_on": "2026-07-28",
+      "qualified_by": "The Product Owner, signed in to their own GitHub account on Preview deployment b2520460 (1ef0b06). Sign-in, device registration, workspace creation, device revocation and workspace switching all completed; corroborated by read-only queries against the Preview D1 database. Invitation acceptance and conflict resolution stay declared limits with stated reasons."
     },
     {
       "id": "CF-P7-014",

@@ -1,6 +1,6 @@
 # CF-EV-P7-OPS-002 Preview integration after composing the surfaces
 
-Status: PARTIAL — integration proven; journeys blocked on deployment configuration
+Status: PASS — the journeys were driven, by the owner, on an enabled deployment
 
 Story: `CF-P7-013`, under `P7-G4` authorized by the owner on 2026-07-26
 
@@ -8,10 +8,10 @@ Story: `CF-P7-013`, under `P7-G4` authorized by the owner on 2026-07-26
 
 | Field | Value |
 |---|---|
-| Deployment | `4c5d7c8a-17ec-4469-bcb7-b266bce91aa6` |
-| Source commit | `fe0fa2e` |
+| Deployment | `b2520460-8d70-4f83-972b-bc31f56f5a3a` |
+| Source commit | `1ef0b06` |
 | Branch | `codex-cf-p3-preview` |
-| URL | `https://4c5d7c8a.docvault-qa-document-hub.pages.dev` |
+| URL | `https://b2520460.docvault-qa-document-hub.pages.dev` |
 
 ## Measured on the deployment
 
@@ -72,3 +72,64 @@ The eight surfaces compose and render their own states, and stop there.
 CF-P7-013 therefore remains **not PASS**. It closes when `COLLABORATION_ENABLED`
 is set for Preview, the deployment is rebuilt, and the journeys are qualified
 against it.
+
+## The journeys, driven by the owner (2026-07-28)
+
+Everything above was measured against a deployment with collaboration switched
+off, which is why this record said PARTIAL for two days. It is now PASS, and the
+distinction matters: what changed is not that a gate was persuaded, but that a
+person signed in to their own GitHub account and used the thing.
+
+No agent could do this and none did. Obtaining an OAuth session means entering
+credentials at github.com. Every step below was performed by the owner in their
+own browser; the corroboration is read-only SQL against the Preview D1 database,
+which is evidence an agent can gather but not manufacture.
+
+| Journey | Surface | What the database shows |
+|---|---|---|
+| Sign in with GitHub | `account-menu` | `GET /api/v1/session` answered `authenticated: true` with the owner's login; the chrome rendered it. |
+| Register this device | `device-key-initialization` | `devices`: 9 rows, 1 active and 8 revoked. Each registration generated a P-256 pair in the browser, sent only the public JWK, and re-bound the local key onto the server's device id. |
+| Create a workspace | `create-workspace` | `workspaces`: 7 created through this UI, each at `current_key_version` 1 with its creator as sole member. `audit_events`: `workspace.created` x10. |
+| Revoke this device | `device-key-initialization` | `devices`: 8 rows in state `revoked`. Server first, local key second. |
+| Switch workspace | `workspace-switcher` | Owner-reported: the context indicator **and the panel below it** both moved to the newly selected workspace. |
+
+**The envelopes are the part that could not have been faked.**
+`workspace_key_envelopes` holds 10 unrevoked rows. Each was sealed in the
+browser by `js/collaboration/workspace-key-envelope.js` — a hand-written port of
+`functions/_lib/e2ee/primitives.ts`, written because the client bundle has no
+build step to compile the server's TypeScript through — and each was accepted by
+the server's own parser and stored. A single wrong byte in the AAD, the HKDF
+`info`, or the canonical JSON would have been refused. The port and the original
+agree on live data, not only in a round-trip test.
+
+## What was not qualified, and is not claimed
+
+| Journey | Why |
+|---|---|
+| Invite someone and have them accept | Not attempted; it needs a second real GitHub account. This database does contain `invitation.created` and `invitation.accepted` rows — they are from the `CF-P6-008` and `G2-G3` qualification runs of earlier phases, and nothing here claims them. |
+| Resolve a conflict | Not reachable: it needs two devices editing one document at once, and the document surfaces are not Phase 7's. |
+
+## What driving it actually found
+
+Seven defects, every one of them invisible to the whole test suite beforehand and
+every one found only because a real session existed:
+
+1. `resolveSession` read a `{data, meta}` envelope for a route that answers
+   unenveloped, so `authenticated` was **always** false regardless of the
+   server's answer — the signed-in path had never once been exercised.
+2. `beginSignIn` had the same defect, and crashed on `null.authorizationUrl`.
+3. Every mutation sent with no body omitted `Content-Type` and was refused 415;
+   this is all three of revoke-device, revoke-invitation and sign-out.
+4. The acting-device header the server requires was never sent.
+5. `create-workspace` reads `device.status` and `device-initialization` reads
+   `device.state`; the entry set only one, so a registered device looked absent.
+6. The create-workspace submit control could never enable, because the only thing
+   that told its model the typed name was submitting — which the disabled control
+   prevented.
+7. The member list refused every row: it read a `keyReadiness` field the route
+   does not send, and the server reports a boolean `keyReady`.
+
+Each is fixed, tested against the shape the server actually returns, and pushed.
+The pattern is worth naming: five of the seven are the same mistake — a fixture
+written to match what the client assumed, rather than what the server sends — and
+a suite made only of such fixtures agrees with itself forever.

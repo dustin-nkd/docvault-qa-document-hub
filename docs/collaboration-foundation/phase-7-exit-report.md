@@ -1,6 +1,6 @@
 # Collaboration Foundation Phase 7 — exit report
 
-Status: **COMPLETE — 16 of 17 stories PASS; `P7-G5` NOT granted; Phase 7 does not close**
+Status: **COMPLETE — 17 of 17 stories PASS; `P7-G5` NOT granted; Phase 7 does not close**
 
 Story: `CF-P7-014`
 Assembled against: `c08ccf1` (the commit that landed `CF-P7-016`), amended after
@@ -142,10 +142,55 @@ measured in §6.1 predates this fix and cannot show it without a new build.
 `CF-P7-013`'s second, independent blocker — no OAuth session is available to an
 agent — is untouched by this fix and remains open regardless of it.
 
-The honest reading is now **16 of 17 stories PASS**, with `CF-P7-013` the sole
-remaining non-`PASS` story. §3, §6, §7, §10, and §11 below are amended
+The honest reading is now **17 of 17 stories PASS**. `CF-P7-013` was the sole
+remaining non-`PASS` story and was qualified on 2026-07-28 — see §6.0. §3, §6, §7, §10, and §11 below are amended
 accordingly; nothing about the arithmetic-correction narrative in §2 above is
 rewritten, because it is a historical record of a different, earlier mistake.
+
+## 2B. `CF-P7-013` qualified — 2026-07-28
+
+The story that had been open since the phase began is closed, and it closed the
+way it always had to: a person signed in and used the software. No agent could
+do it — obtaining an OAuth session means entering credentials at github.com —
+and the record has said so since 2026-07-26.
+
+Driven by the Product Owner on Preview deployment
+`b2520460-8d70-4f83-972b-bc31f56f5a3a` (`1ef0b06`): **sign in with GitHub**,
+**register this device**, **create a workspace**, **revoke this device**, and
+**switch workspace**, all completed.
+
+The corroboration is read-only SQL against the Preview D1 database, which is
+evidence an agent can gather but not manufacture: `workspaces` holds 7 rows
+created through this UI, each at `current_key_version` 1 with its creator as
+sole member; `devices` holds 9 rows, 1 active and 8 revoked; `audit_events`
+holds `workspace.created` ×10; and `workspace_key_envelopes` holds 10 unrevoked
+rows. The envelopes are the load-bearing part — each was sealed in the browser
+by the hand-written port in `js/collaboration/workspace-key-envelope.js` and
+accepted by the server's own parser, so the port and `functions/_lib/e2ee` agree
+on live data rather than only in a round-trip test.
+
+Two journeys are **not** qualified and are not claimed: inviting someone and
+having them accept, which needs a second real GitHub account, and resolving a
+conflict, which needs two devices editing one document. The
+`invitation.created` and `invitation.accepted` rows that exist in that database
+are from the `CF-P6-008` and `G2-G3` runs of earlier phases.
+
+**What driving it actually found.** Seven defects, every one invisible to the
+whole suite beforehand, every one reachable only with a real session:
+`resolveSession` read an enveloped body for a route that answers unenveloped, so
+`authenticated` was *always* false; `beginSignIn` had the same defect and crashed
+on `null`; every body-less mutation omitted `Content-Type` and was refused 415;
+the acting-device header was never sent; `create-workspace` reads
+`device.status` while `device-initialization` reads `device.state` and the entry
+set only one; the create-workspace submit control could never enable, because
+the only thing that told its model the typed name was the submit its disabled
+state prevented; and the member list refused every row because it read a
+`keyReadiness` field the route does not send.
+
+Five of those seven are one mistake wearing different clothes: a fixture written
+to match what the client assumed rather than what the server sends. A suite made
+of such fixtures agrees with itself forever. That is the finding worth carrying
+into Phase 8, more than any of the individual fixes.
 
 ## 3. Story reconciliation — every story, its gate, its evidence
 
@@ -654,7 +699,7 @@ designated Preview identities are build-time configuration — is opened by
 ## 8. Local verification
 
 - `node scripts/check-cloudflare-phase-7-sprint.mjs` → passes on the amended
-  plan: **16 of 17 stories PASS**, twelve owned surfaces, an unbroken gate chain
+  plan: **17 of 17 stories PASS**, twelve owned surfaces, an unbroken gate chain
   over the sequenced stories, remote work behind `P7-G4`. The line it prints is
   now counted rather than spelled — the literal it used to print said "Fifteen
   stories" and was wrong by the time this story ran.
