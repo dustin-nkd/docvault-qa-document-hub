@@ -117,6 +117,30 @@ export function buildPath(template, params = {}) {
     return `${API_BASE}${path}`;
 }
 
+/**
+ * The member list's key readiness, from what the route actually reports.
+ *
+ * `MembershipView` carries a boolean `keyReady`, computed server-side by asking
+ * whether an unrevoked envelope exists for this member at the workspace's
+ * *current* key version, held by an active device. The surfaces speak the
+ * five-value `KEY_READINESS` vocabulary instead, and this is the join.
+ *
+ * Only two of those five are reachable from here, and that is a property of the
+ * route rather than a shortcut taken here:
+ *
+ *   - `stale_key` is indistinguishable from `pending_key`, because the server's
+ *     query folds "envelope at an older version" and "no envelope at all" into
+ *     the same `false`;
+ *   - `revoked` and `not_entitled` describe people this route does not return —
+ *     it filters `state <> 'removed'`.
+ *
+ * Guessing at the other three from a boolean would put a claim on screen the
+ * server never made, so this maps only what it can actually see.
+ */
+function readinessOf(member) {
+    return member.keyReady === true ? 'key_ready' : 'pending_key';
+}
+
 /** Turn a client failure into something the journeys can `catch` and read. */
 function raise(result) {
     const failure = result.failure ?? {};
@@ -250,7 +274,7 @@ export function createCollaborationServices({ client } = {}) {
                     userId: member.userId,
                     role: member.role,
                     state: member.state,
-                    keyReadiness: member.keyReadiness,
+                    keyReadiness: readinessOf(member),
                     displayLogin: member.displayProfile?.login ?? member.displayLogin ?? 'unknown'
                 }))),
                 nextCursor: result.nextCursor

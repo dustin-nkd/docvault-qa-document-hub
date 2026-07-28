@@ -2227,3 +2227,97 @@ button[aria-busy="true"] { cursor:progress !important; }
 @media (max-width: 480px) {
     .collab-panel { gap: 10px; }
 }
+
+/* ── Reading the panel (CF-P7-013 follow-up) ─────────────────────────────────
+   The composed panel was laid out edge to edge: measured at a 1280 px viewport
+   its lines ran 1243 px, far past the ~75 characters a person reads without
+   losing their place, and its eight cards stacked to roughly 1900 px of
+   scrolling. Worse, every card carried the same visual weight, so "No conflict
+   to resolve" shouted exactly as loudly as the member list — which is why the
+   panel read as a wall with no obvious next step.
+
+   These rules change presentation only. No surface is hidden or reordered:
+   surface-panel.js mounts all of them on purpose, because a surface that is
+   absent cannot be told apart from one that is broken. What changes is which
+   of them the eye lands on first. */
+
+.collab-root > .collab-chrome,
+.collab-root > .collab-panel {
+    width: 100%;
+    max-width: 960px;
+    margin-inline: auto;
+}
+
+/* The chrome names which workspace everything below belongs to, so it stays put
+   while the panel scrolls under it. Losing that answer on scroll is the same
+   defect U2 exists to prevent, just reached by scrolling instead of by a menu. */
+.collab-root > .collab-chrome {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border: 1px solid var(--brd);
+    border-radius: 12px;
+    margin-bottom: 4px;
+    padding: 10px 14px;
+}
+
+/* Prose sets its own measure regardless of how wide the card is. */
+.collab-state__reason,
+.collab-create__hint,
+.collab-create__blocked,
+.collab-device__readiness-reason {
+    max-width: 68ch;
+}
+
+/* A section whose whole content is "there is nothing here yet" is real
+   information and stays on the page — but it is not what the user came to do,
+   so it recedes: no card fill, a dashed edge, and less height. Anything with
+   actual content keeps the solid card and reads as the foreground. */
+.collab-panel__section:has(> .collab-state[data-collab-state="empty"]) {
+    background: transparent;
+    border-style: dashed;
+}
+.collab-panel__section:has(> .collab-state[data-collab-state="empty"]) .collab-state {
+    padding: 18px 16px;
+}
+.collab-panel__section:has(> .collab-state[data-collab-state="empty"]) .collab-state__title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--tx-m);
+}
+
+/* The fingerprint exists to be read aloud while two people compare it, which is
+   a rare and deliberate act. It is reference material, not the heading of the
+   section, so it stops competing with the controls beside it. */
+.collab-device__fingerprint {
+    font-size: 12px;
+    color: var(--tx-m);
+    word-break: break-all;
+}
+
+/* Setup that is already finished, and an action that is merely available.
+
+   Both of these opened the panel at full card weight, which is what made the
+   first screenful read as a to-do list of things the user had in fact already
+   done: on a real account with a workspace and a registered device, the two
+   tallest cards above the member list were "Create a workspace" and a device
+   that was already set up. Neither is hidden -- creating a second workspace is
+   a real action, and the device controls stay reachable -- but neither is what
+   this screen is for once they are done, so they read as the background the
+   member list sits in front of. */
+.collab-panel[data-context-status="active"]
+    .collab-panel__section[data-surface="create-workspace"],
+.collab-panel__section:has(.collab-device--registered) {
+    background: transparent;
+    border-style: dashed;
+}
+.collab-panel[data-context-status="active"] .collab-create__heading,
+.collab-panel__section:has(.collab-device--registered) .collab-device__heading {
+    font-size: 14px;
+    color: var(--tx-m);
+}
+
+@media (min-width: 1024px) {
+    .collab-root { padding: 24px 16px 48px; }
+    .collab-panel { gap: 16px; }
+}
