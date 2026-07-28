@@ -1290,8 +1290,30 @@ button[aria-busy="true"] { cursor:progress !important; }
     --collab-warning: #b45309; /* 5.02:1 on white */
 }
 
+/* The app shell takes the height left over after the collaboration strip above
+   it, rather than a hard 100vh.
+
+   It was `h-screen`, which made the page taller than the viewport by exactly
+   the height of the banner or the opener. The body clips its overflow, so what
+   fell off the bottom was the end of the sidebar -- the Lock / Theme / Settings
+   row -- which is why those three controls vanished on both deployments.
+
+   `min-height: 0` is the load-bearing half and is written here rather than as
+   Tailwind's `min-h-0`: vendor/tailwind/tailwind.generated.css is a prebuilt
+   subset and does not contain that class, so the utility would silently do
+   nothing. Without it a flex item keeps `min-height: auto` and refuses to
+   shrink below its content, which is the whole problem. */
+.app-shell {
+    flex: 1 1 0%;
+    min-height: 0;
+}
+
+/* `flex-shrink: 0` because the body is a flex column: without it this strip is
+   compressed to nothing rather than taking the height it needs, and the notice
+   it carries is the only explanation a GitHub Pages visitor gets. */
 .collab-banner {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
@@ -1312,7 +1334,23 @@ button[aria-busy="true"] { cursor:progress !important; }
 }
 .collab-banner__text { margin: 0; }
 
-.collab-root { padding: 16px; }
+/* An overlay, not a block in the flow.
+   In the flow it pushed the Personal Vault app down by its own height: with a
+   real workspace panel open the app measured zero pixels tall, and the panel
+   itself ran past the bottom of a viewport whose body clips overflow, so the
+   end of it could not be reached at all. Fixed and self-scrolling, it covers
+   the app instead of deforming it, and `#collaboration-open` stays above it as
+   the way back. */
+.collab-root {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px;
+    padding-top: 64px; /* clears the toggle, which sits above this layer */
+    background: var(--bg);
+}
 .collab-root[hidden] { display: none; }
 
 .collab-state {
@@ -2128,7 +2166,14 @@ button[aria-busy="true"] { cursor:progress !important; }
 
 /* Hidden in markup and revealed only where collaboration can run, so a user on
    GitHub Pages is never offered a door that leads nowhere. */
+/* Above `.collab-root`, so the control that opened the panel is also the way
+   out of it. Without this the toggle would sit under its own overlay and the
+   panel would have no exit at all -- there is no close control anywhere else. */
 .collab-open {
+    position: relative;
+    z-index: 61;
+    flex-shrink: 0;
+    align-self: flex-start;
     min-height: 40px;
     margin: 12px 16px;
     padding: 8px 14px;
@@ -2181,4 +2226,98 @@ button[aria-busy="true"] { cursor:progress !important; }
 
 @media (max-width: 480px) {
     .collab-panel { gap: 10px; }
+}
+
+/* ── Reading the panel (CF-P7-013 follow-up) ─────────────────────────────────
+   The composed panel was laid out edge to edge: measured at a 1280 px viewport
+   its lines ran 1243 px, far past the ~75 characters a person reads without
+   losing their place, and its eight cards stacked to roughly 1900 px of
+   scrolling. Worse, every card carried the same visual weight, so "No conflict
+   to resolve" shouted exactly as loudly as the member list — which is why the
+   panel read as a wall with no obvious next step.
+
+   These rules change presentation only. No surface is hidden or reordered:
+   surface-panel.js mounts all of them on purpose, because a surface that is
+   absent cannot be told apart from one that is broken. What changes is which
+   of them the eye lands on first. */
+
+.collab-root > .collab-chrome,
+.collab-root > .collab-panel {
+    width: 100%;
+    max-width: 960px;
+    margin-inline: auto;
+}
+
+/* The chrome names which workspace everything below belongs to, so it stays put
+   while the panel scrolls under it. Losing that answer on scroll is the same
+   defect U2 exists to prevent, just reached by scrolling instead of by a menu. */
+.collab-root > .collab-chrome {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border: 1px solid var(--brd);
+    border-radius: 12px;
+    margin-bottom: 4px;
+    padding: 10px 14px;
+}
+
+/* Prose sets its own measure regardless of how wide the card is. */
+.collab-state__reason,
+.collab-create__hint,
+.collab-create__blocked,
+.collab-device__readiness-reason {
+    max-width: 68ch;
+}
+
+/* A section whose whole content is "there is nothing here yet" is real
+   information and stays on the page — but it is not what the user came to do,
+   so it recedes: no card fill, a dashed edge, and less height. Anything with
+   actual content keeps the solid card and reads as the foreground. */
+.collab-panel__section:has(> .collab-state[data-collab-state="empty"]) {
+    background: transparent;
+    border-style: dashed;
+}
+.collab-panel__section:has(> .collab-state[data-collab-state="empty"]) .collab-state {
+    padding: 18px 16px;
+}
+.collab-panel__section:has(> .collab-state[data-collab-state="empty"]) .collab-state__title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--tx-m);
+}
+
+/* The fingerprint exists to be read aloud while two people compare it, which is
+   a rare and deliberate act. It is reference material, not the heading of the
+   section, so it stops competing with the controls beside it. */
+.collab-device__fingerprint {
+    font-size: 12px;
+    color: var(--tx-m);
+    word-break: break-all;
+}
+
+/* Setup that is already finished, and an action that is merely available.
+
+   Both of these opened the panel at full card weight, which is what made the
+   first screenful read as a to-do list of things the user had in fact already
+   done: on a real account with a workspace and a registered device, the two
+   tallest cards above the member list were "Create a workspace" and a device
+   that was already set up. Neither is hidden -- creating a second workspace is
+   a real action, and the device controls stay reachable -- but neither is what
+   this screen is for once they are done, so they read as the background the
+   member list sits in front of. */
+.collab-panel[data-context-status="active"]
+    .collab-panel__section[data-surface="create-workspace"],
+.collab-panel__section:has(.collab-device--registered) {
+    background: transparent;
+    border-style: dashed;
+}
+.collab-panel[data-context-status="active"] .collab-create__heading,
+.collab-panel__section:has(.collab-device--registered) .collab-device__heading {
+    font-size: 14px;
+    color: var(--tx-m);
+}
+
+@media (min-width: 1024px) {
+    .collab-root { padding: 24px 16px 48px; }
+    .collab-panel { gap: 16px; }
 }

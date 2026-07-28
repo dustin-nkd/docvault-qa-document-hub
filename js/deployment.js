@@ -132,9 +132,39 @@
             return false;
         }
         opener.hidden = false;
+        // The label the control returns to, so closing restores it rather than
+        // leaving the button reading "Close" over a closed panel.
+        const openLabel = opener.textContent;
+        // Held across clicks so closing needs no second import: the module is
+        // already evaluated by then, and re-importing to close what is open
+        // would be the one case where pressing this spends the budget twice.
+        let loaded = null;
+        let open = false;
+
+        // Closing is the same control, because there is no other one. The panel
+        // is an overlay covering the Personal Vault, so without a way back the
+        // only exit would be a page reload.
+        function close() {
+            if (loaded === null) return;
+            loaded.closeCollaboration(doc);
+            open = false;
+            opener.textContent = openLabel;
+            opener.setAttribute('aria-expanded', 'false');
+        }
+
+        opener.setAttribute('aria-expanded', 'false');
         opener.addEventListener('click', function () {
+            if (open) {
+                close();
+                return;
+            }
             opener.disabled = true;
             import('./collaboration/entry.js').then(function (module) {
+                loaded = module;
+                open = true;
+                opener.disabled = false;
+                opener.textContent = 'Close team workspaces';
+                opener.setAttribute('aria-expanded', 'true');
                 // `startCollaboration`, not `openCollaboration`: this verdict is
                 // a hostname pre-filter and cannot tell a Cloudflare deployment
                 // with collaboration switched on from one with it switched off.
@@ -155,9 +185,12 @@
                     history: history
                 });
             }).catch(function () {
-                // Collaboration failing to load must never break the Personal
-                // Vault around it; the control simply becomes available again.
+                // A failed load must never break the Personal Vault around it.
                 opener.disabled = false;
+                // Back to reading as an opener, not a Close over nothing.
+                open = false;
+                opener.textContent = openLabel;
+                opener.setAttribute('aria-expanded', 'false');
             });
         });
         return true;
