@@ -35,7 +35,7 @@ export type IdentityRuntimeConfiguration = {
     readonly secrets: IdentitySecrets;
 };
 
-const PREVIEW_ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const PREVIEW_ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
 
 function boundedCredential(value: string | undefined, maximum: number): string {
     if (typeof value !== 'string' || value.length < 1 || value.length > maximum || /[\u0000-\u001f\u007f]/.test(value)) {

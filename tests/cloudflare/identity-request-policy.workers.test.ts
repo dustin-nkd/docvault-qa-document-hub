@@ -14,7 +14,8 @@ import {
     type SessionLifecycleDependencies
 } from '../../functions/_lib/identity';
 
-const ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
+const RETIRED_ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
 const COOKIE = '__Host-docvault-preview-session' as const;
 const NOW = 1_900_300_000_000;
 const USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -156,8 +157,8 @@ describe('CF-P3-006 identity request policy', () => {
     });
 
     it('fails closed for missing, null, lookalike, subdomain, port, scheme, and cross-environment origins', async () => {
-        for (const origin of [null, 'null', `${ORIGIN}.attacker.example`,
-            'https://sub.codex-cf-p3-preview.docvault-qa-document-hub.pages.dev',
+        for (const origin of [null, 'null', RETIRED_ORIGIN, `${ORIGIN}.attacker.example`,
+            'https://sub.codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev',
             `${ORIGIN}:444`, ORIGIN.replace('https:', 'http:'),
             'https://docvault-qa-document-hub.pages.dev']) {
             await expect(authorizeIdentityRequest(env.COLLAB_DB,

@@ -12,7 +12,7 @@ import {
     type PreviewApiDependencies
 } from '../../functions/_lib/collaboration';
 
-const ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
 const NOW = 1_901_000_000_000;
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OWNER_DEVICE = '22222222-2222-4222-8222-222222222222';

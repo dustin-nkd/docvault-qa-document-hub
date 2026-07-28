@@ -2,6 +2,7 @@ import { AuditReadError, createAuditCursorCodec, listAuditEvents } from '../audi
 import {
     enforceIdentityRateLimit,
     deriveIdentityKey,
+    IDENTITY_ENVIRONMENT_CONSTANTS,
     IdentityRateLimitError,
     identityResponseHeaders,
     hmacSign,
@@ -40,7 +41,7 @@ import { authorizeWorkspaceAction } from '../rbac/index';
 import { bootstrapWorkspace } from '../workspaces/index';
 import { ControlPlaneCursorError, createControlPlaneCursorCodec } from './control-plane-cursor';
 
-const PREVIEW_ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const PREVIEW_ORIGIN = IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin;
 const COOKIE_NAME = '__Host-docvault-preview-session' as const;
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const MAXIMUM_BODY_BYTES = 64 * 1_024;

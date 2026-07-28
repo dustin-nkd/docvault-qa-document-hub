@@ -9,7 +9,8 @@ import {
     type RandomBytesSource
 } from '../../functions/_lib/identity';
 
-const ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
+const RETIRED_ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
 const SUBJECT = '123456789';
 
 function encodedKey(start: number): string {
@@ -92,6 +93,9 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
             .toBeNull();
         expect(await handleIdentityRuntime(request('/api/v1/session'), runtimeBindings({ RATE_LIMIT_KEY: undefined })))
             .toBeNull();
+        expect(await handleIdentityRuntime(new Request(`${RETIRED_ORIGIN}/api/v1/session`, {
+            headers: { Accept: 'application/json', 'CF-Connecting-IP': '203.0.113.7' }
+        }), runtimeBindings())).toBeNull();
         expect(await handleIdentityRuntime(request('/api/v1/workspaces'), runtimeBindings())).toBeNull();
     });
 
@@ -186,7 +190,9 @@ describe('CF-P3-008 isolated preview identity runtime', () => {
         const callback = await handleIdentityRuntime(request(
             `/api/v1/oauth/github/callback?code=synthetic-code&state=${state}`), runtimeBindings(), deps);
         expect(callback?.status).toBe(303);
-        expect(callback?.headers.get('Location')).toMatch(/^https:\/\/codex-cf-p3-preview\..+#auth-result=complete-/);
+        const location = new URL(callback?.headers.get('Location') ?? '');
+        expect(location.origin).toBe(ORIGIN);
+        expect(location.hash).toMatch(/^#auth-result=complete-/);
         expect(callback?.headers.get('Set-Cookie')).toContain('__Host-docvault-preview-session=');
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM users').first<number>('count')).toBe(1);
         expect(await env.COLLAB_DB.prepare('SELECT COUNT(*) AS count FROM sessions').first<number>('count')).toBe(1);

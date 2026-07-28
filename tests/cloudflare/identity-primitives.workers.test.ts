@@ -141,7 +141,7 @@ describe('CF-P3-002 versioned OAuth transaction envelope', () => {
         expect(encrypted[0]).toBe(1);
         expect(encrypted.byteLength).toBeLessThanOrEqual(4_096);
         expect(encodeBase64Url(encrypted)).toBe(
-            'AQhhY3RpdmUtMdzd3t_g4eLj5OXm51ERa6DTKNpRwsHmvVz0PGm897G7VEvOQ02ShjqC9Wyko7xeAeLIMUMwTzbS-cVBIud0J4T_MxPAsIMxi3cMGG-8BtAeA9Y-r39-PLPmA87u_SuVq1Y0wekWbrwyU9-W_Bx5L1Z7hd72HebNbroaTcuRGHj7bIDWnWE2nmCikexBZGk6EOMiBppYfF1oaZ-76QncnmBO31WSg4_zZeb8WE0WnrIVw78YJgdubcZPute9eqBrvUcWsDJ7SX7TPGbA276RqqHZ2oeLcklpfY9H_yUUIcMORZf8U8D5H4UbbwZP'
+            'AQhhY3RpdmUtMdzd3t_g4eLj5OXm51ERa6DTKNpRwsHmvVz0PGm897G7VEvOQ02ShjqC9Wyko7xeAeLIMUMwTzbS-cVBIud0J4T_MxPAsIMxi3cMGG-8BtAeA9Y-r39-PLPmA87u_SuVq1Y0wekWbrwyU9-W_Bx5L1Z7hd72HebNbroaTcuRGHj7bIDWnWE2nmCikexBZGk6EOMiBppYfF1oaZ-76QncnmBO31WSg4_zZeb8WE0WnrIVw78YJgdubcZPute9eqBrvUcWsDJ7SX7TPGbA276RqqHZ2oeLcklpfY9H_yWGitcjg7Zo4VLX37nwgb9A'
         );
         await expect(decryptOAuthEnvelope(initial, encrypted, AAD)).resolves.toEqual(PAYLOAD);
         await expect(decryptOAuthEnvelope(parseIdentityKeyring(ROTATED_KEYRING), encrypted, AAD))

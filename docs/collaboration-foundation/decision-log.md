@@ -218,3 +218,40 @@ requires the decision that moved it.
 step would not be worth adding later. It says the programme is carrying 91.93
 KiB knowingly, at a number an owner set with the measurement in front of them,
 rather than carrying a breach of a number nobody ever measured.
+
+## D-P7-04 — rotate the canonical Preview alias after a stale Functions mapping
+
+**Status:** APPROVED by the Product Owner, 2026-07-29. The implementation is
+locally verified; the remote cutover remains pending review and deployment.
+
+**Decision.** The canonical Preview origin and OAuth callback move from
+`https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev` to
+`https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev`. The old
+origin remains rejected by the runtime. Both collaboration handlers consume
+`IDENTITY_ENVIRONMENT_CONSTANTS.previewOrigin`, so the identity boundary,
+collaboration boundary, and OAuth transaction agree on one exact origin.
+
+**Why.** Cloudflare's control plane assigned the old branch alias to the latest
+successful `uses_functions` deployment, but its data plane continued returning
+the retired `405 Allow: POST` route for `GET /api/v1/workspaces`; the matching
+hashed deployment returned the current fail-closed `503
+COLLABORATION_UNAVAILABLE` response. Retrying the deployment and triggering a
+new Git deployment on that branch did not repair the alias. A deployment from a
+fresh `codex-cf-p3-preview-v2` branch made its branch alias and hashed URL return
+the same current response, providing a working Preview route without changing
+Production.
+
+**Boundaries.** This decision does not modify Production, D1 bindings, secrets,
+Access policies, custom domains, or environment-mode flags. Historical Phase
+3–7 evidence remains an account of what was qualified at the time and is not
+rewritten. The Cloudflare Preview branch allowlist may retain both branch names
+until the new origin is qualified; that deployment setting does not widen the
+runtime's exact-origin check. The GitHub OAuth application's callback must be
+updated to the new origin before live sign-in can qualify the OAuth journey.
+
+**Verification.** Runtime tests accept the new origin and explicitly reject the
+old one. The deterministic encrypted OAuth transaction vector was regenerated
+because the callback origin is authenticated additional data. Focused identity,
+collaboration, and callback tests and the full `npm run check` gate must pass on
+the final working tree. Remote qualification follows only after review,
+commit, deployment, and the owner-controlled GitHub OAuth callback update.

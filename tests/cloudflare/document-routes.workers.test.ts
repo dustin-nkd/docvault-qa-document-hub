@@ -5,7 +5,7 @@ import {
     handlePreviewKeyFoundationApi
 } from '../../functions/_lib/collaboration/key-runtime-handler';
 
-const ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
 const WORKSPACE = '11111111-1111-4111-8111-111111111111';
 const DOCUMENT = '22222222-2222-4222-8222-222222222222';
 const MUTATION = '33333333-3333-4333-8333-333333333333';

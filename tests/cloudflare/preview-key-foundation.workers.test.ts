@@ -8,7 +8,7 @@ import { generateWorkspaceDek, unwrapWorkspaceKey, wrapWorkspaceKey,
     type WorkspaceEnvelopeAad, type WorkspaceKeyEnvelope } from '../../functions/_lib/e2ee/primitives';
 import { handlePreviewKeyFoundationApi, type PreviewKeyApiDependencies } from '../../functions/_lib/collaboration';
 
-const ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
 const NOW = 1_902_000_000_000;
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const TARGET = '22222222-2222-4222-8222-222222222222';

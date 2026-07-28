@@ -56,7 +56,7 @@ function loadDeployment() {
 
 test('collaboration is available on Cloudflare and local, refused elsewhere', () => {
     const { evaluate } = loadDeployment();
-    assert.equal(evaluate({ hostname: 'codex-cf-p3-preview.docvault-qa-document-hub.pages.dev' }).available, true);
+    assert.equal(evaluate({ hostname: 'codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev' }).available, true);
     assert.equal(evaluate({ hostname: 'localhost' }).available, true);
     assert.equal(evaluate({ hostname: 'dustin-nkd.github.io' }).available, false);
     assert.equal(evaluate({ hostname: 'dustin-nkd.github.io' }).reason, 'github-pages');

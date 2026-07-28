@@ -42,7 +42,7 @@ const OAUTH_RING = parseIdentityKeyring(JSON.stringify({
 const SESSION_RING = parseIdentityKeyring(JSON.stringify({
     version: 1, activeKeyId: 'session', keys: { session: key(101) }
 }));
-const CALLBACK_ORIGIN = 'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev';
+const CALLBACK_ORIGIN = 'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
 
 function random(seed: number): RandomBytesSource {
     let call = 0;
