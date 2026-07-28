@@ -26,7 +26,8 @@ document. §3 says exactly what that gate does and does not prove.
 ## 1. Decision
 
 - Phase 7 collaboration interface, as **composed and gated in the repository**: **GO**
-- Phase 7 collaboration interface, as **qualified on a deployment**: **NO-GO** — no journey ran
+- Phase 7 collaboration interface, as **qualified on a deployment**: **PARTIAL** —
+  U1 and U2 are Live-qualified; U3 through U6 remain locally qualified only
 - `P7-G5`: **NOT GRANTED**
 - Phase 8 opening: **NOT AUTHORIZED**
 - Collaboration activation in production: **NO-GO** (unchanged)
@@ -192,6 +193,22 @@ to match what the client assumed rather than what the server sends. A suite made
 of such fixtures agrees with itself forever. That is the finding worth carrying
 into Phase 8, more than any of the individual fixes.
 
+## 2C. U2 survives a Live reload — 2026-07-29
+
+The 2026-07-28 workspace-switch journey proved that the chrome and panel moved
+together inside one browser session. It did not prove that the selection
+survived a fresh load. That distinction was recorded rather than rounded up.
+
+On Preview v2 deployment `e6048773-d133-4dbb-9ccc-7cd498e6ecff`
+(`e09f732`), after the GitHub OAuth callback was updated to the canonical v2
+origin, the Product Owner signed in, selected a workspace, performed a full
+`Ctrl+R` reload, and confirmed the same workspace remained in the context
+indicator and panel. U2 is now Live-qualified. The workspace name was not
+retained because equality before and after reload is the criterion and no user
+data beyond that verdict is required.
+
+This closes U2 only. U3 through U6 remain open at `P7-G5`.
+
 ## 3. Story reconciliation — every story, its gate, its evidence
 
 | Story | Title | Gate | Gate state | Evidence | Status |
@@ -210,7 +227,7 @@ into Phase 8, more than any of the individual fixes.
 | CF-P7-012 | Responsive and keyboard/focus qualification | `cf:phase7:qualify:check` | passes | `A11Y-004`, `UI-011` | **PASS** |
 | CF-P7-015 | Collaboration API client layer | `cf:phase7:api:check` | passes | `API-001` | **PASS** |
 | CF-P7-016 | Correct the frozen error-to-presentation map | `cf:phase7:contract:check` | passes | `UI-012` | **PASS** |
-| **CF-P7-013** | **Integrate and qualify on Preview** | `cf:phase7:preview:check` | **passes** | `OPS-001`…`OPS-005` — all five **PARTIAL** | **PARTIAL** |
+| **CF-P7-013** | **Integrate and qualify on Preview** | `cf:phase7:preview:check` | **passes** | `OPS-001`…`OPS-005` — all five **PASS** | **PASS** |
 | CF-P7-014 | Exit and Phase 8 handoff | `cf:phase7:exit:check` | passes | `EXIT-001` | **PASS** |
 | CF-P7-017 | Dispatch the API shell on the flag | `cf:phase7:dispatch:check` | passes | `OPS-006` | **PASS** |
 
@@ -224,16 +241,15 @@ story. `cf:phase7:exit:check` checks all three.
 **Gate accounting.** Seventeen `cf:phase7:*` gates run inside `check:cloudflare`:
 `sprint`, `contract`, `shell`, `account`, `create`, `device`, `members`,
 `invitations`, `accept`, `sync`, `conflict`, `audit`, `qualify`, `api`,
-`dispatch`, `preview`, `exit`. Fifteen of the seventeen are story gates of the
-sixteen PASS stories — `contract` is shared, since `CF-P7-016` re-opened and
+`dispatch`, `preview`, `exit`. Sixteen of the seventeen are story gates of the
+seventeen PASS stories — `contract` is shared, since `CF-P7-016` re-opened and
 re-closed the frozen contract `CF-P7-001` had frozen, `dispatch` belongs to
 `CF-P7-017`, and `exit` belongs to `CF-P7-014`. `cf:phase7:preview:check`
-**passes while its story does not**: the gate asserts a fail-closed deployment
-truthfully, and the story needs a qualified journey. A green gate is not a
-closed story. `cf:phase7:sprint:check` gates the plan and has no stated story
-owner, a hole the same shape as the one `CF-P7-015` was created to close, and
-one Phase 8 closes by naming an owner rather than by adding a story that does
-nothing else.
+passes with its story after the Product Owner drove the signed-in journeys and
+the later U2 reload requalification. `cf:phase7:sprint:check` gates the plan and
+has no stated story owner, a hole the same shape as the one `CF-P7-015` was
+created to close, and one Phase 8 closes by naming an owner rather than by
+adding a story that does nothing else.
 
 **What `cf:phase7:exit:check` proves, and what it cannot.** It proves the record
 is internally consistent — the count, the story statuses across two manifests, the
@@ -248,8 +264,10 @@ the weakest kind of gate in this programme and is labelled as such.
 **Manifest corrections made by this story**, each because the manifest named
 something that does not exist or no longer holds:
 
-1. `CF-P7-013` remains `PARTIAL`, with the 2026-07-27 re-measurement and the
-   second, deeper blocker recorded inline (§6.1).
+1. `CF-P7-013` remained `PARTIAL` in the original exit and later moved to
+   `PASS` when the Product Owner drove the signed-in journeys (§2B). U2's
+   survives-reload half was kept unclaimed until its separate Live
+   requalification (§2C).
 2. `CF-P7-013`'s evidence list named `CF-EV-P7-QA-001` and `CF-EV-P7-PERF-002`.
    Neither was ever written. It names the five `OPS` records that were, with the
    planned-but-unwritten pair retained in `evidence_planned_but_never_written` so
@@ -270,17 +288,17 @@ something that does not exist or no longer holds:
 | | Criterion | Evidence | Standing |
 |---|---|---|---|
 | U1 | Personal and workspace data never mixed | zero personal storage keys asserted by every surface gate; zero collaboration modules on Personal startup, measured on the deployment (`OPS-004`) | **held** |
-| U2 | The user always knows which workspace they are in | `UI-002`; the resolver refuses to fall back silently | held **for the composed surfaces**; not exercised through a live workspace |
+| U2 | The user always knows which workspace they are in | `UI-002`, `OPS-002`; the Product Owner selected a workspace on Preview v2, reloaded with `Ctrl+R`, and confirmed the same context and panel | **held on Live Preview** |
 | U3 | Role-disabled controls carry an explanation | `UI-005`, `A11Y-002`; 60 disabled controls, zero without an announced reason | held **for the composed surfaces**; not exercised through a live role |
 | U4 | A local draft is never lost to a conflict | `UI-009`; dismissal decides nothing, discard needs arming and confirming | held **for the composed surfaces**; not exercised through a live conflict |
 | U5 | Keyboard and focus meet the bar | `A11Y-004`; zero rings missing, lowest contrast 5.48:1 against a 3:1 floor | held locally; **not measured on the deployment** — the only surface that rendered there has zero focusable controls |
 | U6 | Mobile and tablet layouts do not break | `UI-011`; zero overflow, clipped text, or sub-24 px targets across 18 measurements | held locally; **not measured on the deployment** — the measuring viewport reported `clientWidth: 0`, which is an instrumentation artifact and not a measurement |
 
-U1 is the only criterion with a measurement taken on the deployment. U2, U3 and
-U4 hold for the surfaces as composed and depend on a live workspace to be
-exercised as written. U5 and U6 hold locally and were explicitly **not** confirmed
+U1 and U2 have evidence from the deployment. U3 and U4 hold for the surfaces as
+composed and still depend on live role and conflict journeys to be exercised as
+written. U5 and U6 hold locally and were explicitly **not** confirmed
 against the deployment, for the reasons recorded in `CF-EV-P7-OPS-004` under
-"Not evidenced". None of the six is withdrawn; none of the six is claimed as
+"Not evidenced". None of the six is withdrawn; U3 through U6 are not claimed as
 deployment-qualified.
 
 ## 5. What the phase found
@@ -863,19 +881,18 @@ The seven roles are signed. The objective conditions are not met:
 
 | Condition | State |
 |---|---|
-| Every story PASS | **no** — `CF-P7-013` PARTIAL |
+| Every story PASS | **yes** — all 17 stories PASS |
 | Zero open defect | **yes** — the lazy chunk budget was renegotiated to 100 KiB by `D-P7-03` and measures 91.93 KiB, so it is `MET` (§6.2); no other defect is open |
 | Every gate exists and passes | yes — `cf:phase7:exit:check` shipped with this story; seventeen `cf:phase7:*` gates run inside `check:cloudflare` |
-| Sprint gate criteria U1–U6 qualified | **partial** — U1 measured on the deployment; U2–U6 held locally only (§4) |
+| Sprint gate criteria U1–U6 qualified | **partial** — U1 and U2 qualified on the deployment; U3–U6 held locally only (§4) |
 | Zero unowned or expired Critical/High risk | yes — 22 register rows, all owned; nine Phase 7 exit risks, all owned |
 | `npm run check` green with a real exit code | yes — exit **0** (§8.1), captured after a redirect and never through a pipe |
 
-Two of the six conditions moved to met in this revision and two remain
-categorically unmet. **`P7-G5` is therefore NOT GRANTED**, and no combination of
-paperwork can change that: the two open conditions both require a journey to be
-run and a size decision to be taken, and neither is a document. Phase 7 remains
-open, and [`phase-8-handoff.md`](phase-8-handoff.md) — issued by this story —
-becomes controlling on the grant and not before.
+Five of the six conditions are met. The remaining condition is categorical:
+U3 through U6 still need Live evidence. **`P7-G5` is therefore NOT GRANTED**,
+and no combination of paperwork can change that. Phase 7 remains open, and
+[`phase-8-handoff.md`](phase-8-handoff.md) — issued by this story — becomes
+controlling on the grant and not before.
 
 The gate refuses to record it otherwise. `cf:phase7:exit:check` computes
 grantability from every story being PASS, no open defect, and every row of this
@@ -890,22 +907,21 @@ Granting it needs, in order:
    doors now activate when the flag is on and still refuse when it is off,
    proved both ways by `identity-runtime.workers.test.ts` and
    `identity-primitives.workers.test.ts`, and gated by `cf:phase7:dispatch:check`.
-3. **`codex-cf-p3-preview` rebuilt** — a new deployment id, not a
-   re-measurement, from a commit carrying the `CF-P7-017` fix. Not done; no
-   agent can push a commit that triggers a Pages build.
-4. **The journeys qualified by someone who can sign in.** No agent can do this; it
-   is the one item on this list that is structurally owner-only, and was true
-   before item 2 closed and remains true after.
-5. **The 60 KiB budget met or renegotiated on the record** (§6.2). Four options,
-   none chosen.
+3. ~~**Preview rebuilt from the corrected dispatch**~~ **(done)** — Preview v2
+   deployment `e6048773` carries source `e09f732`.
+4. **U3 through U6 qualified by people and devices able to drive their Live
+   journeys.** U2 was closed by the Product Owner on 2026-07-29; the remaining
+   role, invitation, conflict, keyboard, and responsive journeys are still open.
+5. ~~**The 60 KiB budget met or renegotiated on the record**~~ **(done —
+   `D-P7-03`)**: the budget is 100 KiB and the measured closure is 91.93 KiB.
 
 Four items from earlier drafts' lists are now done and are struck from it:
 `CF-P7-016` closed the error-map gap (R-P7-E), `cf:phase7:exit:check` exists so
 this reconciliation is enforced rather than asserted (R-P7-D), setting
 `COLLABORATION_ENABLED` for the Preview environment is done (which is how items
 1 and 2 above were found to be necessary but not sufficient), and `CF-P7-017`
-itself is now done. What remains needs an owner in every case: a new deployment
-and a signed-in session.
+itself is now done. The Preview rebuild and U2 owner-driven session are also
+done. What remains is Live qualification of U3 through U6.
 
 ## 11. Boundaries held
 

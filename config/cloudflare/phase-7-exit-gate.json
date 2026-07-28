@@ -210,13 +210,21 @@
       "register this device",
       "create a workspace",
       "revoke this device",
-      "switch workspace"
+      "switch workspace and retain the selected workspace across a full reload"
     ],
     "not_completed": [
       "invite someone and have them accept -- needs a second real GitHub account",
-      "resolve a conflict -- needs two devices editing one document, and the document surfaces are not Phase 7",
-      "the selection surviving a reload -- the route that makes it possible was only implemented on 2026-07-28 and no reload has been driven against a deployment carrying it"
+      "resolve a conflict -- needs two devices editing one document, and the document surfaces are not Phase 7"
     ],
+    "u2_live_requalification": {
+      "qualified_on": "2026-07-29",
+      "deployment": "e6048773-d133-4dbb-9ccc-7cd498e6ecff",
+      "source_commit": "e09f732",
+      "canonical_origin": "https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev",
+      "driven_by": "the Product Owner, in their own browser",
+      "verdict": "PASS",
+      "evidence": "CF-EV-P7-OPS-002"
+    },
     "corroboration": "Read-only SQL against the Preview D1 database, which an agent can gather but cannot manufacture: workspaces holds 7 rows created through this UI, each at current_key_version 1 with its creator as sole member; devices holds 9 rows, 1 active and 8 revoked; audit_events holds workspace.created x10; workspace_key_envelopes holds 10 unrevoked rows. The envelopes are the load-bearing part -- each was sealed in the browser by the hand-written port in js/collaboration/workspace-key-envelope.js and accepted by the server parser, so the port and functions/_lib/e2ee agree on live data and not only in a round-trip test.",
     "why_the_agent_could_not_do_this": "Qualifying these journeys needs a real OAuth session, and obtaining one means entering credentials at github.com. No agent did so at any point. What the agent contributed was the seven fixes the journey exposed, each of which was invisible to the entire test suite beforehand.",
     "production_still_refuses": true,
@@ -332,7 +340,7 @@
       {
         "condition": "Sprint gate criteria U1-U6 qualified",
         "met": false,
-        "state": "U1 and within-session switching are qualified against live data. The survives-a-reload half of U2 is not: the route that lists a caller's workspaces did not exist until 2026-07-28 and no reload has been driven against a deployment carrying it. U3 to U6 need a role change, an invitation accepted by a second account, and a conflict."
+        "state": "U1 and U2 are qualified against live data. On 2026-07-29 the Product Owner selected a workspace on Preview v2 deployment e6048773, performed a full Ctrl+R reload, and confirmed that the same workspace remained in the context indicator and panel. U3 to U6 still need a live role change, an invitation accepted by a second account, a conflict between two devices, and deployment-level keyboard and responsive measurements."
       },
       {
         "condition": "Zero unowned or expired Critical/High risk",
@@ -348,12 +356,20 @@
   },
   "open_items": [
     {
-      "item": "U2 survives-reload and U3 to U6 were not exercised against a live deployment",
+      "item": "U3 to U6 were not exercised against a live deployment",
       "owner": "UX Lead",
-      "detail": "CORRECTED 2026-07-28. U1 and switching within a session are qualified. The half of U2 that matters most -- the selection survives a reload rather than silently defaulting -- was recorded as qualified earlier today and was not: GET /api/v1/workspaces was contract-declared from Phase 4 and implemented by nothing, so the workspace list was empty on every load and a workspace was visible only in the session that created it. The route and its service now exist and are covered by a workers test proven to fail without them, but no owner has driven a reload against a deployment carrying them. U3 to U6 additionally need a role change, an invitation accepted by a second GitHub account, and a conflict between two devices."
+      "detail": "U2 was closed on 2026-07-29 against Preview v2 deployment e6048773. U3 to U6 remain open: they require a live role change with its explained-disabled controls, an invitation accepted by a second GitHub account, a conflict between two devices, and deployment-level keyboard, focus, mobile, and tablet measurements."
     }
   ],
   "closed_open_items": [
+    {
+      "item": "U2 survives-reload was not exercised against a live deployment",
+      "owner": "UX Lead",
+      "closed_on": "2026-07-29",
+      "was": "Switching within a session had been qualified, but GET /api/v1/workspaces was not implemented on the deployment used for that journey, so no selected workspace could survive a fresh page load.",
+      "closed_by": "The exact-method dispatch correction reached Preview v2 deployment e6048773 (source e09f732). The Product Owner signed in through the v2 OAuth callback, selected a workspace, performed Ctrl+R, and confirmed the same workspace remained in both the always-visible context indicator and the panel.",
+      "verified": "Owner-driven Live Preview result: PASS. Automated composition coverage independently requires unauthenticated GET /api/v1/workspaces to reach the collaboration handler, and the Preview gate now rejects a U2 PASS record unless the canonical callback, authenticated session, full reload, stable workspace, and matching panel are all recorded."
+    },
     {
       "item": "Correctly excluded and missing are the same 200 on the wire",
       "owner": "Technical Lead",

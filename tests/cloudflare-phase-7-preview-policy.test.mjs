@@ -286,6 +286,32 @@ test('claiming a journey against a deployment with collaboration off is rejected
         /cannot be qualified against a deployment with collaboration disabled/);
 });
 
+test('claiming U2 without a workspace surviving the full reload is rejected', async () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.u2_live_requalification.workspace_unchanged_after_reload = false;
+    await assert.rejects(() => validatePhase7Preview(drifted),
+        /without a selected workspace surviving a full reload/);
+});
+
+test('claiming U2 on a non-canonical callback is rejected', async () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.u2_live_requalification.oauth_callback =
+        'https://codex-cf-p3-preview.docvault-qa-document-hub.pages.dev'
+        + '/api/v1/oauth/github/callback';
+    await assert.rejects(() => validatePhase7Preview(drifted),
+        /canonical origin and exact OAuth callback/);
+});
+
+test('recording the workspace name without need is rejected', async () => {
+    const drifted = input();
+    drifted.manifest = clone(drifted.manifest);
+    drifted.manifest.u2_live_requalification.workspace_name_recorded = true;
+    await assert.rejects(() => validatePhase7Preview(drifted),
+        /retains unnecessary workspace identity/);
+});
+
 /** The manifest as it stood while the journey was still outstanding. */
 const unqualified = () => {
     const drifted = input();
@@ -347,4 +373,5 @@ test('the blocker and the owner action are stated at run time, not only in the m
     const check = read('scripts/check-cloudflare-phase-7-preview.mjs');
     assert.match(check, /OWNER ACTION REQUIRED/);
     assert.match(check, /DECLARED LIMIT/);
+    assert.match(check, /U2 Live requalification/);
 });

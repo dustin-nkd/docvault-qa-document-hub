@@ -89,6 +89,26 @@
     "journeys_qualified": true,
     "evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-002.md"
   },
+  "u2_live_requalification": {
+    "gate_ux": "U2",
+    "status": "PASS",
+    "qualified_on": "2026-07-29",
+    "deployment": "e6048773-d133-4dbb-9ccc-7cd498e6ecff",
+    "source_commit": "e09f732",
+    "branch": "codex-cf-p3-preview-v2",
+    "canonical_origin": "https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev",
+    "oauth_callback": "https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev/api/v1/oauth/github/callback",
+    "driven_by": "the Product Owner, in their own browser, signed in to their own GitHub account",
+    "session_obtained_by_agent": false,
+    "authenticated_session": true,
+    "workspace_selected": true,
+    "reload_action": "Ctrl+R",
+    "workspace_unchanged_after_reload": true,
+    "context_indicator_matches_panel": true,
+    "workspace_name_recorded": false,
+    "workspace_name_reason": "The criterion is equality of the selected workspace before and after reload. Its display name is user data and is not needed to substantiate that verdict.",
+    "evidence": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-OPS-002.md"
+  },
   "declared_limits": {
     "journeys_not_completable_in_this_build": [
       {
@@ -183,7 +203,8 @@
         "journey": "switch workspace",
         "surface": "workspace-switcher",
         "evidence": "Owner-reported: after switching, both the context indicator and the panel below it showed the newly selected workspace.",
-        "scope_correction": "CORRECTED 2026-07-28, after this was first recorded. What was qualified is switching WITHIN a session. The other half of U2 -- that the selection survives a reload rather than silently defaulting -- was NOT qualified at the time, and could not have been: GET /api/v1/workspaces was declared by the API contract from Phase 4 and implemented by nothing, so it answered METHOD_NOT_ALLOWED and the workspace list was empty on every page load. A workspace was visible only because the entry appends it to its in-memory list after creating it. The route and its service (listUserWorkspaces) were implemented on 2026-07-28 and are covered by a workers test that fails with 405 when the route is removed, but no owner has driven a reload against a deployment carrying them, so the surviving-reload half of U2 stays unclaimed here."
+        "scope_correction": "CORRECTED 2026-07-28, after this was first recorded. What was qualified at that time was switching WITHIN a session. The other half of U2 -- that the selection survives a reload rather than silently defaulting -- was not qualified then and could not have been: GET /api/v1/workspaces was declared by the API contract from Phase 4 and implemented by nothing, so it answered METHOD_NOT_ALLOWED and the workspace list was empty on every page load.",
+        "live_requalification": "CLOSED 2026-07-29. On Preview v2 deployment e6048773 (source e09f732), the Product Owner signed in through the updated OAuth callback, selected a workspace, performed a full Ctrl+R reload, and confirmed that the same workspace remained in the always-visible context indicator and the panel below it."
       }
     ],
     "not_completed": [

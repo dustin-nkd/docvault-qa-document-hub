@@ -1,8 +1,10 @@
 # Collaboration Foundation Phase 7 — Integrate and qualify on Preview
 
-Status: **PARTIAL — `CF-P7-013`, entry `P7-G4`, exit `P7-G4A`**
+Status: **PASS — `CF-P7-013`, entry `P7-G4`, exit `P7-G4A`**
 
-`P7-G4A` authorizes `CF-P7-014` only, and is **not reached**. See §7.
+`P7-G4A` authorizes `CF-P7-014` only and was reached after the owner drove the
+signed-in Preview journeys. Sections 1–9 retain the story's original partial
+state and its discoveries; §10 records the later closure and U2 requalification.
 
 ## 1. What this story is for
 
@@ -171,7 +173,7 @@ off.
   `renderSurfacePanel` would have passed on the exact state this story found.
 - `tests/collaboration-services.test.mjs` — 19 adapter cases.
 - `tests/collaboration-integration.test.mjs` — 21 cases over the whole path.
-- `tests/cloudflare-phase-7-preview-policy.test.mjs` — 35 drift cases.
+- `tests/cloudflare-phase-7-preview-policy.test.mjs` — 39 drift cases.
 - `tests/browser-collaboration-integration.mjs` — the composed shell in three
   browsers, at three widths, in both themes.
 
@@ -182,3 +184,22 @@ Zero collaboration modules on Personal startup, before and after composition.
 Zero personal storage keys touched on any collaboration path. Transport still
 lives in exactly one module, and the CF-P7-015 gate now walks the entry's import
 graph to check that claim rather than take it.
+
+## 10. Closure and U2 Live requalification
+
+The owner completed the original signed-in journeys on 2026-07-28, moving
+`CF-P7-013` to PASS. The workspace-switch result still covered only one page
+session, so U2's survives-reload half stayed explicitly unclaimed.
+
+On 2026-07-29 the Product Owner updated the GitHub OAuth callback to the
+canonical v2 origin and qualified that missing half on Preview deployment
+`e6048773-d133-4dbb-9ccc-7cd498e6ecff` (`e09f732`,
+`codex-cf-p3-preview-v2`). They signed in, selected a workspace, performed a
+full `Ctrl+R` reload, and confirmed that the same workspace remained in both the
+always-visible context indicator and the panel. U2 is therefore PASS on Live
+Preview.
+
+The result is recorded in
+[`CF-EV-P7-OPS-002.md`](evidence/phase-7/CF-EV-P7-OPS-002.md) and enforced as a
+record by `cf:phase7:preview:check`. U3 through U6 remain outside this result;
+`P7-G5` is still not granted.

@@ -457,6 +457,36 @@ export async function validatePhase7Preview({ manifest, contract, apiContract, e
             'Journeys cannot be qualified against a deployment with collaboration disabled');
     }
 
+    // U2's harder half was qualified later, after the workspace-list route and
+    // the composed dispatch path both existed on the same deployment. Keep it
+    // separate from the original multi-build journey record: overwriting the
+    // earlier deployment would imply every old measurement was repeated on the
+    // new build, which is not what the owner reported.
+    const u2 = manifest.u2_live_requalification || {};
+    assert(u2.gate_ux === 'U2' && u2.status === 'PASS',
+        'The Live reload record no longer qualifies U2');
+    assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+        .test(u2.deployment || ''), 'The U2 record names no Preview deployment');
+    assert(/^[0-9a-f]{7,40}$/.test(u2.source_commit || ''),
+        'The U2 record names no source commit');
+    assert(u2.branch === 'codex-cf-p3-preview-v2',
+        'U2 was not qualified on the canonical Preview branch');
+    const canonicalOrigin =
+        'https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev';
+    assert(u2.canonical_origin === canonicalOrigin
+        && u2.oauth_callback === `${canonicalOrigin}/api/v1/oauth/github/callback`,
+    'The U2 record does not use the canonical origin and exact OAuth callback');
+    assert(u2.session_obtained_by_agent === false && u2.authenticated_session === true,
+        'The U2 OAuth-session provenance is missing or unsafe');
+    assert(u2.workspace_selected === true && u2.reload_action === 'Ctrl+R'
+        && u2.workspace_unchanged_after_reload === true
+        && u2.context_indicator_matches_panel === true,
+    'U2 claims PASS without a selected workspace surviving a full reload');
+    assert(u2.workspace_name_recorded === false
+        && typeof u2.workspace_name_reason === 'string'
+        && u2.workspace_name_reason.length > 80,
+    'The U2 record retains unnecessary workspace identity or gives no reason');
+
     // The evidence and the manifest must agree about how far this got. Two
     // records that disagree are worse than one, because the reader has to guess.
     const evidenceStatus = /^Status: (\w+)/m.exec(evidence)?.[1] ?? null;
@@ -465,6 +495,9 @@ export async function validatePhase7Preview({ manifest, contract, apiContract, e
         `The evidence says ${evidenceStatus} and the manifest says ${manifest.status}`);
     assert(evidence.includes(preview.deployment),
         'The evidence does not name the deployment the manifest records');
+    assert(evidence.includes(u2.deployment) && evidence.includes(u2.source_commit)
+        && evidence.includes('U2'),
+    'The evidence does not substantiate the Live U2 requalification');
 
     return true;
 }

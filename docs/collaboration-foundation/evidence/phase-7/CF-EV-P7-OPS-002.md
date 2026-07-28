@@ -133,3 +133,36 @@ Each is fixed, tested against the shape the server actually returns, and pushed.
 The pattern is worth naming: five of the seven are the same mistake — a fixture
 written to match what the client assumed, rather than what the server sends — and
 a suite made only of such fixtures agrees with itself forever.
+
+## U2 Live requalification on Preview v2 — 2026-07-29
+
+The earlier workspace-switch result proved only that the context indicator and
+panel changed together within one page session. It did not prove U2's harder
+half: that the selected workspace survives a fresh load instead of silently
+defaulting elsewhere.
+
+That gap is now closed on:
+
+| Field | Value |
+|---|---|
+| Gate UX | `U2` |
+| Deployment | `e6048773-d133-4dbb-9ccc-7cd498e6ecff` |
+| Source | `e09f732` |
+| Branch | `codex-cf-p3-preview-v2` |
+| Canonical origin | `https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev` |
+| OAuth callback | `https://codex-cf-p3-preview-v2.docvault-qa-document-hub.pages.dev/api/v1/oauth/github/callback` |
+| Result | **PASS** |
+
+The Product Owner updated the OAuth App callback, signed in to their own GitHub
+account, selected a workspace, performed a full `Ctrl+R` reload, and reported
+that the same workspace remained visible in both the always-visible context
+indicator and the panel below it. No agent obtained or handled the OAuth
+session.
+
+The workspace display name is deliberately not recorded. U2 needs equality of
+the selected workspace before and after reload; retaining user data that is not
+needed for that verdict would add no evidential value.
+
+This qualifies **U2 only**. It does not claim a live role change, invitation
+acceptance, conflict, keyboard pass, or responsive pass; U3 through U6 remain
+open at the Phase 7 exit gate.

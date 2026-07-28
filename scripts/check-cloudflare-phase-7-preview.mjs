@@ -38,6 +38,10 @@ console.log('  Access removed is claimed only after a membership re-check, never
 console.log(`  Preview deployment ${manifest.preview.deployment} from `
     + `${manifest.preview.source_commit}: ${manifest.preview.modules_before_opener} `
     + `collaboration modules before the opener, ${manifest.preview.modules_after_opener} after`);
+console.log(`  U2 Live requalification: ${manifest.u2_live_requalification.status} on `
+    + `${manifest.u2_live_requalification.deployment} from `
+    + `${manifest.u2_live_requalification.source_commit}; selected workspace survived `
+    + `${manifest.u2_live_requalification.reload_action} and still matched the panel`);
 
 // Narrowed coverage is stated out loud, not left in a file nobody opens.
 for (const limit of manifest.declared_limits.journeys_not_completable_in_this_build) {
