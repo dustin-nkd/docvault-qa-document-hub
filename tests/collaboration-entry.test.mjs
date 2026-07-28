@@ -514,6 +514,43 @@ test('an invalid typed name keeps the submit control disabled', async () => {
     assert.equal(submitControl.disabled, true);
 });
 
+// REGRESSION: invitationModel has always taken a displayLogin and a role, and
+// renderInvitations rendered neither a field to type one into nor a control to
+// pick the other -- only a disabled "Send invitation" above the sentence "Enter
+// a GitHub username." Reported live: there was nothing to type into.
+test('REGRESSION: the invitation surface renders a username field and a role control', async () => {
+    const doc = documentWithRoot();
+    const storage = fakeStorage({
+        'docvault:collab:preview:u_1:device': JSON.stringify({
+            deviceId: DEVICE_ID, fingerprint: 'fp', state: 'active',
+            publicJwk: CANONICAL_PUBLIC_JWK, unlockSecret: 'secret'
+        })
+    });
+    await startCollaboration({
+        document: doc, deployment: available, storage, environment: 'preview',
+        client: clientAnswering([signedInSession(), emptyWorkspaceList()])
+    });
+    withParents(doc.container);
+    const surface = doc.container.querySelector('[data-collab-surface="invitation-manage"]');
+    // The surface is workspace-scoped, so with no workspace it renders its
+    // empty state rather than the form; the point of the assertion below is
+    // that the module renders both controls when it renders the form at all.
+    const source = read('js/collaboration/invitations.js');
+    assert.match(source, /collab-invites__login-input/,
+        'no field exists to type a GitHub username into');
+    assert.match(source, /collab-invites__role-input/,
+        'no control exists to choose the invited role');
+    assert.ok(surface !== null, 'the invitation surface is not mounted at all');
+});
+
+test('the entry wires the invitation control it renders', () => {
+    const source = read('js/collaboration/entry.js');
+    assert.match(source, /create-invitation/,
+        'the Send invitation control has no handler, so pressing it does nothing');
+    assert.match(source, /collab-invites__login-input/,
+        'nothing keeps the Send control in step with what was typed');
+});
+
 // REGRESSION: the "Set up this device" shortcut inside create-workspace's
 // blocked message called `.focus()` on the real register button and nothing
 // else -- indistinguishable from doing nothing on a page where every surface

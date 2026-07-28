@@ -205,6 +205,55 @@ export function renderInvitations(doc, model, instanceId) {
     heading.textContent = 'Invitations';
     root.appendChild(heading);
 
+    // The two things an invitation is made of. The model has always taken a
+    // `displayLogin` and a `role`, and until now nothing rendered a way to
+    // supply either: the surface showed a disabled control explaining that a
+    // GitHub username was needed, above no field to type one into.
+    const label = doc.createElement('label');
+    label.className = 'collab-invites__label';
+    label.setAttribute('for', `${instanceId}-login`);
+    label.textContent = 'GitHub username';
+    root.appendChild(label);
+
+    const login = doc.createElement('input');
+    login.className = 'collab-invites__login-input';
+    login.type = 'text';
+    login.id = `${instanceId}-login`;
+    login.setAttribute('name', 'displayLogin');
+    login.setAttribute('autocomplete', 'off');
+    login.setAttribute('spellcheck', 'false');
+    login.setAttribute('maxlength', '39');
+    login.setAttribute('value', model.displayLogin);
+    // Invalid only once something has been typed: an empty field on arrival is
+    // not an error the user has made yet.
+    if (model.nameMessage !== null && model.displayLogin.length > 0) {
+        login.setAttribute('aria-invalid', 'true');
+    }
+    if (model.inFlight) login.disabled = true;
+    root.appendChild(login);
+
+    const roleLabel = doc.createElement('label');
+    roleLabel.className = 'collab-invites__label';
+    roleLabel.setAttribute('for', `${instanceId}-role`);
+    roleLabel.textContent = 'Role';
+    root.appendChild(roleLabel);
+
+    const roleField = doc.createElement('select');
+    roleField.className = 'collab-invites__role-input';
+    roleField.id = `${instanceId}-role`;
+    roleField.setAttribute('name', 'role');
+    if (model.inFlight) roleField.disabled = true;
+    for (const value of INVITABLE_ROLES) {
+        const option = doc.createElement('option');
+        option.setAttribute('value', value);
+        // The owner role is deliberately absent: ownership moves by transfer,
+        // not by invitation, and offering it here would promise otherwise.
+        option.textContent = value.charAt(0).toUpperCase() + value.slice(1);
+        if (value === model.role) option.setAttribute('selected', 'selected');
+        roleField.appendChild(option);
+    }
+    root.appendChild(roleField);
+
     const create = doc.createElement('button');
     create.type = 'button';
     create.className = 'collab-invites__create';

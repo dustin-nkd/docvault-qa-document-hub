@@ -30,6 +30,7 @@ import { runCreateWorkspace, validateDisplayName } from './create-workspace.js';
 import { sealCreatorEnvelope } from './workspace-key-envelope.js';
 import { createDeviceRecordStore, newUnlockSecret, decodeUnlockSecret } from './device-record.js';
 import { reviewInvitation, takeTokenFromFragment } from './invitation-accept.js';
+import { createInvitation, validateDisplayLogin } from './invitations.js';
 import { deriveSyncState } from './sync-state.js';
 
 /**
@@ -422,6 +423,53 @@ export async function startCollaboration({ document: doc, deployment, client, fe
         }
     }
 
+    /**
+     * Invite someone (CF-P7-007's journey, wired for the first time).
+     *
+     * The one-time acceptance URL comes back once and is never fetched again,
+     * so it is put straight into the paint rather than held anywhere else: the
+     * surface shows it with its own warning, and losing it means revoking and
+     * re-issuing rather than looking it up.
+     */
+    async function sendInvitation(login, role) {
+        const workspaceId = selection?.read() ?? null;
+        if (workspaceId === null) return;
+        const check = validateDisplayLogin(login);
+        if (!check.valid) {
+            repaint({ inviteLogin: login, inviteRole: role, inviteFailure: check.message });
+            return;
+        }
+        repaint({ inviteLogin: login, inviteRole: role, inviteStatus: 'creating', inviteFailure: null });
+        try {
+            const result = await createInvitation({
+                api: services,
+                workspaceId,
+                displayLogin: login,
+                role,
+                newIdempotencyKey: () => services.newIdempotencyKey()
+            });
+            // Re-read the list so the new invitation appears alongside the URL
+            // rather than only as a URL the user has to trust arrived.
+            const listed = await settle(() => services.listInvitations({ workspaceId }));
+            repaint({
+                inviteLogin: '',
+                inviteRole: role,
+                inviteStatus: 'idle',
+                inviteFailure: null,
+                issuedInvitation: result,
+                ...(listed.ok ? { invitations: [...listed.value.items] } : {})
+            });
+        } catch (error) {
+            repaint({
+                inviteLogin: login,
+                inviteRole: role,
+                inviteStatus: 'idle',
+                inviteFailure: error?.reason
+                    ?? 'The invitation could not be created. Nothing was sent.'
+            });
+        }
+    }
+
     // Taken out of the address bar before anything is painted, and the history
     // entry that carried it is overwritten in the same step — so no render, no
     // back-navigation, and no failure below can leave the token on screen.
@@ -462,6 +510,15 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 void revokeThisDevice();
                 return;
             }
+            if (action === 'create-invitation') {
+                const surface = typeof control.closest === 'function'
+                    ? control.closest('[data-collab-surface="invitation-manage"]')
+                    : null;
+                const loginField = surface?.querySelector('.collab-invites__login-input');
+                const roleField = surface?.querySelector('.collab-invites__role-input');
+                void sendInvitation(loginField?.value ?? '', roleField?.value ?? 'editor');
+                return;
+            }
             if (action === 'device-setup-open') {
                 // This is the same journey the real "Set up this device"
                 // control runs, reached from inside the blocked message rather
@@ -497,16 +554,30 @@ export async function startCollaboration({ document: doc, deployment, client, fe
         // the same event. This mirrors that one check, directly on the node.
         container.addEventListener('input', event => {
             const input = event.target;
-            if (!input || input.id !== 'collab-create-name') return;
-            const form = typeof input.closest === 'function'
-                ? input.closest('[data-collab-surface="create-workspace"]')
-                : null;
-            const submitControl = form?.querySelector('[data-collab-action="workspace-create-submit"]');
-            if (!submitControl) return;
-            const deviceReady = currentDevice !== null && currentDevice.state === 'active';
-            const canSubmit = deviceReady && validateDisplayName(input.value).valid;
-            submitControl.disabled = !canSubmit;
-            submitControl.setAttribute('aria-disabled', String(!canSubmit));
+            if (!input || typeof input.closest !== 'function') return;
+
+            if (input.id === 'collab-create-name') {
+                const form = input.closest('[data-collab-surface="create-workspace"]');
+                const submitControl = form?.querySelector('[data-collab-action="workspace-create-submit"]');
+                if (!submitControl) return;
+                const deviceReady = currentDevice !== null && currentDevice.state === 'active';
+                const canSubmit = deviceReady && validateDisplayName(input.value).valid;
+                submitControl.disabled = !canSubmit;
+                submitControl.setAttribute('aria-disabled', String(!canSubmit));
+                return;
+            }
+
+            // The invitation username, for the same reason: its model only
+            // learns the typed value when the control is pressed, and the
+            // control is disabled until the model has it.
+            if (input.className === 'collab-invites__login-input') {
+                const surface = input.closest('[data-collab-surface="invitation-manage"]');
+                const sendControl = surface?.querySelector('[data-collab-action="create-invitation"]');
+                if (!sendControl) return;
+                const canSend = validateDisplayLogin(input.value).valid;
+                sendControl.disabled = !canSend;
+                sendControl.setAttribute('aria-disabled', String(!canSend));
+            }
         });
     }
 
