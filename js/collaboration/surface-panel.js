@@ -197,7 +197,9 @@ function build(doc, surface, { context, session, device, data }) {
                 issued: data.issuedInvitation ?? null,
                 displayLogin: data.inviteLogin ?? '',
                 role: data.inviteRole ?? 'editor',
-                status: data.inviteStatus ?? 'idle'
+                status: data.inviteStatus ?? 'idle',
+                copyStatus: data.inviteCopyStatus ?? 'idle',
+                copyNotice: data.inviteCopyNotice ?? null
             }), 'panel-invites');
 
         case 'invitation-accept':

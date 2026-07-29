@@ -30,7 +30,9 @@ import { runCreateWorkspace, validateDisplayName } from './create-workspace.js';
 import { sealCreatorEnvelope } from './workspace-key-envelope.js';
 import { createDeviceRecordStore, newUnlockSecret, decodeUnlockSecret } from './device-record.js';
 import { reviewInvitation, takeTokenFromFragment } from './invitation-accept.js';
-import { createInvitation, validateDisplayLogin } from './invitations.js';
+import {
+    copyAcceptanceUrl, createInvitation, validateDisplayLogin
+} from './invitations.js';
 import { deriveSyncState } from './sync-state.js';
 
 /**
@@ -212,10 +214,12 @@ function bindSignIn(container, api, doc) {
  *          client?: object, fetch?: Function, storage?: Storage,
  *          environment?: string, subject?: string,
  *          loadWorkspaces?: (client: object) => Promise<Array<object>>,
+ *          clipboard?: {writeText: Function},
  *          deviceLifecycleFactory?: (input: object) => object}} input
  */
 export async function startCollaboration({ document: doc, deployment, client, fetch: transport,
     storage, environment, subject, loadWorkspaces, location, history,
+    clipboard = doc?.defaultView?.navigator?.clipboard,
     deviceLifecycleFactory = input => new DeviceKeyLifecycle(input) } = {}) {
     const container = mountShell({ document: doc, deployment });
     if (container === null) return null;
@@ -294,6 +298,7 @@ export async function startCollaboration({ document: doc, deployment, client, fe
     api.setActingDevice(currentDevice?.state === 'active' ? currentDevice.deviceId : null);
 
     let lastPaintData = {};
+    let invitationCopyPending = false;
     const paint = data => {
         lastPaintData = data;
         return openCollaboration({
@@ -441,7 +446,14 @@ export async function startCollaboration({ document: doc, deployment, client, fe
             repaint({ inviteLogin: login, inviteRole: role, inviteFailure: check.message });
             return;
         }
-        repaint({ inviteLogin: login, inviteRole: role, inviteStatus: 'creating', inviteFailure: null });
+        repaint({
+            inviteLogin: login,
+            inviteRole: role,
+            inviteStatus: 'creating',
+            inviteFailure: null,
+            inviteCopyStatus: 'idle',
+            inviteCopyNotice: null
+        });
         try {
             const result = await createInvitation({
                 api: services,
@@ -458,6 +470,8 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 inviteRole: role,
                 inviteStatus: 'idle',
                 inviteFailure: null,
+                inviteCopyStatus: 'idle',
+                inviteCopyNotice: null,
                 // The surface owns the one-time URL holder, not the creation
                 // result around it. Passing the wrapper would make
                 // invitationModel call cleared()/read() on the wrong object
@@ -474,6 +488,38 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 inviteFailure: error?.reason
                     ?? 'The invitation could not be created. Nothing was sent.'
             });
+        }
+    }
+
+    /**
+     * Copy the one-time invitation URL through the single injected browser
+     * boundary.
+     *
+     * The holder is captured before awaiting the Clipboard API. A later
+     * invitation may replace it while permission is being resolved; in that
+     * case this operation may clear only the holder it actually copied and may
+     * not repaint over the newer URL.
+     */
+    async function copyInvitationLink() {
+        if (invitationCopyPending) return;
+        const held = lastPaintData.issuedInvitation;
+        if (!held || typeof held.read !== 'function' || held.cleared()) return;
+
+        invitationCopyPending = true;
+        repaint({ inviteCopyStatus: 'copying', inviteCopyNotice: null });
+        try {
+            const result = await copyAcceptanceUrl({ clipboard, held });
+            if (result.copied) held.clear();
+            if (lastPaintData.issuedInvitation !== held) return;
+            repaint({
+                issuedInvitation: result.copied ? null : held,
+                inviteCopyStatus: result.copied ? 'copied' : 'blocked',
+                inviteCopyNotice: result.copied
+                    ? 'Invitation link copied and cleared from this page.'
+                    : result.reason
+            });
+        } finally {
+            invitationCopyPending = false;
         }
     }
 
@@ -533,6 +579,14 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 const loginField = surface?.querySelector('.collab-invites__login-input');
                 const roleField = surface?.querySelector('.collab-invites__role-input');
                 void sendInvitation(loginField?.value ?? '', roleField?.value ?? 'editor');
+                return;
+            }
+            if (action === 'copy-acceptance-link') {
+                const surface = typeof control.closest === 'function'
+                    ? control.closest('[data-collab-surface="invitation-manage"]')
+                    : null;
+                if (surface === null) return;
+                void copyInvitationLink();
                 return;
             }
             if (action === 'device-setup-open') {
