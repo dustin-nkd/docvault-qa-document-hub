@@ -1,6 +1,6 @@
 # Collaboration Foundation Phase 7 remediation sprint — UI-to-backend wiring
 
-Status: **READY — `CF-P7R-001` only**
+Status: **ACTIVE — sequential ticket execution**
 
 Machine-readable plan:
 [`phase-7-wiring-sprint-plan.json`](../../config/cloudflare/phase-7-wiring-sprint-plan.json).

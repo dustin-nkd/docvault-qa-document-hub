@@ -7,7 +7,7 @@
   "created_on": "2026-07-29",
   "baseline_commit": "0597f5c2e79078083581edb92d6e103a468a88a2",
   "ticket_count": 8,
-  "current_ticket": "CF-P7R-001",
+  "current_ticket": "CF-P7R-002",
   "concurrency_limit": 1,
   "principle": "Repair one reviewed user-action boundary at a time. An enabled Collaboration control is not delivered until a composed UI interaction reaches its intended effect under behavioral regression tests.",
   "authorization": {
@@ -82,7 +82,7 @@
       "id": "CF-P7R-001",
       "title": "Isolate self-device and member-device revocation actions",
       "size": "M",
-      "status": "REVIEW_PASS",
+      "status": "PASS",
       "depends_on": [],
       "entry_gate": "P7R-G0",
       "exit_gate": "P7R-G1",
@@ -98,17 +98,17 @@
         "The reachability harness rejects new unowned enabled actions and requires this ticket's collision debt to resolve."
       ],
       "required_tests": ["composed_entry", "browser_action_to_request", "phase7_device", "phase7_members", "phase7_dispatch"],
-      "evidence": { "id": "CF-EV-P7-E2E-001", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-001.md", "status": "PLANNED" },
+      "evidence": { "id": "CF-EV-P7-E2E-001", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-001.md", "status": "PASS" },
       "verification": { "targeted": "PASS", "composed_entry": "PASS", "browser_action_to_request": "PASS", "relevant_phase_gates": "PASS", "full_cloudflare": "PASS" },
       "live_qualification": { "required": false, "mutation_required": false, "status": "NOT_REQUIRED" },
       "review": { "required": true, "status": "PASS", "reviewer": "AGY", "independent_review": false },
-      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+      "delivery": { "commit": "19864f03a8819a5ff9bc5027f2521f8f9510108e", "pushed": true, "pipeline": "PASS", "preview_smoke": "PASS" }
     },
     {
       "id": "CF-P7R-002",
       "title": "Wire the one-time invitation Copy link action",
       "size": "S",
-      "status": "BLOCKED",
+      "status": "READY",
       "depends_on": ["CF-P7R-001"],
       "entry_gate": "P7R-G1",
       "exit_gate": "P7R-G2",
