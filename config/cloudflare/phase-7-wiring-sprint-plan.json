@@ -7,7 +7,7 @@
   "created_on": "2026-07-29",
   "baseline_commit": "0597f5c2e79078083581edb92d6e103a468a88a2",
   "ticket_count": 8,
-  "current_ticket": "CF-P7R-003",
+  "current_ticket": "CF-P7R-004",
   "concurrency_limit": 1,
   "principle": "Repair one reviewed user-action boundary at a time. An enabled Collaboration control is not delivered until a composed UI interaction reaches its intended effect under behavioral regression tests.",
   "authorization": {
@@ -133,7 +133,7 @@
       "id": "CF-P7R-003",
       "title": "Wire invitation revocation end to end",
       "size": "M",
-      "status": "IN_PROGRESS",
+      "status": "PASS",
       "depends_on": ["CF-P7R-002"],
       "entry_gate": "P7R-G2",
       "exit_gate": "P7R-G3",
@@ -148,17 +148,17 @@
         "Refusal preserves the row, maps the server reason, and permits a deliberate retry."
       ],
       "required_tests": ["composed_entry", "browser_action_to_request", "phase7_invitations", "phase7_api", "phase4_invitation_lifecycle"],
-      "evidence": { "id": "CF-EV-P7-E2E-003", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-003.md", "status": "PLANNED" },
-      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
-      "live_qualification": { "required": true, "mutation_required": true, "status": "NOT_RUN" },
-      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
-      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+      "evidence": { "id": "CF-EV-P7-E2E-003", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-003.md", "status": "PASS" },
+      "verification": { "targeted": "PASS", "composed_entry": "PASS", "browser_action_to_request": "PASS", "relevant_phase_gates": "PASS", "full_cloudflare": "PASS" },
+      "live_qualification": { "required": true, "mutation_required": true, "status": "PASS" },
+      "review": { "required": true, "status": "PASS", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": "14c8ac6370bb35b1810adf6db72c44e58f86abc9", "pushed": true, "pipeline": "PASS", "preview_smoke": "PASS" }
     },
     {
       "id": "CF-P7R-004",
       "title": "Reconcile and wire invitation acceptance end to end",
       "size": "L",
-      "status": "BLOCKED",
+      "status": "READY",
       "depends_on": ["CF-P7R-003"],
       "entry_gate": "P7R-G3",
       "exit_gate": "P7R-G4",
