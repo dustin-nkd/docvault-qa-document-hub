@@ -89,7 +89,7 @@ type ErrorCode = 'VALIDATION_FAILED' | 'INVALID_JSON' | 'INVALID_CURSOR' | 'CSRF
     | 'UNAUTHENTICATED' | 'OPERATION_NOT_PERMITTED' | 'RECENT_AUTHENTICATION_REQUIRED'
     | 'RESOURCE_NOT_FOUND' | 'METHOD_NOT_ALLOWED' | 'NOT_ACCEPTABLE'
     | 'UNSUPPORTED_MEDIA_TYPE' | 'PAYLOAD_TOO_LARGE' | 'RATE_LIMITED'
-    | 'COLLABORATION_UNAVAILABLE';
+    | 'INVITATION_UNAVAILABLE' | 'COLLABORATION_UNAVAILABLE';
 
 const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = Object.freeze({
     VALIDATION_FAILED: 'The request does not satisfy the API contract.',
@@ -105,6 +105,7 @@ const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = Object.freeze({
     UNSUPPORTED_MEDIA_TYPE: 'Content-Type must be application/json; charset=utf-8.',
     PAYLOAD_TOO_LARGE: 'The request payload exceeds the allowed size.',
     RATE_LIMITED: 'The request rate limit was exceeded.',
+    INVITATION_UNAVAILABLE: 'This invitation cannot be used.',
     COLLABORATION_UNAVAILABLE: 'Collaboration is currently unavailable.'
 });
 
@@ -406,13 +407,49 @@ function mapDomainError(error: unknown): PreviewApiError {
     if (error instanceof InvitationLifecycleError) {
         if (error.code === 'INVITATION_INPUT_INVALID') return new PreviewApiError(400, 'VALIDATION_FAILED');
         if (error.code === 'INVITATION_OPERATION_NOT_PERMITTED') return new PreviewApiError(403, 'OPERATION_NOT_PERMITTED');
-        return new PreviewApiError(404, 'RESOURCE_NOT_FOUND');
+        return new PreviewApiError(409, 'INVITATION_UNAVAILABLE');
     }
     if (error instanceof PersistenceError) {
         return new PreviewApiError(error.code === 'PERSISTENCE_NOT_FOUND' ? 404 : 503,
             error.code === 'PERSISTENCE_NOT_FOUND' ? 'RESOURCE_NOT_FOUND' : 'COLLABORATION_UNAVAILABLE');
     }
     return new PreviewApiError(503, 'COLLABORATION_UNAVAILABLE');
+}
+
+/**
+ * Read back the exact membership the atomic acceptance created.
+ *
+ * The invitation service stores only a replay-safe transition result. The wire
+ * contract returns a MembershipView, so the runtime derives that view from the
+ * committed row instead of manufacturing role or readiness from request data.
+ */
+async function acceptedMembership(database: D1Database, actorUserId: string, workspaceId: string) {
+    const row = await openAuthorizationSession(database).prepare(
+        `SELECT m.user_id, m.role, m.state, m.created_at,
+                u.display_login, u.display_name, u.avatar_url
+         FROM memberships m
+         JOIN users u ON u.id = m.user_id
+         WHERE m.workspace_id = ? AND m.user_id = ? LIMIT 1`
+    ).bind(workspaceId, actorUserId).first<Record<string, unknown>>();
+    if (row === null || row.user_id !== actorUserId || row.state !== 'pending_key'
+        || !['admin', 'editor', 'viewer'].includes(String(row.role))
+        || typeof row.created_at !== 'number' || !Number.isInteger(row.created_at)
+        || row.created_at < 0
+        || typeof row.display_login !== 'string') {
+        throw new PersistenceError('PERSISTENCE_INTEGRITY');
+    }
+    return Object.freeze({
+        userId: actorUserId,
+        role: row.role,
+        state: 'pending_key',
+        keyReadiness: 'pending_key',
+        joinedAt: new Date(Number(row.created_at)).toISOString(),
+        displayProfile: Object.freeze({
+            login: row.display_login,
+            displayName: typeof row.display_name === 'string' ? row.display_name : null,
+            avatarUrl: typeof row.avatar_url === 'string' ? row.avatar_url : null
+        })
+    });
 }
 
 async function dispatch(database: D1Database, request: Request, matched: { route: Route; params: readonly string[] },
@@ -492,7 +529,11 @@ async function dispatch(database: D1Database, request: Request, matched: { route
     if (matched.route.id === 'invitation-accept') {
         if (url.search !== '' || actingDeviceId === null) throw new PreviewApiError(400, 'VALIDATION_FAILED');
         const body = await readBody(request);
-        if (!exactKeys(body.value, ['token']) || typeof body.value.token !== 'string') {
+        if (!exactKeys(body.value, ['token', 'deviceId'])
+            || typeof body.value.token !== 'string'
+            || typeof body.value.deviceId !== 'string'
+            || !UUID_V4.test(body.value.deviceId)
+            || body.value.deviceId !== actingDeviceId) {
             throw new PreviewApiError(400, 'VALIDATION_FAILED');
         }
         const clientMutationId = idempotency(request);
@@ -502,7 +543,8 @@ async function dispatch(database: D1Database, request: Request, matched: { route
             requestFingerprint: await fingerprint(request, clientMutationId, body.raw),
             auditEventId: requestId(dependencies), requestId: persistentRequestId,
             serverTime: now, replayExpiresAt: now + REPLAY_RETENTION_MS });
-        return success(persistentRequestId, 201, result, undefined, authorization.setCookie);
+        const membership = await acceptedMembership(database, actorUserId, result.workspaceId);
+        return success(persistentRequestId, 201, { membership }, undefined, authorization.setCookie);
     }
 
     const workspaceId = requireUuid(matched.params[0]);

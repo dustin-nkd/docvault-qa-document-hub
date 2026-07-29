@@ -11,7 +11,7 @@ Story: `CF-P7-008` — surface `invitation-accept`
 | `js/collaboration/invitation-accept.js` | fragment reader, review states, acceptance |
 | `config/cloudflare/phase-7-invitation-accept.json` | the frozen claim |
 | `scripts/cloudflare-phase-7-accept-policy.mjs` | the gate |
-| `tests/collaboration-invitation-accept.test.mjs` | 31 unit tests |
+| `tests/collaboration-invitation-accept.test.mjs` | 32 unit tests |
 | `tests/cloudflare-phase-7-accept-policy.test.mjs` | 24 drift cases |
 
 ## The token, while it is in the address bar

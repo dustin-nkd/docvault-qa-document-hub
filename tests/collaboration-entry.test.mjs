@@ -327,6 +327,25 @@ test('a signed-out visitor on an enabled deployment is offered a sign-in', async
     assert.notEqual(state.querySelector('[data-collab-action="sign-in"]'), null);
 });
 
+test('a signed-out invitation is cleared and explains that the link must be reopened', async () => {
+    const doc = documentWithRoot();
+    const location = { hash: `#/invite/${'q'.repeat(80)}`, pathname: '/', search: '' };
+    const replacements = [];
+    await startCollaboration({
+        document: doc,
+        deployment: available,
+        location,
+        history: { replaceState: (...args) => replacements.push(args) },
+        client: clientAnswering([respond(200, { authenticated: false })])
+    });
+    assert.equal(replacements.length, 1);
+    assert.equal(String(replacements[0][2]).includes('q'.repeat(80)), false);
+    const state = doc.container.children[0];
+    const text = state.children.map(child => child.textContent).join(' ');
+    assert.match(text, /reopen the invitation link/i);
+    assert.match(text, /does not save invitation links/i);
+});
+
 // This is the wiring CF-P7-017's follow-up added: openCollaboration renders
 // the sign-in control, but nothing listened for a click on it until now.
 test('clicking sign-in redirects the browser to the returned authorization URL', async () => {
@@ -884,6 +903,151 @@ test('REGRESSION: rendered invitation revoke is single-flight, retryable, and pr
     assert.notEqual(revokeFor(createdId), undefined, 'the unrelated pending invitation was removed');
     assert.equal(doc.container.querySelector('.collab-invites__url')?.value, acceptanceUrl,
         'a successful revoke cleared an unrelated one-time URL');
+});
+
+test('REGRESSION: rendered invitation acceptance is scoped, single-flight, and retryable', async () => {
+    const doc = documentWithRoot();
+    const token = 's'.repeat(80);
+    const invitationId = '66666666-6666-4666-8666-666666666666';
+    const workspaceId = '55555555-5555-4555-8555-555555555555';
+    const events = [];
+    const requests = [];
+    let acceptAttempt = 0;
+    let releaseRefusal = null;
+    let keySequence = 0;
+    const location = { hash: `#/invite/${token}`, pathname: '/', search: '' };
+    const history = {
+        replaceState(_state, _title, url) {
+            events.push({ type: 'history', url });
+            location.hash = '';
+        }
+    };
+    const client = createApiClient({
+        fetch: async (url, init = {}) => {
+            const path = String(url).split('?')[0];
+            const method = String(init.method ?? 'GET').toUpperCase();
+            const body = init.body ? JSON.parse(String(init.body)) : null;
+            events.push({ type: 'fetch', path });
+            requests.push({ path, method, body, headers: { ...(init.headers ?? {}) } });
+            if (path === '/api/v1/session') return signedInSession();
+            if (path === '/api/v1/workspaces') {
+                return respond(200, {
+                    data: {
+                        items: acceptAttempt >= 2
+                            ? [{ workspaceId, displayName: 'Platform QA', role: 'viewer',
+                                state: 'pending_key', keyReady: false }]
+                            : []
+                    },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path === '/api/v1/invitations/bootstrap') {
+                return respond(200, {
+                    data: {
+                        invitationId,
+                        workspaceDisplayName: 'Platform QA',
+                        targetDisplayLogin: 'dustin-nkd',
+                        role: 'viewer',
+                        expiresAt: '2026-07-30T00:00:00.000Z',
+                        state: 'pending',
+                        identityMatch: true
+                    },
+                    meta: {}
+                });
+            }
+            if (path === '/api/v1/invitations/accept') {
+                acceptAttempt += 1;
+                if (acceptAttempt === 1) {
+                    return await new Promise(resolve => {
+                        releaseRefusal = () => resolve(respond(409, {
+                            error: { code: 'INVITATION_UNAVAILABLE' },
+                            meta: {}
+                        }));
+                    });
+                }
+                return respond(201, {
+                    data: {
+                        membership: {
+                            userId: 'u_1',
+                            role: 'viewer',
+                            state: 'pending_key',
+                            keyReadiness: 'pending_key'
+                        }
+                    },
+                    meta: {}
+                });
+            }
+            return respond(404, { error: { code: 'RESOURCE_NOT_FOUND' }, meta: {} });
+        },
+        randomId: () => `accept-key-${++keySequence}`.padEnd(32, 'x')
+    });
+    const storage = fakeStorage({
+        'docvault:collab:preview:u_1:device': JSON.stringify({
+            deviceId: DEVICE_ID,
+            fingerprint: 'fp',
+            state: 'active',
+            publicJwk: CANONICAL_PUBLIC_JWK,
+            unlockSecret: 'secret'
+        })
+    });
+
+    await startCollaboration({
+        document: doc,
+        deployment: available,
+        storage,
+        environment: 'preview',
+        client,
+        location,
+        history
+    });
+    withParents(doc.container);
+    assert.equal(events[0].type, 'history',
+        'the fragment was not removed before the first request or paint');
+    assert.equal(location.hash, '');
+    let accept = doc.container.querySelector('[data-collab-action="accept-invitation"]');
+    assert.notEqual(accept, null);
+    assert.equal(accept.disabled, false);
+
+    simulateClick(doc.container, accept);
+    simulateClick(doc.container, accept);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    withParents(doc.container);
+    let accepts = requests.filter(request => request.path === '/api/v1/invitations/accept');
+    assert.equal(accepts.length, 1, 'a double click sent more than one acceptance');
+    assert.deepEqual(accepts[0].body, { token, deviceId: DEVICE_ID });
+    assert.equal(accepts[0].headers['X-DocVault-Device-ID'], DEVICE_ID);
+    assert.equal(accepts[0].headers['X-CSRF-Token'], 'csrf');
+    assert.equal(typeof accepts[0].headers['Idempotency-Key'], 'string');
+
+    releaseRefusal();
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('.collab-accept__failure') === null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    const refusal = doc.container.querySelector('.collab-accept__failure');
+    assert.equal(refusal?.getAttribute('role'), 'alert');
+    assert.match(refusal?.textContent ?? '', /cannot be used/i);
+    accept = doc.container.querySelector('[data-collab-action="accept-invitation"]');
+    assert.equal(accept.disabled, false, 'a refusal did not permit deliberate retry');
+
+    simulateClick(doc.container, accept);
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('[data-accept-status="accepted"]') === null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    accepts = requests.filter(request => request.path === '/api/v1/invitations/accept');
+    assert.equal(accepts.length, 2, 'a deliberate retry did not send one new acceptance');
+    assert.notEqual(accepts[0].headers['Idempotency-Key'], accepts[1].headers['Idempotency-Key']);
+    assert.deepEqual(accepts[1].body, { token, deviceId: DEVICE_ID });
+    const accepted = doc.container.querySelector('[data-accept-status="accepted"]');
+    assert.notEqual(accepted, null);
+    assert.equal(accepted.querySelector('[data-collab-action="accept-invitation"]').textContent,
+        'Joined');
+    assert.match(accepted.querySelector('[data-readiness="pending_key"]').textContent,
+        /provision it to this device/i);
+    assert.equal(accepted.querySelector('[data-collab-action="accept-invitation"]').disabled, true);
 });
 
 // REGRESSION: the "Set up this device" shortcut inside create-workspace's

@@ -50,7 +50,7 @@
   },
   "tests": {
     "unit": "tests/collaboration-invitation-accept.test.mjs",
-    "unit_count": 31,
+    "unit_count": 32,
     "policy": "tests/cloudflare-phase-7-accept-policy.test.mjs"
   }
 }

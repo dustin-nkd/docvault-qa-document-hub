@@ -81,6 +81,15 @@ test('the invitation revoke debt cannot remain open after row dispatch is wired'
     }), /not resolved by CF-P7R-003/);
 });
 
+test('the invitation accept debt cannot remain open after composed dispatch is wired', () => {
+    const plan = clone(planSource);
+    plan.known_action_debt
+        .find(item => item.key === 'invitation-accept:accept-invitation').status = 'OPEN';
+    assert.throws(() => validatePhase7ActionReachability({
+        plan, sources: sources()
+    }), /not resolved by CF-P7R-004/);
+});
+
 test('the invitation copy action must stay scoped and use the injected clipboard boundary', () => {
     const directClipboard = sources();
     directClipboard['entry.js'] = directClipboard['entry.js']
@@ -112,4 +121,26 @@ test('invitation revoke must stay scoped to its row and keep the duplicate guard
     assert.throws(() => validatePhase7ActionReachability({
         plan: clone(planSource), sources: unguarded
     }), /not scoped to its row or guarded/);
+});
+
+test('invitation accept must stay scoped, single-flight, and clear its token on success', () => {
+    const unscoped = sources();
+    unscoped['entry.js'] = unscoped['entry.js']
+        .replace("control.closest('[data-collab-surface=\"invitation-accept\"]')", 'null');
+    assert.throws(() => validatePhase7ActionReachability({
+        plan: clone(planSource), sources: unscoped
+    }), /not scoped, single-flight/);
+
+    const unguarded = sources();
+    unguarded['entry.js'] = unguarded['entry.js']
+        .replace('if (invitationAcceptPending ||', 'if (');
+    assert.throws(() => validatePhase7ActionReachability({
+        plan: clone(planSource), sources: unguarded
+    }), /not scoped, single-flight/);
+
+    const retained = sources();
+    retained['entry.js'] = retained['entry.js'].replace('invitationToken = null;', '');
+    assert.throws(() => validatePhase7ActionReachability({
+        plan: clone(planSource), sources: retained
+    }), /not scoped, single-flight/);
 });

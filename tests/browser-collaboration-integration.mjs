@@ -35,7 +35,8 @@ const DEVICE = '44444444-4444-4444-8444-444444444444';
 const WORKSPACE = '55555555-5555-4555-8555-555555555555';
 const INVITATION = '66666666-6666-4666-8666-666666666666';
 const EVENT = '99999999-9999-4999-8999-999999999999';
-const ACCEPTANCE_URL = `https://preview.example/#/invite/${'t'.repeat(80)}`;
+const ACCEPTANCE_TOKEN = 't'.repeat(80);
+const ACCEPTANCE_URL = `https://preview.example/#/invite/${ACCEPTANCE_TOKEN}`;
 
 /** Only what the entry's module graph actually pulls, plus the stylesheet. */
 const SERVED = new Set([
@@ -128,6 +129,18 @@ const ROUTES = {
     [`/api/v1/workspaces/${WORKSPACE}/key-envelopes/current`]: {
         data: { readiness: 'pending_key', envelope: null },
         meta: {}
+    },
+    '/api/v1/invitations/bootstrap': {
+        data: {
+            invitationId: INVITATION,
+            workspaceDisplayName: LONG,
+            targetDisplayLogin: LONG,
+            role: 'viewer',
+            expiresAt: '2026-07-30T00:00:00.000Z',
+            state: 'pending',
+            identityMatch: true
+        },
+        meta: {}
     }
 };
 
@@ -136,6 +149,8 @@ const ROUTES = ${JSON.stringify(ROUTES)};
 const DENIED = new URLSearchParams(location.search).get('deny');
 const DEVICE_ACTIONS = new URLSearchParams(location.search).has('device-actions');
 const DENY_COPY = new URLSearchParams(location.search).has('deny-copy');
+const DENY_ACCEPT_ONCE = new URLSearchParams(location.search).has('deny-accept-once');
+let acceptanceAttempts = 0;
 
 // The one thing stubbed. Everything below it is the shipped graph.
 const calls = [];
@@ -156,7 +171,8 @@ globalThis.fetch = async (url, init = {}) => {
         method,
         actingDevice: init.headers?.['X-DocVault-Device-ID'] ?? null,
         csrf: init.headers?.['X-CSRF-Token'] ?? null,
-        idempotencyKey: init.headers?.['Idempotency-Key'] ?? null
+        idempotencyKey: init.headers?.['Idempotency-Key'] ?? null,
+        body: init.body ? JSON.parse(String(init.body)) : null
     });
     const body = ROUTES[pathname];
     const fail = (status, code) => new Response(JSON.stringify({ error: { code }, meta: {} }),
@@ -183,6 +199,27 @@ globalThis.fetch = async (url, init = {}) => {
                     expiresAt: '2026-07-30T00:00:00.000Z'
                 },
                 acceptanceUrl: '${ACCEPTANCE_URL}'
+            },
+            meta: {}
+        }), { status: 201, headers: { 'content-type': 'application/json' } });
+    }
+    if (method === 'POST' && pathname === '/api/v1/invitations/accept') {
+        acceptanceAttempts += 1;
+        // Keep the first call in flight long enough for two synchronous clicks
+        // to prove the entry's own single-flight guard.
+        await new Promise(resolve => setTimeout(resolve, 20));
+        if (DENY_ACCEPT_ONCE && acceptanceAttempts === 1) {
+            return fail(409, 'INVITATION_UNAVAILABLE');
+        }
+        return new Response(JSON.stringify({
+            data: {
+                membership: {
+                    userId: '${OWNER}',
+                    role: 'viewer',
+                    state: 'pending_key',
+                    keyReadiness: 'pending_key',
+                    displayProfile: { login: '${LONG}' }
+                }
             },
             meta: {}
         }), { status: 201, headers: { 'content-type': 'application/json' } });
@@ -223,7 +260,9 @@ await module.startCollaboration({
     deployment: { available: true, reason: 'cloudflare-deployment' },
     storage: localStorage,
     environment: 'preview',
-    clipboard
+    clipboard,
+    location,
+    history
 });
 document.body.setAttribute('data-ready', 'true');
 `;
@@ -548,6 +587,63 @@ async function driveInvitationRevoke(browserName, baseUrl, denied = false) {
     }
 }
 
+/** Drive fragment removal, review, acceptance, and one retry in the shipped graph. */
+async function driveInvitationAcceptance(browserName, baseUrl, deniedOnce = false) {
+    const browser = await browsers[browserName].launch({ headless: true });
+    try {
+        const page = await (await browser.newContext()).newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('console', message => {
+            if (message.type() === 'error') errors.push(message.text());
+        });
+        const query = deniedOnce
+            ? '?device-actions&accept-action&deny-accept-once'
+            : '?device-actions&accept-action';
+        await page.goto(`${baseUrl}/${query}#/invite/${ACCEPTANCE_TOKEN}`,
+            { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('body[data-ready="true"]');
+        const addressAfterReview = page.url();
+        await page.waitForSelector(
+            '[data-collab-surface="invitation-accept"] [data-collab-action="accept-invitation"]:not([disabled])');
+
+        await page.locator('[data-collab-surface="invitation-accept"] '
+            + '[data-collab-action="accept-invitation"]').evaluate(control => {
+            control.click();
+            control.click();
+        });
+
+        let retryEnabled = null;
+        if (deniedOnce) {
+            await page.waitForSelector('.collab-accept__failure[role="alert"]');
+            retryEnabled = await page.locator('[data-collab-surface="invitation-accept"] '
+                + '[data-collab-action="accept-invitation"]').isEnabled();
+            await page.click('[data-collab-surface="invitation-accept"] '
+                + '[data-collab-action="accept-invitation"]');
+        }
+        await page.waitForSelector('[data-collab-surface="invitation-accept"]'
+            + '[data-accept-status="accepted"]');
+
+        return {
+            errors,
+            addressAfterReview,
+            retryEnabled,
+            requests: await page.evaluate(() =>
+                structuredClone(globalThis.__collabRequests ?? [])),
+            joinedLabel: await page.locator('[data-collab-surface="invitation-accept"] '
+                + '[data-collab-action="accept-invitation"]').textContent(),
+            readiness: await page.locator('[data-collab-surface="invitation-accept"] '
+                + '[data-readiness]').getAttribute('data-readiness'),
+            storedSecret: await page.evaluate(secret =>
+                [...Array(localStorage.length).keys()]
+                    .map(index => localStorage.getItem(localStorage.key(index)))
+                    .some(value => String(value).includes(secret)), ACCEPTANCE_TOKEN)
+        };
+    } finally {
+        await browser.close();
+    }
+}
+
 const EXPECTED = Object.freeze(['create-workspace', 'device-key-initialization',
     'member-list-role-badge', 'invitation-manage', 'invitation-accept', 'sync-state',
     'conflict-dialog', 'audit-activity']);
@@ -705,6 +801,46 @@ try {
         assert.equal(refusedRevoke.retryEnabled, true,
             `${browserName}: a refused revoke did not permit deliberate retry`);
         assert.match(refusedRevoke.failure ?? '', /role in this workspace does not allow/i);
+
+        const accepted = await driveInvitationAcceptance(browserName, baseUrl);
+        assert.deepEqual(accepted.errors, [],
+            `${browserName}: runtime errors while accepting an invitation`);
+        assert.equal(accepted.addressAfterReview.includes(ACCEPTANCE_TOKEN), false,
+            `${browserName}: the invitation token remained in browser history`);
+        const acceptRequests = accepted.requests.filter(request =>
+            request.method === 'POST'
+            && request.pathname === '/api/v1/invitations/accept');
+        assert.equal(acceptRequests.length, 1,
+            `${browserName}: a double click sent more than one acceptance`);
+        assert.deepEqual(acceptRequests[0].body,
+            { token: ACCEPTANCE_TOKEN, deviceId: DEVICE },
+            `${browserName}: acceptance did not carry the frozen token/device body`);
+        assert.equal(acceptRequests[0].actingDevice, DEVICE,
+            `${browserName}: acceptance body and acting-device header diverged`);
+        assert.equal(acceptRequests[0].csrf, 'csrf',
+            `${browserName}: acceptance lost the CSRF header`);
+        assert.equal(typeof acceptRequests[0].idempotencyKey, 'string',
+            `${browserName}: acceptance lost its idempotency key`);
+        assert.equal(accepted.joinedLabel, 'Joined');
+        assert.equal(accepted.readiness, 'pending_key');
+        assert.equal(accepted.storedSecret, false,
+            `${browserName}: the invitation token entered local storage`);
+
+        const retriedAccept = await driveInvitationAcceptance(browserName, baseUrl, true);
+        assert.deepEqual(retriedAccept.errors, [],
+            `${browserName}: runtime errors under invitation acceptance refusal`);
+        const retriedRequests = retriedAccept.requests.filter(request =>
+            request.method === 'POST'
+            && request.pathname === '/api/v1/invitations/accept');
+        assert.equal(retriedRequests.length, 2,
+            `${browserName}: a refusal did not permit exactly one deliberate retry`);
+        assert.notEqual(retriedRequests[0].idempotencyKey, retriedRequests[1].idempotencyKey,
+            `${browserName}: deliberate retry reused the refused idempotency key`);
+        assert.equal(retriedAccept.retryEnabled, true,
+            `${browserName}: invitation refusal left the control disabled`);
+        assert.equal(retriedAccept.addressAfterReview.includes(ACCEPTANCE_TOKEN), false);
+        assert.equal(retriedAccept.storedSecret, false);
+        assert.equal(retriedAccept.readiness, 'pending_key');
 
         summary.push({
             browser: browserName,

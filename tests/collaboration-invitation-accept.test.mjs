@@ -233,6 +233,18 @@ test('a blocked accept stays visible with an announced reason', () => {
     assert.equal(node.querySelector('.collab-accept__reason').id, id);
 });
 
+test('an in-flight acceptance is visibly disabled and named', () => {
+    const node = renderInvitationAccept(doc, invitationAcceptModel({
+        session: signedIn,
+        device: activeDevice,
+        review: review(),
+        status: 'accepting'
+    }), 'accept');
+    const accept = node.querySelector('[data-collab-action="accept-invitation"]');
+    assert.equal(accept.disabled, true);
+    assert.equal(accept.textContent, 'Accepting…');
+});
+
 test('offers the device journey only when the device is what is missing', () => {
     const missingDevice = renderInvitationAccept(doc, invitationAcceptModel({
         session: signedIn, device: null, review: review()

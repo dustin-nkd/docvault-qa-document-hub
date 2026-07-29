@@ -56,7 +56,7 @@ from its cause.
 ## 5. Verification
 
 - `cf:phase7:accept:check`, wired into `check:cloudflare`.
-- `tests/collaboration-invitation-accept.test.mjs` — 31 unit tests.
+- `tests/collaboration-invitation-accept.test.mjs` — 32 unit tests.
 - `tests/cloudflare-phase-7-accept-policy.test.mjs` — 24 drift cases, including
   one per leak sink and one that swaps replacement for a push.
 

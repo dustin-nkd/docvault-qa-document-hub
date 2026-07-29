@@ -50,6 +50,7 @@ export const DYNAMIC_SETTERS = Object.freeze([
  * view-only interaction, be passive semantics, or have an owned debt record.
  */
 export const HANDLED_ACTIONS = Object.freeze([
+    'accept-invitation',
     'copy-acceptance-link',
     'create-invitation',
     'device-setup-open',
@@ -80,7 +81,6 @@ export const DIRECT_OR_PASSIVE_ACTIONS = Object.freeze([
  * separately targeted member-device journey remains owned by CF-P7R-006.
  */
 export const DEBT_ACTIONS = Object.freeze([
-    ['invitation-accept:accept-invitation', 'accept-invitation'],
     ['account-menu:sign-out', 'sign-out'],
     ['member-list:change-role', 'change-role'],
     ['member-list:grant-admin', 'grant-admin'],
@@ -148,12 +148,17 @@ export function validatePhase7ActionReachability({ plan, sources }) {
         item.key === 'invitation-manage:revoke-invitation');
     assert(invitationRevoke?.owner === 'CF-P7R-003' && invitationRevoke.status === 'RESOLVED',
         'The invitation revoke action is not resolved by CF-P7R-003');
+    const invitationAccept = debt.find(item =>
+        item.key === 'invitation-accept:accept-invitation');
+    assert(invitationAccept?.owner === 'CF-P7R-004' && invitationAccept.status === 'RESOLVED',
+        'The invitation accept action is not resolved by CF-P7R-004');
 
     const remainingDebt = ACTION_DEBT
         .filter(([key]) => ![
             'member-device:dispatch-collision',
             'invitation-manage:copy-acceptance-link',
-            'invitation-manage:revoke-invitation'
+            'invitation-manage:revoke-invitation',
+            'invitation-accept:accept-invitation'
         ].includes(key))
         .map(([key]) => key);
     assert(same(DEBT_ACTIONS.map(([key]) => key), remainingDebt),
@@ -198,5 +203,11 @@ export function validatePhase7ActionReachability({ plan, sources }) {
         && entry.includes('revokeInvitation({')
         && entry.includes('invitationRevokePendingId !== null'),
     'Invitation revocation is not scoped to its row or guarded against duplicate dispatch');
+    assert(/action === 'accept-invitation'[\s\S]{0,450}?control\.closest\('\[data-collab-surface="invitation-accept"\]'\)/
+        .test(entry)
+        && entry.includes('acceptInvitation({')
+        && entry.includes('if (invitationAcceptPending ||')
+        && entry.includes('invitationToken = null'),
+    'Invitation acceptance is not scoped, single-flight, or clearing its held token on success');
     return true;
 }

@@ -211,10 +211,49 @@ describe('CF-P4-007 preview collaboration API integration', () => {
         const token = inviteBody?.data.acceptanceUrl.split('/').at(-1) ?? '';
         const invitationId = inviteBody?.data.invitation.invitationId ?? '';
         expect((await api('/api/v1/invitations/bootstrap', { method: 'POST', body: { token } }))?.status).toBe(200);
+        // The frozen request carries the same device in its body and authenticated
+        // acting-device header. Missing, mismatched, foreign, and wrong-subject
+        // devices fail before the invitation can be consumed.
         expect((await api('/api/v1/invitations/accept', { method: 'POST', token: TARGET_TOKEN,
-            device: TARGET_DEVICE, idempotency: crypto.randomUUID(), body: { token } }))?.status).toBe(201);
+            device: TARGET_DEVICE, idempotency: crypto.randomUUID(), body: { token } }))?.status).toBe(400);
         expect((await api('/api/v1/invitations/accept', { method: 'POST', token: TARGET_TOKEN,
-            device: TARGET_DEVICE, idempotency: crypto.randomUUID(), body: { token } }))?.status).toBe(404);
+            device: TARGET_DEVICE, idempotency: crypto.randomUUID(),
+            body: { token, deviceId: OWNER_DEVICE } }))?.status).toBe(400);
+        expect((await api('/api/v1/invitations/accept', { method: 'POST', token: TARGET_TOKEN,
+            device: OWNER_DEVICE, idempotency: crypto.randomUUID(),
+            body: { token, deviceId: OWNER_DEVICE } }))?.status).toBe(409);
+        expect((await api('/api/v1/invitations/accept', { method: 'POST', token: OWNER_TOKEN,
+            device: OWNER_DEVICE, idempotency: crypto.randomUUID(),
+            body: { token, deviceId: OWNER_DEVICE } }))?.status).toBe(409);
+
+        const acceptanceKey = crypto.randomUUID();
+        const acceptance = await api('/api/v1/invitations/accept', { method: 'POST', token: TARGET_TOKEN,
+            device: TARGET_DEVICE, idempotency: acceptanceKey,
+            body: { token, deviceId: TARGET_DEVICE } });
+        expect(acceptance?.status).toBe(201);
+        expect(await acceptance?.json()).toMatchObject({
+            data: {
+                membership: {
+                    userId: TARGET,
+                    role: 'viewer',
+                    state: 'pending_key',
+                    keyReadiness: 'pending_key',
+                    displayProfile: { login: 'target-user' }
+                }
+            }
+        });
+        // A transport replay with the same idempotency key returns the original
+        // success. A deliberate token replay with a fresh key fails generically.
+        expect((await api('/api/v1/invitations/accept', { method: 'POST', token: TARGET_TOKEN,
+            device: TARGET_DEVICE, idempotency: acceptanceKey,
+            body: { token, deviceId: TARGET_DEVICE } }))?.status).toBe(201);
+        const acceptanceReplay = await api('/api/v1/invitations/accept', { method: 'POST', token: TARGET_TOKEN,
+            device: TARGET_DEVICE, idempotency: crypto.randomUUID(),
+            body: { token, deviceId: TARGET_DEVICE } });
+        expect(acceptanceReplay?.status).toBe(409);
+        expect(await acceptanceReplay?.json()).toMatchObject({
+            error: { code: 'INVITATION_UNAVAILABLE' }
+        });
 
         const second = await api(`/api/v1/workspaces/${workspaceId}/invitations`, {
             method: 'POST', token: OWNER_TOKEN, device: OWNER_DEVICE, idempotency: crypto.randomUUID(),
