@@ -86,6 +86,7 @@ test('rejects PASS sprint while any ticket remains open', () => {
 
 test('rejects ticket PASS out of order', () => {
     const plan = clone();
+    prepareTicketBeforeReview(plan);
     const evidence = closeTicket(plan.tickets[2]);
     assert.throws(() => validate(plan, evidence), /before/);
 });
