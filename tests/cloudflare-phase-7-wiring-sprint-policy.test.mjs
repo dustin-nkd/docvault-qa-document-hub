@@ -13,6 +13,22 @@ const clone = () => structuredClone(source);
 const validate = (plan, evidenceSources = {}) =>
     validatePhase7WiringSprint({ plan, sprintSource, evidenceSources });
 
+function prepareTicketBeforeReview(plan, {
+    status = 'IN_PROGRESS',
+    verification = 'NOT_RUN'
+} = {}) {
+    const ticket = plan.tickets[0];
+    ticket.status = status;
+    ticket.review.status = 'PENDING';
+    for (const key of Object.keys(ticket.verification)) {
+        ticket.verification[key] = verification;
+    }
+    ticket.delivery = {
+        commit: null, pushed: false, pipeline: 'NOT_RUN', preview_smoke: 'NOT_RUN'
+    };
+    return ticket;
+}
+
 function closeTicket(ticket) {
     for (const key of Object.keys(ticket.verification)) ticket.verification[key] = 'PASS';
     ticket.review.status = 'PASS';
@@ -65,41 +81,38 @@ test('rejects title and required-test scope drift', () => {
 
 test('rejects review PASS before every verification layer passes', () => {
     const plan = clone();
-    plan.tickets[0].status = 'REVIEW_PASS';
-    plan.tickets[0].review.status = 'PASS';
+    const ticket = prepareTicketBeforeReview(plan, { status: 'REVIEW_PASS' });
+    ticket.review.status = 'PASS';
     assert.throws(() => validate(plan), /REVIEW_PASS without review and verification PASS/);
 });
 
 test('rejects awaiting review before verification passes', () => {
     const plan = clone();
-    plan.tickets[0].status = 'AWAITING_REVIEW';
+    prepareTicketBeforeReview(plan, { status: 'AWAITING_REVIEW' });
     assert.throws(() => validate(plan), /awaits review before verification PASS/);
 });
 
 test('rejects REVIEW_PASS without an actual passing review', () => {
     const plan = clone();
-    for (const key of Object.keys(plan.tickets[0].verification)) {
-        plan.tickets[0].verification[key] = 'PASS';
-    }
-    plan.tickets[0].status = 'REVIEW_PASS';
+    prepareTicketBeforeReview(plan, { status: 'REVIEW_PASS', verification: 'PASS' });
     assert.throws(() => validate(plan), /claims REVIEW_PASS/);
 });
 
 test('rejects commit, push, pipeline, or smoke before its prerequisite', () => {
     const commit = clone();
-    commit.tickets[0].delivery.commit = 'a'.repeat(40);
+    prepareTicketBeforeReview(commit).delivery.commit = 'a'.repeat(40);
     assert.throws(() => validate(commit), /before review PASS/);
 
     const push = clone();
-    push.tickets[0].delivery.pushed = true;
+    prepareTicketBeforeReview(push).delivery.pushed = true;
     assert.throws(() => validate(push), /before review PASS|pushed without/);
 
     const pipeline = clone();
-    pipeline.tickets[0].delivery.pipeline = 'PASS';
+    prepareTicketBeforeReview(pipeline).delivery.pipeline = 'PASS';
     assert.throws(() => validate(pipeline), /before review PASS|before push/);
 
     const smoke = clone();
-    smoke.tickets[0].delivery.preview_smoke = 'PASS';
+    prepareTicketBeforeReview(smoke).delivery.preview_smoke = 'PASS';
     assert.throws(() => validate(smoke), /before review PASS|before the pipeline/);
 });
 
@@ -120,6 +133,8 @@ test('rejects PASS while assigned action debt remains open', () => {
     const evidence = closeTicket(plan.tickets[0]);
     plan.tickets[1].status = 'READY';
     plan.current_ticket = plan.tickets[1].id;
+    plan.known_action_debt
+        .find(debt => debt.owner === plan.tickets[0].id).status = 'OPEN';
     assert.throws(() => validate(plan, evidence), /remains open/);
 });
 
