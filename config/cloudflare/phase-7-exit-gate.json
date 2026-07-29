@@ -243,9 +243,9 @@
       "to_kib_gzip": 100,
       "date": "2026-07-28",
       "requires": "Product Owner",
-      "headroom_kib_gzip": 8.07,
+      "headroom_kib_gzip": 5.36,
       "reason": "The 60 was written at plan time and read by no script until this gate existed, so it was never derived from a measurement. Meeting it needs a bundling step this project does not have anywhere. 100 was chosen against the measurement rather than from it: set at 91.93 the budget would be unfalsifiable, since the next byte breaches it; set far above, it enforces nothing. Roughly 8 KiB of headroom lets ordinary work proceed and makes another growth of the size this phase saw reach the number and force the conversation again.",
-      "not_claimed": "The payload did not get smaller and no build step was added. The programme is carrying 91.93 KiB knowingly, at a figure an owner set with the measurement in front of them."
+      "not_claimed": "The payload did not get smaller and no build step was added. The owner set the 100 KiB figure with the 91.93 KiB measurement in front of them; the current 94.64 KiB remains below that approved ceiling and is re-measured by the gate."
     },
     "deployment_measurement": {
       "kib_gzip": 78.4,
@@ -259,18 +259,18 @@
       "evidence": "CF-EV-P7-OPS-004"
     },
     "local_measurement": {
-      "kib_gzip": 91.93,
-      "bytes_gzip": 94135,
+      "kib_gzip": 94.64,
+      "bytes_gzip": 96910,
       "modules": 22,
-      "phase_7_only_kib_gzip": 77.88,
-      "phase_7_only_bytes_gzip": 79745,
+      "phase_7_only_kib_gzip": 80.59,
+      "phase_7_only_bytes_gzip": 82520,
       "phase_7_only_modules": 19,
       "method": "gzip level 9 over every module in the static import closure of js/collaboration/entry.js, with CRLF normalised to LF so the figure is identical on a Windows working copy and in CI. Recomputed by cf:phase7:exit:check on every run; the gate fails if this record and the bytes disagree by more than 2 KiB in either direction, and fails if the measurement drops under the declared budget while this record still says OPEN.",
-      "measured_on": "2026-07-27",
+      "measured_on": "2026-07-29",
       "tolerance_kib": 2,
-      "grew_since_prior_reading": "CF-P7-013's two mutation journeys (device registration, workspace creation) were wired for the first time this session, adding device-record.js and workspace-key-envelope.js and expanding entry.js. The prior reading (81.74 KiB) measured a chrome that composed these surfaces but could not act on either."
+      "grew_since_prior_reading": "CF-P7R-002 wired the existing one-time invitation Copy link control through the injected Clipboard API boundary and added explicit success, refusal, one-use, accessibility, and race-safe UI states. The prior 91.93 KiB reading remains visible in D-P7-03; this current 94.64 KiB reading is still below the approved 100 KiB ceiling."
     },
-    "narrowest_reading": "Excluding the three inherited Phase 5/6 service modules the lazy path also pulls -- device-key-lifecycle.js, outbox.js and conflict-resolution.js -- the nineteen Phase 7 modules alone are 77.88 KiB gzip locally and were 64.3 KiB on the deployment. Against the renegotiated 100 both readings pass; against the original 60 neither did, which is what D-P7-03 weighed.",
+    "narrowest_reading": "Excluding the three inherited Phase 5/6 service modules the lazy path also pulls -- device-key-lifecycle.js, outbox.js and conflict-resolution.js -- the nineteen Phase 7 modules alone are 80.59 KiB gzip locally and were 64.3 KiB on the deployment. Against the renegotiated 100 both readings pass; against the original 60 neither did, which is what D-P7-03 weighed.",
     "cause": "There is no bundling or minification step anywhere in this project. Twenty-two unminified source files are served exactly as authored, comments included. The size is a property of the shape that currently ships, not of a build artifact -- which is why meeting 60 was a build-system change rather than a trim.",
     "why_it_was_never_caught": "The key was declared at plan time in config/cloudflare/phase-7-sprint-plan.json and read by nothing. No script under scripts/ computed a byte size of any collaboration module until this gate. CF-EV-P7-PERF-001 deferred the measurement to CF-P7-013 in as many words, and CF-P7-013 was the first time anyone looked.",
     "options_weighed_before_the_decision": [

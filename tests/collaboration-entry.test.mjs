@@ -285,7 +285,8 @@ function fakeStorage(initial = {}) {
     return {
         getItem: key => (map.has(key) ? map.get(key) : null),
         setItem: (key, value) => { map.set(key, String(value)); },
-        removeItem: key => { map.delete(key); }
+        removeItem: key => { map.delete(key); },
+        values: () => [...map.values()]
     };
 }
 
@@ -556,7 +557,8 @@ test('the entry wires the invitation control it renders', () => {
 // accepted. The ensuing `issued.cleared is not a function` was isolated as an
 // `(unknown)` invitation-manage schema error, and the already-created token
 // could not be recovered.
-test('REGRESSION: sending an invitation paints the one-time URL holder', async () => {
+test('REGRESSION: the rendered Copy link uses clipboard once and preserves the manual fallback',
+    async () => {
     const doc = documentWithRoot();
     const workspace = {
         workspaceId: workspaces[0].workspaceId,
@@ -567,6 +569,14 @@ test('REGRESSION: sending an invitation paints the one-time URL holder', async (
     const invitationId = '66666666-6666-4666-8666-666666666666';
     const acceptanceUrl = `https://preview.example/#/invite/${'t'.repeat(80)}`;
     const requests = [];
+    const clipboardWrites = [];
+    let clipboardBlocked = false;
+    const clipboard = {
+        async writeText(value) {
+            if (clipboardBlocked) throw new Error('permission denied');
+            clipboardWrites.push(value);
+        }
+    };
     const client = createApiClient({
         fetch: async (url, init = {}) => {
             const path = String(url).split('?')[0];
@@ -632,7 +642,7 @@ test('REGRESSION: sending an invitation paints the one-time URL holder', async (
     });
 
     await startCollaboration({
-        document: doc, deployment: available, storage, environment: 'preview', client
+        document: doc, deployment: available, storage, environment: 'preview', client, clipboard
     });
     withParents(doc.container);
     const login = doc.container.querySelector('.collab-invites__login-input');
@@ -656,6 +666,65 @@ test('REGRESSION: sending an invitation paints the one-time URL holder', async (
     assert.equal(field.value, acceptanceUrl);
     assert.equal(requests.filter(request =>
         request.method === 'POST' && request.path.endsWith('/invitations')).length, 1);
+
+    const beforeSuccessfulCopy = structuredClone(requests);
+    const copy = doc.container.querySelector('[data-collab-action="copy-acceptance-link"]');
+    assert.notEqual(copy, null, 'the held URL rendered without its Copy link control');
+    simulateClick(doc.container, copy);
+    simulateClick(doc.container, copy);
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('.collab-invites__url') !== null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    assert.deepEqual(clipboardWrites, [acceptanceUrl],
+        'the clipboard did not receive the exact held URL exactly once');
+    assert.deepEqual(requests, beforeSuccessfulCopy,
+        'copying the held URL issued a network request');
+    assert.equal(doc.container.querySelector('.collab-invites__url'), null,
+        'a copied one-time URL remained readable');
+    assert.equal(doc.container.querySelector('[data-collab-action="copy-acceptance-link"]'), null,
+        'a copied one-time URL can be copied twice');
+    assert.match(doc.container.querySelector('.collab-invites__copy-notice')?.textContent ?? '',
+        /copied and cleared/i);
+    assert.equal(storage.values().some(value => String(value).includes(acceptanceUrl)), false,
+        'the one-time URL entered browser storage');
+
+    // Issue a second holder and refuse its clipboard write. The exact same
+    // rendered control must keep the readonly field in place and announce the
+    // manual-copy path rather than consuming the holder.
+    withParents(doc.container);
+    const retryLogin = doc.container.querySelector('.collab-invites__login-input');
+    const retryRole = doc.container.querySelector('.collab-invites__role-input');
+    const retrySend = doc.container.querySelector('[data-collab-action="create-invitation"]');
+    simulateInput(doc.container, retryLogin, 'second-user');
+    retryRole.value = 'viewer';
+    simulateClick(doc.container, retrySend);
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('.collab-invites__url') === null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+
+    clipboardBlocked = true;
+    const beforeBlockedCopy = structuredClone(requests);
+    const blockedCopy = doc.container.querySelector(
+        '[data-collab-action="copy-acceptance-link"]');
+    simulateClick(doc.container, blockedCopy);
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('.collab-invites__copy-notice') === null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    assert.equal(doc.container.querySelector('.collab-invites__url')?.value, acceptanceUrl,
+        'a refused clipboard write consumed the one-time URL');
+    const manual = doc.container.querySelector('.collab-invites__copy-notice');
+    assert.equal(manual?.getAttribute('aria-live'), 'polite');
+    assert.match(manual?.textContent ?? '', /copy it manually/i);
+    assert.deepEqual(clipboardWrites, [acceptanceUrl],
+        'a refused clipboard write was recorded as a successful copy');
+    assert.deepEqual(requests, beforeBlockedCopy,
+        'a refused clipboard write issued a network request');
 });
 
 // REGRESSION: the "Set up this device" shortcut inside create-workspace's

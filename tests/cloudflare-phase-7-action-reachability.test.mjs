@@ -62,3 +62,29 @@ test('the collision cannot remain open after the two revocation actions are sepa
         plan, sources: sources()
     }), /not resolved by CF-P7R-001/);
 });
+
+test('the invitation copy debt cannot remain open after clipboard dispatch is wired', () => {
+    const plan = clone(planSource);
+    plan.known_action_debt
+        .find(item => item.key === 'invitation-manage:copy-acceptance-link').status = 'OPEN';
+    assert.throws(() => validatePhase7ActionReachability({
+        plan, sources: sources()
+    }), /not resolved by CF-P7R-002/);
+});
+
+test('the invitation copy action must stay scoped and use the injected clipboard boundary', () => {
+    const directClipboard = sources();
+    directClipboard['entry.js'] = directClipboard['entry.js']
+        .replace('copyAcceptanceUrl({ clipboard, held })',
+            'copyAcceptanceUrl({ clipboard: navigator.clipboard, held })');
+    assert.throws(() => validatePhase7ActionReachability({
+        plan: clone(planSource), sources: directClipboard
+    }), /not wired through its scoped clipboard boundary/);
+
+    const unscoped = sources();
+    unscoped['entry.js'] = unscoped['entry.js']
+        .replaceAll("control.closest('[data-collab-surface=\"invitation-manage\"]')", 'null');
+    assert.throws(() => validatePhase7ActionReachability({
+        plan: clone(planSource), sources: unscoped
+    }), /not wired through its scoped clipboard boundary/);
+});

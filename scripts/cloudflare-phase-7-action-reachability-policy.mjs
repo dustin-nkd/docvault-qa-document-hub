@@ -50,6 +50,7 @@ export const DYNAMIC_SETTERS = Object.freeze([
  * view-only interaction, be passive semantics, or have an owned debt record.
  */
 export const HANDLED_ACTIONS = Object.freeze([
+    'copy-acceptance-link',
     'create-invitation',
     'device-setup-open',
     'register-device',
@@ -78,7 +79,6 @@ export const DIRECT_OR_PASSIVE_ACTIONS = Object.freeze([
  * separately targeted member-device journey remains owned by CF-P7R-006.
  */
 export const DEBT_ACTIONS = Object.freeze([
-    ['invitation-manage:copy-acceptance-link', 'copy-acceptance-link'],
     ['invitation-manage:revoke-invitation', 'revoke-invitation'],
     ['invitation-accept:accept-invitation', 'accept-invitation'],
     ['account-menu:sign-out', 'sign-out'],
@@ -140,9 +140,16 @@ export function validatePhase7ActionReachability({ plan, sources }) {
     const collision = debt.find(item => item.key === 'member-device:dispatch-collision');
     assert(collision?.owner === 'CF-P7R-001' && collision.status === 'RESOLVED',
         'The member-device dispatch collision is not resolved by CF-P7R-001');
+    const invitationCopy = debt.find(item =>
+        item.key === 'invitation-manage:copy-acceptance-link');
+    assert(invitationCopy?.owner === 'CF-P7R-002' && invitationCopy.status === 'RESOLVED',
+        'The invitation copy action is not resolved by CF-P7R-002');
 
     const remainingDebt = ACTION_DEBT
-        .filter(([key]) => key !== 'member-device:dispatch-collision')
+        .filter(([key]) => ![
+            'member-device:dispatch-collision',
+            'invitation-manage:copy-acceptance-link'
+        ].includes(key))
         .map(([key]) => key);
     assert(same(DEBT_ACTIONS.map(([key]) => key), remainingDebt),
         'A remaining action debt lacks an exact reachability owner');
@@ -176,5 +183,9 @@ export function validatePhase7ActionReachability({ plan, sources }) {
     assert(members.includes('MEMBER_DEVICE_REVOCATION_DEFERRED_REASON')
         && /memberDeviceRevocation[\s\S]{0,900}?button\.disabled = true;/.test(members),
     'Member-device revocation is not visibly deferred and disabled');
+    assert(/action === 'copy-acceptance-link'[\s\S]{0,450}?control\.closest\('\[data-collab-surface="invitation-manage"\]'\)/
+        .test(entry)
+        && entry.includes('copyAcceptanceUrl({ clipboard, held })'),
+    'The one-time invitation copy action is not wired through its scoped clipboard boundary');
     return true;
 }

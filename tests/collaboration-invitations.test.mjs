@@ -151,6 +151,14 @@ test('a blocked clipboard explains the manual path rather than failing silently'
     assert.match(result.reason, /cannot be shown again/);
 });
 
+test('a missing Clipboard API keeps the holder readable for manual copy', async () => {
+    const held = holdAcceptanceUrl(URL_OK);
+    const result = await copyAcceptanceUrl({ held });
+    assert.equal(result.copied, false);
+    assert.match(result.reason, /copy it manually/);
+    assert.equal(held.read(), URL_OK);
+});
+
 test('the module never stores, logs, or links the secret', () => {
     const source = read('js/collaboration/invitations.js');
     for (const forbidden of ['localStorage', 'sessionStorage', 'indexedDB', 'caches.',

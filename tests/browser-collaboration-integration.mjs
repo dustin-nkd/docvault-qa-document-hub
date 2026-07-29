@@ -35,6 +35,7 @@ const DEVICE = '44444444-4444-4444-8444-444444444444';
 const WORKSPACE = '55555555-5555-4555-8555-555555555555';
 const INVITATION = '66666666-6666-4666-8666-666666666666';
 const EVENT = '99999999-9999-4999-8999-999999999999';
+const ACCEPTANCE_URL = `https://preview.example/#/invite/${'t'.repeat(80)}`;
 
 /** Only what the entry's module graph actually pulls, plus the stylesheet. */
 const SERVED = new Set([
@@ -134,10 +135,18 @@ const DRIVER = `
 const ROUTES = ${JSON.stringify(ROUTES)};
 const DENIED = new URLSearchParams(location.search).get('deny');
 const DEVICE_ACTIONS = new URLSearchParams(location.search).has('device-actions');
+const DENY_COPY = new URLSearchParams(location.search).has('deny-copy');
 
 // The one thing stubbed. Everything below it is the shipped graph.
 const calls = [];
 const requests = [];
+const clipboardWrites = [];
+const clipboard = {
+    async writeText(value) {
+        if (DENY_COPY) throw new Error('permission denied');
+        clipboardWrites.push(value);
+    }
+};
 globalThis.fetch = async (url, init = {}) => {
     const pathname = String(url).split('?')[0];
     const method = String(init.method ?? 'GET').toUpperCase();
@@ -154,12 +163,30 @@ globalThis.fetch = async (url, init = {}) => {
     if (method === 'DELETE' && pathname === '/api/v1/devices/${DEVICE}') {
         return new Response(null, { status: 204 });
     }
+    if (method === 'POST'
+        && pathname === '/api/v1/workspaces/${WORKSPACE}/invitations') {
+        return new Response(JSON.stringify({
+            data: {
+                invitation: {
+                    invitationId: '${INVITATION}',
+                    workspaceId: '${WORKSPACE}',
+                    role: 'viewer',
+                    targetDisplayLogin: 'second-user',
+                    state: 'pending',
+                    expiresAt: '2026-07-30T00:00:00.000Z'
+                },
+                acceptanceUrl: '${ACCEPTANCE_URL}'
+            },
+            meta: {}
+        }), { status: 201, headers: { 'content-type': 'application/json' } });
+    }
     if (body === undefined) return fail(404, 'RESOURCE_NOT_FOUND');
     return new Response(JSON.stringify(body),
         { status: 200, headers: { 'content-type': 'application/json' } });
 };
 globalThis.__collabCalls = calls;
 globalThis.__collabRequests = requests;
+globalThis.__collabClipboardWrites = clipboardWrites;
 
 // The ?pick journey starts with nothing remembered, so the switcher must be
 // used. sessionStorage survives the reload exercised by the journey, which
@@ -188,7 +215,8 @@ await module.startCollaboration({
     document,
     deployment: { available: true, reason: 'cloudflare-deployment' },
     storage: localStorage,
-    environment: 'preview'
+    environment: 'preview',
+    clipboard
 });
 document.body.setAttribute('data-ready', 'true');
 `;
@@ -425,6 +453,55 @@ async function driveDeviceRevocation(browserName, baseUrl) {
     }
 }
 
+/** Click the rendered invitation control and inspect every secret-moving boundary. */
+async function driveInvitationCopy(browserName, baseUrl, denied = false) {
+    const browser = await browsers[browserName].launch({ headless: true });
+    try {
+        const page = await (await browser.newContext()).newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('console', message => {
+            if (message.type() === 'error') errors.push(message.text());
+        });
+        const query = denied ? '?deny-copy' : '?copy-action';
+        await page.goto(`${baseUrl}/${query}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('body[data-ready="true"]');
+        await page.fill('.collab-invites__login-input', 'second-user');
+        await page.selectOption('.collab-invites__role-input', 'viewer');
+        await page.click('[data-collab-action="create-invitation"]');
+        await page.waitForSelector('.collab-invites__url');
+
+        const addressBefore = page.url();
+        const requestsBefore = await page.evaluate(() =>
+            structuredClone(globalThis.__collabRequests ?? []));
+        await page.click('[data-collab-action="copy-acceptance-link"]');
+        await page.waitForSelector(
+            `.collab-invites__copy-notice[data-copy-status="${denied ? 'blocked' : 'copied'}"]`);
+        if (!denied) await page.waitForSelector('.collab-invites__url', { state: 'detached' });
+
+        return {
+            errors,
+            addressBefore,
+            addressAfter: page.url(),
+            requestsBefore,
+            requestsAfter: await page.evaluate(() =>
+                structuredClone(globalThis.__collabRequests ?? [])),
+            writes: await page.evaluate(() =>
+                structuredClone(globalThis.__collabClipboardWrites ?? [])),
+            fieldValue: await page.locator('.collab-invites__url').count() === 0
+                ? null
+                : await page.locator('.collab-invites__url').inputValue(),
+            notice: await page.locator('.collab-invites__copy-notice').textContent(),
+            storedSecret: await page.evaluate(secret =>
+                [...Array(localStorage.length).keys()]
+                    .map(index => localStorage.getItem(localStorage.key(index)))
+                    .some(value => String(value).includes(secret)), ACCEPTANCE_URL)
+        };
+    } finally {
+        await browser.close();
+    }
+}
+
 const EXPECTED = Object.freeze(['create-workspace', 'device-key-initialization',
     'member-list-role-badge', 'invitation-manage', 'invitation-accept', 'sync-state',
     'conflict-dialog', 'audit-activity']);
@@ -514,6 +591,36 @@ try {
             `${browserName}: current-device revoke targeted the wrong device`);
         assert.equal(deletions[0].actingDevice, DEVICE,
             `${browserName}: current-device DELETE lost the acting-device header`);
+
+        const copied = await driveInvitationCopy(browserName, baseUrl);
+        assert.deepEqual(copied.errors, [],
+            `${browserName}: runtime errors while copying an invitation`);
+        assert.deepEqual(copied.writes, [ACCEPTANCE_URL],
+            `${browserName}: clipboard did not receive the exact held URL once`);
+        assert.deepEqual(copied.requestsAfter, copied.requestsBefore,
+            `${browserName}: Copy link issued a network request`);
+        assert.equal(copied.addressAfter, copied.addressBefore,
+            `${browserName}: Copy link navigated or changed browser history`);
+        assert.equal(copied.fieldValue, null,
+            `${browserName}: a copied holder remained on screen`);
+        assert.match(copied.notice, /copied and cleared/i);
+        assert.equal(copied.storedSecret, false,
+            `${browserName}: the invitation URL entered local storage`);
+
+        const blockedCopy = await driveInvitationCopy(browserName, baseUrl, true);
+        assert.deepEqual(blockedCopy.errors, [],
+            `${browserName}: runtime errors under clipboard refusal`);
+        assert.deepEqual(blockedCopy.writes, [],
+            `${browserName}: a refused clipboard recorded a successful write`);
+        assert.deepEqual(blockedCopy.requestsAfter, blockedCopy.requestsBefore,
+            `${browserName}: a refused clipboard issued a network request`);
+        assert.equal(blockedCopy.addressAfter, blockedCopy.addressBefore,
+            `${browserName}: a refused clipboard changed browser history`);
+        assert.equal(blockedCopy.fieldValue, ACCEPTANCE_URL,
+            `${browserName}: a refused clipboard consumed the held URL`);
+        assert.match(blockedCopy.notice, /copy it manually/i);
+        assert.equal(blockedCopy.storedSecret, false,
+            `${browserName}: the refused invitation URL entered local storage`);
 
         summary.push({
             browser: browserName,

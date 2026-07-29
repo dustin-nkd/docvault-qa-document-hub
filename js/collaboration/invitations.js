@@ -22,6 +22,9 @@ export const INVITABLE_ROLES = Object.freeze(['admin', 'editor', 'viewer']);
 /** The one state the pending list returns. Terminal records are not listed. */
 export const INVITATION_STATES = Object.freeze(['pending']);
 
+/** Clipboard delivery states owned by the composed entry. */
+const COPY_STATUSES = Object.freeze(['idle', 'copying', 'copied', 'blocked']);
+
 export class InvitationError extends Error {
     /** @param {string} code */
     constructor(code) {
@@ -118,22 +121,22 @@ export function holdAcceptanceUrl(url) {
  * The clipboard is injected rather than reached for so this stays testable and
  * so the module cannot quietly acquire a second way to move the secret around.
  *
- * @param {{clipboard: {writeText: Function}, held: ReturnType<typeof holdAcceptanceUrl>}} input
+ * @param {{clipboard?: {writeText: Function}, held: ReturnType<typeof holdAcceptanceUrl>}} input
  */
 export async function copyAcceptanceUrl({ clipboard, held } = {}) {
-    if (!clipboard || typeof clipboard.writeText !== 'function') fail('CLIPBOARD_UNAVAILABLE');
     if (!held || typeof held.read !== 'function') fail('ACCEPTANCE_URL_REQUIRED');
+    const manualReason = 'Copying was blocked. Select the link and copy it manually before leaving '
+        + 'this page — it cannot be shown again.';
+    if (!clipboard || typeof clipboard.writeText !== 'function') {
+        return Object.freeze({ copied: false, reason: manualReason });
+    }
     try {
         await clipboard.writeText(held.read());
         return Object.freeze({ copied: true, reason: null });
     } catch {
         // A refused clipboard is not a failure of the invitation: the value is
         // still on screen and can be selected by hand, so say that instead.
-        return Object.freeze({
-            copied: false,
-            reason: 'Copying was blocked. Select the link and copy it manually before leaving '
-                + 'this page — it cannot be shown again.'
-        });
+        return Object.freeze({ copied: false, reason: manualReason });
     }
 }
 
@@ -141,12 +144,15 @@ export async function copyAcceptanceUrl({ clipboard, held } = {}) {
  * Describe the invitation surface.
  *
  * @param {{actorRole: string, invitations: ReadonlyArray<object>, role?: string,
- *          displayLogin?: string, issued?: object|null, status?: string}} input
+ *          displayLogin?: string, issued?: object|null, status?: string,
+ *          copyStatus?: string, copyNotice?: string|null}} input
  */
 export function invitationModel({ actorRole, invitations, role = 'editor', displayLogin = '',
-    issued = null, status = 'idle' } = {}) {
+    issued = null, status = 'idle', copyStatus = 'idle', copyNotice = null } = {}) {
     if (!Array.isArray(invitations)) fail('INVITATIONS_REQUIRED');
     if (!INVITABLE_ROLES.includes(role)) fail('INVALID_ROLE');
+    if (!COPY_STATUSES.includes(copyStatus)) fail('INVALID_STATUS');
+    if (copyNotice !== null && typeof copyNotice !== 'string') fail('INVALID_NOTICE');
     const nameCheck = validateDisplayLogin(displayLogin);
     const create = invitationDecision({ actorRole, role, action: 'create' });
     const inFlight = status === 'creating' || status === 'revoking';
@@ -173,6 +179,9 @@ export function invitationModel({ actorRole, invitations, role = 'editor', displ
         create,
         canCreate: create.allowed && nameCheck.valid && !inFlight,
         inFlight,
+        copyStatus,
+        copyNotice,
+        copyInFlight: copyStatus === 'copying',
         // A pending list with nothing in it is empty, not broken.
         isEmpty: rows.length === 0,
         invitations: Object.freeze(rows),
@@ -307,9 +316,23 @@ export function renderInvitations(doc, model, instanceId) {
         copy.type = 'button';
         copy.className = 'collab-invites__copy';
         copy.setAttribute('data-collab-action', 'copy-acceptance-link');
-        copy.textContent = 'Copy link';
+        copy.textContent = model.copyInFlight ? 'Copying…' : 'Copy link';
+        if (model.copyInFlight) {
+            copy.disabled = true;
+            copy.setAttribute('aria-disabled', 'true');
+        }
         issued.appendChild(copy);
         root.appendChild(issued);
+    }
+
+    if (typeof model.copyNotice === 'string' && model.copyNotice.length > 0) {
+        const notice = doc.createElement('p');
+        notice.className = 'collab-invites__copy-notice';
+        notice.setAttribute('role', 'status');
+        notice.setAttribute('aria-live', 'polite');
+        notice.setAttribute('data-copy-status', model.copyStatus);
+        notice.textContent = model.copyNotice;
+        root.appendChild(notice);
     }
 
     const list = doc.createElement('ul');
