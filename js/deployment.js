@@ -111,6 +111,20 @@
     }
 
     const OPEN_ID = 'collaboration-open';
+    const INVITATION_FRAGMENT = /^#\/invite\/[A-Za-z0-9_-]{16,512}$/;
+
+    /**
+     * An invitation link is an explicit request to enter collaboration.
+     *
+     * Ordinary Personal Vault startup must remain free of collaboration
+     * modules, but requiring a second, unrelated click after following the
+     * one-time link leaves the acceptance surface hidden. Match the same
+     * fragment shape as the accepting entry before deciding to spend the lazy
+     * import budget.
+     */
+    function hasInvitationFragment(candidate) {
+        return INVITATION_FRAGMENT.test(String(candidate?.hash ?? ''));
+    }
 
     /**
      * Reveal the way into collaboration, and make pressing it the only thing
@@ -193,6 +207,12 @@
                 opener.setAttribute('aria-expanded', 'false');
             });
         });
+        // Following a valid one-time invitation is already an explicit choice
+        // to enter collaboration. Drive the exact registered opener so the
+        // automatic and manual paths share loading, failure, close, and
+        // accessibility behavior. Invalid or unrelated fragments stay lazy.
+        if (hasInvitationFragment(
+            typeof location === 'undefined' ? null : location)) opener.click();
         return true;
     }
 
@@ -201,6 +221,7 @@
     window.DocVaultDeployment = Object.freeze({
         evaluate,
         environmentOf,
+        hasInvitationFragment,
         applyBanner,
         bindCollaborationOpener,
         bannerId: BANNER_ID,
