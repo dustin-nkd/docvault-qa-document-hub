@@ -208,7 +208,9 @@ export function renderInvitationAccept(doc, model, instanceId) {
     accept.type = 'button';
     accept.className = 'collab-accept__action';
     accept.setAttribute('data-collab-action', 'accept-invitation');
-    accept.textContent = model.status === 'accepted' ? 'Joined' : 'Accept invitation';
+    accept.textContent = model.status === 'accepted'
+        ? 'Joined'
+        : model.status === 'accepting' ? 'Accepting…' : 'Accept invitation';
     if (!model.canAccept) {
         accept.disabled = true;
         accept.setAttribute('aria-disabled', 'true');

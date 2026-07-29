@@ -29,7 +29,9 @@ import { DeviceKeyLifecycle } from './device-key-lifecycle.js';
 import { runCreateWorkspace, validateDisplayName } from './create-workspace.js';
 import { sealCreatorEnvelope } from './workspace-key-envelope.js';
 import { createDeviceRecordStore, newUnlockSecret, decodeUnlockSecret } from './device-record.js';
-import { reviewInvitation, takeTokenFromFragment } from './invitation-accept.js';
+import {
+    acceptInvitation, reviewInvitation, takeTokenFromFragment
+} from './invitation-accept.js';
 import {
     copyAcceptanceUrl, createInvitation, revokeInvitation, validateDisplayLogin
 } from './invitations.js';
@@ -84,7 +86,10 @@ export function openCollaboration({ document: doc, deployment, session = { authe
             state: 'unauthorized',
             surface: 'base-states',
             title: 'Sign in to collaborate',
-            reason: 'Team workspaces need a signed-in GitHub account.',
+            reason: data.invitationLinkTaken === true
+                ? 'Sign in with GitHub, then reopen the invitation link. For your privacy, '
+                    + 'this page does not save invitation links across sign-in.'
+                : 'Team workspaces need a signed-in GitHub account.',
             action: { label: 'Sign in with GitHub', id: 'sign-in' }
         });
         return container;
@@ -221,6 +226,12 @@ export async function startCollaboration({ document: doc, deployment, client, fe
     storage, environment, subject, loadWorkspaces, location, history,
     clipboard = doc?.defaultView?.navigator?.clipboard,
     deviceLifecycleFactory = input => new DeviceKeyLifecycle(input) } = {}) {
+    // The fragment is a bearer secret. Take it before mountShell paints even a
+    // loading state, and overwrite the history entry in the same operation.
+    // It remains only in this invocation's closure; it is never put in a store.
+    let invitationToken = location && history
+        ? takeTokenFromFragment({ location, history }).token
+        : null;
     const container = mountShell({ document: doc, deployment });
     if (container === null) return null;
 
@@ -252,7 +263,10 @@ export async function startCollaboration({ document: doc, deployment, client, fe
             return container;
         }
         const unauthenticated = openCollaboration({
-            document: doc, deployment, session: { authenticated: false }
+            document: doc,
+            deployment,
+            session: { authenticated: false },
+            data: { invitationLinkTaken: invitationToken !== null }
         });
         bindSignIn(unauthenticated, api, doc);
         return unauthenticated;
@@ -300,6 +314,7 @@ export async function startCollaboration({ document: doc, deployment, client, fe
     let lastPaintData = {};
     let invitationCopyPending = false;
     let invitationRevokePendingId = null;
+    let invitationAcceptPending = false;
     const paint = data => {
         lastPaintData = data;
         return openCollaboration({
@@ -590,9 +605,51 @@ export async function startCollaboration({ document: doc, deployment, client, fe
     // Taken out of the address bar before anything is painted, and the history
     // entry that carried it is overwritten in the same step — so no render, no
     // back-navigation, and no failure below can leave the token on screen.
-    const invitationToken = location && history
-        ? takeTokenFromFragment({ location, history }).token
-        : null;
+    /**
+     * Accept the one invitation token held by this invocation.
+     *
+     * The guard is set before the first await, so a double click sends one
+     * mutation and mints one idempotency key. A refusal keeps the token only in
+     * memory for a deliberate retry; success clears it before repainting.
+     */
+    async function acceptHeldInvitation() {
+        if (invitationAcceptPending || typeof invitationToken !== 'string') return;
+        const review = lastPaintData.invitationReview;
+        if (!review || review.state !== 'pending' || review.identityMatch === false
+            || currentDevice === null || currentDevice.state !== 'active') return;
+
+        invitationAcceptPending = true;
+        repaint({ invitationAcceptStatus: 'accepting', invitationAcceptFailure: null });
+        try {
+            await acceptInvitation({
+                api: services,
+                token: invitationToken,
+                deviceId: currentDevice.deviceId,
+                newIdempotencyKey: () => services.newIdempotencyKey()
+            });
+            invitationToken = null;
+            invitationAcceptPending = false;
+            // Refreshing the account list makes the pending_key workspace
+            // available in the switcher. A list refusal cannot turn a committed
+            // acceptance into a failed mutation.
+            const listed = await settle(() => services.listWorkspaces());
+            if (listed.ok) workspaces = [...listed.value.items];
+            repaint({
+                invitationAcceptStatus: 'accepted',
+                invitationAcceptFailure: null
+            });
+        } catch (error) {
+            invitationAcceptPending = false;
+            repaint({
+                invitationAcceptStatus: 'failed',
+                invitationAcceptFailure: {
+                    code: error?.code ?? 'INVITATION_ACCEPT_FAILED',
+                    reason: error?.reason
+                        ?? 'The invitation could not be accepted. Nothing was changed; try again.'
+                }
+            });
+        }
+    }
 
     // Choosing a workspace is what makes every workspace-scoped surface mean
     // anything, and the switcher renders its options as controls with nothing
@@ -665,6 +722,14 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                     return;
                 }
                 void revokePendingInvitation(invitationId);
+                return;
+            }
+            if (action === 'accept-invitation') {
+                const surface = typeof control.closest === 'function'
+                    ? control.closest('[data-collab-surface="invitation-accept"]')
+                    : null;
+                if (surface === null) return;
+                void acceptHeldInvitation();
                 return;
             }
             if (action === 'device-setup-open') {

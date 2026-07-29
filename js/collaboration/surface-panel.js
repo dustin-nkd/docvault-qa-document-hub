@@ -214,7 +214,11 @@ function build(doc, surface, { context, session, device, data }) {
                 }));
             }
             return renderInvitationAccept(doc, invitationAcceptModel({
-                session, device, review: data.invitationReview
+                session,
+                device,
+                review: data.invitationReview,
+                status: data.invitationAcceptStatus ?? 'reviewed',
+                failure: data.invitationAcceptFailure ?? null
             }), 'panel-accept');
 
         case 'sync-state':
