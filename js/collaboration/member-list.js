@@ -30,6 +30,9 @@ export const MEMBER_ACTIONS = Object.freeze([
     'provision-key'       // an envelope for another member's device
 ]);
 
+export const MEMBER_DEVICE_REVOCATION_DEFERRED_REASON =
+    'Choose a specific member device before revoking it. Device selection is not available yet.';
+
 export class MemberListError extends Error {
     /** @param {string} code */
     constructor(code) {
@@ -259,24 +262,38 @@ export function renderMemberList(doc, model, instanceId) {
         const actions = doc.createElement('div');
         actions.className = 'collab-members__actions';
         for (const decision of member.actions) {
+            const memberDeviceRevocation = decision.action === 'revoke-device';
+            const surfaceAction = memberDeviceRevocation
+                ? 'revoke-member-device'
+                : decision.action;
+            // The frozen RBAC decision still says who may revoke a remote
+            // device. Delivery is a separate fact: until CF-P7R-006 provides a
+            // concrete device inventory and target id, no member row may emit
+            // an actionable revoke. This keeps authorization semantics intact
+            // without pretending a safe target journey already exists.
+            const delivered = !memberDeviceRevocation;
+            const allowed = decision.allowed && delivered;
+            const reasonText = decision.allowed && !delivered
+                ? MEMBER_DEVICE_REVOCATION_DEFERRED_REASON
+                : decision.reason;
             const button = doc.createElement('button');
             button.type = 'button';
             button.className = `collab-members__action collab-members__action--${decision.action}`;
-            button.setAttribute('data-collab-action', decision.action);
+            button.setAttribute('data-collab-action', surfaceAction);
             button.setAttribute('data-user-id', member.userId);
             button.textContent = ACTION_LABELS[decision.action];
-            if (!decision.allowed) {
+            if (!allowed) {
                 // Programmatically disabled, not merely styled, and the reason
                 // travels as text rather than as a colour or a tooltip alone.
                 button.disabled = true;
                 button.setAttribute('aria-disabled', 'true');
-                const reasonId = `${instanceId}-reason-${decision.action}-${member.userId}`;
+                const reasonId = `${instanceId}-reason-${surfaceAction}-${member.userId}`;
                 button.setAttribute('aria-describedby', reasonId);
-                button.setAttribute('title', decision.reason);
+                button.setAttribute('title', reasonText);
                 const reason = doc.createElement('span');
                 reason.className = 'collab-members__reason';
                 reason.id = reasonId;
-                reason.textContent = decision.reason;
+                reason.textContent = reasonText;
                 actions.appendChild(button);
                 actions.appendChild(reason);
                 continue;

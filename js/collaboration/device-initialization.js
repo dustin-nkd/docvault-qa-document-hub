@@ -258,7 +258,10 @@ export function renderDeviceInitialization(doc, model) {
     const revoke = doc.createElement('button');
     revoke.type = 'button';
     revoke.className = 'collab-device__revoke';
-    revoke.setAttribute('data-collab-action', 'revoke-device');
+    // The member list also presents a device-revocation capability, but it
+    // targets another person's selected device. Keep the browser action
+    // explicit so delegated dispatch can never confuse the two lifecycles.
+    revoke.setAttribute('data-collab-action', 'revoke-this-device');
     revoke.textContent = 'Revoke this device';
     if (!model.canRevoke) {
         revoke.disabled = true;
