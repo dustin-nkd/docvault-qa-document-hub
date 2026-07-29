@@ -1,0 +1,294 @@
+{
+  "schema_version": 2,
+  "phase": "CF-P7",
+  "sprint": "CF-P7-S02",
+  "title": "Collaboration UI-to-backend wiring remediation",
+  "status": "READY",
+  "created_on": "2026-07-29",
+  "baseline_commit": "0597f5c2e79078083581edb92d6e103a468a88a2",
+  "ticket_count": 8,
+  "current_ticket": "CF-P7R-001",
+  "concurrency_limit": 1,
+  "principle": "Repair one reviewed user-action boundary at a time. An enabled Collaboration control is not delivered until a composed UI interaction reaches its intended effect under behavioral regression tests.",
+  "authorization": {
+    "local_changes": true,
+    "agent_preview_mutation": false,
+    "read_only_preview_smoke": true,
+    "owner_live_qualification_requires_explicit_action": true,
+    "production_mutation": false,
+    "phase_8_entry_granted": false
+  },
+  "workflow": {
+    "strict_ticket_order": true,
+    "one_ticket_in_progress": true,
+    "verification_before_review": true,
+    "review_before_implementation_commit": true,
+    "one_implementation_commit_per_ticket": true,
+    "push_immediately_after_implementation_commit": true,
+    "implementation_pipeline_pass_before_closure": true,
+    "read_only_preview_smoke_before_closure": true,
+    "owner_live_qualification_when_required": true,
+    "closure_evidence_commit_allowed": true,
+    "closure_commit_must_be_metadata_only": true,
+    "closure_commit_pipeline_pass_before_next_ticket": true,
+    "reviewer": "AGY",
+    "independent_review": false
+  },
+  "privacy": {
+    "evidence_must_redact": [
+      "invitation token",
+      "session cookie",
+      "CSRF token",
+      "device private key",
+      "unlock secret",
+      "workspace DEK",
+      "raw encrypted payload"
+    ],
+    "personal_vault_storage_untouched": true,
+    "production_data_forbidden": true
+  },
+  "known_action_debt": [
+    { "key": "member-device:dispatch-collision", "owner": "CF-P7R-001", "status": "OPEN" },
+    { "key": "invitation-manage:copy-acceptance-link", "owner": "CF-P7R-002", "status": "OPEN" },
+    { "key": "invitation-manage:revoke-invitation", "owner": "CF-P7R-003", "status": "OPEN" },
+    { "key": "invitation-accept:accept-invitation", "owner": "CF-P7R-004", "status": "OPEN" },
+    { "key": "account-menu:sign-out", "owner": "CF-P7R-005", "status": "OPEN" },
+    { "key": "member-list:change-role", "owner": "CF-P7R-006", "status": "OPEN" },
+    { "key": "member-list:grant-admin", "owner": "CF-P7R-006", "status": "OPEN" },
+    { "key": "member-list:transfer-ownership", "owner": "CF-P7R-006", "status": "OPEN" },
+    { "key": "member-list:remove-member", "owner": "CF-P7R-006", "status": "OPEN" },
+    { "key": "member-list:revoke-member-device", "owner": "CF-P7R-006", "status": "OPEN" },
+    { "key": "member-list:provision-key", "owner": "CF-P7R-006", "status": "OPEN" },
+    { "key": "audit-activity:paginate", "owner": "CF-P7R-007", "status": "OPEN" },
+    { "key": "workspace-switcher:workspace-create-open", "owner": "CF-P7R-008", "status": "OPEN" },
+    { "key": "conflict-dialog:review-latest", "owner": "CF-P7R-008", "status": "OPEN" },
+    { "key": "conflict-dialog:reapply-to-latest", "owner": "CF-P7R-008", "status": "OPEN" },
+    { "key": "conflict-dialog:save-as-separate-copy", "owner": "CF-P7R-008", "status": "OPEN" },
+    { "key": "conflict-dialog:discard-with-confirmation", "owner": "CF-P7R-008", "status": "OPEN" },
+    { "key": "conflict-dialog:cancel-discard", "owner": "CF-P7R-008", "status": "OPEN" },
+    { "key": "conflict-dialog:dismiss-conflict", "owner": "CF-P7R-008", "status": "OPEN" }
+  ],
+  "known_state_debt": [
+    {
+      "key": "collaboration-document-provider:absent",
+      "owner": "CF-P7R-008",
+      "status": "OPEN",
+      "required_disposition": "RECORDED_DEFERRED",
+      "follow_up": "A separately approved document-provider sprint must own provider, encrypted outbox, live Saving/Offline/Conflict transitions, reload resume, and conflict mutations."
+    }
+  ],
+  "tickets": [
+    {
+      "id": "CF-P7R-001",
+      "title": "Isolate self-device and member-device revocation actions",
+      "size": "M",
+      "status": "READY",
+      "depends_on": [],
+      "entry_gate": "P7R-G0",
+      "exit_gate": "P7R-G1",
+      "scope": [
+        "Make destructive action dispatch surface-aware.",
+        "Prevent member controls from reaching revokeThisDevice or the current browser lifecycle.",
+        "Create an action-reachability harness backed by the exact known-action-debt inventory."
+      ],
+      "acceptance_criteria": [
+        "The current-device control still revokes only the current registered device.",
+        "A member-row control cannot clear the current device store, acting-device header, or local private key.",
+        "Member-device revocation remains visibly disabled with an announced reason until CF-P7R-006 supplies an exact target journey.",
+        "The reachability harness rejects new unowned enabled actions and requires this ticket's collision debt to resolve."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_device", "phase7_members", "phase7_dispatch"],
+      "evidence": { "id": "CF-EV-P7-E2E-001", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-001.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": false, "mutation_required": false, "status": "NOT_REQUIRED" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    },
+    {
+      "id": "CF-P7R-002",
+      "title": "Wire the one-time invitation Copy link action",
+      "size": "S",
+      "status": "BLOCKED",
+      "depends_on": ["CF-P7R-001"],
+      "entry_gate": "P7R-G1",
+      "exit_gate": "P7R-G2",
+      "scope": [
+        "Dispatch Copy link through the injected Clipboard API boundary.",
+        "Preserve one-time token privacy and a usable manual-copy fallback."
+      ],
+      "acceptance_criteria": [
+        "Copy writes the exact held URL without navigation, logging, persistence, or a network request.",
+        "A successful write clears the in-memory holder and repaints so the secret cannot be copied twice.",
+        "A refused clipboard keeps the readonly URL and announces the manual-copy path.",
+        "Composed entry and browser tests click the rendered control rather than calling the journey directly."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_invitations", "phase7_dispatch"],
+      "evidence": { "id": "CF-EV-P7-E2E-002", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-002.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": true, "mutation_required": false, "status": "NOT_RUN" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    },
+    {
+      "id": "CF-P7R-003",
+      "title": "Wire invitation revocation end to end",
+      "size": "M",
+      "status": "BLOCKED",
+      "depends_on": ["CF-P7R-002"],
+      "entry_gate": "P7R-G2",
+      "exit_gate": "P7R-G3",
+      "scope": [
+        "Dispatch Revoke through the existing invitation journey, service, and runtime route.",
+        "Refresh the exact workspace invitation state after one idempotent mutation."
+      ],
+      "acceptance_criteria": [
+        "One click sends one DELETE for the exact workspace and invitation with CSRF and a fresh idempotency key.",
+        "Double submission is blocked while the request is in flight.",
+        "Success removes or refreshes the pending row without clearing an unrelated held URL.",
+        "Refusal preserves the row, maps the server reason, and permits a deliberate retry."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_invitations", "phase7_api", "phase4_invitation_lifecycle"],
+      "evidence": { "id": "CF-EV-P7-E2E-003", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-003.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": true, "mutation_required": true, "status": "NOT_RUN" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    },
+    {
+      "id": "CF-P7R-004",
+      "title": "Reconcile and wire invitation acceptance end to end",
+      "size": "L",
+      "status": "BLOCKED",
+      "depends_on": ["CF-P7R-003"],
+      "entry_gate": "P7R-G3",
+      "exit_gate": "P7R-G4",
+      "scope": [
+        "Reconcile the frozen InvitationAcceptRequest with the Preview runtime.",
+        "Dispatch Accept using the held fragment token and current active device."
+      ],
+      "acceptance_criteria": [
+        "The runtime accepts token and deviceId and requires deviceId to equal the authenticated acting-device header.",
+        "The fragment is removed before paint and never reaches path, query, logs, cache, or persistent storage.",
+        "One click produces one idempotent mutation and success renders only pending_key.",
+        "Replay, expired, revoked, wrong-subject, wrong-device, and refusal outcomes fail closed."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_accept", "phase7_api", "preview_api_workers", "phase4_invitation_lifecycle"],
+      "evidence": { "id": "CF-EV-P7-E2E-004", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-004.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": true, "mutation_required": true, "status": "NOT_RUN" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    },
+    {
+      "id": "CF-P7R-005",
+      "title": "Wire Sign out without touching device key material",
+      "size": "S",
+      "status": "BLOCKED",
+      "depends_on": ["CF-P7R-004"],
+      "entry_gate": "P7R-G4",
+      "exit_gate": "P7R-G5",
+      "scope": [
+        "Dispatch Sign out through the existing session service.",
+        "Keep session failure and device key lifecycle boundaries explicit."
+      ],
+      "acceptance_criteria": [
+        "One click sends one logout request and prevents double submission.",
+        "Only success forgets session and CSRF state and renders the signed-out surface.",
+        "A refusal preserves a usable session for retry.",
+        "No sign-out path revokes a device, clears its store, or destroys local key material."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_account", "phase7_dispatch", "identity_session_workers"],
+      "evidence": { "id": "CF-EV-P7-E2E-005", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-005.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": true, "mutation_required": true, "status": "NOT_RUN" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    },
+    {
+      "id": "CF-P7R-006",
+      "title": "Wire member administration, device targeting, and key provisioning",
+      "size": "XL",
+      "status": "BLOCKED",
+      "depends_on": ["CF-P7R-005"],
+      "entry_gate": "P7R-G5",
+      "exit_gate": "P7R-G6",
+      "scope": [
+        "Formally reconcile API and UI contracts for roleVersion, expectedRoleVersion, confirmations, and six member actions.",
+        "Wire role/admin changes, removal, ownership transfer, and a separate remote-device revocation journey.",
+        "Build the missing target provisioning journey: authorized device inventory, current-envelope unwrap, in-memory DEK lifecycle, target wrap, and envelope PUT."
+      ],
+      "acceptance_criteria": [
+        "Every enabled member action reaches an exact target with the required precondition and idempotency key.",
+        "Role selection, admin revocation, TRANSFER_OWNERSHIP confirmation, stale refresh, and REAUTHENTICATION_REQUIRED have explicit UX.",
+        "Remote device revocation never reuses the actor's local revocation lifecycle.",
+        "Provisioning binds workspace, user, device, public JWK, fingerprint, and key version while plaintext DEK remains browser-only."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_members", "phase7_api", "phase4_memberships", "phase5_device_services", "phase5_workspace_keys", "preview_key_workers"],
+      "evidence": { "id": "CF-EV-P7-E2E-006", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-006.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": true, "mutation_required": true, "status": "NOT_RUN" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    },
+    {
+      "id": "CF-P7R-007",
+      "title": "Wire Audit activity pagination",
+      "size": "M",
+      "status": "BLOCKED",
+      "depends_on": ["CF-P7R-006"],
+      "entry_gate": "P7R-G6",
+      "exit_gate": "P7R-G7",
+      "scope": [
+        "Dispatch Show older activity with the backend-issued opaque cursor.",
+        "Append a bounded audit page without cross-workspace or stale-response leakage."
+      ],
+      "acceptance_criteria": [
+        "The request carries the exact opaque cursor unchanged and never constructs or decodes it.",
+        "Pages append without duplicates and a failure preserves the current events.",
+        "Double clicks produce one request and a terminal cursor disables the control with an announced reason.",
+        "Workspace switching resets cursor and accumulated audit data; stale responses cannot append afterward."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_audit", "phase7_dispatch", "phase4_audit"],
+      "evidence": { "id": "CF-EV-P7-E2E-007", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-007.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": true, "mutation_required": false, "status": "NOT_RUN" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    },
+    {
+      "id": "CF-P7R-008",
+      "title": "Close enabled-action debt and state the document-provider boundary truthfully",
+      "size": "L",
+      "status": "BLOCKED",
+      "depends_on": ["CF-P7R-007"],
+      "entry_gate": "P7R-G7",
+      "exit_gate": "P7R-G8",
+      "scope": [
+        "Wire the small workspace-create shortcut and close the final action-debt inventory.",
+        "Disable every conflict control that has no live provider with accessible, explicit deferred reasoning.",
+        "Stop presenting placeholder Saved as a live document-sync claim and record the missing provider/outbox as a follow-up sprint."
+      ],
+      "acceptance_criteria": [
+        "No enabled Collaboration control lacks a composed handler and behavioral test.",
+        "Review, reapply, save-copy, discard, cancel, and dismiss cannot appear enabled without a live conflict provider.",
+        "The UI states that no collaborative document is active instead of deriving Saved from fixed empty inputs.",
+        "The full document provider, encrypted outbox, live sync transitions, reload resume, and conflict mutations remain recorded deferred scope rather than claimed delivery."
+      ],
+      "required_tests": ["composed_entry", "browser_action_to_request", "phase7_create", "phase7_sync", "phase7_conflict", "phase7_dispatch", "phase7_preview"],
+      "evidence": { "id": "CF-EV-P7-E2E-008", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-008.md", "status": "PLANNED" },
+      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "live_qualification": { "required": false, "mutation_required": false, "status": "NOT_REQUIRED" },
+      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
+    }
+  ],
+  "exit": {
+    "gate": "P7R-G8",
+    "requires_all_tickets_pass": true,
+    "requires_zero_enabled_unhandled_controls": true,
+    "requires_state_debt_recorded": true,
+    "requires_full_pipeline_pass": true,
+    "requires_read_only_preview_smoke": true,
+    "grants_phase_8_entry": false
+  }
+}
