@@ -9,23 +9,43 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const source = JSON.parse(read('config/cloudflare/phase-7-wiring-sprint-plan.json'));
 const sprintSource = read('docs/collaboration-foundation/phase-7-wiring-sprint.md');
+const baselineEvidenceSources = Object.fromEntries(source.tickets
+    .filter(ticket => fs.existsSync(path.join(root, ticket.evidence.path)))
+    .map(ticket => [ticket.evidence.id, read(ticket.evidence.path)]));
 const clone = () => structuredClone(source);
 const validate = (plan, evidenceSources = {}) =>
-    validatePhase7WiringSprint({ plan, sprintSource, evidenceSources });
+    validatePhase7WiringSprint({
+        plan,
+        sprintSource,
+        evidenceSources: { ...baselineEvidenceSources, ...evidenceSources }
+    });
+
+function resetPendingTicket(ticket, status) {
+    ticket.status = status;
+    ticket.review.status = 'PENDING';
+    for (const key of Object.keys(ticket.verification)) {
+        ticket.verification[key] = 'NOT_RUN';
+    }
+    if (ticket.live_qualification.required) {
+        ticket.live_qualification.status = 'NOT_RUN';
+    }
+    ticket.evidence.status = 'PLANNED';
+    ticket.delivery = {
+        commit: null, pushed: false, pipeline: 'NOT_RUN', preview_smoke: 'NOT_RUN'
+    };
+    return ticket;
+}
 
 function prepareTicketBeforeReview(plan, {
     status = 'IN_PROGRESS',
     verification = 'NOT_RUN'
 } = {}) {
-    const ticket = plan.tickets[0];
-    ticket.status = status;
-    ticket.review.status = 'PENDING';
+    plan.tickets.slice(1).forEach(ticket => resetPendingTicket(ticket, 'BLOCKED'));
+    const ticket = resetPendingTicket(plan.tickets[0], status);
     for (const key of Object.keys(ticket.verification)) {
         ticket.verification[key] = verification;
     }
-    ticket.delivery = {
-        commit: null, pushed: false, pipeline: 'NOT_RUN', preview_smoke: 'NOT_RUN'
-    };
+    plan.current_ticket = ticket.id;
     return ticket;
 }
 
@@ -47,11 +67,12 @@ test('accepts the initial ordered remediation sprint', () => {
 
 test('rejects two active tickets or an active successor before predecessor PASS', () => {
     const two = clone();
+    prepareTicketBeforeReview(two);
     two.tickets[1].status = 'IN_PROGRESS';
     assert.throws(() => validate(two), /one active|More than|current ticket/i);
 
     const early = clone();
-    early.tickets[0].status = 'BLOCKED';
+    prepareTicketBeforeReview(early, { status: 'BLOCKED' });
     early.tickets[1].status = 'READY';
     early.current_ticket = early.tickets[1].id;
     assert.throws(() => validate(early), /blocked|before/i);
@@ -118,6 +139,7 @@ test('rejects commit, push, pipeline, or smoke before its prerequisite', () => {
 
 test('rejects ticket PASS without evidence bound to the commit', () => {
     const plan = clone();
+    prepareTicketBeforeReview(plan, { verification: 'PASS' });
     const evidence = closeTicket(plan.tickets[0]);
     plan.tickets[1].status = 'READY';
     plan.current_ticket = plan.tickets[1].id;
@@ -130,6 +152,7 @@ test('rejects ticket PASS without evidence bound to the commit', () => {
 
 test('rejects PASS while assigned action debt remains open', () => {
     const plan = clone();
+    prepareTicketBeforeReview(plan, { verification: 'PASS' });
     const evidence = closeTicket(plan.tickets[0]);
     plan.tickets[1].status = 'READY';
     plan.current_ticket = plan.tickets[1].id;
