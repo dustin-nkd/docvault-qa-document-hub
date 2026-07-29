@@ -727,6 +727,165 @@ test('REGRESSION: the rendered Copy link uses clipboard once and preserves the m
         'a refused clipboard write issued a network request');
 });
 
+test('REGRESSION: rendered invitation revoke is single-flight, retryable, and preserves its held URL',
+    async () => {
+    const doc = documentWithRoot();
+    const workspace = {
+        workspaceId: workspaces[0].workspaceId,
+        displayName: workspaces[0].displayName,
+        role: 'owner',
+        keyReadiness: 'key_ready'
+    };
+    const existingId = '66666666-6666-4666-8666-666666666666';
+    const createdId = '77777777-7777-4777-8777-777777777777';
+    const acceptanceUrl = `https://preview.example/#/invite/${'r'.repeat(80)}`;
+    const invitation = (invitationId, targetDisplayLogin) => ({
+        invitationId,
+        workspaceId: workspace.workspaceId,
+        role: 'viewer',
+        targetDisplayLogin,
+        state: 'pending',
+        expiresAt: '2026-07-30T00:00:00.000Z'
+    });
+    let pending = [invitation(existingId, 'first-user')];
+    let releaseFirstDelete = null;
+    let deleteAttempt = 0;
+    let keySequence = 0;
+    const requests = [];
+    const client = createApiClient({
+        fetch: async (url, init = {}) => {
+            const path = String(url).split('?')[0];
+            const method = String(init.method ?? 'GET').toUpperCase();
+            requests.push({ method, path, headers: { ...(init.headers ?? {}) } });
+            if (path === '/api/v1/session') return signedInSession();
+            if (path === '/api/v1/workspaces') {
+                return respond(200, {
+                    data: { items: [workspace] },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/members')) {
+                return respond(200, { data: { items: [] }, meta: { page: { nextCursor: null } } });
+            }
+            if (path.endsWith('/audit-events')) {
+                return respond(200, { data: { items: [] }, meta: { page: { nextCursor: null } } });
+            }
+            if (path.endsWith('/key-envelopes/current')) {
+                return respond(200, {
+                    data: { readiness: 'key_ready', envelope: null },
+                    meta: {}
+                });
+            }
+            if (path.endsWith('/invitations') && method === 'POST') {
+                const created = invitation(createdId, 'second-user');
+                pending = [...pending, created];
+                return respond(201, {
+                    data: { invitation: created, acceptanceUrl },
+                    meta: {}
+                });
+            }
+            if (path === `/api/v1/workspaces/${workspace.workspaceId}/invitations/${existingId}`
+                && method === 'DELETE') {
+                deleteAttempt += 1;
+                if (deleteAttempt === 1) {
+                    return await new Promise(resolve => {
+                        releaseFirstDelete = () => resolve(respond(403, {
+                            error: { code: 'OPERATION_NOT_PERMITTED' },
+                            meta: {}
+                        }));
+                    });
+                }
+                return respond(204, null);
+            }
+            if (path.endsWith('/invitations') && method === 'GET') {
+                return respond(200, {
+                    data: { items: pending },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            return respond(404, { error: { code: 'RESOURCE_NOT_FOUND' }, meta: {} });
+        },
+        randomId: () => `key-${++keySequence}`.padEnd(32, 'x')
+    });
+    const storage = fakeStorage({
+        'docvault:collab:preview:u_1:active-workspace': workspace.workspaceId,
+        'docvault:collab:preview:u_1:device': JSON.stringify({
+            deviceId: DEVICE_ID,
+            fingerprint: 'fp',
+            state: 'active',
+            publicJwk: CANONICAL_PUBLIC_JWK,
+            unlockSecret: 'secret'
+        })
+    });
+
+    await startCollaboration({
+        document: doc, deployment: available, storage, environment: 'preview', client
+    });
+    withParents(doc.container);
+
+    // Create a separate invitation solely to hold its one-time URL while the
+    // pre-existing row is revoked. Revocation must never clear that holder.
+    const login = doc.container.querySelector('.collab-invites__login-input');
+    const role = doc.container.querySelector('.collab-invites__role-input');
+    simulateInput(doc.container, login, 'second-user');
+    role.value = 'viewer';
+    simulateClick(doc.container,
+        doc.container.querySelector('[data-collab-action="create-invitation"]'));
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('.collab-invites__url') === null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    assert.equal(doc.container.querySelector('.collab-invites__url')?.value, acceptanceUrl);
+
+    const revokeFor = invitationId => doc.container
+        .querySelectorAll('[data-collab-action="revoke-invitation"]')
+        .find(control => control.getAttribute('data-invitation-id') === invitationId);
+    const firstRevoke = revokeFor(existingId);
+    assert.notEqual(firstRevoke, undefined);
+    simulateClick(doc.container, firstRevoke);
+    simulateClick(doc.container, firstRevoke);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    withParents(doc.container);
+
+    let deletes = requests.filter(request => request.method === 'DELETE');
+    assert.equal(deletes.length, 1, 'a double click sent more than one DELETE');
+    assert.equal(deletes[0].path,
+        `/api/v1/workspaces/${workspace.workspaceId}/invitations/${existingId}`);
+    assert.equal(deletes[0].headers['X-CSRF-Token'], 'csrf');
+    assert.equal(deletes[0].headers['X-DocVault-Device-ID'], DEVICE_ID);
+    assert.equal(typeof deletes[0].headers['Idempotency-Key'], 'string');
+    assert.equal(revokeFor(existingId)?.disabled, true);
+    assert.match(revokeFor(existingId)?.textContent ?? '', /Revoking/);
+
+    releaseFirstDelete();
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('.collab-invites__revoke-failure') === null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    const refusal = doc.container.querySelector('.collab-invites__revoke-failure');
+    assert.equal(refusal?.getAttribute('role'), 'alert');
+    assert.match(refusal?.textContent ?? '', /role in this workspace does not allow/i);
+    assert.equal(revokeFor(existingId)?.disabled, false, 'a refusal did not permit retry');
+    assert.equal(doc.container.querySelector('.collab-invites__url')?.value, acceptanceUrl,
+        'a refused revoke cleared an unrelated one-time URL');
+
+    simulateClick(doc.container, revokeFor(existingId));
+    for (let turn = 0; turn < 10 && revokeFor(existingId) !== undefined; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    deletes = requests.filter(request => request.method === 'DELETE');
+    assert.equal(deletes.length, 2, 'a deliberate retry did not send exactly one new DELETE');
+    assert.notEqual(deletes[0].headers['Idempotency-Key'], deletes[1].headers['Idempotency-Key'],
+        'a deliberate retry reused the earlier idempotency key');
+    assert.equal(revokeFor(existingId), undefined, 'a revoked invitation remained in the pending list');
+    assert.notEqual(revokeFor(createdId), undefined, 'the unrelated pending invitation was removed');
+    assert.equal(doc.container.querySelector('.collab-invites__url')?.value, acceptanceUrl,
+        'a successful revoke cleared an unrelated one-time URL');
+});
+
 // REGRESSION: the "Set up this device" shortcut inside create-workspace's
 // blocked message called `.focus()` on the real register button and nothing
 // else -- indistinguishable from doing nothing on a page where every surface

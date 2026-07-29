@@ -48,7 +48,7 @@
   },
   "tests": {
     "unit": "tests/collaboration-invitations.test.mjs",
-    "unit_count": 28,
+    "unit_count": 30,
     "policy": "tests/cloudflare-phase-7-invitation-policy.test.mjs"
   }
 }

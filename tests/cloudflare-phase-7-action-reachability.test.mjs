@@ -72,6 +72,15 @@ test('the invitation copy debt cannot remain open after clipboard dispatch is wi
     }), /not resolved by CF-P7R-002/);
 });
 
+test('the invitation revoke debt cannot remain open after row dispatch is wired', () => {
+    const plan = clone(planSource);
+    plan.known_action_debt
+        .find(item => item.key === 'invitation-manage:revoke-invitation').status = 'OPEN';
+    assert.throws(() => validatePhase7ActionReachability({
+        plan, sources: sources()
+    }), /not resolved by CF-P7R-003/);
+});
+
 test('the invitation copy action must stay scoped and use the injected clipboard boundary', () => {
     const directClipboard = sources();
     directClipboard['entry.js'] = directClipboard['entry.js']
@@ -87,4 +96,20 @@ test('the invitation copy action must stay scoped and use the injected clipboard
     assert.throws(() => validatePhase7ActionReachability({
         plan: clone(planSource), sources: unscoped
     }), /not wired through its scoped clipboard boundary/);
+});
+
+test('invitation revoke must stay scoped to its row and keep the duplicate guard', () => {
+    const unscoped = sources();
+    unscoped['entry.js'] = unscoped['entry.js']
+        .replace("control.closest('[data-invitation-id]')", 'null');
+    assert.throws(() => validatePhase7ActionReachability({
+        plan: clone(planSource), sources: unscoped
+    }), /not scoped to its row or guarded/);
+
+    const unguarded = sources();
+    unguarded['entry.js'] = unguarded['entry.js']
+        .replace('if (invitationRevokePendingId !== null) return;', '');
+    assert.throws(() => validatePhase7ActionReachability({
+        plan: clone(planSource), sources: unguarded
+    }), /not scoped to its row or guarded/);
 });

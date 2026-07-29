@@ -1933,6 +1933,12 @@ button[aria-busy="true"] { cursor:progress !important; }
     padding-left: 10px;
     border-left: 2px solid var(--brd-l);
 }
+.collab-invites__revoke-failure {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 12px;
+    color: var(--collab-danger);
+}
 
 @media (max-width: 480px) {
     .collab-invites { padding: 12px; }

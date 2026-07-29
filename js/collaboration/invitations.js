@@ -145,30 +145,48 @@ export async function copyAcceptanceUrl({ clipboard, held } = {}) {
  *
  * @param {{actorRole: string, invitations: ReadonlyArray<object>, role?: string,
  *          displayLogin?: string, issued?: object|null, status?: string,
- *          copyStatus?: string, copyNotice?: string|null}} input
+ *          copyStatus?: string, copyNotice?: string|null,
+ *          revokePendingId?: string|null, revokeFailures?: object}} input
  */
 export function invitationModel({ actorRole, invitations, role = 'editor', displayLogin = '',
-    issued = null, status = 'idle', copyStatus = 'idle', copyNotice = null } = {}) {
+    issued = null, status = 'idle', copyStatus = 'idle', copyNotice = null,
+    revokePendingId = null, revokeFailures = {} } = {}) {
     if (!Array.isArray(invitations)) fail('INVITATIONS_REQUIRED');
     if (!INVITABLE_ROLES.includes(role)) fail('INVALID_ROLE');
     if (!COPY_STATUSES.includes(copyStatus)) fail('INVALID_STATUS');
     if (copyNotice !== null && typeof copyNotice !== 'string') fail('INVALID_NOTICE');
+    if (revokePendingId !== null && !UUID_V4.test(revokePendingId)) {
+        fail('INVALID_INVITATION');
+    }
+    if (typeof revokeFailures !== 'object' || revokeFailures === null
+        || Array.isArray(revokeFailures)) fail('INVALID_FAILURES');
     const nameCheck = validateDisplayLogin(displayLogin);
     const create = invitationDecision({ actorRole, role, action: 'create' });
-    const inFlight = status === 'creating' || status === 'revoking';
+    const inFlight = status === 'creating' || status === 'revoking'
+        || revokePendingId !== null;
 
     const rows = invitations.map(invitation => {
         if (!UUID_V4.test(invitation?.invitationId ?? '')) fail('INVALID_INVITATION');
         if (!INVITABLE_ROLES.includes(invitation.role)) fail('INVALID_ROLE');
         if (!INVITATION_STATES.includes(invitation.state)) fail('INVALID_INVITATION_STATE');
+        const revoke = invitationDecision({ actorRole, role: invitation.role, action: 'revoke' });
+        const revokeFailure = revokeFailures[invitation.invitationId] ?? null;
+        if (revokeFailure !== null && typeof revokeFailure !== 'string') fail('INVALID_FAILURES');
         return Object.freeze({
             invitationId: invitation.invitationId,
             targetDisplayLogin: invitation.targetDisplayLogin,
             role: invitation.role,
             expiresAt: invitation.expiresAt,
-            revoke: invitationDecision({ actorRole, role: invitation.role, action: 'revoke' })
+            revoke,
+            revokeDisabled: !revoke.allowed || inFlight,
+            revokeInFlight: revokePendingId === invitation.invitationId,
+            revokeFailure
         });
     });
+    if (revokePendingId !== null
+        && !rows.some(invitation => invitation.invitationId === revokePendingId)) {
+        fail('INVALID_INVITATION');
+    }
 
     return Object.freeze({
         status,
@@ -362,10 +380,12 @@ export function renderInvitations(doc, model, instanceId) {
         revoke.className = 'collab-invites__revoke';
         revoke.setAttribute('data-collab-action', 'revoke-invitation');
         revoke.setAttribute('data-invitation-id', invitation.invitationId);
-        revoke.textContent = 'Revoke';
-        if (!invitation.revoke.allowed) {
+        revoke.textContent = invitation.revokeInFlight ? 'Revokingâ€¦' : 'Revoke';
+        if (invitation.revokeDisabled) {
             revoke.disabled = true;
             revoke.setAttribute('aria-disabled', 'true');
+        }
+        if (!invitation.revoke.allowed) {
             revoke.setAttribute('title', invitation.revoke.reason);
             const reasonId = `${instanceId}-revoke-reason-${invitation.invitationId}`;
             revoke.setAttribute('aria-describedby', reasonId);
@@ -377,6 +397,14 @@ export function renderInvitations(doc, model, instanceId) {
             row.appendChild(reason);
         } else {
             row.appendChild(revoke);
+        }
+        if (invitation.revokeFailure !== null) {
+            const failure = doc.createElement('p');
+            failure.className = 'collab-invites__revoke-failure';
+            failure.setAttribute('role', 'alert');
+            failure.setAttribute('data-revoke-status', 'failed');
+            failure.textContent = invitation.revokeFailure;
+            row.appendChild(failure);
         }
         list.appendChild(row);
     }

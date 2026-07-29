@@ -54,6 +54,7 @@ export const HANDLED_ACTIONS = Object.freeze([
     'create-invitation',
     'device-setup-open',
     'register-device',
+    'revoke-invitation',
     'revoke-this-device',
     'sign-in',
     'workspace-create-submit',
@@ -79,7 +80,6 @@ export const DIRECT_OR_PASSIVE_ACTIONS = Object.freeze([
  * separately targeted member-device journey remains owned by CF-P7R-006.
  */
 export const DEBT_ACTIONS = Object.freeze([
-    ['invitation-manage:revoke-invitation', 'revoke-invitation'],
     ['invitation-accept:accept-invitation', 'accept-invitation'],
     ['account-menu:sign-out', 'sign-out'],
     ['member-list:change-role', 'change-role'],
@@ -144,11 +144,16 @@ export function validatePhase7ActionReachability({ plan, sources }) {
         item.key === 'invitation-manage:copy-acceptance-link');
     assert(invitationCopy?.owner === 'CF-P7R-002' && invitationCopy.status === 'RESOLVED',
         'The invitation copy action is not resolved by CF-P7R-002');
+    const invitationRevoke = debt.find(item =>
+        item.key === 'invitation-manage:revoke-invitation');
+    assert(invitationRevoke?.owner === 'CF-P7R-003' && invitationRevoke.status === 'RESOLVED',
+        'The invitation revoke action is not resolved by CF-P7R-003');
 
     const remainingDebt = ACTION_DEBT
         .filter(([key]) => ![
             'member-device:dispatch-collision',
-            'invitation-manage:copy-acceptance-link'
+            'invitation-manage:copy-acceptance-link',
+            'invitation-manage:revoke-invitation'
         ].includes(key))
         .map(([key]) => key);
     assert(same(DEBT_ACTIONS.map(([key]) => key), remainingDebt),
@@ -187,5 +192,11 @@ export function validatePhase7ActionReachability({ plan, sources }) {
         .test(entry)
         && entry.includes('copyAcceptanceUrl({ clipboard, held })'),
     'The one-time invitation copy action is not wired through its scoped clipboard boundary');
+    assert(/action === 'revoke-invitation'[\s\S]{0,700}?control\.closest\('\[data-collab-surface="invitation-manage"\]'\)/
+        .test(entry)
+        && entry.includes("control.closest('[data-invitation-id]')")
+        && entry.includes('revokeInvitation({')
+        && entry.includes('invitationRevokePendingId !== null'),
+    'Invitation revocation is not scoped to its row or guarded against duplicate dispatch');
     return true;
 }

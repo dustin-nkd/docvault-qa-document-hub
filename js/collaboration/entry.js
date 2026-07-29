@@ -31,7 +31,7 @@ import { sealCreatorEnvelope } from './workspace-key-envelope.js';
 import { createDeviceRecordStore, newUnlockSecret, decodeUnlockSecret } from './device-record.js';
 import { reviewInvitation, takeTokenFromFragment } from './invitation-accept.js';
 import {
-    copyAcceptanceUrl, createInvitation, validateDisplayLogin
+    copyAcceptanceUrl, createInvitation, revokeInvitation, validateDisplayLogin
 } from './invitations.js';
 import { deriveSyncState } from './sync-state.js';
 
@@ -299,6 +299,7 @@ export async function startCollaboration({ document: doc, deployment, client, fe
 
     let lastPaintData = {};
     let invitationCopyPending = false;
+    let invitationRevokePendingId = null;
     const paint = data => {
         lastPaintData = data;
         return openCollaboration({
@@ -523,6 +524,69 @@ export async function startCollaboration({ document: doc, deployment, client, fe
         }
     }
 
+    /**
+     * Revoke one exact pending invitation and reconcile the list afterward.
+     *
+     * The in-memory guard is set before the first await, so two delegated
+     * clicks cannot mint two idempotency keys or send two DELETE requests. A
+     * list refusal after a successful DELETE falls back to removing the exact
+     * row locally; it must not resurrect a terminal invitation. None of these
+     * patches mention `issuedInvitation`, so an unrelated one-time URL holder
+     * survives both success and refusal.
+     */
+    async function revokePendingInvitation(invitationId) {
+        if (invitationRevokePendingId !== null) return;
+        const workspaceId = selection?.read() ?? null;
+        const invitations = lastPaintData.invitations;
+        if (workspaceId === null || !Array.isArray(invitations)
+            || !invitations.some(item => item.invitationId === invitationId)) return;
+
+        invitationRevokePendingId = invitationId;
+        const startingFailures = { ...(lastPaintData.inviteRevokeFailures ?? {}) };
+        delete startingFailures[invitationId];
+        repaint({
+            inviteStatus: 'revoking',
+            inviteRevokePendingId: invitationId,
+            inviteRevokeFailures: startingFailures
+        });
+        try {
+            await revokeInvitation({
+                api: services,
+                workspaceId,
+                invitationId,
+                newIdempotencyKey: () => services.newIdempotencyKey()
+            });
+            const listed = await settle(() => services.listInvitations({ workspaceId }));
+            invitationRevokePendingId = null;
+            if (selection?.read() !== workspaceId) return;
+            const failures = { ...(lastPaintData.inviteRevokeFailures ?? {}) };
+            delete failures[invitationId];
+            const current = Array.isArray(lastPaintData.invitations)
+                ? lastPaintData.invitations
+                : invitations;
+            repaint({
+                inviteStatus: 'idle',
+                inviteRevokePendingId: null,
+                inviteRevokeFailures: failures,
+                invitations: listed.ok
+                    ? listed.value.items.filter(item => item.invitationId !== invitationId)
+                    : current.filter(item => item.invitationId !== invitationId)
+            });
+        } catch (error) {
+            invitationRevokePendingId = null;
+            if (selection?.read() !== workspaceId) return;
+            repaint({
+                inviteStatus: 'idle',
+                inviteRevokePendingId: null,
+                inviteRevokeFailures: {
+                    ...(lastPaintData.inviteRevokeFailures ?? {}),
+                    [invitationId]: error?.reason
+                        ?? 'The invitation could not be revoked. Nothing was changed; try again.'
+                }
+            });
+        }
+    }
+
     // Taken out of the address bar before anything is painted, and the history
     // entry that carried it is overwritten in the same step — so no render, no
     // back-navigation, and no failure below can leave the token on screen.
@@ -587,6 +651,20 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                     : null;
                 if (surface === null) return;
                 void copyInvitationLink();
+                return;
+            }
+            if (action === 'revoke-invitation') {
+                const surface = typeof control.closest === 'function'
+                    ? control.closest('[data-collab-surface="invitation-manage"]')
+                    : null;
+                const row = typeof control.closest === 'function'
+                    ? control.closest('[data-invitation-id]')
+                    : null;
+                const invitationId = control.getAttribute('data-invitation-id');
+                if (surface === null || row?.getAttribute('data-invitation-id') !== invitationId) {
+                    return;
+                }
+                void revokePendingInvitation(invitationId);
                 return;
             }
             if (action === 'device-setup-open') {

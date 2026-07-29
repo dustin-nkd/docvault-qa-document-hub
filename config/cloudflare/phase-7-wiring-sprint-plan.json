@@ -50,7 +50,7 @@
   "known_action_debt": [
     { "key": "member-device:dispatch-collision", "owner": "CF-P7R-001", "status": "RESOLVED" },
     { "key": "invitation-manage:copy-acceptance-link", "owner": "CF-P7R-002", "status": "RESOLVED" },
-    { "key": "invitation-manage:revoke-invitation", "owner": "CF-P7R-003", "status": "OPEN" },
+    { "key": "invitation-manage:revoke-invitation", "owner": "CF-P7R-003", "status": "RESOLVED" },
     { "key": "invitation-accept:accept-invitation", "owner": "CF-P7R-004", "status": "OPEN" },
     { "key": "account-menu:sign-out", "owner": "CF-P7R-005", "status": "OPEN" },
     { "key": "member-list:change-role", "owner": "CF-P7R-006", "status": "OPEN" },
@@ -133,7 +133,7 @@
       "id": "CF-P7R-003",
       "title": "Wire invitation revocation end to end",
       "size": "M",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "depends_on": ["CF-P7R-002"],
       "entry_gate": "P7R-G2",
       "exit_gate": "P7R-G3",

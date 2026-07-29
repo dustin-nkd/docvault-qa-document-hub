@@ -154,13 +154,20 @@ globalThis.fetch = async (url, init = {}) => {
     requests.push({
         pathname,
         method,
-        actingDevice: init.headers?.['X-DocVault-Device-ID'] ?? null
+        actingDevice: init.headers?.['X-DocVault-Device-ID'] ?? null,
+        csrf: init.headers?.['X-CSRF-Token'] ?? null,
+        idempotencyKey: init.headers?.['Idempotency-Key'] ?? null
     });
     const body = ROUTES[pathname];
     const fail = (status, code) => new Response(JSON.stringify({ error: { code }, meta: {} }),
         { status, headers: { 'content-type': 'application/json' } });
     if (DENIED && pathname.endsWith('/' + DENIED)) return fail(403, 'OPERATION_NOT_PERMITTED');
     if (method === 'DELETE' && pathname === '/api/v1/devices/${DEVICE}') {
+        return new Response(null, { status: 204 });
+    }
+    if (method === 'DELETE'
+        && pathname === '/api/v1/workspaces/${WORKSPACE}/invitations/${INVITATION}') {
+        ROUTES['/api/v1/workspaces/${WORKSPACE}/invitations'].data.items = [];
         return new Response(null, { status: 204 });
     }
     if (method === 'POST'
@@ -502,6 +509,45 @@ async function driveInvitationCopy(browserName, baseUrl, denied = false) {
     }
 }
 
+/** Drive the rendered row through DELETE, list reconciliation, and refusal UX. */
+async function driveInvitationRevoke(browserName, baseUrl, denied = false) {
+    const browser = await browsers[browserName].launch({ headless: true });
+    try {
+        const page = await (await browser.newContext()).newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('console', message => {
+            if (message.type() === 'error') errors.push(message.text());
+        });
+        const query = denied
+            ? `?device-actions&revoke-action&deny=${INVITATION}`
+            : '?device-actions&revoke-action';
+        await page.goto(`${baseUrl}/${query}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('body[data-ready="true"]');
+        const row = `[data-invitation-id="${INVITATION}"]`;
+        await page.click(`${row} [data-collab-action="revoke-invitation"]`);
+        if (denied) {
+            await page.waitForSelector(`${row} .collab-invites__revoke-failure`);
+        } else {
+            await page.waitForSelector(row, { state: 'detached' });
+        }
+        return {
+            errors,
+            requests: await page.evaluate(() =>
+                structuredClone(globalThis.__collabRequests ?? [])),
+            rowPresent: await page.locator(row).count() > 0,
+            retryEnabled: denied
+                ? await page.locator(`${row} [data-collab-action="revoke-invitation"]`).isEnabled()
+                : null,
+            failure: denied
+                ? await page.locator(`${row} .collab-invites__revoke-failure`).textContent()
+                : null
+        };
+    } finally {
+        await browser.close();
+    }
+}
+
 const EXPECTED = Object.freeze(['create-workspace', 'device-key-initialization',
     'member-list-role-badge', 'invitation-manage', 'invitation-accept', 'sync-state',
     'conflict-dialog', 'audit-activity']);
@@ -621,6 +667,44 @@ try {
         assert.match(blockedCopy.notice, /copy it manually/i);
         assert.equal(blockedCopy.storedSecret, false,
             `${browserName}: the refused invitation URL entered local storage`);
+
+        const revoked = await driveInvitationRevoke(browserName, baseUrl);
+        assert.deepEqual(revoked.errors, [],
+            `${browserName}: runtime errors while revoking an invitation`);
+        const invitationDeletes = revoked.requests.filter(request =>
+            request.method === 'DELETE'
+            && request.pathname.endsWith(`/invitations/${INVITATION}`));
+        assert.equal(invitationDeletes.length, 1,
+            `${browserName}: one click did not produce exactly one invitation DELETE`);
+        assert.equal(invitationDeletes[0].pathname,
+            `/api/v1/workspaces/${WORKSPACE}/invitations/${INVITATION}`,
+            `${browserName}: invitation DELETE targeted the wrong row`);
+        assert.equal(invitationDeletes[0].actingDevice, DEVICE,
+            `${browserName}: invitation DELETE lost the acting-device header`);
+        assert.equal(invitationDeletes[0].csrf, 'csrf',
+            `${browserName}: invitation DELETE lost the CSRF header`);
+        assert.equal(typeof invitationDeletes[0].idempotencyKey, 'string',
+            `${browserName}: invitation DELETE lost its idempotency key`);
+        assert.equal(revoked.rowPresent, false,
+            `${browserName}: successful revoke left the pending row visible`);
+        assert.ok(revoked.requests.filter(request =>
+            request.method === 'GET'
+            && request.pathname === `/api/v1/workspaces/${WORKSPACE}/invitations`).length >= 2,
+        `${browserName}: successful revoke did not refresh the invitation list`);
+
+        const refusedRevoke = await driveInvitationRevoke(browserName, baseUrl, true);
+        assert.deepEqual(refusedRevoke.errors, [],
+            `${browserName}: runtime errors under invitation revoke refusal`);
+        const refusedDeletes = refusedRevoke.requests.filter(request =>
+            request.method === 'DELETE'
+            && request.pathname.endsWith(`/invitations/${INVITATION}`));
+        assert.equal(refusedDeletes.length, 1,
+            `${browserName}: a refused click sent more than one invitation DELETE`);
+        assert.equal(refusedRevoke.rowPresent, true,
+            `${browserName}: a refused revoke removed the pending row`);
+        assert.equal(refusedRevoke.retryEnabled, true,
+            `${browserName}: a refused revoke did not permit deliberate retry`);
+        assert.match(refusedRevoke.failure ?? '', /role in this workspace does not allow/i);
 
         summary.push({
             browser: browserName,

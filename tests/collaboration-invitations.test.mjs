@@ -223,6 +223,42 @@ test('a denied revoke stays visible with an announced reason', () => {
     assert.ok(node.querySelectorAll('.collab-invites__reason').some(item => item.id === id));
 });
 
+test('a pending revoke disables every mutation control and names the exact row', () => {
+    const second = '77777777-7777-4777-8777-777777777777';
+    const model = invitationModel({
+        actorRole: 'owner',
+        invitations: [invite(), invite({ invitationId: second, targetDisplayLogin: 'hubot' })],
+        revokePendingId: INVITE
+    });
+    assert.equal(model.inFlight, true);
+    assert.equal(model.canCreate, false);
+    assert.equal(model.invitations[0].revokeInFlight, true);
+    assert.equal(model.invitations[0].revokeDisabled, true);
+    assert.equal(model.invitations[1].revokeInFlight, false);
+    assert.equal(model.invitations[1].revokeDisabled, true);
+
+    const node = renderInvitations(doc, model, 'invites');
+    const buttons = node.querySelectorAll('[data-collab-action="revoke-invitation"]');
+    assert.equal(buttons.every(button => button.disabled), true);
+    assert.match(buttons.find(button => button.getAttribute('data-invitation-id') === INVITE)
+        ?.textContent ?? '', /Revoking/);
+});
+
+test('a revoke refusal stays on its row as an alert and leaves retry enabled', () => {
+    const reason = 'Your role in this workspace does not allow this action.';
+    const node = renderInvitations(doc, invitationModel({
+        actorRole: 'owner',
+        invitations: [invite()],
+        revokeFailures: { [INVITE]: reason }
+    }), 'invites');
+    const revoke = node.querySelector('[data-collab-action="revoke-invitation"]');
+    const failure = node.querySelector('.collab-invites__revoke-failure');
+    assert.equal(revoke.disabled, false);
+    assert.equal(failure.getAttribute('role'), 'alert');
+    assert.equal(failure.getAttribute('data-revoke-status'), 'failed');
+    assert.equal(failure.textContent, reason);
+});
+
 test('scopes its ids to the rendered instance', () => {
     const model = invitationModel({ actorRole: 'admin', invitations: [invite({ role: 'admin' })] });
     const ids = panel => renderInvitations(doc, model, panel)
