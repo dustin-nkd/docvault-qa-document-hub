@@ -551,6 +551,113 @@ test('the entry wires the invitation control it renders', () => {
         'nothing keeps the Send control in step with what was typed');
 });
 
+// REGRESSION: the live create call succeeded and returned the one-time URL, but
+// entry handed `{ invitation, held }` to invitationModel where only `held` was
+// accepted. The ensuing `issued.cleared is not a function` was isolated as an
+// `(unknown)` invitation-manage schema error, and the already-created token
+// could not be recovered.
+test('REGRESSION: sending an invitation paints the one-time URL holder', async () => {
+    const doc = documentWithRoot();
+    const workspace = {
+        workspaceId: workspaces[0].workspaceId,
+        displayName: workspaces[0].displayName,
+        role: 'owner',
+        keyReadiness: 'key_ready'
+    };
+    const invitationId = '66666666-6666-4666-8666-666666666666';
+    const acceptanceUrl = `https://preview.example/#/invite/${'t'.repeat(80)}`;
+    const requests = [];
+    const client = createApiClient({
+        fetch: async (url, init = {}) => {
+            const path = String(url).split('?')[0];
+            const method = String(init.method ?? 'GET').toUpperCase();
+            requests.push({ method, path });
+            if (path === '/api/v1/session') return signedInSession();
+            if (path === '/api/v1/workspaces') {
+                return respond(200, {
+                    data: { items: [workspace] },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/members')) {
+                return respond(200, {
+                    data: { items: [] },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/invitations') && method === 'POST') {
+                return respond(201, {
+                    data: {
+                        invitation: {
+                            invitationId,
+                            workspaceId: workspace.workspaceId,
+                            role: 'viewer',
+                            targetDisplayLogin: 'second-user',
+                            state: 'pending',
+                            expiresAt: '2026-07-30T00:00:00.000Z'
+                        },
+                        acceptanceUrl
+                    },
+                    meta: {}
+                });
+            }
+            if (path.endsWith('/invitations')) {
+                return respond(200, {
+                    data: { items: [] },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/audit-events')) {
+                return respond(200, {
+                    data: { items: [] },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/key-envelopes/current')) {
+                return respond(200, {
+                    data: { readiness: 'key_ready', envelope: null },
+                    meta: {}
+                });
+            }
+            return respond(404, { error: { code: 'RESOURCE_NOT_FOUND' }, meta: {} });
+        },
+        randomId: () => 'a'.repeat(36)
+    });
+    const storage = fakeStorage({
+        'docvault:collab:preview:u_1:active-workspace': workspace.workspaceId,
+        'docvault:collab:preview:u_1:device': JSON.stringify({
+            deviceId: DEVICE_ID, fingerprint: 'fp', state: 'active',
+            publicJwk: CANONICAL_PUBLIC_JWK, unlockSecret: 'secret'
+        })
+    });
+
+    await startCollaboration({
+        document: doc, deployment: available, storage, environment: 'preview', client
+    });
+    withParents(doc.container);
+    const login = doc.container.querySelector('.collab-invites__login-input');
+    const role = doc.container.querySelector('.collab-invites__role-input');
+    const send = doc.container.querySelector('[data-collab-action="create-invitation"]');
+    assert.notEqual(login, null);
+    assert.notEqual(role, null);
+    assert.notEqual(send, null);
+    simulateInput(doc.container, login, 'second-user');
+    role.value = 'viewer';
+    simulateClick(doc.container, send);
+
+    for (let turn = 0; turn < 10
+        && doc.container.querySelector('.collab-invites__url') === null; turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        withParents(doc.container);
+    }
+    const field = doc.container.querySelector('.collab-invites__url');
+    assert.notEqual(field, null,
+        'the successful create response was replaced by an invitation-manage error');
+    assert.equal(field.value, acceptanceUrl);
+    assert.equal(requests.filter(request =>
+        request.method === 'POST' && request.path.endsWith('/invitations')).length, 1);
+});
+
 // REGRESSION: the "Set up this device" shortcut inside create-workspace's
 // blocked message called `.focus()` on the real register button and nothing
 // else -- indistinguishable from doing nothing on a page where every surface
