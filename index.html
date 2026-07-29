@@ -329,33 +329,10 @@
         .dp-foot-btn.dp-today-btn:hover { background: rgba(16,185,129,.1); }
     </style>
 </head>
-<body class="bg-[var(--bg)] text-[var(--tx)] h-screen w-screen overflow-hidden font-sans flex flex-col">
+<body class="bg-[var(--bg)] text-[var(--tx)] h-screen w-screen overflow-hidden font-sans">
     <div id="debug-err" style="position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:99999;font-size:12px;padding:5px;display:none;"></div>
     <!-- Toasts -->
     <div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2" style="pointer-events:none;" aria-live="polite" aria-relevant="additions"></div>
-
-    <!--
-      Collaboration availability banner (CF-P7-002, surface 12). Ships hidden and
-      is revealed by js/deployment.js only where collaboration cannot run, so a
-      Personal-only visitor pays nothing and a GitHub Pages visitor is told why
-      the feature is absent instead of being left to guess.
-    -->
-    <div id="collaboration-availability-banner" class="collab-banner" role="note" hidden>
-        <span class="collab-banner__shape" aria-hidden="true"></span>
-        <p class="collab-banner__text">
-            Team collaboration is available only on the Cloudflare deployment.
-            Your Personal Vault works normally here.
-        </p>
-    </div>
-
-    <!-- The only way into collaboration. Hidden until js/deployment.js decides the
-         deployment can support it; its click handler is what dynamically imports
-         js/collaboration/entry.js, so nothing under js/collaboration/ is
-         evaluated for a user who never presses it. -->
-    <button id="collaboration-open" class="collab-open" type="button" hidden>Open team workspaces</button>
-
-    <!-- Lazy collaboration shell mount point. Empty and hidden until the collaboration shell is dynamically imported. -->
-    <div id="collaboration-root" class="collab-root" hidden></div>
 
     <!-- Modal -->
     <div id="modal" class="fixed inset-0 z-[90] hidden"></div>
@@ -449,14 +426,7 @@
         </div>
     </div>
 
-    <!--
-      `flex-1 min-h-0`, not `h-screen`: the collaboration banner and opener are
-      siblings above this in the flow, and a hard 100vh here made the page
-      taller than the viewport by exactly their height. The body clips its
-      overflow, so what fell off the bottom was the end of the sidebar — the
-      Lock / Theme / Settings row. This takes the height that is actually left.
-    -->
-    <div class="app-shell flex w-full">
+    <div class="flex h-screen w-full">
         <!-- Sidebar -->
         <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300 w-[260px] min-w-[260px] h-full flex flex-col border-r" style="background:var(--bg2);border-color:var(--brd);" aria-label="Primary navigation">
             <div class="sidebar-line h-[2px] w-full shrink-0"></div>
@@ -588,7 +558,6 @@
 
 <script src="vendor/morphdom/morphdom-umd.min.js"></script>
 <script src="storage.js"></script>
-<script defer src="js/deployment.js"></script>
 <script defer src="js/constants.js"></script>
 <script defer src="js/utils.js"></script>
 <script defer src="js/state.js"></script>

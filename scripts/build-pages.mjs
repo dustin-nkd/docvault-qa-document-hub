@@ -1,10 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-    validateDeploymentArtifact,
-    writeDeploymentManifest
-} from './cloudflare-deployment-boundary-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, '_site');
@@ -33,7 +29,6 @@ function include(relativePath) {
 include('index.html');
 include('sw.js');
 include('_headers');
-include('_routes.json');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const match of html.matchAll(/\b(?:src|href)=["']([^"'#]+)["']/g)) include(match[1]);
@@ -58,41 +53,6 @@ while (queue.length > 0) {
     }
 }
 
-// Follow the JavaScript module graph, both static imports and dynamic ones.
-//
-// Without this the collaboration modules are silently absent from the artifact.
-// The lazy design deliberately keeps them out of index.html, so the reference
-// walk above cannot see them, and Cloudflare Pages answers the SPA fallback for
-// their paths — a 200 of text/html where the browser expected a module. That is
-// exactly what shipped to Preview before this pass existed: the entry resolved,
-// its imports did not, and the shell never mounted.
-//
-// Walking the graph rather than listing paths means a new lazy entry point is
-// picked up by adding its `import()`, not by remembering to edit this file.
-// Covers every form that creates an edge: `from '...'` (static import and
-// re-export alike), `import('...')` (dynamic), and `import '...'` on its own —
-// the side-effect import, which an earlier version of this pattern did not
-// match. A module reached only that way was left out of the artifact while the
-// build reported success, which is the deployment-only failure R-P7-C names:
-// on disk locally so the graph resolves, absent on Pages so the path answers
-// the SPA fallback with 200 text/html where a module was expected.
-const SPECIFIER = /(?:\bfrom\s*|(?:^|[^.\w])import\s*(?:\(\s*)?)(['"])([^'"]+)\1/gm;
-let scanned = 0;
-while (scanned < included.size) {
-    scanned = included.size;
-    for (const relativePath of [...included]) {
-        if (!relativePath.endsWith('.js') && !relativePath.endsWith('.mjs')) continue;
-        const source = fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
-        for (const match of source.matchAll(SPECIFIER)) {
-            const specifier = match[2];
-            // Bare specifiers are not ours to resolve; only relative paths are.
-            if (!specifier.startsWith('./') && !specifier.startsWith('../')) continue;
-            const dependency = normalizeLocal(specifier, relativePath);
-            if (dependency) include(dependency);
-        }
-    }
-}
-
 fs.rmSync(output, { recursive: true, force: true });
 let totalBytes = 0;
 for (const relativePath of [...included].sort()) {
@@ -104,11 +64,7 @@ for (const relativePath of [...included].sort()) {
 }
 fs.writeFileSync(path.join(output, '.nojekyll'), '');
 
-const forbidden = [
-    'docvault.js', 'package.json', 'README.md', 'tests', 'scripts', 'src',
-    '.github', '.agents', '.claude', 'wrangler.jsonc', 'worker-configuration.d.ts',
-    'config', 'functions', 'tsconfig.functions.json'
-];
+const forbidden = ['docvault.js', 'package.json', 'README.md', 'tests', 'scripts', 'src', '.github', '.agents', '.claude'];
 for (const relativePath of forbidden) {
     if (fs.existsSync(path.join(output, relativePath))) {
         throw new Error('Non-runtime asset leaked into deployment artifact: ' + relativePath);
@@ -119,9 +75,6 @@ for (const relativePath of included) {
         throw new Error('Deployment artifact is incomplete: ' + relativePath);
     }
 }
-
-const artifactManifest = validateDeploymentArtifact(output, included);
-writeDeploymentManifest(path.join(root, '.wrangler', 'pages-artifact-manifest.json'), artifactManifest);
 
 console.log('Production artifact ready');
 console.log('  Runtime files:', included.size);

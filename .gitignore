@@ -2,6 +2,3 @@ node_modules/
 .github-test-token
 dist/
 _site/
-.wrangler/
-.dev.vars*
-.env*

@@ -2,10 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { readPagesSnapshot, validatePagesSnapshotDocument } from './cloudflare-config-policy.mjs';
-import { collectCloudflareToolchainState, validateCloudflareToolchainState } from './cloudflare-toolchain-policy.mjs';
-import { parseWranglerConfig, validateDashboardToWranglerDiff, validateGeneratedWorkerTypes, validateWranglerConfig } from './cloudflare-wrangler-policy.mjs';
-import { validateProductionHandlerWiring, validateProductionSourceGraph } from './cloudflare-production-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -79,52 +75,6 @@ assert(!/publish_dir:\s*\.\/\s*$/m.test(workflow), 'Production deploy must not p
 assert(/run:\s*npm ci/.test(workflow), 'Production must install the committed lockfile with npm ci');
 assert(/run:\s*npm run build:css/.test(workflow), 'Production must use the local Tailwind build script');
 assert(!/npx\s+tailwind/i.test(workflow), 'Production must not download Tailwind through npx');
-
-const pagesBaselinePath = path.join(root, 'config/cloudflare/pages-project-baseline.json');
-assert(fs.existsSync(pagesBaselinePath), 'Sanitized Cloudflare Pages configuration baseline is required');
-const pagesBaseline = readPagesSnapshot(pagesBaselinePath);
-validatePagesSnapshotDocument(pagesBaseline, pagesBaseline);
-validateCloudflareToolchainState(collectCloudflareToolchainState(root));
-const wranglerConfig = parseWranglerConfig(path.join(root, 'wrangler.jsonc'));
-validateWranglerConfig(wranglerConfig.config, wranglerConfig.source);
-validateGeneratedWorkerTypes(read('worker-configuration.d.ts'));
-validateDashboardToWranglerDiff(
-    wranglerConfig.config,
-    JSON.parse(read('config/cloudflare/pages-project-baseline.json')),
-    JSON.parse(read('config/cloudflare/pages-wrangler-diff.json'))
-);
-
-for (const relativePath of [
-    'functions/_lib/api-shell.mjs',
-    'functions/api/v1/[[path]].ts',
-    '_routes.json',
-    'tsconfig.functions.json'
-]) {
-    assert(fs.existsSync(path.join(root, relativePath)), 'Missing CF-P1-004 runtime boundary: ' + relativePath);
-}
-const pagesRoutes = JSON.parse(read('_routes.json'));
-assert(JSON.stringify(pagesRoutes) === JSON.stringify({ version: 1, include: ['/api/v1/*'], exclude: [] }),
-    'Pages Functions must execute only for /api/v1/*');
-const functionSource = read('functions/_lib/api-shell.mjs') + '\n' + read('functions/api/v1/[[path]].ts');
-for (const forbiddenPattern of [
-    /passThroughOnException/,
-    /\bcontext\.next\s*\(/,
-    /\bMath\.random\s*\(/,
-    /api\.cloudflare\.com/,
-    /\bconsole\.(?:log|info|warn|error)\s*\(/
-]) {
-    assert(!forbiddenPattern.test(functionSource), 'Forbidden Pages Function runtime pattern: ' + forbiddenPattern);
-}
-const productionFunctionGraph = validateProductionSourceGraph(root);
-assert(productionFunctionGraph.includes('functions/_lib/runtime-dependencies.mjs'),
-    'Production dependency implementation is missing from the Function import graph');
-assert(/PLATFORM_DEPENDENCIES/.test(read('functions/api/v1/[[path]].ts')),
-    'Production handler must inject the fixed platform dependency implementation');
-validateProductionHandlerWiring(read('functions/api/v1/[[path]].ts'));
-assert(/crypto\.randomUUID\s*\(/.test(read('functions/_lib/runtime-dependencies.mjs')),
-    'Production request IDs must use Web Crypto');
-assert(/COLLABORATION_UNAVAILABLE/.test(functionSource), 'Disabled API shell error is missing');
-assert(!/\b(?:DB|COLLAB_DB|OAuth|SESSION_SECRET)\b/.test(functionSource), 'CF-P1-004 must not access a future binding or secret');
 
 const html = read('index.html');
 assert(/<html\s+lang=["']en["']/.test(html), 'index.html must declare lang="en"');
