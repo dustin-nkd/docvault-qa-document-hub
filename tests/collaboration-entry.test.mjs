@@ -129,6 +129,15 @@ test('the eager deployment module imports collaboration only inside a handler', 
         'the dynamic import is not inside the click handler');
 });
 
+test('a valid invitation fragment drives the registered lazy opener automatically', () => {
+    const source = read('js/deployment.js');
+    assert.match(source,
+        /if \(hasInvitationFragment\([\s\S]{0,100}location[\s\S]{0,100}\)\) opener\.click\(\);/,
+        'the shipped deployment layer leaves a followed invitation hidden behind another click');
+    assert.equal(/startCollaboration\(\{[\s\S]*?#\/invite\//.test(source), false,
+        'the eager layer must not parse or persist the token itself');
+});
+
 test('the opener ships hidden and is revealed only where collaboration can run', () => {
     const markup = read('index.html');
     assert.match(markup, /id="collaboration-open"[^>]*hidden/);

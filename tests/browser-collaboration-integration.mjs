@@ -41,6 +41,7 @@ const ACCEPTANCE_URL = `https://preview.example/#/invite/${ACCEPTANCE_TOKEN}`;
 /** Only what the entry's module graph actually pulls, plus the stylesheet. */
 const SERVED = new Set([
     'style.css',
+    'js/deployment.js',
     ...fs.readdirSync(path.join(root, 'js', 'collaboration'))
         .filter(name => name.endsWith('.js'))
         .map(name => `js/collaboration/${name}`)
@@ -66,6 +67,15 @@ main{display:block;min-height:100vh}
 <div id="collaboration-root" class="collab-root" hidden></div>
 </main>
 <script type="module" src="/drive.js"></script></body></html>`;
+
+const OPENER_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/style.css"></head><body>
+<button id="collaboration-open" type="button" hidden>Team workspaces</button>
+<div id="collaboration-root" class="collab-root" hidden></div>
+<script src="/opener-drive.js"></script>
+<script src="/js/deployment.js"></script>
+</body></html>`;
 
 // /api/v1/session answers with its fields directly at the top level, not the
 // {data, meta} envelope every other route stubbed below uses -- see
@@ -245,13 +255,15 @@ if (!PICKING) {
     sessionStorage.setItem(PICK_STARTED, 'true');
 }
 if (DEVICE_ACTIONS) {
-    localStorage.setItem('docvault:collab:preview:${OWNER}:device', JSON.stringify({
+    const deviceRecord = JSON.stringify({
         deviceId: '${DEVICE}',
         fingerprint: '${'ab'.repeat(32)}',
         state: 'active',
         publicJwk: { crv: 'P-256', ext: true, key_ops: [], kty: 'EC', x: 'x', y: 'y' },
         unlockSecret: 'test-only'
-    }));
+    });
+    localStorage.setItem('docvault:collab:preview:${OWNER}:device', deviceRecord);
+    localStorage.setItem('docvault:collab:local:${OWNER}:device', deviceRecord);
 }
 
 const module = await import('/js/collaboration/entry.js');
@@ -267,6 +279,11 @@ await module.startCollaboration({
 document.body.setAttribute('data-ready', 'true');
 `;
 
+const DIRECT_ENTRY_MARKER = "const module = await import('/js/collaboration/entry.js');";
+const directEntryAt = DRIVER.indexOf(DIRECT_ENTRY_MARKER);
+assert.ok(directEntryAt > 0, 'the browser fixture cannot isolate its transport prelude');
+const OPENER_DRIVER = DRIVER.slice(0, directEntryAt);
+
 function startServer() {
     const server = http.createServer((request, response) => {
         const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
@@ -275,9 +292,19 @@ function startServer() {
             response.end(PAGE);
             return;
         }
+        if (pathname === '/opener') {
+            response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            response.end(OPENER_PAGE);
+            return;
+        }
         if (pathname === '/drive.js') {
             response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
             response.end(DRIVER);
+            return;
+        }
+        if (pathname === '/opener-drive.js') {
+            response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
+            response.end(OPENER_DRIVER);
             return;
         }
         const relative = pathname.replace(/^\/+/, '');
@@ -644,6 +671,38 @@ async function driveInvitationAcceptance(browserName, baseUrl, deniedOnce = fals
     }
 }
 
+/** Follow the real link through deployment.js, not directly into the entry. */
+async function driveInvitationAutoOpen(browserName, baseUrl) {
+    const browser = await browsers[browserName].launch({ headless: true });
+    try {
+        const page = await (await browser.newContext()).newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('console', message => {
+            if (message.type() === 'error') errors.push(message.text());
+        });
+        await page.goto(
+            `${baseUrl}/opener?device-actions#/invite/${ACCEPTANCE_TOKEN}`,
+            { waitUntil: 'domcontentloaded' }
+        );
+        await page.waitForSelector(
+            '[data-collab-surface="invitation-accept"] '
+            + '[data-collab-action="accept-invitation"]:not([disabled])'
+        );
+        return {
+            errors,
+            address: page.url(),
+            expanded: await page.locator('#collaboration-open').getAttribute('aria-expanded'),
+            label: await page.locator('#collaboration-open').textContent(),
+            calls: await page.evaluate(() => structuredClone(globalThis.__collabCalls ?? [])),
+            invitationText: await page.locator(
+                '[data-collab-surface="invitation-accept"]').textContent()
+        };
+    } finally {
+        await browser.close();
+    }
+}
+
 const EXPECTED = Object.freeze(['create-workspace', 'device-key-initialization',
     'member-list-role-badge', 'invitation-manage', 'invitation-accept', 'sync-state',
     'conflict-dialog', 'audit-activity']);
@@ -841,6 +900,18 @@ try {
         assert.equal(retriedAccept.addressAfterReview.includes(ACCEPTANCE_TOKEN), false);
         assert.equal(retriedAccept.storedSecret, false);
         assert.equal(retriedAccept.readiness, 'pending_key');
+
+        const autoOpened = await driveInvitationAutoOpen(browserName, baseUrl);
+        assert.deepEqual(autoOpened.errors, [],
+            `${browserName}: runtime errors while auto-opening an invitation`);
+        assert.equal(autoOpened.address.includes(ACCEPTANCE_TOKEN), false,
+            `${browserName}: deployment opener did not remove the token from history`);
+        assert.equal(autoOpened.expanded, 'true',
+            `${browserName}: invitation link left the collaboration opener closed`);
+        assert.match(autoOpened.label ?? '', /close team workspaces/i);
+        assert.ok(autoOpened.calls.includes('/api/v1/invitations/bootstrap'),
+            `${browserName}: invitation link never reached its review request`);
+        assert.match(autoOpened.invitationText ?? '', /you have been invited/i);
 
         summary.push({
             browser: browserName,

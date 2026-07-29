@@ -499,6 +499,15 @@ test('the opener hands the entry a store, an environment, and the address bar', 
     }
 });
 
+test('only an exact invitation fragment opts into automatic lazy opening', () => {
+    const { hasInvitationFragment } = loadDeployment();
+    assert.equal(hasInvitationFragment({ hash: `#/invite/${'a'.repeat(80)}` }), true);
+    assert.equal(hasInvitationFragment({ hash: '#/settings' }), false);
+    assert.equal(hasInvitationFragment({ hash: '#/invite/too-short' }), false);
+    assert.equal(hasInvitationFragment({ hash: `#/invite/${'a'.repeat(80)}?leak=1` }), false);
+    assert.equal(hasInvitationFragment(null), false);
+});
+
 // ── the personal boundary ────────────────────────────────────────────────────
 
 test('no personal storage key is touched on any collaboration path', async () => {
