@@ -211,10 +211,12 @@ function bindSignIn(container, api, doc) {
  * @param {{document: Document, deployment: {available: boolean, reason: string},
  *          client?: object, fetch?: Function, storage?: Storage,
  *          environment?: string, subject?: string,
- *          loadWorkspaces?: (client: object) => Promise<Array<object>>}} input
+ *          loadWorkspaces?: (client: object) => Promise<Array<object>>,
+ *          deviceLifecycleFactory?: (input: object) => object}} input
  */
 export async function startCollaboration({ document: doc, deployment, client, fetch: transport,
-    storage, environment, subject, loadWorkspaces, location, history } = {}) {
+    storage, environment, subject, loadWorkspaces, location, history,
+    deviceLifecycleFactory = input => new DeviceKeyLifecycle(input) } = {}) {
     const container = mountShell({ document: doc, deployment });
     if (container === null) return null;
 
@@ -307,7 +309,7 @@ export async function startCollaboration({ document: doc, deployment, client, fe
             lifecycle.changeContext({ ...lifecycle.context, deviceId });
             return lifecycle;
         }
-        lifecycle = new DeviceKeyLifecycle({
+        lifecycle = deviceLifecycleFactory({
             environment: LIFECYCLE_ENVIRONMENT[environment] ?? 'production',
             context: { userId: identity, deviceId, workspaceId: PLACEHOLDER_WORKSPACE_ID }
         });
@@ -511,7 +513,16 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 void registerThisDevice();
                 return;
             }
-            if (action === 'revoke-device') {
+            if (action === 'revoke-this-device') {
+                // Destructive dispatch is scoped by both action and owning
+                // surface. A forged or accidentally reused action inside a
+                // member row must not reach this browser's private-key
+                // lifecycle, acting-device header, or local device record.
+                const surface = typeof control.closest === 'function'
+                    ? control.closest('[data-collab-surface]')
+                    : null;
+                if (surface?.getAttribute('data-collab-surface')
+                    !== 'device-key-initialization') return;
                 void revokeThisDevice();
                 return;
             }

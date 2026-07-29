@@ -64,11 +64,12 @@ export function validatePhase7Members({ manifest, contract, journeySource, style
     assert(/aria-disabled/.test(journeySource), 'A denied control lost aria-disabled');
     assert(/aria-describedby/.test(journeySource),
         'A denial reason is no longer associated with its control');
-    assert(/collab-members__reason/.test(journeySource) && /reason\.textContent = decision\.reason/.test(journeyCode),
+    assert(/collab-members__reason/.test(journeySource)
+        && /reason\.textContent = (?:decision\.reason|reasonText)/.test(journeyCode),
         'The denial reason is no longer rendered as text');
     assert(/collab-members__reason/.test(styleSource),
         'The denial reason has no style hook');
-    assert(!/if \(!decision\.allowed\) (return|continue);/.test(journeyCode),
+    assert(!/if \(!(?:decision\.allowed|allowed)\) (return|continue);/.test(journeyCode),
         'A denied control is skipped instead of rendered');
 
     // ── the matrix is read off the frozen document ───────────────────────────

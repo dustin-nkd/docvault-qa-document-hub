@@ -49,7 +49,7 @@ test('hiding a denied control is rejected', () => {
 test('skipping a denied control in the renderer is rejected', () => {
     const drifted = input();
     drifted.journeySource = drifted.journeySource.replace(
-        'if (!decision.allowed) {', 'if (!decision.allowed) continue;\n            if (false) {');
+        'if (!allowed) {', 'if (!allowed) continue;\n            if (false) {');
     mutated(drifted, 'js/collaboration/member-list.js');
     assert.throws(() => validatePhase7Members(drifted), /skipped instead of rendered/);
 });
@@ -72,7 +72,7 @@ test('dropping aria-describedby is rejected', () => {
 test('reducing the reason to a tooltip is rejected', () => {
     const drifted = input();
     drifted.journeySource = drifted.journeySource
-        .replace('reason.textContent = decision.reason;', 'reason.textContent = \'\';');
+        .replace('reason.textContent = reasonText;', 'reason.textContent = \'\';');
     mutated(drifted, 'js/collaboration/member-list.js');
     assert.throws(() => validatePhase7Members(drifted), /no longer rendered as text/);
 });

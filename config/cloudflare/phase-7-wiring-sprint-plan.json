@@ -3,7 +3,7 @@
   "phase": "CF-P7",
   "sprint": "CF-P7-S02",
   "title": "Collaboration UI-to-backend wiring remediation",
-  "status": "READY",
+  "status": "ACTIVE",
   "created_on": "2026-07-29",
   "baseline_commit": "0597f5c2e79078083581edb92d6e103a468a88a2",
   "ticket_count": 8,
@@ -48,7 +48,7 @@
     "production_data_forbidden": true
   },
   "known_action_debt": [
-    { "key": "member-device:dispatch-collision", "owner": "CF-P7R-001", "status": "OPEN" },
+    { "key": "member-device:dispatch-collision", "owner": "CF-P7R-001", "status": "RESOLVED" },
     { "key": "invitation-manage:copy-acceptance-link", "owner": "CF-P7R-002", "status": "OPEN" },
     { "key": "invitation-manage:revoke-invitation", "owner": "CF-P7R-003", "status": "OPEN" },
     { "key": "invitation-accept:accept-invitation", "owner": "CF-P7R-004", "status": "OPEN" },
@@ -82,7 +82,7 @@
       "id": "CF-P7R-001",
       "title": "Isolate self-device and member-device revocation actions",
       "size": "M",
-      "status": "READY",
+      "status": "REVIEW_PASS",
       "depends_on": [],
       "entry_gate": "P7R-G0",
       "exit_gate": "P7R-G1",
@@ -99,9 +99,9 @@
       ],
       "required_tests": ["composed_entry", "browser_action_to_request", "phase7_device", "phase7_members", "phase7_dispatch"],
       "evidence": { "id": "CF-EV-P7-E2E-001", "path": "docs/collaboration-foundation/evidence/phase-7/CF-EV-P7-E2E-001.md", "status": "PLANNED" },
-      "verification": { "targeted": "NOT_RUN", "composed_entry": "NOT_RUN", "browser_action_to_request": "NOT_RUN", "relevant_phase_gates": "NOT_RUN", "full_cloudflare": "NOT_RUN" },
+      "verification": { "targeted": "PASS", "composed_entry": "PASS", "browser_action_to_request": "PASS", "relevant_phase_gates": "PASS", "full_cloudflare": "PASS" },
       "live_qualification": { "required": false, "mutation_required": false, "status": "NOT_REQUIRED" },
-      "review": { "required": true, "status": "PENDING", "reviewer": "AGY", "independent_review": false },
+      "review": { "required": true, "status": "PASS", "reviewer": "AGY", "independent_review": false },
       "delivery": { "commit": null, "pushed": false, "pipeline": "NOT_RUN", "preview_smoke": "NOT_RUN" }
     },
     {

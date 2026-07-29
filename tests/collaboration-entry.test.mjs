@@ -683,3 +683,146 @@ test('the create-workspace "Set up this device" shortcut starts registration, no
     const deviceSurfaceAfter = doc.container.querySelector('[data-collab-surface="device-key-initialization"]');
     assert.equal(deviceSurfaceAfter.getAttribute('data-device-status'), 'failed');
 });
+
+// REGRESSION: member rows and the current-device surface both emitted
+// `revoke-device`. The panel-wide delegated handler therefore treated a remote
+// member control as "revoke this browser", clearing the actor's device state
+// instead of targeting the selected member. The member journey does not yet
+// have a device inventory, so it must stay disabled until CF-P7R-006.
+test('REGRESSION: member-device revoke cannot reach this browser device lifecycle', async () => {
+    const doc = documentWithRoot();
+    const ownerId = '11111111-1111-4111-8111-111111111111';
+    const memberId = '22222222-2222-4222-8222-222222222222';
+    const workspaceId = workspaces[0].workspaceId;
+    const deviceKey = `docvault:collab:preview:${ownerId}:device`;
+    const requests = [];
+    const client = createApiClient({
+        fetch: async (url, init = {}) => {
+            const path = String(url).split('?')[0];
+            const method = String(init.method ?? 'GET').toUpperCase();
+            requests.push({ path, method, headers: { ...(init.headers ?? {}) } });
+            if (path === '/api/v1/session') {
+                return respond(200, {
+                    authenticated: true,
+                    user: { userId: ownerId, login: 'owner' },
+                    session: {},
+                    csrfToken: 'csrf'
+                });
+            }
+            if (path === '/api/v1/workspaces') {
+                return respond(200, {
+                    data: {
+                        items: [{
+                            workspaceId,
+                            displayName: 'Platform QA',
+                            role: 'owner',
+                            keyReadiness: 'key_ready'
+                        }]
+                    },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/members')) {
+                return respond(200, {
+                    data: {
+                        items: [
+                            {
+                                userId: ownerId,
+                                role: 'owner',
+                                state: 'active',
+                                keyReady: true,
+                                displayProfile: { login: 'owner' }
+                            },
+                            {
+                                userId: memberId,
+                                role: 'editor',
+                                state: 'active',
+                                keyReady: true,
+                                displayProfile: { login: 'member' }
+                            }
+                        ]
+                    },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/invitations') || path.endsWith('/audit-events')) {
+                return respond(200, {
+                    data: { items: [] },
+                    meta: { page: { nextCursor: null } }
+                });
+            }
+            if (path.endsWith('/key-envelopes/current')) {
+                return respond(200, {
+                    data: { readiness: 'key_ready', envelope: null },
+                    meta: {}
+                });
+            }
+            if (path === `/api/v1/devices/${DEVICE_ID}` && method === 'DELETE') {
+                return respond(204, null);
+            }
+            return respond(404, { error: { code: 'RESOURCE_NOT_FOUND' }, meta: {} });
+        },
+        randomId: () => 'a'.repeat(36)
+    });
+    const initialDevice = JSON.stringify({
+        deviceId: DEVICE_ID,
+        fingerprint: 'ab'.repeat(32),
+        state: 'active',
+        publicJwk: CANONICAL_PUBLIC_JWK,
+        unlockSecret: 'secret'
+    });
+    const storage = fakeStorage({
+        [`docvault:collab:preview:${ownerId}:active-workspace`]: workspaceId,
+        [deviceKey]: initialDevice
+    });
+
+    await startCollaboration({
+        document: doc,
+        deployment: available,
+        storage,
+        environment: 'preview',
+        client,
+        deviceLifecycleFactory: input => ({
+            context: input.context,
+            changeContext(context) { this.context = context; },
+            async revokeLocalDevice() {}
+        })
+    });
+    withParents(doc.container);
+
+    const memberRevoke = doc.container
+        .querySelectorAll('[data-collab-action="revoke-member-device"]')
+        .find(control => control.getAttribute('data-user-id') === memberId);
+    assert.notEqual(memberRevoke, undefined);
+    assert.equal(memberRevoke.disabled, true);
+    assert.equal(memberRevoke.getAttribute('aria-disabled'), 'true');
+    assert.match(memberRevoke.getAttribute('title'), /specific member device/i);
+
+    // Defence in depth: even if a future renderer accidentally gives the row
+    // the current-device action and enables it, the surface guard still refuses
+    // dispatch before any request or local cleanup.
+    memberRevoke.disabled = false;
+    memberRevoke.setAttribute('data-collab-action', 'revoke-this-device');
+    simulateClick(doc.container, memberRevoke);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(requests.some(request => request.method === 'DELETE'), false);
+    assert.equal(storage.getItem(deviceKey), initialDevice);
+
+    await client.list({ path: `/api/v1/workspaces/${workspaceId}/members` });
+    assert.equal(requests.at(-1).headers['X-DocVault-Device-ID'], DEVICE_ID,
+        'the member control cleared the acting-device header');
+
+    const thisDevice = doc.container.querySelector('.collab-device__revoke');
+    assert.notEqual(thisDevice, null);
+    assert.equal(thisDevice.getAttribute('data-collab-action'), 'revoke-this-device');
+    assert.equal(thisDevice.disabled, false);
+    simulateClick(doc.container, thisDevice);
+    for (let turn = 0; turn < 10
+        && !requests.some(request => request.method === 'DELETE'); turn += 1) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    const deletions = requests.filter(request => request.method === 'DELETE');
+    assert.deepEqual(deletions.map(request => request.path),
+        [`/api/v1/devices/${DEVICE_ID}`],
+        'the current-device control targeted anything except this registered device');
+});

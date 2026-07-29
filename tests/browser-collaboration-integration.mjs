@@ -30,6 +30,8 @@ const WIDTHS = Object.freeze([
 const LONG = 'Platform Quality Assurance and Release Engineering Working Group Alpha';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
+const MEMBER = '22222222-2222-4222-8222-222222222222';
+const DEVICE = '44444444-4444-4444-8444-444444444444';
 const WORKSPACE = '55555555-5555-4555-8555-555555555555';
 const INVITATION = '66666666-6666-4666-8666-666666666666';
 const EVENT = '99999999-9999-4999-8999-999999999999';
@@ -96,7 +98,7 @@ const ROUTES = {
                     displayProfile: { login: LONG }
                 },
                 {
-                    userId: '22222222-2222-4222-8222-222222222222', role: 'viewer',
+                    userId: MEMBER, role: 'viewer',
                     state: 'active', keyReadiness: 'pending_key',
                     displayProfile: { login: 'octocat' }
                 }
@@ -131,21 +133,33 @@ const ROUTES = {
 const DRIVER = `
 const ROUTES = ${JSON.stringify(ROUTES)};
 const DENIED = new URLSearchParams(location.search).get('deny');
+const DEVICE_ACTIONS = new URLSearchParams(location.search).has('device-actions');
 
 // The one thing stubbed. Everything below it is the shipped graph.
 const calls = [];
-globalThis.fetch = async (url) => {
+const requests = [];
+globalThis.fetch = async (url, init = {}) => {
     const pathname = String(url).split('?')[0];
+    const method = String(init.method ?? 'GET').toUpperCase();
     calls.push(pathname);
+    requests.push({
+        pathname,
+        method,
+        actingDevice: init.headers?.['X-DocVault-Device-ID'] ?? null
+    });
     const body = ROUTES[pathname];
     const fail = (status, code) => new Response(JSON.stringify({ error: { code }, meta: {} }),
         { status, headers: { 'content-type': 'application/json' } });
     if (DENIED && pathname.endsWith('/' + DENIED)) return fail(403, 'OPERATION_NOT_PERMITTED');
+    if (method === 'DELETE' && pathname === '/api/v1/devices/${DEVICE}') {
+        return new Response(null, { status: 204 });
+    }
     if (body === undefined) return fail(404, 'RESOURCE_NOT_FOUND');
     return new Response(JSON.stringify(body),
         { status: 200, headers: { 'content-type': 'application/json' } });
 };
 globalThis.__collabCalls = calls;
+globalThis.__collabRequests = requests;
 
 // The ?pick journey starts with nothing remembered, so the switcher must be
 // used. sessionStorage survives the reload exercised by the journey, which
@@ -158,6 +172,15 @@ if (!PICKING) {
 } else if (sessionStorage.getItem(PICK_STARTED) !== 'true') {
     localStorage.removeItem('docvault:collab:preview:${OWNER}:active-workspace');
     sessionStorage.setItem(PICK_STARTED, 'true');
+}
+if (DEVICE_ACTIONS) {
+    localStorage.setItem('docvault:collab:preview:${OWNER}:device', JSON.stringify({
+        deviceId: '${DEVICE}',
+        fingerprint: '${'ab'.repeat(32)}',
+        state: 'active',
+        publicJwk: { crv: 'P-256', ext: true, key_ops: [], kty: 'EC', x: 'x', y: 'y' },
+        unlockSecret: 'test-only'
+    }));
 }
 
 const module = await import('/js/collaboration/entry.js');
@@ -349,6 +372,59 @@ async function pickWorkspace(browserName, baseUrl) {
     }
 }
 
+/** Prove the two revoke controls stay isolated in a real browser. */
+async function driveDeviceRevocation(browserName, baseUrl) {
+    const browser = await browsers[browserName].launch({ headless: true });
+    try {
+        const page = await (await browser.newContext()).newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('console', message => {
+            if (message.type() === 'error') errors.push(message.text());
+        });
+        await page.goto(`${baseUrl}/?device-actions`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('body[data-ready="true"]');
+        await page.waitForFunction(() => {
+            const section = document.querySelector(
+                '[data-surface="member-list-role-badge"]');
+            return section !== null && !section.textContent.includes('Loading members');
+        });
+
+        const member = page.locator(
+            `[data-collab-action="revoke-member-device"][data-user-id="${MEMBER}"]`);
+        assert.equal(await member.isDisabled(), true,
+            `${browserName}: member-device revoke is enabled without a target inventory`);
+        const describedBy = await member.getAttribute('aria-describedby');
+        assert.ok(describedBy);
+        assert.match(await page.locator(`#${describedBy}`).textContent(),
+            /specific member device/i);
+
+        // Simulate a future renderer regressing the action name and enabled
+        // state. The dispatcher must still refuse because the owning surface is
+        // the member list, not device-key-initialization.
+        await member.evaluate(control => {
+            control.disabled = false;
+            control.setAttribute('data-collab-action', 'revoke-this-device');
+            control.click();
+        });
+        await page.waitForTimeout(0);
+        const afterMember = await page.evaluate(() =>
+            [...(globalThis.__collabRequests ?? [])]);
+        assert.equal(afterMember.some(request => request.method === 'DELETE'), false,
+            `${browserName}: a member row reached the current-device DELETE`);
+
+        await page.click('.collab-device__revoke');
+        await page.waitForFunction(() => (globalThis.__collabRequests ?? [])
+            .some(request => request.method === 'DELETE'));
+        return {
+            errors,
+            requests: await page.evaluate(() => [...(globalThis.__collabRequests ?? [])])
+        };
+    } finally {
+        await browser.close();
+    }
+}
+
 const EXPECTED = Object.freeze(['create-workspace', 'device-key-initialization',
     'member-list-role-badge', 'invitation-manage', 'invitation-accept', 'sync-state',
     'conflict-dialog', 'audit-activity']);
@@ -427,6 +503,17 @@ try {
             `${browserName}: the restored workspace's members never rendered`);
         assert.equal(picked.rememberedAfterReload, WORKSPACE,
             `${browserName}: reload lost the remembered workspace`);
+
+        const revocation = await driveDeviceRevocation(browserName, baseUrl);
+        assert.deepEqual(revocation.errors, [],
+            `${browserName}: runtime errors while isolating device revocation`);
+        const deletions = revocation.requests
+            .filter(request => request.method === 'DELETE');
+        assert.deepEqual(deletions.map(request => request.pathname),
+            [`/api/v1/devices/${DEVICE}`],
+            `${browserName}: current-device revoke targeted the wrong device`);
+        assert.equal(deletions[0].actingDevice, DEVICE,
+            `${browserName}: current-device DELETE lost the acting-device header`);
 
         summary.push({
             browser: browserName,
