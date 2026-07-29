@@ -199,7 +199,9 @@ function build(doc, surface, { context, session, device, data }) {
                 role: data.inviteRole ?? 'editor',
                 status: data.inviteStatus ?? 'idle',
                 copyStatus: data.inviteCopyStatus ?? 'idle',
-                copyNotice: data.inviteCopyNotice ?? null
+                copyNotice: data.inviteCopyNotice ?? null,
+                revokePendingId: data.inviteRevokePendingId ?? null,
+                revokeFailures: data.inviteRevokeFailures ?? {}
             }), 'panel-invites');
 
         case 'invitation-accept':
