@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v45'; // API and private-route cache isolation
+const SW_VERSION = 'v44'; // Strict CSP bootstrap and production security headers
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -13,7 +13,6 @@ const APP_SHELL = [
     './storage.js',
     './style.css',
     './manifest.json',
-    './js/deployment.js',
     './js/constants.js',
     './js/utils.js',
     './js/state.js',
@@ -70,12 +69,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const req = event.request;
     const url = new URL(req.url);
-
-    // API requests are owned by the network/Pages Functions boundary. This
-    // check must remain before every cache lookup, cache write, and navigation
-    // fallback so an API request can never receive stale data or app-shell HTML.
-    if (url.origin === self.location.origin
-        && (url.pathname === '/api' || url.pathname.startsWith('/api/'))) return;
 
     // Never intercept cross-origin requests (GitHub API sync/push/pull, share
     // links, image CDN uploads) or non-GET requests. Sync and sharing must always
