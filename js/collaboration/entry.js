@@ -456,7 +456,12 @@ export async function startCollaboration({ document: doc, deployment, client, fe
                 inviteRole: role,
                 inviteStatus: 'idle',
                 inviteFailure: null,
-                issuedInvitation: result,
+                // The surface owns the one-time URL holder, not the creation
+                // result around it. Passing the wrapper would make
+                // invitationModel call cleared()/read() on the wrong object
+                // after the server had already consumed the one chance to
+                // return the token.
+                issuedInvitation: result.held,
                 ...(listed.ok ? { invitations: [...listed.value.items] } : {})
             });
         } catch (error) {
