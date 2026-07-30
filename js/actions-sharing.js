@@ -13,21 +13,99 @@ function _recordShare(entry) {
 }
 function _removeShare(shareId) { _saveShares(_getShares().filter(s => s.shareId !== shareId)); }
 
+// A share is "orphaned" once its source document is gone (trashed or permanently
+// deleted). Before shares were revoked on delete, these piled up in the manager
+// and — worse — kept the deleted document readable to anyone holding the link.
+function _isShareOrphaned(entry) {
+    return !documents.some(d => d.id === entry.docId && d.status !== 'deleted');
+}
+
+// Single place that removes the published blob, so revoke-one, revoke-on-delete,
+// and orphan cleanup can never drift apart. Throws if GitHub refuses; a 404 is
+// treated as success because the goal (nothing published) is already true.
+async function _deleteShareBlob(entry, settings) {
+    const base = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${entry.shareId}.enc`;
+    const auth = { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json' };
+    let sha = entry.sha;
+    if (!sha) {
+        const g = await fetch(`${base}?ref=${settings.branch || 'main'}`, { headers: auth });
+        if (g.status === 404) return;
+        if (g.ok) sha = (await g.json()).sha;
+    }
+    if (!sha) return;
+    const del = await fetch(base, {
+        method: 'DELETE',
+        headers: { ...auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `Revoke share ${entry.shareId}`, sha, branch: settings.branch || 'main' })
+    });
+    if (!del.ok && del.status !== 404) throw new Error(`GitHub error ${del.status}`);
+}
+
+// Revokes every share publishing any of `docIds`. Entries are dropped only once
+// their blob is actually gone — a failed delete stays listed so the user can
+// retry, rather than silently leaving the content published with no way back to
+// it. Never throws: deleting a document must succeed even if GitHub is down.
+window.revokeSharesForDocs = async function(docIds) {
+    const ids = new Set(docIds || []);
+    if (!ids.size) return { revoked: 0, failed: 0 };
+    const shares = _getShares();
+    const doomed = shares.filter(s => ids.has(s.docId));
+    if (!doomed.length) return { revoked: 0, failed: 0 };
+
+    let settings = null;
+    try { settings = await GitHubSync.getSettings(); } catch (e) { settings = null; }
+    const revoked = new Set();
+    let failed = 0;
+    for (const entry of doomed) {
+        if (!settings || !settings.token) { failed++; continue; }
+        try { await _deleteShareBlob(entry, settings); revoked.add(entry.shareId); }
+        catch (e) { failed++; console.warn('[revokeSharesForDocs] could not revoke', entry.shareId, e); }
+    }
+    if (revoked.size) _saveShares(_getShares().filter(s => !revoked.has(s.shareId)));
+    return { revoked: revoked.size, failed };
+};
+
+// Reports how many links a delete is about to kill, so the confirmation dialog
+// can say so instead of revoking silently.
+window.countSharesForDocs = function(docIds) {
+    const ids = new Set(docIds || []);
+    return _getShares().filter(s => ids.has(s.docId)).length;
+};
+
+window.revokeOrphanedShares = async function() {
+    const orphans = _getShares().filter(_isShareOrphaned);
+    if (!orphans.length) return;
+    const { revoked, failed } = await revokeSharesForDocs(orphans.map(s => s.docId));
+    if (revoked) toast(`Revoked ${revoked} link${revoked > 1 ? 's' : ''} for deleted documents.`, 'success');
+    if (failed) toast(`${failed} link${failed > 1 ? 's' : ''} could not be revoked — check GitHub settings.`, 'error');
+    showShareManager();
+};
+
 window.showShareManager = function() {
     const shares = _getShares();
-    const rows = shares.length ? shares.map(s => `
-        <div class="flex items-center gap-3 p-3 rounded-lg mb-2" style="background:var(--bg2);border:1px solid var(--brd);">
-            <i class="fa-solid fa-link text-xs shrink-0" style="color:var(--acc);"></i>
+    const orphanCount = shares.filter(_isShareOrphaned).length;
+    const rows = shares.length ? shares.map(s => {
+        const orphaned = _isShareOrphaned(s);
+        return `
+        <div class="flex items-center gap-3 p-3 rounded-lg mb-2" style="background:var(--bg2);border:1px solid ${orphaned ? 'rgba(244,63,94,0.35)' : 'var(--brd)'};">
+            <i class="fa-solid ${orphaned ? 'fa-link-slash' : 'fa-link'} text-xs shrink-0" style="color:${orphaned ? '#f43f5e' : 'var(--acc)'};"></i>
             <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium truncate" style="color:var(--tx);">${escHtml(s.title || 'Untitled')}</div>
-                <div class="text-[11px]" style="color:var(--tx-d);">${escHtml(s.category || 'doc')} &middot; shared ${new Date(s.createdAt).toLocaleDateString()}</div>
+                <div class="text-[11px]" style="color:var(--tx-d);">${escHtml(s.category || 'doc')} &middot; shared ${new Date(s.createdAt).toLocaleDateString()}${orphaned ? ' &middot; <span style="color:#f43f5e;">document deleted — still readable via this link</span>' : ''}</div>
             </div>
             <button class="btn-d text-xs py-1 px-2.5 shrink-0" data-onclick="revokeShare('${s.shareId}')"><i class="fa-solid fa-trash mr-1"></i>Revoke</button>
-        </div>`).join('') : `<p class="text-sm text-center py-8" style="color:var(--tx-d);">No active share links.</p>`;
+        </div>`;
+    }).join('') : `<p class="text-sm text-center py-8" style="color:var(--tx-d);">No active share links.</p>`;
     showModal(`
         <div>
             <h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);"><i class="fa-solid fa-share-nodes text-[var(--acc)] mr-2"></i>Shared Links</h3>
             <p class="text-sm mb-4" style="color:var(--tx-m);">Revoking deletes the encrypted file from GitHub, so the link stops working for everyone.</p>
+            ${orphanCount ? `
+            <div class="flex items-center gap-3 p-3 rounded-lg mb-3" style="background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.3);">
+                <i class="fa-solid fa-triangle-exclamation shrink-0" style="color:#f43f5e;"></i>
+                <p class="text-xs flex-1" style="color:var(--tx-m);">${orphanCount} link${orphanCount > 1 ? 's' : ''} still publish${orphanCount > 1 ? '' : 'es'} a deleted document.</p>
+                <button class="btn-d text-xs py-1 px-2.5 shrink-0" data-onclick="revokeOrphanedShares()">Revoke all</button>
+            </div>` : ''}
             <div style="max-height:400px;overflow-y:auto;">${rows}</div>
             <div class="flex justify-end mt-4"><button class="btn-s" data-onclick="closeModal()">Close</button></div>
         </div>
@@ -37,29 +115,16 @@ window.showShareManager = function() {
 window.revokeShare = async function(shareId) {
     const settings = await GitHubSync.getSettings();
     const entry = _getShares().find(s => s.shareId === shareId);
-    if (settings && settings.token) {
-        const base = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${shareId}.enc`;
+    if (settings && settings.token && entry) {
         try {
-            let sha = entry && entry.sha;
-            if (!sha) {
-                const g = await fetch(`${base}?ref=${settings.branch || 'main'}`, { headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json' } });
-                if (g.ok) { sha = (await g.json()).sha; }
-            }
-            if (sha) {
-                const del = await fetch(base, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: `Revoke share ${shareId}`, sha, branch: settings.branch || 'main' })
-                });
-                if (!del.ok && del.status !== 404) throw new Error(`GitHub error ${del.status}`);
-            }
+            await _deleteShareBlob(entry, settings);
         } catch(e) {
             toast('Removed from list, but GitHub delete failed: ' + e.message, 'error');
             _removeShare(shareId);
             showShareManager();
             return;
         }
-    } else {
+    } else if (!settings || !settings.token) {
         toast('No GitHub token configured — removed from list only; the file may still exist remotely.', 'warning');
     }
     _removeShare(shareId);

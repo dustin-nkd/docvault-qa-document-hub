@@ -159,6 +159,8 @@ window.confirmBatchDelete = async function() {
     });
     if (firstDoc) ActivityLog.record('trashed', firstDoc, { note: `batch: ${ids.length} document${ids.length > 1 ? 's' : ''}`, batchCount: ids.length });
     await persist();
+    // Guarded: revoking share links must never be able to block a batch delete.
+    if (typeof _revokeSharesForDeleted === 'function') await _revokeSharesForDeleted(ids);
     closeModal();
     const n = ids.length;
     state.batchMode = false;
