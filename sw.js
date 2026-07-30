@@ -2,7 +2,7 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v44'; // Strict CSP bootstrap and production security headers
+const SW_VERSION = 'v45'; // Adds js/actions-share-sync.js (live-updating share links)
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -25,6 +25,7 @@ const APP_SHELL = [
     './js/render-viewer.js',
     './js/actions-batch-history.js',
     './js/actions-sharing.js',
+    './js/actions-share-sync.js',
     './js/actions-imports.js',
     './js/actions-settings.js',
     './js/actions-documents.js',
