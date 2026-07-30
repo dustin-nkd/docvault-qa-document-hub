@@ -791,11 +791,11 @@ function renderViewerCategory(doc) {
         ${doc.content && doc.content.trim() ? `
         <div class="mt-6">
             <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
-            <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
+            <div id="viewer-container" class="p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
         </div>` : ''}
         ` : (doc.category === 'api' || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
-        <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
+        <div id="viewer-container" class="p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
         </div>
         `}
 `;
