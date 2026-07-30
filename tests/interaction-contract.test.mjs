@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v48'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v49'/);
 });
 
 test('sharing helpers stay in the same file as their caller', () => {
@@ -60,6 +60,22 @@ test('sharing helpers stay in the same file as their caller', () => {
     }
     // persist() reaches across files, so it must stay defensively guarded.
     assert.match(read('js/state.js'), /typeof syncActiveShares === 'function'/);
+});
+
+test('every delete path revokes the share links publishing the document', () => {
+    // A share link left behind after a delete keeps serving the deleted content
+    // to anyone holding it, and lingers in Shared Links needing a manual revoke.
+    const ui = read('js/ui.js');
+    for (const fn of ['confirmDelete', 'hardDeleteDoc', 'emptyTrash']) {
+        const body = ui.slice(ui.indexOf('function ' + fn));
+        const end = body.indexOf('\n}');
+        assert.match(body.slice(0, end), /_revokeSharesForDeleted\(/,
+            fn + '() must revoke share links for the documents it deletes');
+    }
+    assert.match(read('js/actions-batch-history.js'), /_revokeSharesForDeleted\(ids\)/);
+    // Revocation reaches across files, so it must never be able to block a delete.
+    assert.match(ui, /typeof revokeSharesForDocs !== 'function'/);
+    assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
 test('the runtime ships a single dark theme with no light-theme leftovers', () => {

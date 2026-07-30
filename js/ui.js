@@ -227,6 +227,8 @@ function showDeleteModal(id, isPermanent = false) {
     const titleStr = isPermanent ? (t('delTitleForever') || 'Delete Permanently') : t('delTitle');
     const warningStr = isPermanent ? (t('delConfirmForever') || 'Are you sure you want to permanently delete this? It cannot be recovered.') : t('delConfirm');
     const btnStr = isPermanent ? (t('delConfirmBtnForever') || 'Permanently Delete') : t('delConfirmBtn');
+    // Say up front that deleting kills the link, so revocation is never a surprise.
+    const sharedCount = typeof countSharesForDocs === 'function' ? countSharesForDocs([id]) : 0;
 
     showModal(`
         <div class="text-center">
@@ -234,13 +236,28 @@ function showDeleteModal(id, isPermanent = false) {
                 <i class="fa-solid fa-trash text-rose-400"></i>
             </div>
             <h3 class="font-heading font-semibold text-lg mb-2">${titleStr}</h3>
-            <p class="text-sm mb-6" style="color:var(--tx-m);">${warningStr} "<strong style="color:var(--tx);">${escHtml(doc.title)}</strong>"?</p>
+            <p class="text-sm ${sharedCount ? 'mb-3' : 'mb-6'}" style="color:var(--tx-m);">${warningStr} "<strong style="color:var(--tx);">${escHtml(doc.title)}</strong>"?</p>
+            ${sharedCount ? `<p class="text-xs mb-6 py-2 px-3 rounded-lg" style="color:var(--tx-m);background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.25);"><i class="fa-solid fa-link-slash mr-1.5" style="color:#f43f5e;"></i>${sharedCount} share link${sharedCount > 1 ? 's' : ''} will be revoked, so recipients lose access.</p>` : ''}
             <div class="flex gap-3 justify-center">
                 <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
                 <button class="btn-d" data-onclick="${actionStr}">${btnStr}</button>
             </div>
         </div>
     `);
+}
+
+// Deleting a document also revokes any share link publishing it. Without this the
+// link keeps serving the deleted content to anyone who has it, and the entry sits
+// in Shared Links waiting to be revoked by hand. Guarded + awaited-but-never-fatal
+// so a missing/stale sharing script or a GitHub outage cannot block the delete.
+async function _revokeSharesForDeleted(ids) {
+    if (typeof revokeSharesForDocs !== 'function') return;
+    try {
+        const { failed } = await revokeSharesForDocs(ids);
+        if (failed) toast(`${failed} share link${failed > 1 ? 's' : ''} could not be revoked — revoke ${failed > 1 ? 'them' : 'it'} from Shared Links.`, 'warning');
+    } catch (e) {
+        console.warn('[delete] share revocation failed', e);
+    }
 }
 
 async function confirmDelete(id) {
@@ -252,6 +269,7 @@ async function confirmDelete(id) {
         ActivityLog.record('trashed', doc);
     }
     await persist();
+    await _revokeSharesForDeleted([id]);
     closeModal();
     toast(t('docDeleted'), 'success');
     if (state.view === 'viewer' || state.view === 'editor') navigate('documents', state.category);
@@ -277,6 +295,7 @@ async function hardDeleteDoc(id) {
     await DocStorage.addDeletedIds([id]);
     documents = documents.filter(d => d.id !== id);
     await persist();
+    await _revokeSharesForDeleted([id]);
     closeModal();
     toast(t('docDeletedForever') || "Permanently Deleted", 'success');
     render();
@@ -309,6 +328,7 @@ async function emptyTrash() {
     await DocStorage.addDeletedIds(trashedIds);
     documents = documents.filter(d => d.status !== 'deleted');
     await persist();
+    await _revokeSharesForDeleted(trashedIds);
     closeModal();
     toast(t('trashEmptied') || "Trash Emptied", 'success');
     render();

@@ -48,11 +48,12 @@ for (const relativePath of jsFiles.filter((value) => value !== 'main.js')) {
 
 const maintainabilityBudgets = {
     'js/actions-batch-history.js': 500,
-    // Raised from 260 to hold the share payload/encryption/re-sync helpers in the
-    // same file as shareDoc(). Splitting them out to stay under the old budget is
-    // what produced "_encryptSharePayload is not defined" when a browser paired a
-    // cached index.html with a fresh actions-sharing.js.
-    'js/actions-sharing.js': 340,
+    // Deliberately generous: the whole sharing lifecycle (payload, encryption,
+    // publish, re-sync, revoke) is kept in this one file. Splitting it to stay
+    // under the old 260 budget is what produced "_encryptSharePayload is not
+    // defined" when a browser paired a cached index.html with a fresh
+    // actions-sharing.js, so cohesion here beats a smaller line count.
+    'js/actions-sharing.js': 420,
     'js/actions-imports.js': 650,
     'js/actions-settings.js': 460,
     'js/actions-documents.js': 750,
