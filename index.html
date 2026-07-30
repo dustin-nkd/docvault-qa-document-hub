@@ -195,6 +195,13 @@
         .btn-d { background: rgba(244,63,94,0.08); color: #f43f5e; font-weight: 500; padding: 9px 18px; border-radius: 8px; border: 1px solid rgba(244,63,94,0.15); cursor: pointer; transition: all .2s; font-family: 'DM Sans'; font-size: 13.5px; }
         .btn-d:hover { background: rgba(244,63,94,0.18); }
 
+        /* Toasts hang just below the header's divider instead of on top of it —
+           at top-4 the first toast covered the header's own controls (Edit,
+           Export, History...) and swallowed the clicks. The header is not a
+           fixed height (71px desktop, 77-89px on mobile depending on the view),
+           so --header-h is kept in sync with the real element in js/ui.js and
+           the value here is only the pre-render fallback. */
+        #toasts { top: calc(var(--header-h, 71px) + 12px); }
         .toast { animation: slideR .3s ease; }
         .toast.out { animation: fadeO .3s ease forwards; }
         @keyframes slideR { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -315,7 +322,7 @@
 <body class="bg-[var(--bg)] text-[var(--tx)] h-screen w-screen overflow-hidden font-sans">
     <div id="debug-err" style="position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:99999;font-size:12px;padding:5px;display:none;"></div>
     <!-- Toasts -->
-    <div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2" style="pointer-events:none;" aria-live="polite" aria-relevant="additions"></div>
+    <div id="toasts" class="fixed right-4 z-[100] flex flex-col gap-2" style="pointer-events:none;" aria-live="polite" aria-relevant="additions"></div>
 
     <!-- Modal -->
     <div id="modal" class="fixed inset-0 z-[90] hidden"></div>
