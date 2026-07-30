@@ -1185,7 +1185,7 @@ function renderDocList() {
 
     const batchCheckbox = (id) => bm ? `
         <div style="position:absolute;top:10px;right:10px;z-index:5;pointer-events:none;">
-            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd2)'};background:${sel.has(id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(id) ? 'var(--acc)' : 'var(--bg-glass)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
                 ${sel.has(id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
             </div>
         </div>` : '';
@@ -1434,7 +1434,7 @@ function renderBugKanban(docs, isMobileSearch) {
                          style="background:var(--card); padding: 12px; margin-bottom: 0; border-radius: 8px; border-left: 3px solid ${sevColor}; position:relative;">
 
                         ${bm ? `<div style="position:absolute;top:8px;right:8px;z-index:5;pointer-events:none;">
-                            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(d.id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(d.id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;">
+                            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(d.id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(d.id) ? 'var(--acc)' : 'var(--bg-glass)'};display:flex;align-items:center;justify-content:center;">
                                 ${sel.has(d.id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
                             </div>
                         </div>` : ''}
