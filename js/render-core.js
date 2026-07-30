@@ -262,7 +262,7 @@ function _initializeMarkdownEditor(container, initialValue) {
             initialEditType: 'markdown',
             previewStyle: 'vertical',
             initialValue,
-            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined,
             hooks: { addImageBlobHook: uploadImageToCloud }
         });
         container.removeAttribute('aria-busy');
@@ -281,7 +281,7 @@ function _initializeMarkdownViewer(container, initialValue, docId) {
             el: container,
             viewer: true,
             initialValue,
-            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined
         });
         container.removeAttribute('aria-busy');
         requestAnimationFrame(() => _enhanceViewerCodeBlocks(container));
@@ -1096,7 +1096,7 @@ function renderActivityLog() {
                     const meta = ACTIVITY_META[e.type] || { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: e.type };
                     const docExists = documents.some(d => d.id === e.docId);
                     return `
-                    <div class="flex items-center gap-3 px-4 py-3" style="background:${i % 2 === 0 ? 'var(--card)' : 'var(--bg2)'};${i > 0 ? 'border-top:1px solid var(--brd);' : ''}">
+                    <div class="flex items-center gap-3 px-4 py-3" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};${i > 0 ? 'border-top:1px solid var(--brd);' : ''}">
                         <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:${meta.color}1a;">
                             <i class="${meta.icon}" style="font-size:11px;color:${meta.color};"></i>
                         </div>
@@ -1185,7 +1185,7 @@ function renderDocList() {
 
     const batchCheckbox = (id) => bm ? `
         <div style="position:absolute;top:10px;right:10px;z-index:5;pointer-events:none;">
-            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(id) ? 'var(--acc)' : 'var(--bg-glass)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd2)'};background:${sel.has(id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
                 ${sel.has(id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
             </div>
         </div>` : '';
@@ -1434,7 +1434,7 @@ function renderBugKanban(docs, isMobileSearch) {
                          style="background:var(--card); padding: 12px; margin-bottom: 0; border-radius: 8px; border-left: 3px solid ${sevColor}; position:relative;">
 
                         ${bm ? `<div style="position:absolute;top:8px;right:8px;z-index:5;pointer-events:none;">
-                            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(d.id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(d.id) ? 'var(--acc)' : 'var(--bg-glass)'};display:flex;align-items:center;justify-content:center;">
+                            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(d.id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(d.id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;">
                                 ${sel.has(d.id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
                             </div>
                         </div>` : ''}
