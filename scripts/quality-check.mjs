@@ -49,6 +49,7 @@ for (const relativePath of jsFiles.filter((value) => value !== 'main.js')) {
 const maintainabilityBudgets = {
     'js/actions-batch-history.js': 500,
     'js/actions-sharing.js': 260,
+    'js/actions-share-sync.js': 150,
     'js/actions-imports.js': 650,
     'js/actions-settings.js': 460,
     'js/actions-documents.js': 750,

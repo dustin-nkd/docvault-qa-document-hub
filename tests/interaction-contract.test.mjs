@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v46'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v47'/);
 });
 
 test('the runtime ships a single dark theme with no light-theme leftovers', () => {
