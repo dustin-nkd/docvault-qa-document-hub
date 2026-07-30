@@ -46,7 +46,20 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v47'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v48'/);
+});
+
+test('sharing helpers stay in the same file as their caller', () => {
+    // Assets ship with max-age=600, so a browser can pair a stale index.html with
+    // a fresh script. Any helper shareDoc() calls unguarded must therefore be
+    // defined alongside it, or that pairing throws "<helper> is not defined".
+    const sharing = read('js/actions-sharing.js');
+    for (const helper of ['_encryptSharePayload', '_buildSharePayload', '_stripEnvSecrets', '_pushShareSnapshot', '_getShares', '_saveShares', '_recordShare']) {
+        assert.match(sharing, new RegExp('(?:async )?function ' + helper + '\\s*\\('),
+            helper + ' must be defined in js/actions-sharing.js, not a separate file');
+    }
+    // persist() reaches across files, so it must stay defensively guarded.
+    assert.match(read('js/state.js'), /typeof syncActiveShares === 'function'/);
 });
 
 test('the runtime ships a single dark theme with no light-theme leftovers', () => {
