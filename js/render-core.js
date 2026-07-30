@@ -541,8 +541,12 @@ function _renderAttentionPanel(m) {
         return hours < 48 ? t('dbAgeHours', { n: hours }) : t('dbAgeDays', { n: Math.floor(hours / 24) });
     };
 
+    const isActionable = (doc, signalKey) =>
+        getFocusWorkflowStatus(getFocusWorkflow(doc, signalKey), now) === 'active';
+
     m.criticalAging.forEach(bug => {
         used.add(bug.id);
+        if (!isActionable(bug, 'critical')) return;
         items.push({
             doc: bug,
             icon: 'fa-triangle-exclamation',
@@ -556,6 +560,7 @@ function _renderAttentionPanel(m) {
         .filter(bug => _normBugStatus(bug.bugStatus) === 'retest' && !used.has(bug.id))
         .forEach(bug => {
             used.add(bug.id);
+            if (!isActionable(bug, 'retest')) return;
             items.push({
                 doc: bug,
                 icon: 'fa-rotate',
@@ -568,6 +573,7 @@ function _renderAttentionPanel(m) {
     m.stale
         .filter(doc => !used.has(doc.id))
         .forEach(doc => {
+            if (!isActionable(doc, 'stale')) return;
             const days = Math.max(30, Math.floor((now - (doc.updatedAt || now)) / 86400000));
             items.push({
                 doc,
@@ -622,7 +628,8 @@ function _dashboardCacheKey(docs, now = Date.now()) {
         latestRevision = Math.max(
             latestRevision,
             Number(doc.updatedAt) || 0,
-            Number(doc.createdAt) || 0
+            Number(doc.createdAt) || 0,
+            Number(doc.focusWorkflowUpdatedAt) || 0
         );
     });
     const range = state.trendsRange != null ? state.trendsRange : 90;
