@@ -1096,7 +1096,7 @@ function renderActivityLog() {
                     const meta = ACTIVITY_META[e.type] || { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: e.type };
                     const docExists = documents.some(d => d.id === e.docId);
                     return `
-                    <div class="flex items-center gap-3 px-4 py-3" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};${i > 0 ? 'border-top:1px solid var(--brd);' : ''}">
+                    <div class="flex items-center gap-3 px-4 py-3" style="background:${i % 2 === 0 ? 'var(--card)' : 'var(--bg2)'};${i > 0 ? 'border-top:1px solid var(--brd);' : ''}">
                         <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:${meta.color}1a;">
                             <i class="${meta.icon}" style="font-size:11px;color:${meta.color};"></i>
                         </div>

@@ -1204,7 +1204,7 @@
 /* Wave 2C: consistent system states */
 .ui-state {
     align-items:center;
-    background:linear-gradient(180deg,rgba(19,28,46,.62),rgba(13,20,36,.38));
+    background:linear-gradient(180deg,color-mix(in srgb,var(--card) 62%,transparent),color-mix(in srgb,var(--bg2) 38%,transparent));
     border:1px dashed var(--brd);
     border-radius:14px;
     display:flex;
