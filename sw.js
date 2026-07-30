@@ -2,9 +2,9 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-// v46, not v45: a v45 shell was briefly live before being rolled back, so this
-// stays strictly ahead of every version any browser may still have cached.
-const SW_VERSION = 'v46'; // Dark-theme-only build; light theme removed
+// Numbering skips v45: that shell was briefly live before being rolled back, so
+// every later version stays strictly ahead of anything a browser may still hold.
+const SW_VERSION = 'v47'; // Adds js/actions-share-sync.js (live-updating share links)
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -27,6 +27,7 @@ const APP_SHELL = [
     './js/render-viewer.js',
     './js/actions-batch-history.js',
     './js/actions-sharing.js',
+    './js/actions-share-sync.js',
     './js/actions-imports.js',
     './js/actions-settings.js',
     './js/actions-documents.js',
