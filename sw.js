@@ -2,7 +2,9 @@
 // working fully offline after a first successful load. Bump SW_VERSION whenever
 // shipped files change; the old cache is purged on activate so nothing gets
 // permanently stuck on stale code.
-const SW_VERSION = 'v44'; // Strict CSP bootstrap and production security headers
+// v46, not v45: a v45 shell was briefly live before being rolled back, so this
+// stays strictly ahead of every version any browser may still have cached.
+const SW_VERSION = 'v46'; // Dark-theme-only build; light theme removed
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 

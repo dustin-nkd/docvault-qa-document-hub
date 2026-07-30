@@ -262,7 +262,7 @@ function _initializeMarkdownEditor(container, initialValue) {
             initialEditType: 'markdown',
             previewStyle: 'vertical',
             initialValue,
-            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined,
+            theme: 'dark',
             hooks: { addImageBlobHook: uploadImageToCloud }
         });
         container.removeAttribute('aria-busy');
@@ -281,7 +281,7 @@ function _initializeMarkdownViewer(container, initialValue, docId) {
             el: container,
             viewer: true,
             initialValue,
-            theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : undefined
+            theme: 'dark'
         });
         container.removeAttribute('aria-busy');
         requestAnimationFrame(() => _enhanceViewerCodeBlocks(container));
