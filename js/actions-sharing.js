@@ -70,8 +70,6 @@ window.revokeShare = async function(shareId) {
 // ========================
 // SHARE DOCUMENT
 // ========================
-// Share payload building, encryption, and background re-sync (so viewers see
-// edits on their next reload) live in js/actions-share-sync.js.
 window.shareDoc = async function(id) {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         toast('Sharing is disabled in demo mode.', 'info');
@@ -105,7 +103,48 @@ window.shareDoc = async function(id) {
     try {
         const keyBytes = crypto.getRandomValues(new Uint8Array(32));
         const keyBase64 = uint8ToBase64(keyBytes);
-        const encContent = await _encryptSharePayload(doc, keyBytes);
+
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const rawKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+        const allLinkedIds = doc.category === 'release'
+            ? [...(doc.releaseData?.linkedRuns || []), ...(doc.releaseData?.linkedBugs || []), ...(doc.releaseData?.linkedEnvs || [])]
+            : doc.category === 'testplan'
+            ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])]
+            : [];
+        // Security: drop secret-flagged environment properties (and the legacy
+        // secret dbInfo) from anything that enters the share payload — the
+        // document's own envData AND any environment carried in a linked doc.
+        const stripEnvSecrets = (ed) => ed ? {
+            ...ed,
+            properties: Array.isArray(ed.properties) ? ed.properties.filter(p => !p.secret) : ed.properties,
+            dbInfo: undefined,
+        } : ed;
+        const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
+            ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
+            : doc.category === 'environment' && doc.envData?.linkedCreds?.length
+            ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
+            : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
+            ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
+                  .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: stripEnvSecrets(d.envData), tcData: d.tcData }))
+            : [];
+        const plain = new TextEncoder().encode(JSON.stringify({
+            title: doc.title, category: doc.category, content: doc.content,
+            tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
+            envData: stripEnvSecrets(doc.envData),
+            runData: doc.runData,
+            releaseData: doc.releaseData,
+            tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
+            tcPlanData: doc.tcPlanData,
+            _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
+        }));
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, rawKey, plain);
+
+        const packed = new Uint8Array(12 + cipher.byteLength);
+        packed.set(iv);
+        packed.set(new Uint8Array(cipher), 12);
+        const encContent = uint8ToBase64(packed);
 
         const shareId = `sh_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
         const res = await fetch(
@@ -118,11 +157,9 @@ window.shareDoc = async function(id) {
         );
         if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
 
-        // Record the share so it can be listed and revoked later (US-304), and so
-        // it can be kept in sync (with its own key + last-pushed updatedAt) whenever
-        // the source document changes — see syncActiveShares() above.
+        // Record the share so it can be listed and revoked later (US-304).
         const putData = await res.json().catch(() => ({}));
-        _recordShare({ shareId, docId: doc.id, title: doc.title, category: doc.category, createdAt: Date.now(), sha: (putData.content && putData.content.sha) || null, keyBase64, docUpdatedAt: doc.updatedAt });
+        _recordShare({ shareId, docId: doc.id, title: doc.title, category: doc.category, createdAt: Date.now(), sha: (putData.content && putData.content.sha) || null });
 
         const shareUrl = `${location.origin}${location.pathname}?shareId=${shareId}#key=${encodeURIComponent(keyBase64)}`;
 

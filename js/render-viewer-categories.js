@@ -326,7 +326,7 @@ function renderViewerCategory(doc) {
                             <p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">Headers</p>
                             <div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
                                 ${headers.map((h, i) => `
-                                <div class="flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'var(--bg2)'};">
+                                <div class="flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};">
                                     <span class="shrink-0 font-medium" style="color:var(--tx-d);min-width:100px;word-break:break-all;">${escHtml(h.key)}${h.req ? '<span style="color:#f97316;margin-left:2px;">*</span>' : ''}</span>
                                     <span style="color:var(--tx);word-break:break-all;">${escHtml(h.value || '—')}</span>
                                 </div>`).join('')}
@@ -337,7 +337,7 @@ function renderViewerCategory(doc) {
                             <p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">Query Parameters</p>
                             <div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
                                 ${params.map((p, i) => `
-                                <div class="flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'var(--bg2)'};">
+                                <div class="flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};">
                                     <span class="shrink-0 font-medium" style="color:var(--tx-d);min-width:100px;word-break:break-all;">${escHtml(p.key)}${p.req ? '<span style="color:#f97316;margin-left:2px;">*</span>' : ''}</span>
                                     <span style="color:var(--tx);word-break:break-all;">${escHtml(p.value || '—')}</span>
                                 </div>`).join('')}
@@ -791,11 +791,11 @@ function renderViewerCategory(doc) {
         ${doc.content && doc.content.trim() ? `
         <div class="mt-6">
             <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
-            <div id="viewer-container" class="p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
+            <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
         </div>` : ''}
         ` : (doc.category === 'api' || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
-        <div id="viewer-container" class="p-6 rounded-xl" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
+        <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
         </div>
         `}
 `;

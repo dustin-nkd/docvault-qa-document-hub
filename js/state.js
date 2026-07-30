@@ -440,9 +440,6 @@ async function persist() {
     // Guest edits simply live for the session and vanish on reload.
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
     await DocStorage.save(documents);
-    // Best-effort, non-blocking: push fresh snapshots for any shared documents
-    // that changed, so viewers see the update on their next reload (js/actions-sharing.js).
-    if (typeof syncActiveShares === 'function') syncActiveShares().catch(() => {});
 }
 
 async function hydrate() {
