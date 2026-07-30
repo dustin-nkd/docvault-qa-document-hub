@@ -125,7 +125,6 @@ async function init() {
 }
 
 async function startApp() {
-    initTheme();
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         // Guest demo: skip LocalAuth and GitHubSync entirely — no lock screen, no
         // password hash checks, no real-token bootstrap/pull/push. Just load the
@@ -212,9 +211,12 @@ function renderGuestBanner() {
 
     // Hide entry points to real-vault operations that make no sense (and must
     // never run) in demo mode. The handlers themselves are also guarded
-    // (defense in depth), this just avoids dead clicks.
+    // (defense in depth), this just avoids dead clicks. Lock and Settings are
+    // the only two controls left in the sidebar footer, so hide the whole strip
+    // rather than leaving an empty bordered bar behind.
     document.querySelector('[data-onclick="lockVault()"]')?.style.setProperty('display', 'none');
     document.querySelector('[data-onclick="showGitHubSettingsModal()"]')?.style.setProperty('display', 'none');
+    document.getElementById('sidebar-footer')?.style.setProperty('display', 'none');
 }
 
 // ========================

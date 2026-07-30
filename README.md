@@ -163,7 +163,7 @@ docvault-qa-document-hub/
 │   ├── constants.js        #   - English UI strings, templates, sample docs, category config
 │   ├── utils.js            #   - uid, date formatting, custom Markdown renderer, credential helpers
 │   ├── state.js            #   - Global state, documents array, hydrate/persist, doc history
-│   ├── ui.js               #   - Toasts, modals, theme toggle, lock screen, sidebar
+│   ├── ui.js               #   - Toasts, modals, lock screen, sidebar
 │   ├── render-core.js      #   - Main render loop (morphdom diffing), Dashboard, DocList, Kanban board
 │   ├── render-trends.js    #   - Trend calculations, SVG chart primitives, trend cards
 │   ├── render-editor-categories.js # Category-specific editor forms and controls

@@ -1,13 +1,10 @@
-// Apply paint-critical preferences before the application renders, then register
-// the offline shell after the page is ready. Keeping this code in a same-origin
-// asset allows production to enforce a strict script-src CSP without inline code.
+// Register the offline shell after the page is ready. Keeping this code in a
+// same-origin asset allows production to enforce a strict script-src CSP without
+// inline code.
+//
+// DocVault ships a single dark theme, so there is no paint-critical theme
+// preference to apply here — index.html hardcodes <html data-theme="dark">.
 (() => {
-    try {
-        document.documentElement.setAttribute('data-theme', localStorage.getItem('qahub_theme') || 'dark');
-    } catch (_) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    }
-
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js').catch((error) => {

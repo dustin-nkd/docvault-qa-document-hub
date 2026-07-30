@@ -455,6 +455,8 @@ async function hydrate() {
     localStorage.removeItem('e2ee_api_key');
     localStorage.removeItem('e2ee_bin_id');
     sessionStorage.removeItem('e2ee_master_password');
+    // DocVault is dark-theme only; drop the stored preference from when it wasn't.
+    localStorage.removeItem('qahub_theme');
 
     const settings = await DocStorage.getSettings();
     const saved = await DocStorage.getAll();

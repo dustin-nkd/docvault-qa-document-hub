@@ -46,7 +46,26 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v44'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v46'/);
+});
+
+test('the runtime ships a single dark theme with no light-theme leftovers', () => {
+    // A half-removed theme is what made the markdown viewer crash: a container
+    // hardcoded to one theme while the runtime was told to use another. Keep the
+    // theme surface at exactly one value so that mismatch cannot reappear.
+    for (const relativePath of [...runtimeFiles, 'style.css']) {
+        const source = read(relativePath);
+        assert.doesNotMatch(source, /\[data-theme=["']light["']\]/,
+            relativePath + ' still carries light-theme styling');
+        assert.doesNotMatch(source, /toggleTheme|initTheme/,
+            relativePath + ' still references the removed theme toggle');
+        // The stored preference may only be cleaned up, never read or written.
+        assert.doesNotMatch(source, /(?:get|set)Item\(\s*['"]qahub_theme['"]/,
+            relativePath + ' still reads or writes the removed theme preference');
+    }
+    assert.match(read('index.html'), /<html[^>]+data-theme="dark"/);
+    // Toast UI throws on a non-'light' falsy theme, so it must be passed a literal.
+    assert.doesNotMatch(read('js/render-core.js'), /theme:\s*(?:undefined|null)/);
 });
 
 test('deployment blocks on the locked browser regression suite', () => {

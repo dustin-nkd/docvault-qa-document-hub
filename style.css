@@ -34,22 +34,6 @@
   --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-[data-theme="light"] {
-  --bg: #f0f4f8;
-  --bg2: #f8fafc;
-  --card: #ffffff;
-  --card-h: #f0f4f8;
-  --brd: #dde3ec;
-  --brd-l: #c1cfe0;
-  --tx: #0e1a2d;
-  --tx-m: #3d5068;
-  --tx-d: #6b7fa0;
-  --acc: #059669;
-  --acc-l: #10b981;
-  --acc-d: #047857;
-  --bg-glass: rgba(240,244,248,0.85);
-}
-
 *,
 *::before,
 *::after {
@@ -980,29 +964,6 @@
 .diff-del .diff-sign { color: #f87171; }
 .diff-ctx .diff-sign { color: var(--tx-d); }
 
-[data-theme="light"] .diff-add { background: rgba(16, 185, 129, 0.1); }
-[data-theme="light"] .diff-del { background: rgba(239, 68, 68, 0.07); }
-[data-theme="light"] .diff-skip { background: var(--bg2); }
-
-/* ============================================
-   Light Theme Overrides
-   ============================================ */
-.theme-icon-light { display: none; }
-[data-theme="light"] .theme-icon-light { display: inline; }
-[data-theme="light"] .theme-icon-dark { display: none; }
-
-[data-theme="light"] .code-copy-btn {
-    background: rgba(0, 0, 0, 0.06);
-    border-color: rgba(0, 0, 0, 0.1);
-}
-[data-theme="light"] .code-copy-btn:hover {
-    background: rgba(0, 0, 0, 0.12);
-    border-color: rgba(0, 0, 0, 0.18);
-}
-
-[data-theme="light"] .batch-toolbar {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-}
 .api-impact-editor { padding:14px; border:1px solid var(--brd); border-radius:10px; background:var(--bg2); }
 .api-impact-check { display:flex; align-items:center; gap:8px; color:var(--tx-m); font-size:12px; cursor:pointer; }
 .api-impact-hint { margin:7px 0 0 24px; color:var(--tx-d); font-size:10px; line-height:1.45; }
