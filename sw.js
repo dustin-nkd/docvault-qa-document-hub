@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v47'; // Adds js/actions-share-sync.js (live-updating share links)
+const SW_VERSION = 'v48'; // Share sync folded back into js/actions-sharing.js
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -27,7 +27,6 @@ const APP_SHELL = [
     './js/render-viewer.js',
     './js/actions-batch-history.js',
     './js/actions-sharing.js',
-    './js/actions-share-sync.js',
     './js/actions-imports.js',
     './js/actions-settings.js',
     './js/actions-documents.js',

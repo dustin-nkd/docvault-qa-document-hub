@@ -442,7 +442,8 @@ async function persist() {
     await DocStorage.save(documents);
     // Best-effort, non-blocking: push fresh snapshots for any shared documents
     // that changed, so viewers see the update on their next reload
-    // (syncActiveShares lives in js/actions-share-sync.js).
+    // (syncActiveShares lives in js/actions-sharing.js). The typeof guard keeps
+    // saving working even if that file is missing or stale in a cached shell.
     if (typeof syncActiveShares === 'function') syncActiveShares().catch(() => {});
 }
 
