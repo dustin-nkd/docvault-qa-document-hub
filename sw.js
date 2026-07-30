@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v49'; // Deleting a document revokes its share links
+const SW_VERSION = 'v50'; // Toasts anchored below the header divider
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 

@@ -101,6 +101,29 @@ function toast(msg, type = 'success') {
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 3000);
 }
 
+// Publishes the header's real height as --header-h so the toast stack can sit
+// below its divider (see #toasts in index.html). The height is not a constant:
+// it changes with the breakpoint and with the view's own button row, so it is
+// observed rather than hardcoded. Self-starting to avoid a cross-file call.
+(function trackHeaderHeight() {
+    const start = () => {
+        const header = document.getElementById('app-header');
+        if (!header) return;
+        const apply = () => {
+            // Before the first render the header is an empty shell; leave the
+            // CSS fallback in place rather than publishing a too-small height.
+            if (!header.firstElementChild) return;
+            const height = Math.round(header.getBoundingClientRect().height);
+            if (height > 0) document.documentElement.style.setProperty('--header-h', height + 'px');
+        };
+        apply();
+        if (typeof ResizeObserver === 'function') new ResizeObserver(apply).observe(header);
+        else window.addEventListener('resize', apply);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+    else start();
+})();
+
 function setButtonBusy(button, busy, busyLabel = 'Working...') {
     if (!button) return;
     if (busy) {

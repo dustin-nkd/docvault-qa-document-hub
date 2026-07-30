@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v49'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v50'/);
 });
 
 test('sharing helpers stay in the same file as their caller', () => {
@@ -76,6 +76,18 @@ test('every delete path revokes the share links publishing the document', () => 
     // Revocation reaches across files, so it must never be able to block a delete.
     assert.match(ui, /typeof revokeSharesForDocs !== 'function'/);
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
+});
+
+test('toasts are anchored below the header instead of on top of it', () => {
+    // At a fixed top-4 the first toast sat over the header's own controls and
+    // swallowed their clicks. The header height varies (71px desktop, up to 89px
+    // on a mobile editor), so the offset has to follow the real element.
+    const html = read('index.html');
+    assert.doesNotMatch(html, /id="toasts"[^>]*\btop-\d/, '#toasts must not hardcode a top offset');
+    assert.match(html, /#toasts\s*\{[^}]*top:\s*calc\(var\(--header-h/,
+        '#toasts must be offset by the tracked header height');
+    assert.match(read('js/ui.js'), /setProperty\('--header-h'/,
+        'js/ui.js must keep --header-h in sync with the real header');
 });
 
 test('the runtime ships a single dark theme with no light-theme leftovers', () => {
