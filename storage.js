@@ -6,6 +6,90 @@ function uint8ToBase64(bytes) {
 }
 
 // ========================
+// WORKSPACES — data namespacing
+// ========================
+// Switching workspace swaps the entire vault: documents, trash, sync
+// bookkeeping, share registry, activity log, and per-document history. Rather
+// than threading a workspace argument through every storage call, every
+// workspace-scoped localStorage key goes through wsKey() and every
+// workspace-scoped GitHub path goes through wsPath().
+//
+// The DEFAULT workspace deliberately returns the original key/path UNCHANGED,
+// so an existing vault keeps reading and writing exactly the storage it always
+// has — nothing to migrate, nothing to rename, nothing to get wrong.
+//
+// Global (never namespaced): the GitHub token/repo settings, the master
+// password verifier, KDF salt, recovery blob and hint (one password unlocks
+// every workspace), UI preferences, and the workspace registry itself.
+const WS_DEFAULT_ID = 'default';
+const WS_ACTIVE_KEY = 'docvault_active_workspace';
+const WS_REGISTRY_KEY = 'docvault_workspaces';
+// Anchored, no dots or underscores: the id becomes part of a localStorage key
+// and a GitHub path, so it must not be able to escape either namespace.
+const WS_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
+// DUPLICATED VERBATIM in js/state.js, js/actions-focus.js and
+// js/actions-sharing.js. Assets ship with Cache-Control: max-age=600, so a
+// fresh copy of one file can load beside a stale copy of another; a cross-file
+// call would then throw, or — far worse — silently read and write a different
+// workspace's data. Function declarations are redeclaration-safe, so every
+// copy must stay byte-identical (tests/interaction-contract.test.mjs enforces
+// it). Change one, change all four.
+function wsKey(key) {
+    let id;
+    try { id = localStorage.getItem('docvault_active_workspace'); }
+    catch (e) { return key; }
+    if (!id || id === 'default' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(id)) return key;
+    return 'ws_' + id + '__' + key;
+}
+
+function activeWorkspaceId() {
+    try {
+        const id = localStorage.getItem(WS_ACTIVE_KEY);
+        return (id && WS_ID_PATTERN.test(id)) ? id : WS_DEFAULT_ID;
+    } catch (e) { return WS_DEFAULT_ID; }
+}
+
+// Workspace-scoped path inside the GitHub vault repo. Same rule as wsKey():
+// the default workspace keeps the original layout, additional workspaces live
+// under their own folder in the same repo, reached with the same token.
+function wsPath(path) {
+    const id = activeWorkspaceId();
+    return id === WS_DEFAULT_ID ? path : 'workspaces/' + id + '/' + path;
+}
+
+// Every workspace id that currently exists, default first. Used by operations
+// that must cover the whole browser rather than just the active workspace
+// (changing the master password, resetting the vault).
+function workspaceIds() {
+    const ids = [WS_DEFAULT_ID];
+    try {
+        const stored = JSON.parse(localStorage.getItem(WS_REGISTRY_KEY) || '[]');
+        if (Array.isArray(stored)) {
+            stored.forEach(entry => {
+                const id = entry && entry.id;
+                if (typeof id === 'string' && WS_ID_PATTERN.test(id) && !ids.includes(id)) ids.push(id);
+            });
+        }
+    } catch (e) { /* An unreadable registry still leaves the default workspace. */ }
+    return ids;
+}
+
+function wsKeyFor(workspaceId, key) {
+    return workspaceId === WS_DEFAULT_ID ? key : 'ws_' + workspaceId + '__' + key;
+}
+
+window.wsKey = wsKey;
+window.wsPath = wsPath;
+window.wsKeyFor = wsKeyFor;
+window.workspaceIds = workspaceIds;
+window.activeWorkspaceId = activeWorkspaceId;
+window.WS_DEFAULT_ID = WS_DEFAULT_ID;
+window.WS_ACTIVE_KEY = WS_ACTIVE_KEY;
+window.WS_REGISTRY_KEY = WS_REGISTRY_KEY;
+window.WS_ID_PATTERN = WS_ID_PATTERN;
+
+// ========================
 // VAULT — AES-256-GCM + PBKDF2 encryption
 // Fixed salt enables same password → same key across devices (required for GitHub sync)
 // ========================
@@ -280,8 +364,14 @@ const GitHubSync = {
     // Hardcoded vault repo — same on every device, no config needed
     DEFAULTS: { owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main' },
 
-    DATA_PATH: 'database/docvault-data.json',
-    SHA_KEY: 'github_data_sha',
+    // Workspace-scoped: each workspace owns its own vault files and its own
+    // sha/fingerprint bookkeeping. Getting this wrong is the one change here
+    // that could destroy data — a shared sha cache would let a push for one
+    // workspace overwrite another workspace's shard.
+    DATA_PATH_BASE: 'database/docvault-data.json',
+    get DATA_PATH() { return wsPath(this.DATA_PATH_BASE); },
+    get SHA_KEY() { return wsKey('github_data_sha'); },
+    // Global: one token, one repo, shared by every workspace.
     SETTINGS_KEY: 'github_settings',
 
     _pwd() {
@@ -458,9 +548,12 @@ const GitHubSync = {
 
     // Fetch lock-screen metadata from the public GitHub repo -- no auth or decryption needed.
     // Used on new devices to show hint/recovery before the vault is configured.
+    // Reads the DEFAULT workspace's file on purpose: one master password
+    // unlocks every workspace, so the hint and recovery blob are global. The
+    // lock screen also runs before any workspace is meaningfully active.
     async fetchSecurityMetaPublic() {
         const { owner, repo, branch } = this.DEFAULTS;
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${this.DATA_PATH}?ref=${branch || 'main'}`;
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${this.DATA_PATH_BASE}?ref=${branch || 'main'}`;
         try {
             const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
             if (!res.ok) return null;
@@ -626,12 +719,15 @@ const GitHubSync = {
     // are meant to be run manually (see js/actions-settings.js window.testShardedSync)
     // to prove correctness against a real vault before anything switches over.
     SHARD_COUNT: 16,
-    SHARDS_DIR: 'database/shards',
-    META_PATH: 'database/vault-meta.json',
-    SHARD_SHA_PREFIX: 'github_shard_sha_',
-    SHARD_FP_PREFIX: 'github_shard_fp_',
-    META_SHA_KEY: 'github_meta_sha',
-    META_FP_KEY: 'github_meta_fp',
+    get SHARDS_DIR() { return wsPath('database/shards'); },
+    get META_PATH() { return wsPath('database/vault-meta.json'); },
+    get SHARD_SHA_PREFIX() { return wsKey('github_shard_sha_'); },
+    get SHARD_FP_PREFIX() { return wsKey('github_shard_fp_'); },
+    get META_SHA_KEY() { return wsKey('github_meta_sha'); },
+    get META_FP_KEY() { return wsKey('github_meta_fp'); },
+    // Cleared by switchWorkspace(): a workspace that has never been pushed is
+    // not sharded remotely, and inheriting `true` from the previous workspace
+    // would send its first save down the sharded path against missing files.
     _remoteSharded: false,
 
     _shardIndex(id) {
@@ -1043,9 +1139,10 @@ window.GitHubSync = GitHubSync;
 // DOC STORAGE
 // ========================
 const DocStorage = {
-    STORAGE_KEY: 'docvault_docs',
-    DELETED_IDS_KEY: 'docvault_deleted_ids',
-    PENDING_SYNC_KEY: 'docvault_sync_pending',
+    // Workspace-scoped — see wsKey() at the top of this file.
+    get STORAGE_KEY() { return wsKey('docvault_docs'); },
+    get DELETED_IDS_KEY() { return wsKey('docvault_deleted_ids'); },
+    get PENDING_SYNC_KEY() { return wsKey('docvault_sync_pending'); },
 
     _pwd() {
         return sessionStorage.getItem('docvault_pwd') || null;
@@ -1347,12 +1444,12 @@ const DocStorage = {
     },
 
     async getSettings() {
-        const data = localStorage.getItem('docvault_settings');
+        const data = localStorage.getItem(wsKey('docvault_settings'));
         try { return data ? JSON.parse(data) : {}; } catch(e) { return {}; }
     },
 
     async saveSettings(settings) {
-        localStorage.setItem('docvault_settings', JSON.stringify(settings));
+        localStorage.setItem(wsKey('docvault_settings'), JSON.stringify(settings));
     },
 
     async getUsage() { return { used: 0, total: 0 }; }
@@ -1492,16 +1589,21 @@ const LocalAuth = {
         const stored = localStorage.getItem(this.HASH_KEY);
         if (stored && !(await this.verifyPassword(oldPassword, stored))) throw new Error('Current password is incorrect.');
 
+        // One master password unlocks every workspace, so a password change has
+        // to re-encrypt EVERY workspace's local document cache — not just the
+        // active one, which would leave the others permanently undecryptable.
         const replacements = [];
-        const rawDocs = localStorage.getItem(DocStorage.STORAGE_KEY);
-        if (rawDocs) {
+        for (const workspaceId of workspaceIds()) {
+            const docsKey = wsKeyFor(workspaceId, 'docvault_docs');
+            const rawDocs = localStorage.getItem(docsKey);
+            if (!rawDocs) continue;
             const decryptedDocs = Vault.isEncrypted(rawDocs)
                 ? await Vault.decrypt(rawDocs, oldPassword)
                 : JSON.parse(rawDocs);
             const plainDocs = await DocStorage._decryptCredPasswords(decryptedDocs, oldPassword);
             const safeDocs = await DocStorage._encryptCredPasswords(plainDocs, newPassword);
             replacements.push({
-                key: DocStorage.STORAGE_KEY,
+                key: docsKey,
                 previous: rawDocs,
                 next: await Vault.encryptVerified(safeDocs, newPassword)
             });
@@ -1614,7 +1716,9 @@ const LocalAuth = {
             localStorage.removeItem(this.HASH_KEY);
             localStorage.removeItem(this.RECOVERY_KEY);
             localStorage.removeItem(this.HINT_KEY);
-            localStorage.removeItem(DocStorage.STORAGE_KEY);
+            // Every workspace is encrypted under this one password, so clearing
+            // only the active one would leave undecryptable data behind.
+            workspaceIds().forEach(id => localStorage.removeItem(wsKeyFor(id, 'docvault_docs')));
             localStorage.removeItem(GitHubSync.SETTINGS_KEY);
             localStorage.removeItem(Vault.SALT_KEY);
             sessionStorage.removeItem(this.SESSION_KEY);

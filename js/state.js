@@ -1,4 +1,22 @@
 // ========================
+// WORKSPACE-SCOPED STORAGE KEY
+// ========================
+// Mirrors wsKey() in storage.js, and is DELIBERATELY DUPLICATED rather than
+// called across files: assets ship with Cache-Control: max-age=600, so a fresh
+// copy of this file can load beside a stale storage.js. A cross-file call would
+// then throw, or — far worse — silently read and write a different workspace's
+// data. Keep every copy byte-identical (tests/interaction-contract.test.mjs
+// enforces it); the same helper lives in js/actions-focus.js and
+// js/actions-sharing.js.
+function _wsKey(key) {
+    let id;
+    try { id = localStorage.getItem('docvault_active_workspace'); }
+    catch (e) { return key; }
+    if (!id || id === 'default' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(id)) return key;
+    return 'ws_' + id + '__' + key;
+}
+
+// ========================
 // STATE
 // ========================
 // Kept for legacy cancel/save cleanup; no longer populated (images are inline base64)
@@ -343,7 +361,7 @@ function getFocusDueState(workflow, now = new Date()) {
 // ========================
 const DocHistory = {
     MAX: 10,
-    _key: id => `docvault_history_${id}`,
+    _key: id => _wsKey(`docvault_history_${id}`),
     save(doc) {
         // Guest demo: leave zero trace in the browser's real localStorage.
         if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
@@ -373,7 +391,7 @@ const DocHistory = {
 // (union + dedup by id, newest MAX kept) instead of one device's history
 // clobbering another's.
 const ActivityLog = {
-    KEY: 'docvault_activity_log',
+    get KEY() { return _wsKey('docvault_activity_log'); },
     MAX: 200,
 
     _genId() {
@@ -465,8 +483,15 @@ async function hydrate() {
 
     const settings = await DocStorage.getSettings();
     const saved = await DocStorage.getAll();
+    // _wsKey() only rewrites the key outside the default workspace, so this is a
+    // self-contained "am I in an extra workspace?" check that needs no other file.
+    const isDefaultWorkspace = _wsKey('w') === 'w';
     if (saved && Array.isArray(saved) && saved.length > 0) {
         documents = saved;
+    } else if (!isDefaultWorkspace) {
+        // A workspace the user created on purpose starts empty. SAMPLE_DOCS is
+        // first-run onboarding for a brand-new install, not content to inherit.
+        documents = [];
     } else {
         documents = [...SAMPLE_DOCS];
     }

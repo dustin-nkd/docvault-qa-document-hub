@@ -417,6 +417,9 @@ function toggleSidebar() {
 }
 
 function updateSidebar() {
+    // Guarded: js/workspaces.js may be missing from a cached shell, and the
+    // switcher's static markup already reads correctly without it.
+    if (typeof renderWorkspaceSwitcher === 'function') renderWorkspaceSwitcher();
     const lblDash = document.getElementById('lbl-dashboard'); if (lblDash) lblDash.textContent = t('dashboard');
     const lblDocs = document.getElementById('lbl-all-documents'); if (lblDocs) lblDocs.textContent = t('allDocuments');
     const lblFavs = document.getElementById('lbl-favorites'); if (lblFavs) lblFavs.textContent = t('favorites');

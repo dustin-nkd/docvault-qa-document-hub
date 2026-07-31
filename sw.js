@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v50'; // Toasts anchored below the header divider
+const SW_VERSION = 'v51'; // Workspaces: per-workspace vault namespacing + switcher
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -31,6 +31,7 @@ const APP_SHELL = [
     './js/actions-settings.js',
     './js/actions-documents.js',
     './js/actions-focus.js',
+    './js/workspaces.js',
     './js/search.js',
     './js/events.js',
     './vendor/tailwind/tailwind.generated.css',

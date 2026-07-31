@@ -431,6 +431,17 @@
                 </div>
             </div>
 
+            <!-- Workspace switcher. The name is filled in by
+                 renderWorkspaceSwitcher() (js/workspaces.js); the static default
+                 keeps the control readable if that script is unavailable. -->
+            <div id="workspace-switcher" class="px-3 pb-3 shrink-0">
+                <button class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors ui-hover-card-h" style="background:var(--card);border:1px solid var(--brd);cursor:pointer;" data-onclick="showWorkspaceManager()" title="Switch workspace" aria-label="Switch workspace">
+                    <i class="fa-solid fa-layer-group text-xs shrink-0" style="color:var(--acc);"></i>
+                    <span id="workspace-switcher-name" class="truncate flex-1 text-left text-sm" style="color:var(--tx);">Personal</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] shrink-0" style="color:var(--tx-d);"></i>
+                </button>
+            </div>
+
             <!-- Sprint 25a: scrollable nav region so a tall category list (many
                  categories/subfolders, or a short viewport from Windows display
                  scaling) can never push the Bottom footer (Lock/Theme/Lang/
@@ -559,6 +570,7 @@
 <script defer src="js/actions-settings.js"></script>
 <script defer src="js/actions-documents.js"></script>
 <script defer src="js/actions-focus.js"></script>
+<script defer src="js/workspaces.js"></script>
 <script defer src="js/search.js"></script>
 <script defer src="js/events.js"></script>
 </body>

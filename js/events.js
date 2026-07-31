@@ -217,6 +217,8 @@ function renderGuestBanner() {
     document.querySelector('[data-onclick="lockVault()"]')?.style.setProperty('display', 'none');
     document.querySelector('[data-onclick="showGitHubSettingsModal()"]')?.style.setProperty('display', 'none');
     document.getElementById('sidebar-footer')?.style.setProperty('display', 'none');
+    // The demo has exactly one in-memory vault; a switcher would imply otherwise.
+    document.getElementById('workspace-switcher')?.style.setProperty('display', 'none');
 }
 
 // ========================
