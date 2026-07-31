@@ -1342,6 +1342,10 @@ const DocStorage = {
             if (!existing || incomingVersion > existingVersion) byId.set(d.id, d);
         });
         documents = [...byId.values()];
+        // These come straight off a remote shard, bypassing hydrate() — a
+        // document written by hand or by an older client can arrive with no tags
+        // array, which the list renderer and editor read unguarded.
+        if (typeof normalizeDocTags === 'function') normalizeDocTags(documents);
         await this._saveLocal(documents);
         if (typeof render === 'function') render();
     },
