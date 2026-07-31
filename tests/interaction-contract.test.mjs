@@ -176,6 +176,43 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('a kanban card can change column without being dragged', () => {
+    // Moving a card was drag-only, so the board's whole point was unreachable
+    // from a keyboard or a screen reader.
+    const ui = read('js/ui.js');
+    assert.match(ui, /function _renderMoveToMenu/, 'the card menu must offer a Move to list');
+    assert.match(ui, /menuHtml \+= _renderMoveToMenu\(bugDoc, id\)/, 'showDocMenu must render it');
+    assert.match(ui, /actionAttr\('moveCardToColumn', id, column\.id, column\.label\)/);
+    // A stale cached script must leave no dead menu entries behind.
+    assert.match(ui, /typeof moveCardToColumn !== 'function'/);
+
+    // Drag, touch-drag and the menu must all run the same mover, or they drift.
+    const events = read('js/events.js');
+    assert.match(events, /window\.moveDocStatus = async function/);
+    const drop = events.slice(events.indexOf('window.handleDrop'));
+    assert.match(drop.slice(0, drop.indexOf('\n};')), /await moveDocStatus\(id, newStatus\)/,
+        'handleDrop must delegate to the shared mover');
+    assert.equal((events.match(/documents\[idx\]\[field\] = newStatus/g) || []).length, 1,
+        'the status-change logic must exist once, inside moveDocStatus');
+    assert.match(events, /await moveDocStatus\(_touchDragId,/, 'touch drag must use it too');
+});
+
+test('kanban columns are labelled lists, not anonymous divs', () => {
+    const source = read('js/render-core.js');
+    assert.equal((source.match(/<section class="flex flex-col shrink-0 rounded-xl"/g) || []).length, 2,
+        'both boards must render columns as labelled sections');
+    for (const prefix of ['kb-col-', 'bugkb-col-']) {
+        assert.match(source, new RegExp('aria-labelledby="' + prefix + '\\$\\{col\\.id\\}"'));
+        assert.match(source, new RegExp('<h3 id="' + prefix + '\\$\\{col\\.id\\}"'));
+    }
+    assert.equal((source.match(/<li class="doc-card/g) || []).length, 2, 'cards must be list items');
+    assert.doesNotMatch(source, /<div class="doc-card flex flex-col cursor-grab/, 'no card may remain a bare div');
+    // A horizontally scrolling region has to be reachable by keyboard.
+    assert.equal((source.match(/class="overflow-x-auto pb-4 custom-scrollbar" tabindex="0" role="group"/g) || []).length, 2);
+    // The card menu can outgrow the space under its trigger.
+    assert.match(read('js/ui.js'), /menu\.style\.overflowY = 'auto'/);
+});
+
 test('the custom select carries the full combobox contract', () => {
     // Every dropdown in the app renders through renderSelect(). It was a
     // readonly <input> beside a list of <div>s: announced as a text box, and

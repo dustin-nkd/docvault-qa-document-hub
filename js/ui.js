@@ -535,6 +535,45 @@ window.exportDoc = function(id) {
 // ========================
 // DOCUMENT CONTEXT MENU
 // ========================
+// The board's core action — moving a card to another column — used to be
+// reachable only by dragging. This puts it in the card menu, which is a real
+// <button> list and therefore works with a mouse, a keyboard, or a screen
+// reader. Rendered only when the mover is actually available, so a stale cached
+// script leaves no dead menu items behind.
+const KANBAN_TASK_COLUMNS = [
+    { id: 'todo', label: 'To Do', icon: 'fa-regular fa-circle' },
+    { id: 'in-progress', label: 'In Progress', icon: 'fa-solid fa-spinner' },
+    { id: 'review', label: 'Review', icon: 'fa-solid fa-eye' },
+    { id: 'done', label: 'Done', icon: 'fa-solid fa-circle-check' }
+];
+const KANBAN_BUG_COLUMNS = [
+    { id: 'new', label: 'New', icon: 'fa-solid fa-circle-plus' },
+    { id: 'open', label: 'Open', icon: 'fa-solid fa-circle-dot' },
+    { id: 'in-progress', label: 'In Progress', icon: 'fa-solid fa-spinner' },
+    { id: 'resolved', label: 'Resolved', icon: 'fa-solid fa-circle-half-stroke' },
+    { id: 'retest', label: 'Retest', icon: 'fa-solid fa-rotate' },
+    { id: 'verified', label: 'Verified', icon: 'fa-solid fa-circle-check' },
+    { id: 'closed', label: 'Closed', icon: 'fa-solid fa-circle-xmark' }
+];
+
+function _renderMoveToMenu(doc, id) {
+    if (!doc || typeof moveCardToColumn !== 'function') return '';
+    const isBug = doc.category === 'bug';
+    if (!isBug && doc.category !== 'task') return '';
+    const columns = isBug ? KANBAN_BUG_COLUMNS : KANBAN_TASK_COLUMNS;
+    const current = isBug
+        ? (typeof normalizeBugStatusValue === 'function' ? normalizeBugStatusValue(doc.bugStatus) : (doc.bugStatus || 'new'))
+        : (doc.kanbanStatus || 'todo');
+    const rows = columns.filter(column => column.id !== current).map(column => `
+        <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--tx-m);transition:background .15s;" data-onclick="${actionAttr('moveCardToColumn', id, column.id, column.label)}">
+            <i class="${column.icon} w-4 text-center"></i> ${escHtml(column.label)}
+        </button>`).join('');
+    if (!rows) return '';
+    return `<div style="height:1px;background:var(--brd);margin:4px 0;"></div>
+        <p class="text-[10px] font-semibold tracking-wider uppercase px-3 pt-1 pb-1" style="color:var(--tx-d);">Move to</p>
+        ${rows}`;
+}
+
 function showDocMenu(id, btn) {
     const old = document.getElementById('doc-menu');
     if (old) old.remove();
@@ -565,6 +604,7 @@ function showDocMenu(id, btn) {
                 <i class="fa-solid fa-trash w-4 text-center"></i> ${t('delete')} </button>
         `;
         const bugDoc = documents.find(d => d.id === id);
+        menuHtml += _renderMoveToMenu(bugDoc, id);
         if (bugDoc?.category === 'bug') {
             const bs = bugDoc.bugStatus || 'new';
             const isClosed = bs === 'closed';
@@ -583,6 +623,21 @@ function showDocMenu(id, btn) {
     menu.innerHTML = menuHtml;
     document.body.appendChild(menu);
     enhanceInteractionSemantics(menu);
+    // The bug menu now carries a Move-to list on top of its resolution actions,
+    // so it can be taller than the space below the button. Flip it above the
+    // trigger when that happens, and let it scroll if it still doesn't fit.
+    const gap = 8;
+    const height = menu.getBoundingClientRect().height;
+    if (rect.bottom + 4 + height > window.innerHeight - gap) {
+        const above = rect.top - 4 - height;
+        if (above >= gap) menu.style.top = above + 'px';
+        else {
+            menu.style.top = gap + 'px';
+            menu.style.maxHeight = (window.innerHeight - gap * 2) + 'px';
+            menu.style.overflowY = 'auto';
+            menu.style.overscrollBehavior = 'contain';
+        }
+    }
     setTimeout(() => {
         const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
         document.addEventListener('click', close);
