@@ -194,6 +194,10 @@ function evaluateReleaseReadiness(release, docs = documents) {
     const critical = openBugs.filter(bug => bug.bugData?.severity === 'Critical');
     const major = openBugs.filter(bug => bug.bugData?.severity === 'Major');
     const unhealthyEnvs = linkedEnvs.filter(env => env.envData?.status !== 'healthy');
+    // Deferred means "decided not to fix in this release", so it is not a
+    // blocker — but shipping around a known defect should be visible on the
+    // card rather than something you have to go looking for.
+    const deferred = linkedBugs.filter(bug => bug.bugData?.resolution === 'deferred');
     const checks = [
         { id: 'evidence', status: linkedRuns.length > 0 && totalSteps > 0 ? 'pass' : 'unknown', value: linkedRuns.length, docIds: linkedRuns.map(run => run.id) },
         { id: 'pass-rate', status: passRate == null ? 'unknown' : passRate >= policy.minPassRate ? 'pass' : 'fail', value: passRate, threshold: policy.minPassRate, docIds: linkedRuns.map(run => run.id) },
@@ -204,6 +208,7 @@ function evaluateReleaseReadiness(release, docs = documents) {
             value: openBugs.length,
             critical: critical.length,
             major: major.length,
+            deferred: deferred.length,
             docIds: [...critical, ...(policy.blockMajor ? major : [])].map(bug => bug.id)
         },
         {
@@ -227,7 +232,7 @@ function evaluateReleaseReadiness(release, docs = documents) {
 
     return {
         outcome, policy, checks, linkedRuns, linkedBugs, linkedEnvs,
-        metrics: { totalSteps, executedSteps, passSteps, passRate, openBugs: openBugs.length, critical: critical.length, major: major.length },
+        metrics: { totalSteps, executedSteps, passSteps, passRate, openBugs: openBugs.length, critical: critical.length, major: major.length, deferred: deferred.length },
         manualDecision, decisionReason,
         blockers: checks.filter(check => check.status !== 'pass')
     };

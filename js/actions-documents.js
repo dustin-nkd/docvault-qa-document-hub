@@ -107,19 +107,26 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
 // ========================
 // BUG LIFECYCLE ACTIONS
 // ========================
-window.resolveBug = async function(id, resolution) {
+window.resolveBug = async function(id, resolution, targetStatus) {
     const idx = documents.findIndex(d => d.id === id);
     if (idx === -1) return;
     document.getElementById('doc-menu')?.remove();
     const doc = documents[idx];
-    recordBugStatusChange(doc, 'closed');
+    // A fixed bug still has to be verified, so it lands in Resolved and carries
+    // on through Retest → Verified. The four "not going to fix" outcomes have
+    // nothing to verify and close directly. A bug that is already out of play
+    // only gains the reason it was missing — it is never dragged backwards.
+    const nextStatus = BUG_TERMINAL_STATUSES.has(normalizeBugStatusValue(doc.bugStatus))
+        ? doc.bugStatus
+        : (targetStatus || 'closed');
+    recordBugStatusChange(doc, nextStatus);
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.resolution = resolution;
     doc.bugData.triagedAt = doc.bugData.triagedAt || Date.now();
     await persist();
     renderContent();
-    const label = { 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: 'Rejected', deferred: 'Deferred' }[resolution] || resolution;
-    toast(`Bug closed: ${label}`, 'info');
+    const label = { fixed: 'Fixed', 'wont-fix': "Won't Fix", duplicate: 'Duplicate', rejected: 'Rejected', deferred: 'Deferred' }[resolution] || resolution;
+    toast(`${normalizeBugStatusValue(doc.bugStatus) === 'closed' ? 'Bug closed' : 'Bug resolved'}: ${label}`, 'info');
 };
 
 // Bug-duplicate picker (Sprint 15, 15-3): duplicateOf was a free-typed string

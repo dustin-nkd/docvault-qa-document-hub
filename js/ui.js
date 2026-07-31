@@ -623,6 +623,7 @@ function showDocMenu(id, btn) {
             }
             if (!isClosed || needsResolution) {
                 menuHtml += `
+                    <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--acc-l);transition:background .15s;" data-onclick="resolveBug('${id}','fixed','resolved')"><i class="fa-solid fa-circle-check w-4 text-center"></i> ${t('bugFixed')}</button>
                     <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="resolveBug('${id}','wont-fix')"><i class="fa-solid fa-ban w-4 text-center"></i> ${t('bugWontFix')}</button>
                     <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="promptDuplicateBug('${id}')"><i class="fa-solid fa-copy w-4 text-center"></i> ${t('bugDuplicate')}</button>
                     <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="resolveBug('${id}','rejected')"><i class="fa-solid fa-circle-xmark w-4 text-center"></i> ${t('bugRejected')}</button>

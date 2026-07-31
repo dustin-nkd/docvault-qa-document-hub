@@ -160,6 +160,7 @@ const STRINGS = {
     bugRetest: "Retest",
     bugVerified: "Verified",
     bugClosed: "Closed",
+    bugFixed: "Fixed",
     bugWontFix: "Won't Fix",
     bugDuplicate: "Duplicate",
     bugRejected: "Rejected",
