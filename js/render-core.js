@@ -1266,7 +1266,7 @@ function renderDocList() {
 
     const batchCheckbox = (id) => bm ? `
         <div style="position:absolute;top:10px;right:10px;z-index:5;pointer-events:none;">
-            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd2)'};background:${sel.has(id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;transition:all .15s;">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(id) ? 'var(--acc)' : 'var(--brd2)'};background:${sel.has(id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;transition:background-color .15s, border-color .15s;">
                 ${sel.has(id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
             </div>
         </div>` : '';
@@ -1305,7 +1305,7 @@ function renderDocList() {
                     <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md font-medium" style="color:var(--acc);border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.06);" data-onclick="selectAllDocs()">
                         ${allSelected ? 'Deselect all' : 'Select all'}
                     </button>` : ''}
-                    <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
+                    <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:background-color .15s, border-color .15s, color .15s;" data-onclick="toggleBatchMode()">
                         ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
                     </button>
                 ` : ''}
@@ -1349,8 +1349,8 @@ function renderDocList() {
                                     ${credRotationInfo(d).stale ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.15);color:#f59e0b;" title="Not rotated in ${credRotationInfo(d).ageDays} days"><i class="fa-solid fa-rotate" style="font-size:9px;"></i> ${credRotationInfo(d).ageDays}d</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-1" style="${bm ? 'visibility:hidden;' : ''}">
-                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:all .15s;" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
-                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:all .15s;" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
+                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:background-color .15s, color .15s;" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
+                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:background-color .15s, color .15s;" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
                                 </div>
                             </div>
                         </li>`;
@@ -1589,7 +1589,7 @@ function renderBugKanban(docs, isMobileSearch) {
             <div class="flex-1"></div>
             ${docs.length > 0 ? `
                 ${bm ? `<span class="text-xs font-semibold" style="color:var(--acc);">${sel.size} selected</span>` : ''}
-                <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:all .15s;" data-onclick="toggleBatchMode()">
+                <button class="doc-list-select-btn text-xs py-1 px-2.5 rounded-md border font-medium" style="border-color:var(--brd);color:var(--tx-m);background:transparent;transition:background-color .15s, border-color .15s, color .15s;" data-onclick="toggleBatchMode()">
                     ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
                 </button>
             ` : ''}

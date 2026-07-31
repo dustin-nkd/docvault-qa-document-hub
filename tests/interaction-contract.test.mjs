@@ -176,6 +176,37 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('no rule animates every property', () => {
+    // `transition: all` animates whatever happens to change, including layout
+    // and paint properties nothing ever sets. Each of these now lists exactly
+    // the properties its own :hover / .is-active / :checked rule touches, so the
+    // animation is unchanged.
+    for (const relativePath of ['index.html', 'style.css', 'js/render-core.js', 'js/render-trends.js', 'js/ui.js', 'js/render-editor.js', 'js/render-viewer-categories.js']) {
+        assert.doesNotMatch(read(relativePath), /transition:\s*all\b/, relativePath + ' still animates every property');
+    }
+    // The transitions themselves must still exist, or hover just snaps.
+    const html = read('index.html');
+    assert.match(html, /\.doc-card \{[^}]*transition: background-color \.25s, border-color \.25s, transform \.25s, box-shadow \.25s;/);
+    assert.match(html, /\.nav-item \{ transition: background-color \.2s, border-left-color \.2s, color \.2s;/);
+});
+
+test('every form control in a modal is named', () => {
+    // Same treatment the editor got: settings, security, master password and
+    // batch edit were the last screens whose labels named nothing.
+    for (const relativePath of ['js/actions-settings.js', 'js/actions-batch-history.js']) {
+        const source = read(relativePath);
+        const orphans = [...source.matchAll(/<label(?![^>]*\bfor=)[^>]*>/g)]
+            // A label that wraps its own control needs no for=.
+            .filter(match => !/class="flex/.test(match[0]));
+        assert.deepEqual(orphans.map(m => m[0].slice(0, 60)), [], relativePath + ' has a label that names no control');
+    }
+    // Password managers must not offer to fill the vault's own key fields.
+    const settings = read('js/actions-settings.js');
+    for (const [id, value] of [['mp-current', 'current-password'], ['mp-new', 'new-password'], ['mp-confirm', 'new-password'], ['gh-token', 'off']]) {
+        assert.match(settings, new RegExp('id="' + id + '"[^>]*autocomplete="' + value + '"'), id + ' needs autocomplete="' + value + '"');
+    }
+});
+
 test('document titles are real links that can be opened in a new tab', () => {
     // Cards were <div role="button">, so Cmd/Ctrl-click, middle-click and
     // "Open link in new tab" — the ordinary way to work through a list — did

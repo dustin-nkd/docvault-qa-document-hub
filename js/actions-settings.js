@@ -11,16 +11,16 @@ function _settingsTabAccount() {
     return `
         <form data-onsubmit="changeMasterPassword()" class="flex flex-col gap-3 text-left">
             <div>
-                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
-                <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                <label for="mp-current" class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Current Password</label>
+                <input type="password" id="mp-current" class="form-input w-full py-1.5 px-3 text-xs" autocomplete="current-password" placeholder="••••••••">
             </div>
             <div>
-                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">New Password</label>
-                <input type="password" id="mp-new" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                <label for="mp-new" class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">New Password</label>
+                <input type="password" id="mp-new" class="form-input w-full py-1.5 px-3 text-xs" autocomplete="new-password" placeholder="••••••••">
             </div>
             <div>
-                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Confirm New Password</label>
-                <input type="password" id="mp-confirm" class="form-input w-full py-1.5 px-3 text-xs" placeholder="••••••••">
+                <label for="mp-confirm" class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Confirm New Password</label>
+                <input type="password" id="mp-confirm" class="form-input w-full py-1.5 px-3 text-xs" autocomplete="new-password" placeholder="••••••••">
             </div>
             <button type="submit" class="btn-p py-1.5 px-4 text-xs w-full flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-key text-[10px]"></i> Change Master Password
@@ -35,7 +35,7 @@ function _settingsTabSecurity() {
     return `
         <div class="text-left">
             <div class="mb-4">
-                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Password Hint <span class="font-normal" style="color:var(--tx-d);">(stored unencrypted)</span></label>
+                <label for="sec-hint" class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Password Hint <span class="font-normal" style="color:var(--tx-d);">(stored unencrypted)</span></label>
                 <div class="flex gap-2">
                     <input type="text" id="sec-hint" class="form-input flex-1 py-1.5 px-3 text-xs" placeholder="e.g. Pet name + year" maxlength="80" value="${escHtml(currentHint)}">
                     <button type="button" class="btn-s py-1.5 px-3 text-xs whitespace-nowrap" data-onclick="savePasswordHint()">Save</button>
@@ -47,7 +47,7 @@ function _settingsTabSecurity() {
                 <p class="text-[10px] mt-1" style="color:var(--tx-d);">Shown on lock screen as a reminder. Never include your actual password. Kept on this device only unless you enable sync above.</p>
             </div>
             <div>
-                <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Recovery Key</label>
+                <span class="block text-[11px] font-bold mb-1" style="color:var(--tx-m);">Recovery Key</span>
                 <p class="text-[11px] mb-2" style="color:${hasRecovery ? 'var(--acc)' : '#f59e0b'};">
                     <i class="fa-solid fa-${hasRecovery ? 'circle-check' : 'triangle-exclamation'} mr-1"></i>${hasRecovery ? 'Recovery key is active.' : 'No key set — forgotten password means lost data.'}
                 </p>
@@ -71,8 +71,8 @@ function _settingsTabSync() {
             <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
             <form data-onsubmit="saveGitHubSettings()" class="flex flex-col gap-3">
                 <div>
-                    <label class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
-                    <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
+                    <label for="gh-token" class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
+                    <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" autocomplete="off" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
                     <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo.</p>
                 </div>
                 <label class="flex items-start gap-2 cursor-pointer">
