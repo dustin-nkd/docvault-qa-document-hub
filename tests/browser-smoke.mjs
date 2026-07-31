@@ -152,6 +152,12 @@ async function run() {
         assert.equal(backgroundAfter, backgroundBefore, 'Release linked row must restore its base background after hover');
         assert.ok(await page.locator('.ui-hover-card').count() >= 6, 'Release linked evidence must use the shared CSS hover state');
 
+        // A ?view= link to a document that is not here used to do nothing at all,
+        // leaving the user on the dashboard with no explanation.
+        await page.goto(baseUrl + '/?view=gd_does_not_exist&guest=1', { waitUntil: 'networkidle' });
+        await page.locator('#toasts').getByText('Document not found', { exact: false }).waitFor({ timeout: 10000 });
+        await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor();
+
         const categoryDocuments = [
             ['gd_rb_1', 'Daily Regression Kickoff Runbook'],
             ['gd_kn_1', 'When to mark a test step Blocked or Failed'],

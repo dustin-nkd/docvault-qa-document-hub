@@ -250,7 +250,15 @@ function handleUrlParams() {
         showTemplateModal();
     } else if (viewId) {
         const doc = documents.find(d => d.id === viewId);
-        if (doc) viewDoc(viewId);
+        if (doc) { viewDoc(viewId); return; }
+        // Previously this failed silently and left the user on the dashboard with
+        // no idea why. A ?view= link can miss because the document was deleted or
+        // because it lives in a different workspace — only mention workspaces
+        // when more than one actually exists, so the hint is never misleading.
+        const hasOtherWorkspaces = typeof getWorkspaces === 'function' && getWorkspaces().length > 1;
+        toast(hasOtherWorkspaces
+            ? 'Document not found in this workspace — it may belong to another one, or have been deleted.'
+            : 'Document not found — it may have been deleted.', 'error');
     }
 }
 
