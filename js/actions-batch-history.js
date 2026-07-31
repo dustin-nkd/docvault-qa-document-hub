@@ -258,7 +258,7 @@ window.showBatchBugEditModal = function() {
             <p class="text-sm mb-4" style="color:var(--tx-m);">Only fields you change below will be applied.</p>
             <div class="flex flex-col gap-3">
                 <div>
-                    <label class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Severity</label>
+                    <label for="batch-bug-severity-display" class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Severity</label>
                     ${renderSelect('batch-bug-severity', [
                         { value: '', label: '— No change —' },
                         { value: 'Critical', label: t('severityCritical') },
@@ -268,7 +268,7 @@ window.showBatchBugEditModal = function() {
                     ], '', 'w-full')}
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Priority</label>
+                    <label for="batch-bug-priority-display" class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Priority</label>
                     ${renderSelect('batch-bug-priority', [
                         { value: '', label: '— No change —' },
                         { value: 'P1', label: 'P1 — Urgent' },
@@ -278,7 +278,7 @@ window.showBatchBugEditModal = function() {
                     ], '', 'w-full')}
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Assignee</label>
+                    <label for="batch-bug-assignee" class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Assignee</label>
                     <input type="text" id="batch-bug-assignee" class="form-input w-full" placeholder="Leave blank for no change…">
                 </div>
             </div>

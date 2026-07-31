@@ -274,7 +274,7 @@ function _renderTrends(docs, m) {
     }
 
     const rangeBtns = [[30, '30d'], [90, '90d'], [0, t('trAll')]].map(([d, l]) =>
-        `<button class="px-2.5 py-1 rounded-md text-[11px] font-semibold" style="${rangeDays === d ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'};transition:all .15s;" data-onclick="setTrendsRange(${d})">${l}</button>`
+        `<button class="px-2.5 py-1 rounded-md text-[11px] font-semibold" style="${rangeDays === d ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'};transition:background-color .15s, color .15s;" data-onclick="setTrendsRange(${d})">${l}</button>`
     ).join('');
 
     return `<div class="dashboard-trends">
