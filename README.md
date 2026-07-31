@@ -65,6 +65,13 @@ Organize documents across specialized categories, each with its own dedicated fo
 - Searches across document titles, tags, and content.
 - Results show category badges and match type (Title / Tag / Content).
 
+### 🗂️ Workspaces
+- **Separate vaults in one app** — switch workspace and documents, trash, favorites, activity log, document history, saved views and share links all swap with it. Useful for keeping different clients or jobs apart (e.g. `Trulioo` vs `OpenText`).
+- **Shared credentials**: one master password and one GitHub token cover every workspace.
+- **Isolated storage**: each workspace namespaces its own localStorage keys and gets its own folder in the vault repo (`workspaces/<id>/database/…`), including independent sync bookkeeping so a save in one workspace can never overwrite another's data.
+- The original vault stays the default workspace on exactly the storage it always used — nothing is migrated or renamed.
+- Deleting a workspace removes its local data, its GitHub folder, and revokes its share links.
+
 ### 🔄 GitHub Sync & Cross-Device
 - **Zero-config sync**: Documents are synced to a hardcoded GitHub repository (`dustin-nkd/docvault-assets`) via the GitHub API.
 - **Only a PAT (Personal Access Token) is needed** — no repo configuration required.
@@ -155,6 +162,7 @@ docvault-qa-document-hub/
 ├── index.html              # Main app shell (HTML + inline CSS variables)
 │                           #   Loads storage.js, then js/*.js in order below
 ├── storage.js              # Storage & sync layer
+│                           #   - wsKey/wsPath (workspace namespacing for keys and repo paths)
 │                           #   - Vault (AES-256-GCM + PBKDF2 encryption)
 │                           #   - GitHubSync (pull/push/bootstrap/merge, recovery blob sync)
 │                           #   - DocStorage (local + remote merge, import/export)
@@ -176,6 +184,7 @@ docvault-qa-document-hub/
 │   ├── actions-settings.js #  - GitHub, security, and application settings
 │   ├── actions-documents.js # - Document CRUD and category workflows
 │   ├── actions-focus.js    #   - Saved views and Focus Queue workflow actions
+│   ├── workspaces.js       #   - Workspace registry, switching, and management UI
 │   ├── search.js           #   - Global search (Ctrl+K)
 │   └── events.js           #   - App entry point/bootstrap, keyboard shortcuts, drag & drop,
 │                           #     CSP-safe event delegation (data-onclick → executeAction)

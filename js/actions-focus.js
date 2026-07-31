@@ -6,12 +6,23 @@
 // not vault data) — EXCEPT in guest mode, where it's skipped entirely rather
 // than persisted, matching DocHistory's "leave zero trace" precedent, since
 // the search text saved here could reveal what a demo visitor was looking at.
+// Mirrors wsKey() in storage.js — see the comment there. Deliberately
+// duplicated instead of called across files, and must stay byte-identical to
+// the copies in js/state.js and js/actions-sharing.js.
+function _wsKey(key) {
+    let id;
+    try { id = localStorage.getItem('docvault_active_workspace'); }
+    catch (e) { return key; }
+    if (!id || id === 'default' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(id)) return key;
+    return 'ws_' + id + '__' + key;
+}
+
 function _getSavedViews() {
-    try { return JSON.parse(localStorage.getItem('docvault_saved_views') || '[]'); } catch (e) { return []; }
+    try { return JSON.parse(localStorage.getItem(_wsKey('docvault_saved_views')) || '[]'); } catch (e) { return []; }
 }
 function _setSavedViews(views) {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
-    localStorage.setItem('docvault_saved_views', JSON.stringify(views));
+    localStorage.setItem(_wsKey('docvault_saved_views'), JSON.stringify(views));
 }
 
 window.showSaveViewModal = function() {

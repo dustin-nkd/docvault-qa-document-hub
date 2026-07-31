@@ -46,7 +46,105 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v50'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v51'/);
+    assert.match(read('sw.js'), /'\.\/js\/workspaces\.js'/, 'the workspace module must be cached in the app shell');
+});
+
+// Extracts a `function <name>(key) { ... }` declaration and returns it as a
+// callable, running against a stubbed localStorage. Tests the code as shipped
+// rather than a copy of it.
+const loadKeyMapper = (relativePath, name, store) => {
+    const source = read(relativePath).replace(/\r\n/g, '\n');
+    const match = source.match(new RegExp('function ' + name + '\\(key\\) \\{[\\s\\S]*?\\n\\}'));
+    assert.ok(match, name + '() must be defined in ' + relativePath);
+    const factory = new Function('localStorage', match[0] + '; return ' + name + ';');
+    return { fn: factory({ getItem: k => (k in store ? store[k] : null) }), source: match[0] };
+};
+
+test('the default workspace keeps using the storage it already has', () => {
+    // The whole migration story rests on this: an existing vault must resolve to
+    // byte-identical localStorage keys and GitHub paths after this feature ships.
+    // If wsKey ever rewrites the default workspace, every user loses their data.
+    const store = {};
+    const { fn: wsKey } = loadKeyMapper('storage.js', 'wsKey', store);
+    for (const key of ['docvault_docs', 'docvault_deleted_ids', 'github_shard_sha_3', 'docvault_activity_log']) {
+        assert.equal(wsKey(key), key, 'unset workspace must not rewrite ' + key);
+        store.docvault_active_workspace = 'default';
+        assert.equal(wsKey(key), key, 'the default workspace must not rewrite ' + key);
+        delete store.docvault_active_workspace;
+    }
+
+    store.docvault_active_workspace = 'trulioo';
+    assert.equal(wsKey('docvault_docs'), 'ws_trulioo__docvault_docs');
+    assert.equal(wsKey('github_shard_sha_3'), 'ws_trulioo__github_shard_sha_3');
+
+    // A malformed id must fall back to the default namespace, never escape it —
+    // the id also becomes part of a GitHub path.
+    for (const bad of ['../../etc', 'a/b', 'Trulioo', '-lead', 'x'.repeat(40), '']) {
+        store.docvault_active_workspace = bad;
+        assert.equal(wsKey('docvault_docs'), 'docvault_docs', 'rejected id "' + bad + '" must fall back to the default key');
+    }
+});
+
+test('every copy of the workspace key mapper stays identical', () => {
+    // The mapper is duplicated across files on purpose (assets ship with
+    // max-age=600, so a fresh file can load beside a stale one and a cross-file
+    // call would silently read another workspace's data). Duplication is only
+    // safe while the copies agree — one drifting copy corrupts data.
+    const store = {};
+    const canonical = loadKeyMapper('storage.js', 'wsKey', store);
+    const copies = ['js/state.js', 'js/actions-focus.js', 'js/actions-sharing.js']
+        .map(relativePath => ({ relativePath, ...loadKeyMapper(relativePath, '_wsKey', store) }));
+
+    const canonicalBody = canonical.source.replace('function wsKey(', 'function _wsKey(');
+    for (const copy of copies) {
+        assert.equal(copy.source, canonicalBody, copy.relativePath + ' has drifted from wsKey() in storage.js');
+        for (const id of ['default', 'trulioo', '../escape', '']) {
+            store.docvault_active_workspace = id;
+            assert.equal(copy.fn('docvault_docs'), canonical.fn('docvault_docs'));
+        }
+    }
+});
+
+test('every workspace-scoped storage key and vault path is namespaced', () => {
+    // Sync bookkeeping is the dangerous one: a shard sha shared between two
+    // workspaces would let a push for one overwrite the other's shard.
+    const storage = read('storage.js');
+    for (const [property, key] of [
+        ['SHA_KEY', 'github_data_sha'], ['SHARD_SHA_PREFIX', 'github_shard_sha_'],
+        ['SHARD_FP_PREFIX', 'github_shard_fp_'], ['META_SHA_KEY', 'github_meta_sha'],
+        ['META_FP_KEY', 'github_meta_fp'], ['STORAGE_KEY', 'docvault_docs'],
+        ['DELETED_IDS_KEY', 'docvault_deleted_ids'], ['PENDING_SYNC_KEY', 'docvault_sync_pending']
+    ]) {
+        assert.match(storage, new RegExp('get ' + property + "\\(\\) \\{ return wsKey\\('" + key + "'\\); \\}"),
+            property + ' must resolve through wsKey()');
+    }
+    for (const property of ['SHARDS_DIR', 'META_PATH']) {
+        assert.match(storage, new RegExp('get ' + property + '\\(\\) \\{ return wsPath\\('), property + ' must resolve through wsPath()');
+    }
+    // Shared by every workspace — namespacing these would strand the vault.
+    assert.match(storage, /SETTINGS_KEY: 'github_settings'/);
+    assert.match(storage, /HASH_KEY: 'docvault_master_hash'/);
+    assert.match(storage, /SALT_KEY: 'docvault_kdf_salt_v2'/);
+    // One password unlocks every workspace, so a change must re-encrypt them all.
+    assert.match(storage, /for \(const workspaceId of workspaceIds\(\)\)/);
+});
+
+test('switching workspace cannot let the previous vault write into the next one', () => {
+    // A queued GitHub push resolves its paths and shas lazily. If it lands after
+    // the active workspace id has moved, it writes the old workspace's documents
+    // over the new one's shards — silent, unrecoverable data loss.
+    const source = read('js/workspaces.js');
+    const body = source.slice(source.indexOf('window.switchWorkspace'));
+    const flushAt = body.indexOf('_flushActiveWorkspaceSync()');
+    const writeAt = body.indexOf("localStorage.setItem('docvault_active_workspace'");
+    assert.ok(flushAt > -1 && writeAt > -1, 'switchWorkspace must flush the sync queue and set the active workspace');
+    assert.ok(flushAt < writeAt, 'the pending sync must be flushed BEFORE the active workspace changes');
+    assert.match(body, /await DocStorage\._syncInFlight/, 'an in-flight push must be awaited, not just the queue');
+    // Remote-format detection is cached per vault and must not carry over.
+    assert.match(body, /GitHubSync\._remoteSharded = false/);
+    // Unsaved editor state must not be discarded silently by a switch.
+    assert.match(body, /_captureEditorFormState\(\) !== state\._editorSnapshot/);
 });
 
 test('sharing helpers stay in the same file as their caller', () => {

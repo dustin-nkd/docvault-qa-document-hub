@@ -1,11 +1,25 @@
 // ========================
 // SHARE REGISTRY (US-304) — track created share links so they can be revoked
 // ========================
-const SHARE_REGISTRY_KEY = 'docvault_shares';
-function _getShares() {
-    try { return JSON.parse(localStorage.getItem(SHARE_REGISTRY_KEY) || '[]'); } catch(e) { return []; }
+// Mirrors wsKey() in storage.js — see the comment there. Deliberately
+// duplicated instead of called across files, and must stay byte-identical to
+// the copies in js/state.js and js/actions-focus.js.
+function _wsKey(key) {
+    let id;
+    try { id = localStorage.getItem('docvault_active_workspace'); }
+    catch (e) { return key; }
+    if (!id || id === 'default' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(id)) return key;
+    return 'ws_' + id + '__' + key;
 }
-function _saveShares(list) { localStorage.setItem(SHARE_REGISTRY_KEY, JSON.stringify(list)); }
+
+// The registry is per-workspace: a share published from one workspace must not
+// appear in — or be revoked from — another. The share BLOBS on GitHub stay in
+// one global shared/ folder, since share ids are random and never collide.
+function _shareRegistryKey() { return _wsKey('docvault_shares'); }
+function _getShares() {
+    try { return JSON.parse(localStorage.getItem(_shareRegistryKey()) || '[]'); } catch(e) { return []; }
+}
+function _saveShares(list) { localStorage.setItem(_shareRegistryKey(), JSON.stringify(list)); }
 function _recordShare(entry) {
     const list = _getShares().filter(s => s.shareId !== entry.shareId);
     list.unshift(entry);
@@ -63,6 +77,30 @@ window.revokeSharesForDocs = async function(docIds) {
     }
     if (revoked.size) _saveShares(_getShares().filter(s => !revoked.has(s.shareId)));
     return { revoked: revoked.size, failed };
+};
+
+// Deleting a workspace must not leave its published links readable. That
+// workspace is not the active one by then, so its registry is read from its own
+// key directly instead of through _getShares(), which always sees the active
+// one. Entries whose blob could not be deleted are kept so nothing is forgotten.
+window.revokeSharesInWorkspace = async function(workspaceId) {
+    const key = workspaceId === 'default' ? 'docvault_shares' : 'ws_' + workspaceId + '__docvault_shares';
+    let entries;
+    try { entries = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { entries = []; }
+    if (!Array.isArray(entries) || !entries.length) return { revoked: 0, failed: 0 };
+
+    let settings = null;
+    try { settings = await GitHubSync.getSettings(); } catch (e) { settings = null; }
+    const remaining = [];
+    let revoked = 0;
+    for (const entry of entries) {
+        if (!settings || !settings.token) { remaining.push(entry); continue; }
+        try { await _deleteShareBlob(entry, settings); revoked++; }
+        catch (e) { remaining.push(entry); console.warn('[revokeSharesInWorkspace] could not revoke', entry.shareId, e); }
+    }
+    if (remaining.length) localStorage.setItem(key, JSON.stringify(remaining));
+    else localStorage.removeItem(key);
+    return { revoked, failed: remaining.length };
 };
 
 // Reports how many links a delete is about to kill, so the confirmation dialog
