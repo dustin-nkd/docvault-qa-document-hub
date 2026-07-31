@@ -1120,6 +1120,62 @@
     .quality-module-row > span:nth-last-child(-n+2) { display:none; }
 }
 
+/* Activity timeline — grouped by day, one row per recorded action.
+   Uses only the existing palette tokens and the app's own glass-header
+   treatment for the sticky day label, so nothing new enters the visual
+   language. */
+.act-day {
+    position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:10px;
+    padding:12px 2px 8px; background:var(--bg-glass); backdrop-filter:blur(12px);
+}
+.act-day h3 {
+    margin:0; font-size:10px; font-weight:700; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--tx-d);
+}
+.act-day-rule { flex:1; height:1px; background:var(--brd); }
+
+.act-list {
+    list-style:none; margin:0 0 6px; padding:0; overflow:hidden;
+    border:1px solid var(--brd); border-radius:12px; background:var(--card);
+}
+/* A full log is up to ActivityLog.MAX rows; skip layout and paint for the ones
+   scrolled out of view rather than pulling in a virtualization dependency. */
+.act-row { content-visibility:auto; contain-intrinsic-size:auto 58px; }
+.act-row + .act-row { border-top:1px solid var(--brd); }
+
+.act-item {
+    display:flex; align-items:center; gap:12px; width:100%; padding:11px 14px;
+    background:transparent; border:0; text-align:left; color:inherit;
+    font-family:'DM Sans', sans-serif;
+}
+button.act-item { cursor:pointer; transition:background-color .15s; }
+button.act-item:hover { background:var(--card-h); }
+button.act-item:focus-visible { outline:2px solid var(--acc); outline-offset:-2px; }
+.act-item.is-gone .act-title { color:var(--tx-m); }
+
+.act-icon {
+    width:28px; height:28px; border-radius:8px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+}
+.act-icon i { font-size:11px; }
+
+.act-body { flex:1; min-width:0; }
+.act-title, .act-sub { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.act-title { font-size:13.5px; font-weight:500; color:var(--tx); }
+.act-sub { margin-top:2px; font-size:11.5px; }
+.act-action { font-weight:600; }
+.act-note { color:var(--tx-d); }
+
+.act-time {
+    flex-shrink:0; font-size:11px; color:var(--tx-d);
+    font-variant-numeric:tabular-nums; cursor:default;
+}
+
+@media (max-width: 767px) {
+    .act-item { padding:12px; gap:10px; }
+    .act-time { font-size:10.5px; }
+}
+
 /* Wave 2A: consistent keyboard focus and motion preferences */
 :where(button, a[href], input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
     outline: 2px solid var(--acc);

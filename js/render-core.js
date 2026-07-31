@@ -1061,15 +1061,18 @@ function renderTraceability() {
 // ========================
 // ACTIVITY LOG (Sprint 24)
 // ========================
+// `chip` is the short form used by the Activity filter bar, where the full
+// sentence-length label ("Permanently deleted") would not fit.
 const ACTIVITY_META = {
-    created:  { icon: 'fa-solid fa-file-circle-plus', color: '#10b981', label: 'Created' },
-    updated:  { icon: 'fa-solid fa-pen',               color: '#60a5fa', label: 'Updated' },
-    trashed:  { icon: 'fa-solid fa-trash',              color: '#f59e0b', label: 'Moved to trash' },
-    restored: { icon: 'fa-solid fa-rotate-left',        color: '#10b981', label: 'Restored' },
-    deleted:  { icon: 'fa-solid fa-trash-can',          color: '#ef4444', label: 'Permanently deleted' },
-    tagged:   { icon: 'fa-solid fa-tag',                color: '#818cf8', label: 'Tagged' },
-    moved:    { icon: 'fa-regular fa-folder',           color: '#818cf8', label: 'Moved' }
+    created:  { icon: 'fa-solid fa-file-circle-plus', color: '#10b981', label: 'Created',             chip: 'Created' },
+    updated:  { icon: 'fa-solid fa-pen',               color: '#60a5fa', label: 'Updated',             chip: 'Updated' },
+    trashed:  { icon: 'fa-solid fa-trash',              color: '#f59e0b', label: 'Moved to trash',      chip: 'Trashed' },
+    restored: { icon: 'fa-solid fa-rotate-left',        color: '#10b981', label: 'Restored',            chip: 'Restored' },
+    deleted:  { icon: 'fa-solid fa-trash-can',          color: '#ef4444', label: 'Permanently deleted', chip: 'Deleted' },
+    tagged:   { icon: 'fa-solid fa-tag',                color: '#818cf8', label: 'Tagged',              chip: 'Tagged' },
+    moved:    { icon: 'fa-regular fa-folder',           color: '#818cf8', label: 'Moved',               chip: 'Moved' }
 };
+const ACTIVITY_FILTER_ORDER = ['created', 'updated', 'tagged', 'moved', 'trashed', 'restored', 'deleted'];
 
 function _renderUiState(icon, title, description = '', actionHtml = '', tone = 'neutral') {
     return `<section class="ui-state ui-state-${tone}" role="status">
@@ -1080,43 +1083,112 @@ function _renderUiState(icon, title, description = '', actionHtml = '', tone = '
     </section>`;
 }
 
+// The day header carries the date, so each row only needs a clock time. That
+// replaces the old right-hand column, which mixed relative and absolute formats
+// ("2 mins ago" above "07/22/2026") and could not be scanned as one column.
+function _activityDayLabel(ts) {
+    const startOfDay = value => { const date = new Date(value); date.setHours(0, 0, 0, 0); return date; };
+    const days = Math.round((startOfDay(Date.now()) - startOfDay(ts)) / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    const date = new Date(ts);
+    if (days < 7) return date.toLocaleDateString('en-US', { weekday: 'long' });
+    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function _renderActivityRow(entry) {
+    const meta = ACTIVITY_META[entry.type] || { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: entry.type };
+    const date = new Date(entry.ts);
+    // The relative time is the quick read; the exact stamp stays available on
+    // hover instead of being lost entirely.
+    const exact = date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+    const body = `
+        <span class="act-icon" style="background:${meta.color}1a;" aria-hidden="true"><i class="${meta.icon}" style="color:${meta.color};"></i></span>
+        <span class="act-body">
+            <span class="act-title">${escHtml(entry.title)}</span>
+            <span class="act-sub"><span class="act-action" style="color:${meta.color};">${meta.label}</span>${entry.note ? ` <span class="act-note">· ${escHtml(entry.note)}</span>` : ''}</span>
+        </span>
+        <time class="act-time" datetime="${date.toISOString()}" title="${escHtml(exact)}">${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</time>`;
+    // The whole row is the target when the document still exists, instead of
+    // just the few characters of its title.
+    return `<li class="act-row">${documents.some(d => d.id === entry.docId)
+        ? `<button class="act-item" data-onclick="viewDoc('${entry.docId}')">${body}</button>`
+        : `<span class="act-item is-gone" title="This document no longer exists">${body}</span>`}</li>`;
+}
+
 function renderActivityLog() {
-    const entries = (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll() : [];
+    const all = (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll() : [];
+    const counts = all.reduce((totals, entry) => { totals[entry.type] = (totals[entry.type] || 0) + 1; return totals; }, {});
+    const filter = state.activityFilter || 'all';
+    const entries = filter === 'all' ? all : all.filter(entry => entry.type === filter);
+
+    const filters = ['all', ...ACTIVITY_FILTER_ORDER.filter(type => counts[type])];
+    const filterBar = all.length === 0 ? '' : `<div class="trace-filter-bar" role="group" aria-label="Filter activity by action">
+        ${filters.map(type => {
+            const isActive = filter === type;
+            const label = type === 'all' ? 'All' : (ACTIVITY_META[type] ? ACTIVITY_META[type].chip : type);
+            return `<button class="trace-filter${isActive ? ' is-active' : ''}" aria-pressed="${isActive}" data-onclick="setActivityFilter('${type}')">${label}<span>${type === 'all' ? all.length : counts[type]}</span></button>`;
+        }).join('')}
+    </div>`;
+
+    // Grouped by calendar day so a long log reads as a timeline rather than one
+    // undifferentiated wall of rows.
+    let currentDay = '';
+    let timeline = '';
+    entries.forEach(entry => {
+        const day = _activityDayLabel(entry.ts);
+        if (day !== currentDay) {
+            if (currentDay) timeline += '</ul>';
+            timeline += `<div class="act-day"><h3>${day}</h3><span class="act-day-rule"></span></div><ul class="act-list">`;
+            currentDay = day;
+        }
+        timeline += _renderActivityRow(entry);
+    });
+    if (currentDay) timeline += '</ul>';
+
+    const emptyState = all.length === 0
+        ? _renderUiState('fa-regular fa-clock', 'No activity yet', "Create, edit, or organize a document and it'll show up here.")
+        : _renderUiState('fa-solid fa-filter', 'No activity of this kind',
+            'Nothing in the last ' + ActivityLog.MAX + ' actions matches this filter.',
+            `<button class="btn-s" data-onclick="setActivityFilter('all')">Show all activity</button>`);
+
     return `<div class="fade-up max-w-3xl mx-auto">
-        <div class="flex items-center justify-between mb-5">
-            <div>
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div class="min-w-0">
                 <h2 class="font-heading font-semibold text-lg">Activity</h2>
                 <p class="text-xs" style="color:var(--tx-d);">A personal timeline of changes across this vault — last ${ActivityLog.MAX} actions, synced across your devices.</p>
             </div>
-            ${entries.length > 0 ? `<button class="btn-s text-xs py-1.5 px-3" data-onclick="clearActivityLog()"><i class="fa-solid fa-broom mr-1.5"></i>Clear</button>` : ''}
+            ${all.length > 0 ? `<button class="btn-s text-xs py-1.5 px-3 shrink-0" data-onclick="confirmClearActivityLog()"><i class="fa-solid fa-broom mr-1.5"></i>Clear</button>` : ''}
         </div>
-        ${entries.length === 0 ? _renderUiState('fa-regular fa-clock', 'No activity yet', "Create, edit, or organize a document and it'll show up here.") : `
-            <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
-                ${entries.map((e, i) => {
-                    const meta = ACTIVITY_META[e.type] || { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: e.type };
-                    const docExists = documents.some(d => d.id === e.docId);
-                    return `
-                    <div class="flex items-center gap-3 px-4 py-3" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};${i > 0 ? 'border-top:1px solid var(--brd);' : ''}">
-                        <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:${meta.color}1a;">
-                            <i class="${meta.icon}" style="font-size:11px;color:${meta.color};"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm truncate" style="color:var(--tx);">
-                                <span style="color:${meta.color};font-weight:600;">${meta.label}</span>
-                                ${docExists ? `<span class="cursor-pointer hover:underline" data-onclick="viewDoc('${e.docId}')"> ${escHtml(e.title)}</span>` : ` ${escHtml(e.title)}`}
-                            </p>
-                            ${e.note ? `<p class="text-xs" style="color:var(--tx-d);">${escHtml(e.note)}</p>` : ''}
-                        </div>
-                        <span class="text-[11px] shrink-0" style="color:var(--tx-d);">${fmtDate(e.ts)}</span>
-                    </div>`;
-                }).join('')}
-            </div>
-        `}
+        ${filterBar}
+        ${entries.length === 0 ? emptyState : timeline}
     </div>`;
 }
 
+window.setActivityFilter = function(type) {
+    state.activityFilter = type;
+    renderContent();
+};
+
+// Clearing wipes the whole timeline with nothing to undo, so it asks first —
+// the same guard every other destructive action in the app uses.
+window.confirmClearActivityLog = function() {
+    const total = (typeof ActivityLog !== 'undefined') ? ActivityLog.getAll().length : 0;
+    showModal(`<div class="text-center">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-broom text-rose-400"></i></div>
+            <h3 class="font-heading font-semibold text-lg mb-2">Clear activity log</h3>
+            <p class="text-sm mb-6" style="color:var(--tx-m);">Delete all ${total} recorded action${total === 1 ? '' : 's'}? Your documents are not affected, but the timeline cannot be recovered.</p>
+            <div class="flex gap-3 justify-center">
+                <button class="btn-s" data-onclick="closeModal()">Cancel</button>
+                <button class="btn-d" data-onclick="clearActivityLog()">Clear activity</button>
+            </div>
+        </div>`);
+};
+
 window.clearActivityLog = function() {
+    closeModal();
     ActivityLog.clear();
+    state.activityFilter = 'all';
     renderContent();
     toast('Activity log cleared.', 'info');
 };

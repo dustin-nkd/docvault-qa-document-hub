@@ -176,6 +176,45 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('the activity timeline is a real list with full-row targets', () => {
+    // The old rows were <div>s whose only hit target was the few characters of
+    // the document title, wired up with a click handler on a <span>.
+    const source = read('js/render-core.js');
+    const row = source.slice(source.indexOf('function _renderActivityRow'));
+    const end = row.indexOf('\nfunction renderActivityLog');
+    const body = row.slice(0, end);
+    assert.match(body, /<li class="act-row">/, 'each entry must be a list item');
+    assert.match(body, /<button class="act-item" data-onclick="viewDoc\(/, 'the whole row must be the target');
+    assert.doesNotMatch(body, /<span[^>]*data-onclick="viewDoc\(/, 'navigation must not hang off a span');
+    assert.match(source, /timeline \+= `<div class="act-day">/, 'entries must be grouped by day');
+    // Relative-only timestamps hid the exact time; keep the machine-readable one.
+    assert.match(body, /<time class="act-time" datetime="\$\{date\.toISOString\(\)\}" title=/);
+    assert.match(read('style.css'), /\.act-time\s*\{[^}]*font-variant-numeric:tabular-nums/,
+        'the time column must use tabular figures so it aligns');
+    // A full log is ActivityLog.MAX rows; keep off-screen rows out of layout.
+    assert.match(read('style.css'), /\.act-row\s*\{[^}]*content-visibility:auto/);
+});
+
+test('clearing the activity log asks before wiping it', () => {
+    // Clearing is unrecoverable and used to happen on a single click.
+    const source = read('js/render-core.js');
+    assert.match(source, /data-onclick="confirmClearActivityLog\(\)"/, 'the Clear button must go through the confirmation');
+    const confirm = source.slice(source.indexOf('window.confirmClearActivityLog'));
+    assert.match(confirm.slice(0, confirm.indexOf('\nwindow.clearActivityLog')), /data-onclick="clearActivityLog\(\)"/);
+});
+
+test('relative timestamps use singular forms', () => {
+    // fmtDate printed "1 days ago" for every one-day-old document.
+    const utils = read('js/utils.js');
+    for (const [plural, singular] of [['minsAgo', 'minAgo'], ['hoursAgo', 'hourAgo'], ['daysAgo', 'dayAgo']]) {
+        assert.match(utils, new RegExp("=== 1 \\? '" + singular + "' : '" + plural + "'"), plural + ' needs a singular branch');
+    }
+    const strings = read('js/constants.js');
+    for (const key of ['minAgo', 'hourAgo', 'dayAgo']) {
+        assert.match(strings, new RegExp('\\b' + key + ':\\s*"1 '), key + ' must be defined');
+    }
+});
+
 test('toasts are anchored below the header instead of on top of it', () => {
     // At a fixed top-4 the first toast sat over the header's own controls and
     // swallowed their clicks. The header height varies (71px desktop, up to 89px

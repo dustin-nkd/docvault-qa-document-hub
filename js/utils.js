@@ -151,9 +151,10 @@ function fmtDate(ts) {
     const now = new Date();
     const diff = now - d;
     if (diff < 60000) return t('justNow');
-    if (diff < 3600000) return t('minsAgo', {m: Math.floor(diff/60000)});
-    if (diff < 86400000) return t('hoursAgo', {h: Math.floor(diff/3600000)});
-    if (diff < 604800000) return t('daysAgo', {d: Math.floor(diff/86400000)});
+    // Singular forms matter here: the old code printed "1 days ago".
+    if (diff < 3600000) { const m = Math.floor(diff/60000); return t(m === 1 ? 'minAgo' : 'minsAgo', {m}); }
+    if (diff < 86400000) { const h = Math.floor(diff/3600000); return t(h === 1 ? 'hourAgo' : 'hoursAgo', {h}); }
+    if (diff < 604800000) { const d2 = Math.floor(diff/86400000); return t(d2 === 1 ? 'dayAgo' : 'daysAgo', {d: d2}); }
     return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
