@@ -217,8 +217,21 @@ function renderGuestBanner() {
     document.querySelector('[data-onclick="lockVault()"]')?.style.setProperty('display', 'none');
     document.querySelector('[data-onclick="showGitHubSettingsModal()"]')?.style.setProperty('display', 'none');
     document.getElementById('sidebar-footer')?.style.setProperty('display', 'none');
-    // The demo has exactly one in-memory vault; a switcher would imply otherwise.
-    document.getElementById('workspace-switcher')?.style.setProperty('display', 'none');
+
+    // The demo runs on a single in-memory vault, so switching workspaces cannot
+    // work here. The control stays visible rather than hidden — it is part of
+    // what the product does, and a visible limit reads better than a missing
+    // feature — but it is disabled and cannot reach the real workspace registry.
+    const workspaceButton = document.getElementById('workspace-switcher')?.querySelector('button');
+    if (workspaceButton) {
+        workspaceButton.disabled = true;
+        workspaceButton.removeAttribute('data-onclick');
+        workspaceButton.classList.remove('ui-hover-card-h');
+        workspaceButton.title = 'Demo mode — single vault';
+        workspaceButton.setAttribute('aria-label', 'Workspace switching is disabled in demo mode');
+        workspaceButton.style.cursor = 'not-allowed';
+        workspaceButton.style.opacity = '0.55';
+    }
 }
 
 // ========================

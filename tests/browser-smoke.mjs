@@ -94,6 +94,28 @@ async function run() {
         });
         assert.equal(submittedPassword, 'csp-regression', 'Unlock form must submit through CSP-safe delegation');
 
+        // The demo shows the workspace switcher so the feature is visible, but it
+        // must be inert: guest mode runs one in-memory vault and may never touch
+        // the real workspace registry in localStorage.
+        const workspaceSwitcher = await page.evaluate(() => {
+            const wrap = document.getElementById('workspace-switcher');
+            const button = wrap?.querySelector('button');
+            return {
+                visible: wrap ? getComputedStyle(wrap).display !== 'none' : false,
+                disabled: button ? button.disabled : null,
+                tooltip: button ? button.title : null,
+                hasAction: button ? button.hasAttribute('data-onclick') : null,
+                label: document.getElementById('workspace-switcher-name')?.textContent,
+                touchedRealStorage: Object.keys(localStorage).some(key => key.startsWith('docvault_workspace') || key.startsWith('ws_'))
+            };
+        });
+        assert.equal(workspaceSwitcher.visible, true, 'Demo must still show the workspace switcher');
+        assert.equal(workspaceSwitcher.disabled, true, 'Demo workspace switcher must be disabled');
+        assert.equal(workspaceSwitcher.tooltip, 'Demo mode — single vault');
+        assert.equal(workspaceSwitcher.hasAction, false, 'Demo workspace switcher must not carry a delegated action');
+        assert.equal(workspaceSwitcher.label, 'Demo vault');
+        assert.equal(workspaceSwitcher.touchedRealStorage, false, 'Demo mode must not write workspace state to real localStorage');
+
         assert.equal(await page.locator('.trend-card svg').count(), 5, 'Dashboard must render all five trend charts');
         assert.equal(requestedAssets.some(pathname => pathname.includes('/vendor/toastui/')), false, 'Dashboard must not load the editor runtime');
 
