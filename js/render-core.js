@@ -1472,18 +1472,19 @@ function renderBugKanban(docs, isMobileSearch) {
         const colDocs = docs.filter(d => _normBugStatus(d.bugStatus) === col.id);
 
         return `
-        <div class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 260px; min-width: 260px;"
+        <section class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 260px; min-width: 260px;"
+             aria-labelledby="bugkb-col-${col.id}"
              data-ondragover="handleDragOver"
              data-ondrop="handleDrop('${col.id}')">
 
             <div class="p-3.5 flex items-center justify-between border-b sticky top-0" style="border-color:var(--brd); background:var(--bg2); border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; z-index: 10;">
-                <h3 class="font-heading font-semibold text-sm flex items-center gap-2" style="color:${col.color};">
-                    <i class="fa-solid ${col.icon}" style="font-size: 10px;"></i> ${col.label}
+                <h3 id="bugkb-col-${col.id}" class="font-heading font-semibold text-sm flex items-center gap-2" style="color:${col.color};">
+                    <i class="fa-solid ${col.icon}" style="font-size: 10px;" aria-hidden="true"></i> ${col.label}
                 </h3>
-                <span class="text-xs font-medium py-0.5 px-2 rounded-full" style="background:var(--card); color:var(--tx-m);">${colDocs.length}</span>
+                <span class="text-xs font-medium py-0.5 px-2 rounded-full" style="background:var(--card); color:var(--tx-m);" aria-label="${colDocs.length} ${colDocs.length === 1 ? 'bug' : 'bugs'}">${colDocs.length}</span>
             </div>
 
-            <div class="flex-1 overflow-y-auto flex flex-col custom-scrollbar" style="padding: 10px; gap: 10px;">
+            <ul class="flex-1 overflow-y-auto flex flex-col custom-scrollbar" style="padding: 10px; gap: 10px; list-style:none; margin:0;">
                 ${colDocs.map(d => {
                     const sev = d.bugData?.severity || 'Minor';
                     const sevColor = SEV_COLOR[sev] || '#f59e0b';
@@ -1498,7 +1499,7 @@ function renderBugKanban(docs, isMobileSearch) {
                     const triageLabel = { pending: t('triageStatusPending'), soon: t('triageStatusSoon'), breached: t('triageStatusBreached'),
                         done: t('triageStatusDone'), missed: t('triageStatusMissed'), duplicate: t('triageStatusDuplicate') }[triage.stateName];
                     return `
-                    <div class="doc-card flex flex-col ${!bm ? 'cursor-grab active:cursor-grabbing' : ''}${bm && sel.has(d.id) ? ' batch-selected' : ''}"
+                    <li class="doc-card flex flex-col ${!bm ? 'cursor-grab active:cursor-grabbing' : ''}${bm && sel.has(d.id) ? ' batch-selected' : ''}"
                          draggable="${!bm}"
                          data-ondragstart="handleDragStart('${d.id}')"
                          data-ondragend="handleDragEnd"
@@ -1542,16 +1543,16 @@ function renderBugKanban(docs, isMobileSearch) {
                             ${d.tags.length > 2 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 2}</span>` : ''}
                             <span class="text-[10px] ml-auto" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
                         </div>
-                    </div>`;
+                    </li>`;
                 }).join('')}
 
                 ${colDocs.length === 0 ? `
-                    <div class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);">
+                    <li class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);list-style:none;">
                         <p class="text-[11px] font-medium">${t('dragBugHere')}</p>
-                    </div>
+                    </li>
                 ` : ''}
-            </div>
-        </div>
+            </ul>
+        </section>
         `;
     }).join('');
 
@@ -1583,7 +1584,7 @@ function renderBugKanban(docs, isMobileSearch) {
         </div>
 
         <!-- Bug Kanban Container -->
-        <div class="overflow-x-auto pb-4 custom-scrollbar">
+        <div class="overflow-x-auto pb-4 custom-scrollbar" tabindex="0" role="group" aria-label="Board columns, scrolls horizontally">
             <div class="flex items-start mx-auto w-max" style="min-height: 400px; gap: 1.25rem;">
                 ${kanbanHtml}
             </div>
@@ -1619,20 +1620,21 @@ function renderKanbanBoard(docs, isMobileSearch) {
         const colDocs = docs.filter(d => (d.kanbanStatus || 'todo') === col.id);
 
         return `
-        <div class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 300px; min-width: 300px;"
+        <section class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 300px; min-width: 300px;"
+             aria-labelledby="kb-col-${col.id}"
              data-ondragover="handleDragOver"
              data-ondrop="handleDrop('${col.id}')">
 
             <div class="p-4 flex items-center justify-between border-b sticky top-0" style="border-color:var(--brd); background:var(--bg2); border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; z-index: 10;">
-                <h3 class="font-heading font-semibold text-sm flex items-center gap-2" style="color:${col.color};">
-                    <i class="fa-solid fa-circle" style="font-size: 8px;"></i> ${col.label}
+                <h3 id="kb-col-${col.id}" class="font-heading font-semibold text-sm flex items-center gap-2" style="color:${col.color};">
+                    <i class="fa-solid fa-circle" style="font-size: 8px;" aria-hidden="true"></i> ${col.label}
                 </h3>
-                <span class="text-xs font-medium py-0.5 px-2 rounded-full" style="background:var(--card); color:var(--tx-m);">${colDocs.length}</span>
+                <span class="text-xs font-medium py-0.5 px-2 rounded-full" style="background:var(--card); color:var(--tx-m);" aria-label="${colDocs.length} ${colDocs.length === 1 ? 'task' : 'tasks'}">${colDocs.length}</span>
             </div>
 
-            <div class="flex-1 overflow-y-auto flex flex-col custom-scrollbar" style="padding: 12px; gap: 12px;">
+            <ul class="flex-1 overflow-y-auto flex flex-col custom-scrollbar" style="padding: 12px; gap: 12px; list-style:none; margin:0;">
                 ${colDocs.map(d => `
-                    <div class="doc-card flex flex-col cursor-grab active:cursor-grabbing"
+                    <li class="doc-card flex flex-col cursor-grab active:cursor-grabbing"
                          draggable="true"
                          data-ondragstart="handleDragStart('${d.id}')"
                          data-ondragend="handleDragEnd"
@@ -1658,16 +1660,16 @@ function renderKanbanBoard(docs, isMobileSearch) {
                             ${d.tags.length > 2 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 2}</span>` : ''}
                             <span class="text-[10px] ml-auto" style="color:var(--tx-d);">${fmtDate(d.updatedAt)}</span>
                         </div>
-                    </div>
+                    </li>
                 `).join('')}
 
                 ${colDocs.length === 0 ? `
-                    <div class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);">
+                    <li class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);list-style:none;">
                         <p class="text-[11px] font-medium">${t('dragTaskHere')}</p>
-                    </div>
+                    </li>
                 ` : ''}
-            </div>
-        </div>
+            </ul>
+        </section>
         `;
     }).join('');
 
@@ -1688,7 +1690,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
         </div>
 
         <!-- Kanban Board Container -->
-        <div class="overflow-x-auto pb-4 custom-scrollbar">
+        <div class="overflow-x-auto pb-4 custom-scrollbar" tabindex="0" role="group" aria-label="Board columns, scrolls horizontally">
             <div class="flex items-start mx-auto w-max" style="min-height: 400px; gap: 1.25rem;">
                 ${kanbanHtml}
             </div>

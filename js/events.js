@@ -456,24 +456,38 @@ window.handleDragOver = function(event) {
     event.dataTransfer.dropEffect = 'move';
 };
 
+// The single path a card takes to another column, whether it was dragged there
+// or moved from the card menu. Dragging used to be the only way to change a
+// task or bug status, which left the board's core action unreachable without a
+// mouse; both routes now run exactly the same code so they cannot drift.
+window.moveDocStatus = async function(id, newStatus) {
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx === -1 || documents[idx].status === 'deleted') return false;
+    const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
+    if ((documents[idx][field] || (field === 'kanbanStatus' ? 'todo' : 'new')) === newStatus) return false;
+    if (field === 'bugStatus') recordBugStatusChange(documents[idx], newStatus);
+    else {
+        documents[idx][field] = newStatus;
+        documents[idx].updatedAt = Date.now();
+    }
+    await persist();
+    renderContent();
+    return true;
+};
+
+// Moving from the card menu is a deliberate, confirmable action, so unlike a
+// drag it says what happened.
+window.moveCardToColumn = async function(id, newStatus, columnLabel) {
+    const menu = document.getElementById('doc-menu');
+    if (menu) menu.remove();
+    if (await moveDocStatus(id, newStatus)) toast(`Moved to ${columnLabel}.`, 'success');
+};
+
 window.handleDrop = async function(event, newStatus) {
     event.preventDefault();
     const id = event.dataTransfer.getData('text/plain');
     if (!id) return;
-
-    const idx = documents.findIndex(d => d.id === id);
-    if (idx !== -1 && documents[idx].status !== 'deleted') {
-        const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
-        if (documents[idx][field] !== newStatus) {
-            if (field === 'bugStatus') recordBugStatusChange(documents[idx], newStatus);
-            else {
-                documents[idx][field] = newStatus;
-                documents[idx].updatedAt = Date.now();
-            }
-            await persist();
-            renderContent();
-        }
-    }
+    await moveDocStatus(id, newStatus);
 };
 
 document.addEventListener('dragstart', (e) => {
@@ -589,20 +603,7 @@ document.addEventListener('touchend', async () => {
     if (_touchDragging && _touchCurrentCol) {
         const action = _touchCurrentCol.getAttribute('data-ondrop');
         if (action && action.startsWith('handleDrop')) {
-            const newStatus = action.match(/'([^']+)'/)[1];
-            const idx = documents.findIndex(d => d.id === _touchDragId);
-            if (idx !== -1) {
-                const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
-                if (documents[idx][field] !== newStatus) {
-                    if (field === 'bugStatus') recordBugStatusChange(documents[idx], newStatus);
-                    else {
-                        documents[idx][field] = newStatus;
-                        documents[idx].updatedAt = Date.now();
-                    }
-                    await persist();
-                    renderContent();
-                }
-            }
+            await moveDocStatus(_touchDragId, action.match(/'([^']+)'/)[1]);
         }
     }
 
