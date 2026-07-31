@@ -124,7 +124,7 @@ function toast(msg, type = 'success') {
     else start();
 })();
 
-function setButtonBusy(button, busy, busyLabel = 'Working...') {
+function setButtonBusy(button, busy, busyLabel = 'Working…') {
     if (!button) return;
     if (busy) {
         if (!button.dataset.idleHtml) button.dataset.idleHtml = button.innerHTML;
@@ -159,6 +159,14 @@ function enhanceInteractionSemantics(root = document, syncLayout = true) {
             if (!element.hasAttribute('role')) element.setAttribute('role', 'button');
             if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '0');
         }
+    });
+
+    // Icon fonts render a private-use glyph that a screen reader either skips or
+    // reads as garbage, so every icon here is decoration. Hiding them centrally
+    // covers markup injected after render (card menus, added step rows) too, and
+    // cannot drift the way 250-odd hand-written attributes would.
+    scope.querySelectorAll('i:not([aria-hidden])').forEach(icon => {
+        if (!icon.textContent.trim() && !icon.hasAttribute('aria-label')) icon.setAttribute('aria-hidden', 'true');
     });
 
     scope.querySelectorAll('button:not([type])').forEach(button => { button.type = 'button'; });

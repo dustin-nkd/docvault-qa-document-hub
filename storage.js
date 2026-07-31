@@ -1534,7 +1534,7 @@ const LocalAuth = {
 
     async unlock(password) {
         const btn = document.getElementById('lock-submit-btn');
-        if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking…';
         try {
             const stored = localStorage.getItem(this.HASH_KEY);
 

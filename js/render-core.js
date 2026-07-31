@@ -226,7 +226,7 @@ window.debouncedRenderContent = debounce(() => renderContent(), 180);
 
 function _setMarkdownRuntimeLoading(container) {
     container.setAttribute('aria-busy', 'true');
-    container.innerHTML = '<div class="ui-state ui-state-compact" role="status"><span class="ui-state-icon"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span><h3>Loading markdown</h3><p>Preparing the content workspace...</p></div>';
+    container.innerHTML = '<div class="ui-state ui-state-compact" role="status"><span class="ui-state-icon"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span><h3>Loading markdown</h3><p>Preparing the content workspace…</p></div>';
 }
 
 function _showMarkdownRuntimeError(container, error) {
@@ -1312,7 +1312,7 @@ function renderDocList() {
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-3">
                                     <div class="cred-avatar ${credAvatarColor(d.title)}">
-                                        <img class="cred-favicon" src="${favUrl}" alt="">
+                                        <img class="cred-favicon" src="${favUrl}" alt="" width="20" height="20" loading="lazy">
                                         <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
                                     </div>
                                     <div class="min-w-0">
@@ -1523,7 +1523,7 @@ function renderBugKanban(docs, isMobileSearch) {
                                 <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
-                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)">
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
                             </div>

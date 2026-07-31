@@ -139,7 +139,7 @@ window.promptDuplicateBug = function(id) {
             <h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);">Mark as Duplicate</h3>
             <p class="text-sm mb-4" style="color:var(--tx-m);">Select the original bug this is a duplicate of.</p>
             ${otherBugs.length === 0 ? `<p class="text-sm text-center py-6" style="color:var(--tx-d);">No other bugs to link to.</p>` : `
-            <input type="text" id="dup-bug-search" class="form-input w-full mb-3 text-sm" placeholder="Search bugs by title..." data-oninput="_filterDuplicateBugList(this.value)" autocomplete="off">
+            <input type="text" id="dup-bug-search" class="form-input w-full mb-3 text-sm" placeholder="Search bugs by title…" data-oninput="_filterDuplicateBugList(this.value)" autocomplete="off">
             <div id="dup-bug-list" style="max-height:280px;overflow-y:auto;">
                 ${otherBugs.map(b => `
                     <div class="dup-bug-row flex items-center gap-3 p-2.5 rounded-lg cursor-pointer ui-hover-card-h" data-filter-key="${escHtml(b.title.toLowerCase())}" style="border:1px solid var(--brd);margin-bottom:6px;transition:background .15s;" data-onclick="_selectDuplicateOfBug('${b.id}')">

@@ -152,6 +152,36 @@ async function run() {
         assert.equal(backgroundAfter, backgroundBefore, 'Release linked row must restore its base background after hover');
         assert.ok(await page.locator('.ui-hover-card').count() >= 6, 'Release linked evidence must use the shared CSS hover state');
 
+        // Icon fonts render a private-use glyph a screen reader reads as noise, so
+        // every icon must be marked decorative — and nothing may be left relying on
+        // one for its name. Measured against the live DOM because most icons are
+        // hidden by the render-time sweep rather than in the markup.
+        for (const [label, go] of [
+            ['dashboard', () => navigate('dashboard')],
+            ['documents', () => navigate('documents', 'all')],
+            ['bug board', () => navigate('documents', 'bug')],
+            ['focus', () => navigate('focus')],
+            ['viewer', () => viewDoc('gd_env_staging')]
+        ]) {
+            await page.evaluate(go);
+            await page.waitForTimeout(label === 'viewer' ? 1500 : 700);
+            const report = await page.evaluate(() => {
+                const icons = [...document.querySelectorAll('i')];
+                return {
+                    exposed: icons.filter(icon => icon.getAttribute('aria-hidden') !== 'true')
+                        .map(icon => icon.className.slice(0, 50)),
+                    nameless: [...document.querySelectorAll('button, [role="button"], a[href]')]
+                        .filter(el => !el.textContent.trim() && !el.getAttribute('aria-label')
+                            && !el.getAttribute('title') && !el.getAttribute('aria-labelledby'))
+                        .map(el => (el.getAttribute('data-onclick') || el.className).slice(0, 50))
+                };
+            });
+            assert.deepEqual(report.exposed, [], label + ' exposes decorative icons to assistive tech');
+            assert.deepEqual(report.nameless, [], label + ' has a control with no accessible name');
+        }
+        await page.evaluate(() => navigate('dashboard'));
+        await page.waitForTimeout(500);
+
         // A ?view= link to a document that is not here used to do nothing at all,
         // leaving the user on the dashboard with no explanation.
         await page.goto(baseUrl + '/?view=gd_does_not_exist&guest=1', { waitUntil: 'networkidle' });

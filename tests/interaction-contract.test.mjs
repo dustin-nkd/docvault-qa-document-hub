@@ -176,6 +176,71 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('the shell declares its own dark scheme and drops the tap delay', () => {
+    const html = read('index.html');
+    // Without this the browser draws its own scrollbars, date pickers and
+    // autofill highlight for a light page.
+    assert.match(html, /html \{ color-scheme: dark; \}/);
+    assert.match(html, /touch-action: manipulation;/);
+    // Zoom must stay available.
+    assert.doesNotMatch(html, /user-scalable\s*=\s*no|maximum-scale\s*=\s*1/);
+});
+
+test('decorative icons are hidden from assistive tech in one place', () => {
+    // An icon font renders a private-use glyph that a screen reader either skips
+    // or reads as noise. Doing this centrally also covers markup injected after
+    // render, and cannot drift the way 250-odd hand-written attributes would.
+    const ui = read('js/ui.js');
+    const sweep = ui.slice(ui.indexOf('function enhanceInteractionSemantics'));
+    assert.match(sweep.slice(0, sweep.indexOf('\n}')), /querySelectorAll\('i:not\(\[aria-hidden\]\)'\)/);
+    assert.match(sweep, /setAttribute\('aria-hidden', 'true'\)/);
+    // The lock screen, search modal and mobile FAB sit outside every subtree
+    // that sweep is ever handed, so they carry the attribute in the markup.
+    const html = read('index.html');
+    for (const icon of ['fa-magnifying-glass text-[var(--tx-d)] mr-3', 'fa-lock text-white text-2xl', 'fa-lightbulb mr-1.5']) {
+        const line = html.split('\n').find(value => value.includes(icon));
+        assert.match(line, /aria-hidden="true"/, icon + ' must be marked decorative in the markup');
+    }
+    // The real coverage check runs against the live DOM in tests/browser-smoke.mjs.
+});
+
+test('nothing in the UI is labelled only by an icon glyph', () => {
+    // Hiding the glyphs exposed controls whose only content was the icon: the
+    // bug board card menu, and the viewer's secret-reveal and copy buttons.
+    for (const [relativePath, needle] of [
+        ['js/render-core.js', "showDocMenu('${d.id}', this)"],
+        ['js/render-viewer-categories.js', "togglePasswordVisibility('view-pw'"],
+        ['js/render-viewer-categories.js', '_copyProp(this)']
+    ]) {
+        const source = read(relativePath);
+        for (const match of source.split('\n').filter(line => line.includes(needle) && line.includes('<button'))) {
+            assert.ok(/aria-label=|title=/.test(match), relativePath + ' has an unnamed icon button: ' + match.trim().slice(0, 70));
+        }
+    }
+});
+
+test('overlays keep their scrolling to themselves', () => {
+    const css = read('style.css');
+    const block = css.slice(css.indexOf('#modal [role="dialog"]'));
+    assert.match(block.slice(0, block.indexOf('}')), /overscroll-behavior: contain/);
+    for (const selector of ['#search-results', '.custom-select-list', '#doc-menu']) {
+        assert.ok(block.slice(0, block.indexOf('}')).includes(selector) || css.includes(selector + ','),
+            selector + ' must contain its overscroll');
+    }
+});
+
+test('UI copy uses a real ellipsis', () => {
+    // Document templates are deliberately excluded: their text becomes content
+    // the user owns, not interface copy.
+    const constants = read('js/constants.js');
+    const strings = constants.slice(constants.indexOf('const STRINGS = {'), constants.indexOf('function t('));
+    assert.doesNotMatch(strings, /\.\.\./, 'STRINGS must use … rather than three dots');
+    // Visible shell copy only: the inline <style> block legitimately contains dots.
+    const markup = read('index.html').replace(/<style[\s\S]*?<\/style>/g, '');
+    const dotted = [...markup.matchAll(/>([^<>\n]*\.\.\.[^<>\n]*)</g)].map(match => match[1].trim());
+    assert.deepEqual(dotted, [], 'shell copy must use …');
+});
+
 test('a kanban card can change column without being dragged', () => {
     // Moving a card was drag-only, so the board's whole point was unreachable
     // from a keyboard or a screen reader.

@@ -51,7 +51,17 @@
             --c-rel: #a855f7;
         }
         * { box-sizing: border-box; }
+        /* Tells the browser this page is dark, so its own chrome — scrollbars,
+           date pickers, autofill highlight, form control defaults — is drawn to
+           match instead of arriving as a light rectangle. */
+        html { color-scheme: dark; }
         body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--tx); margin: 0; overflow: hidden; height: 100vh; }
+        /* Removes the ~300ms wait mobile browsers keep in case a tap turns into
+           a double-tap zoom. Panning and pinch zoom are unaffected. */
+        button, a[href], input, select, textarea, summary, label,
+        [role="button"], [role="option"], .nav-item, .doc-card, .tag {
+            touch-action: manipulation;
+        }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--brd); border-radius: 3px; }
@@ -332,13 +342,13 @@
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" data-onclick="closeSearch()" aria-hidden="true"></div>
         <div class="relative w-full max-w-2xl bg-[var(--card)] border border-[var(--brd)] rounded-xl shadow-2xl overflow-hidden flex flex-col fade-up" role="dialog" aria-modal="true" aria-label="Global search">
             <div class="flex items-center px-4 py-3 border-b border-[var(--brd)]">
-                <i class="fa-solid fa-magnifying-glass text-[var(--tx-d)] mr-3"></i>
-                <input type="text" id="search-input" class="w-full bg-transparent border-none outline-none text-[var(--tx)] placeholder-[var(--tx-d)] font-sans text-lg" placeholder="Search documents... (Ctrl+K)" autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass text-[var(--tx-d)] mr-3" aria-hidden="true"></i>
+                <input type="text" id="search-input" class="w-full bg-transparent border-none outline-none text-[var(--tx)] placeholder-[var(--tx-d)] font-sans text-lg" placeholder="Search documents… (Ctrl+K)" autocomplete="off">
                 <div class="text-[10px] text-[var(--tx-m)] bg-[var(--bg2)] px-2 py-1 rounded ml-2 whitespace-nowrap">ESC</div>
             </div>
             <div id="search-results" class="max-h-[60vh] overflow-y-auto">
                 <!-- Search results injected here -->
-                <div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">Type to start searching...</div>
+                <div class="px-5 py-8 text-center text-sm text-[var(--tx-m)]">Type to start searching…</div>
             </div>
         </div>
     </div>
@@ -371,7 +381,7 @@
         </div>
     </nav>
     <button id="mobile-fab" class="md:hidden fixed z-40 flex items-center justify-center" style="bottom:32px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,0.4);border:3px solid var(--bg2);" data-onclick="showTemplateModal()" title="New Document">
-        <i class="fa-solid fa-plus" style="font-size:20px;"></i>
+        <i class="fa-solid fa-plus" style="font-size:20px;" aria-hidden="true"></i>
     </button>
 
 
@@ -379,7 +389,7 @@
     <div id="lock-screen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--bg)] hidden">
         <div class="text-center fade-up max-w-sm w-full px-6">
             <div class="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6" style="background:var(--acc);">
-                <i class="fa-solid fa-lock text-white text-2xl"></i>
+                <i class="fa-solid fa-lock text-white text-2xl" aria-hidden="true"></i>
             </div>
             <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
             <p class="text-sm mb-8" style="color:var(--tx-m);" id="lock-screen-hint">Your vault is end-to-end encrypted. Enter your Master Password to decrypt.</p>
@@ -396,7 +406,7 @@
             <div class="mt-6 pt-6 border-t" style="border-color:var(--brd);">
                 <!-- Password hint (injected by events.js if set) -->
                 <div id="lock-pwd-hint" class="hidden mb-3 px-3 py-2 rounded-lg text-left text-xs" style="background:var(--card);border:1px solid var(--brd);">
-                    <i class="fa-solid fa-lightbulb mr-1.5" style="color:var(--acc);"></i>
+                    <i class="fa-solid fa-lightbulb mr-1.5" style="color:var(--acc);" aria-hidden="true"></i>
                     <strong style="color:var(--tx-m);">Hint:</strong> <span id="lock-pwd-hint-text" style="color:var(--tx-m);"></span>
                 </div>
                 <p id="lock-screen-sub" class="text-xs" style="color:var(--tx-d);">First time? The password you enter will become your Master Password.</p>

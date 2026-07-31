@@ -324,7 +324,7 @@ window.shareDoc = async function(id) {
     showModal(`
         <div class="text-center py-6">
             <i class="fa-solid fa-spinner fa-spin text-2xl mb-4" style="color:var(--acc)"></i>
-            <p class="text-sm" style="color:var(--tx-m)">Generating secure link...</p>
+            <p class="text-sm" style="color:var(--tx-m)">Generating secure link…</p>
         </div>
     `);
 

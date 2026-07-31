@@ -177,7 +177,7 @@ window.showBatchTagModal = function() {
         <div class="p-6">
             <h3 class="font-heading font-bold text-lg mb-1">Add tag</h3>
             <p class="text-sm mb-4" style="color:var(--tx-m);">Will be added to ${n} selected document${n > 1 ? 's' : ''}.</p>
-            <input type="text" id="batch-tag-input" class="form-input w-full mb-5" placeholder="Tag name..." autocomplete="off">
+            <input type="text" id="batch-tag-input" class="form-input w-full mb-5" placeholder="Tag name…" autocomplete="off">
             <div class="flex gap-3 justify-end">
                 <button class="btn-s" data-onclick="closeModal()">Cancel</button>
                 <button class="btn-p" data-onclick="confirmBatchAddTag()">Add tag</button>
@@ -216,7 +216,7 @@ window.showBatchFolderModal = function() {
         <div class="p-6">
             <h3 class="font-heading font-bold text-lg mb-1">Move to folder</h3>
             <p class="text-sm mb-4" style="color:var(--tx-m);">${n} document${n > 1 ? 's' : ''} will be moved. Leave blank to clear folder.</p>
-            <input type="text" id="batch-folder-input" class="form-input w-full mb-2" placeholder="Folder name..." autocomplete="off" list="batch-folder-list">
+            <input type="text" id="batch-folder-input" class="form-input w-full mb-2" placeholder="Folder name…" autocomplete="off" list="batch-folder-list">
             <datalist id="batch-folder-list">${folders.map(f => `<option value="${escHtml(f)}">`).join('')}</datalist>
             <div class="flex gap-3 justify-end mt-5">
                 <button class="btn-s" data-onclick="closeModal()">Cancel</button>
@@ -279,7 +279,7 @@ window.showBatchBugEditModal = function() {
                 </div>
                 <div>
                     <label class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Assignee</label>
-                    <input type="text" id="batch-bug-assignee" class="form-input w-full" placeholder="Leave blank for no change...">
+                    <input type="text" id="batch-bug-assignee" class="form-input w-full" placeholder="Leave blank for no change…">
                 </div>
             </div>
             <div class="flex gap-3 justify-end mt-5">
