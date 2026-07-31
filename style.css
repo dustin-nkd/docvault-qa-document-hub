@@ -1124,6 +1124,17 @@
    treatment so pointer and keyboard users see the same affordance. */
 .subfolder-option.is-active { background:var(--card-h); color:var(--tx); }
 
+/* Scrolling past the end of a modal, dropdown or drawer used to hand the
+   remaining scroll to the page behind it, which then moved under the overlay. */
+#modal [role="dialog"],
+#search-results,
+.custom-select-list,
+#subfolder-dropdown,
+#doc-menu,
+.batch-toolbar {
+    overscroll-behavior: contain;
+}
+
 /* Activity timeline — grouped by day, one row per recorded action.
    Uses only the existing palette tokens and the app's own glass-header
    treatment for the sticky day label, so nothing new enters the visual

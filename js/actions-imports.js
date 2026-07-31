@@ -261,10 +261,10 @@ window.tryApiRequest = async function(docId) {
         }
     }
 
-    setButtonBusy(btn, true, 'Sending request...');
+    setButtonBusy(btn, true, 'Sending request…');
     if (resultEl) {
         resultEl.setAttribute('aria-busy', 'true');
-        resultEl.innerHTML = '<div class="ui-state ui-state-compact" role="status"><span class="ui-state-icon"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span><h3>Sending request</h3><p>Waiting for the endpoint to respond...</p></div>';
+        resultEl.innerHTML = '<div class="ui-state ui-state-compact" role="status"><span class="ui-state-icon"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span><h3>Sending request</h3><p>Waiting for the endpoint to respond…</p></div>';
     }
 
     const isMock = baseUrl.toLowerCase() === API_TRYIT_MOCK_BASE.toLowerCase();

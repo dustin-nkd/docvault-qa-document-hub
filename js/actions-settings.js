@@ -359,7 +359,7 @@ window.generateRecoveryKey = async function() {
     const pwd = sessionStorage.getItem(window.LocalAuth.SESSION_PWD);
     if (!pwd) { toast('Vault must be unlocked to generate a recovery key.', 'warning'); return; }
     const btn = document.getElementById('sec-gen-recovery-btn');
-    setButtonBusy(btn, true, 'Generating key...');
+    setButtonBusy(btn, true, 'Generating key…');
     try {
         const code = await window.LocalAuth.generateRecovery(pwd);
         // Push immediately so the blob is available cross-device without waiting for the next doc save
@@ -394,7 +394,7 @@ window.recoverVault = async function() {
     const code = input.value.trim();
     if (!code) { toast('Enter your recovery code.', 'warning'); return; }
     const btn = document.getElementById('recover-submit-btn');
-    setButtonBusy(btn, true, 'Recovering vault...');
+    setButtonBusy(btn, true, 'Recovering vault…');
     try {
         const password = await window.LocalAuth.recoverWithCode(code);
         // Guard against a stale recovery blob (e.g. one generated before the master

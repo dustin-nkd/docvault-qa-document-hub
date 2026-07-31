@@ -359,7 +359,7 @@ function renderEditorCategory(context) {
                     <label for="ed-run-tc-search" class="text-xs font-medium" style="color:var(--tx-m);">Select Test Cases for Execution</label>
                     <span id="ed-run-tc-count" class="text-[11px]" style="color:var(--tx-d);">${targetIds.length > 0 ? `${targetIds.length} selected` : ''}</span>
                 </div>
-                ${allTc.length > 0 ? `<div class="search-w mb-2"><i class="fa-solid fa-search"></i><input type="text" id="ed-run-tc-search" class="form-input text-sm" placeholder="Filter test cases by title or module..." data-oninput="_filterTestRunTcList(this.value)"></div>` : ''}
+                ${allTc.length > 0 ? `<div class="search-w mb-2"><i class="fa-solid fa-search"></i><input type="text" id="ed-run-tc-search" class="form-input text-sm" placeholder="Filter test cases by title or module…" data-oninput="_filterTestRunTcList(this.value)"></div>` : ''}
                 <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
                     ${allTc.length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : allTc.map(tc => {
                         const isChecked = targetIds.includes(tc.id);
@@ -486,7 +486,7 @@ function renderEditorCategory(context) {
                     </div>
                     <div>
                         <label for="ed-rel-decision-reason">Reason <span>(required for override)</span></label>
-                        <textarea id="ed-rel-decision-reason" class="form-input" rows="2" maxlength="500" placeholder="State the accepted risk or reason for holding the release...">${escHtml(releaseData?.decisionReason || '')}</textarea>
+                        <textarea id="ed-rel-decision-reason" class="form-input" rows="2" maxlength="500" placeholder="State the accepted risk or reason for holding the release…">${escHtml(releaseData?.decisionReason || '')}</textarea>
                     </div>
                 </div>
             </div>

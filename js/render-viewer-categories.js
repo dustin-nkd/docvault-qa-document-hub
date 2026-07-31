@@ -189,7 +189,7 @@ function renderViewerCategory(doc) {
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Username / Email</p>
                 <div class="flex items-center gap-3">
                     <div class="cred-avatar ${credAvatarColor(doc.title)} shrink-0">
-                        <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${encodeURIComponent(guessDomain(doc.title))}.ico" alt="">
+                        <img class="cred-favicon" src="https://icons.duckduckgo.com/ip3/${encodeURIComponent(guessDomain(doc.title))}.ico" alt="" width="20" height="20" loading="lazy">
                         <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
                     </div>
                     <div class="flex-1 flex items-center gap-2 min-w-0">
@@ -210,7 +210,7 @@ function renderViewerCategory(doc) {
                 <div class="flex items-center gap-2">
                     <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
                         <input type="password" id="view-pw" value="${escHtml(doc.password || '')}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider" style="color:var(--tx);" readonly>
-                        <button id="view-pw-btn" class="text-xs p-1 ui-hover-text" style="color:var(--tx-m);transition:color .2s;" data-onclick="togglePasswordVisibility('view-pw')"><i class="fa-solid fa-eye"></i></button>
+                        <button id="view-pw-btn" class="text-xs p-1 ui-hover-text" style="color:var(--tx-m);transition:color .2s;" aria-label="Show password" title="Show password" data-onclick="togglePasswordVisibility('view-pw', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                     </div>
                     <button class="btn-p py-2 px-4" data-onclick="copyPassword('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>Copy</button>
                 </div>`}
@@ -245,14 +245,14 @@ function renderViewerCategory(doc) {
                         <div class="flex items-center gap-2">
                             ${prop.secret ? `
                                 <input type="password" id="view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}" value="${escHtml(prop.value)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
-                                <button class="btn-s px-2 py-1 text-xs" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}')"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-s px-2 py-1 text-xs" aria-label="Show ${escHtml(prop.label)}" title="Show ${escHtml(prop.label)}" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                             ` : `
                                 ${prop.value.startsWith('http') ?
                                     `<a href="${escHtml(prop.value)}" target="_blank" class="text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(prop.value)}</a>` :
                                     `<span class="text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`
                                 }
                             `}
-                            <button class="btn-s px-2 py-1 text-xs" data-copy-value="${escHtml(prop.value)}" data-onclick="_copyProp(this)"><i class="fa-solid fa-copy"></i></button>
+                            <button class="btn-s px-2 py-1 text-xs" aria-label="Copy ${escHtml(prop.label)}" title="Copy ${escHtml(prop.label)}" data-copy-value="${escHtml(prop.value)}" data-onclick="_copyProp(this)"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
                         </div>
                     </div>
                     `).join('')}
@@ -538,7 +538,7 @@ function renderViewerCategory(doc) {
                             </div>` : '') : `
                             <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
                                 <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
-                                <textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution..." data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>
+                                <textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution…" data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>
                             </div>`}
                         </div>
                     </div>
