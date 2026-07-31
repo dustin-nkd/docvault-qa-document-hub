@@ -27,11 +27,11 @@ function renderEditor() {
         <div class="grid md:grid-cols-3 gap-4 mb-4">
             <div class="md:col-span-2 grid sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${category === 'credential' ? 'Service Name' : 'Title'}</label>
+                    <label for="ed-title" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${category === 'credential' ? 'Service Name' : 'Title'}</label>
                     <input id="ed-title" class="form-input" placeholder="${category === 'credential' ? t('egCred') : t('enterTitle')}" value="${escHtml(title)}">
                 </div>
                 <div class="relative">
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Sub-folder <span style="color:var(--tx-d)">(Optional)</span></label>
+                    <label for="ed-subfolder" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Sub-folder <span style="color:var(--tx-d)">(Optional)</span></label>
                     <div class="subfolder-select-wrapper" style="position:relative;">
                         <input id="ed-subfolder" class="form-select w-full" placeholder="e.g. ProjectA/Backend" value="${escHtml(subfolder)}" autocomplete="off" data-onclick="toggleSubfolderDropdown()" data-oninput="filterSubfolderDropdown()">
                         <div id="subfolder-dropdown" class="hidden" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
@@ -42,11 +42,11 @@ function renderEditor() {
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('category')}</label>
+                    <label for="ed-cat-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('category')}</label>
                     ${renderSelect('ed-cat', Object.entries(CAT_META).map(([k, m]) => ({value: k, label: m.label})), category, 'w-full', 'changeEditorCat(this.value)')}
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('status')}</label>
+                    <label for="ed-status-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('status')}</label>
                     ${renderSelect('ed-status', [
                         {value: 'draft', label: t('statusDraft')},
                         {value: 'published', label: t('statusPublished')},
@@ -58,7 +58,7 @@ function renderEditor() {
 
         <!-- Tags -->
         <div class="mb-4">
-            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tags')}</label>
+            <label for="tag-input" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tags')}</label>
             <div class="flex flex-wrap items-center gap-2 p-2.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);min-height:42px;" id="tag-container" data-onclick="document.getElementById('tag-input').focus()">
                 ${tags.map((t, i) => `<span class="tag">${escHtml(t)}<span class="rm" data-onclick="event.stopPropagation();removeTag(${i})">&times;</span></span>`).join('')}
                 <input id="tag-input" class="bg-transparent border-none outline-none text-sm flex-1 min-w-[100px]" style="color:var(--tx);" placeholder="${tags.length === 0 ? t('enterTag') : ''}" data-onkeydown="handleTagInput(event)">
@@ -134,44 +134,101 @@ window.changeEditorCat = function(cat) {
 // ========================
 // CUSTOM SELECT (renderSelect)
 // ========================
-window.renderSelect = function(id, options, selectedValue, customClass, onChangeCode) {
+// This is a styled stand-in for <select>, so it has to carry the combobox role,
+// state, and keyboard contract itself. Before this it was a readonly <input>
+// next to a list of <div>s: assistive tech announced it as a plain text box,
+// and — because the delegated keydown handler in events.js deliberately skips
+// <input> — it could be focused but never opened without a mouse. Every
+// dropdown in the app comes from here, so that was a keyboard dead end for
+// severity, priority, status, sort, and every batch edit.
+window.renderSelect = function(id, options, selectedValue, customClass, onChangeCode, ariaLabel) {
     customClass = customClass || '';
     onChangeCode = onChangeCode || '';
-    const selOpt = options.find(o => o.value === selectedValue) || options[0] || {label:'', value:''};
-    const optionsHtml = options.map(o => `
-        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer ui-hover-card-h" style="color:var(--tx-m);transition:background .15s;" data-onclick="${actionAttr('selectCustomOption', id, o.value, o.label, onChangeCode)}">${escHtml(o.label)}</div>
+    const selectedIndex = Math.max(0, options.findIndex(o => o.value === selectedValue));
+    const selOpt = options[selectedIndex] || {label:'', value:''};
+    const named = ariaLabel ? ` aria-label="${escHtml(ariaLabel)}"` : '';
+    const optionsHtml = options.map((o, index) => `
+        <div class="subfolder-option px-3 py-2 text-sm cursor-pointer ui-hover-card-h" style="color:var(--tx-m);transition:background .15s;" id="${id}-opt-${index}" role="option" aria-selected="${index === selectedIndex}" data-value="${escHtml(o.value)}" data-onclick="${actionAttr('selectCustomOption', id, o.value, o.label, onChangeCode)}">${escHtml(o.label)}</div>
     `).join('');
 
     return `
         <div class="custom-select-wrapper" style="position:relative;">
             <input type="hidden" id="${id}" value="${escHtml(selOpt.value)}">
-            <input id="${id}-display" class="form-select ${customClass}" readonly style="cursor:pointer;" value="${escHtml(selOpt.label)}" data-onclick="toggleCustomSelect('${id}')">
-            <div id="${id}-dropdown" class="hidden custom-select-list" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+            <input id="${id}-display" class="form-select ${customClass}" readonly style="cursor:pointer;" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="${id}-dropdown"${named} value="${escHtml(selOpt.label)}" data-onclick="toggleCustomSelect('${id}')" data-onkeydown="handleSelectKeydown(event, '${id}')">
+            <div id="${id}-dropdown" class="hidden custom-select-list" role="listbox"${named} style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
                 ${optionsHtml}
             </div>
         </div>
     `;
 };
 
+function _selectParts(id) {
+    const list = document.getElementById(id + '-dropdown');
+    return {
+        display: document.getElementById(id + '-display'),
+        list,
+        options: list ? [...list.querySelectorAll('[role="option"]')] : []
+    };
+}
+
+// Keyboard focus stays on the combobox; the highlighted option is pointed at
+// with aria-activedescendant, which is the pattern for a non-editable combobox
+// and avoids fighting the outside-click handler for real DOM focus.
+function _setSelectActive(id, index) {
+    const { display, options } = _selectParts(id);
+    if (!display || !options.length) return;
+    const next = (index + options.length) % options.length;
+    options.forEach((option, i) => option.classList.toggle('is-active', i === next));
+    display.setAttribute('aria-activedescendant', options[next].id);
+    options[next].scrollIntoView({ block: 'nearest' });
+}
+
+function _activeSelectIndex(id) {
+    const { display, options } = _selectParts(id);
+    const active = display && display.getAttribute('aria-activedescendant');
+    const highlighted = options.findIndex(option => option.id === active);
+    if (highlighted > -1) return highlighted;
+    return Math.max(0, options.findIndex(option => option.getAttribute('aria-selected') === 'true'));
+}
+
+window.closeCustomSelect = function(id, refocus) {
+    const { display, list, options } = _selectParts(id);
+    if (!list) return;
+    list.classList.add('hidden');
+    options.forEach(option => option.classList.remove('is-active'));
+    if (!display) return;
+    display.setAttribute('aria-expanded', 'false');
+    display.removeAttribute('aria-activedescendant');
+    if (refocus) display.focus();
+};
+
+// Escape has to reach whichever select is open without knowing its id — see the
+// Escape ordering in js/events.js, where the dropdown must close before the
+// editor itself does.
+window.closeOpenCustomSelect = function(refocus) {
+    const open = document.querySelector('.custom-select-list:not(.hidden)');
+    if (!open) return false;
+    closeCustomSelect(open.id.replace(/-dropdown$/, ''), refocus);
+    return true;
+};
+
 window.toggleCustomSelect = function(id) {
+    const { display, list } = _selectParts(id);
+    if (!list) return;
     document.querySelectorAll('.custom-select-list').forEach(el => {
-        if (el.id !== id + '-dropdown') el.classList.add('hidden');
+        if (el.id !== id + '-dropdown') closeCustomSelect(el.id.replace(/-dropdown$/, ''), false);
     });
 
-    const dd = document.getElementById(id + '-dropdown');
-    if (!dd) return;
+    if (!list.classList.contains('hidden')) { closeCustomSelect(id, false); return; }
 
-    if (!dd.classList.contains('hidden')) {
-        dd.classList.add('hidden');
-        return;
-    }
-
-    dd.classList.remove('hidden');
+    list.classList.remove('hidden');
+    if (display) display.setAttribute('aria-expanded', 'true');
+    _setSelectActive(id, _activeSelectIndex(id));
 
     setTimeout(() => {
         const closeHandler = (e) => {
             if (!e.target.closest('#' + id + '-display')) {
-                dd.classList.add('hidden');
+                closeCustomSelect(id, false);
                 document.removeEventListener('click', closeHandler);
             }
         };
@@ -179,13 +236,50 @@ window.toggleCustomSelect = function(id) {
     }, 10);
 };
 
+let _selectTypeahead = { id: '', text: '', at: 0 };
+
+window.handleSelectKeydown = function(event, id) {
+    const { list, options } = _selectParts(id);
+    if (!list || !options.length) return;
+    const isOpen = !list.classList.contains('hidden');
+    const key = event.key;
+
+    if (key === 'Escape') { if (isOpen) { event.preventDefault(); closeCustomSelect(id, true); } return; }
+    if (key === 'Tab') { if (isOpen) closeCustomSelect(id, false); return; }
+
+    if (!isOpen) {
+        if (key === 'Enter' || key === ' ' || key === 'ArrowDown' || key === 'ArrowUp') {
+            event.preventDefault();
+            toggleCustomSelect(id);
+            if (key === 'ArrowUp') _setSelectActive(id, options.length - 1);
+        }
+        return;
+    }
+
+    if (key === 'ArrowDown') { event.preventDefault(); _setSelectActive(id, _activeSelectIndex(id) + 1); return; }
+    if (key === 'ArrowUp') { event.preventDefault(); _setSelectActive(id, _activeSelectIndex(id) - 1); return; }
+    if (key === 'Home') { event.preventDefault(); _setSelectActive(id, 0); return; }
+    if (key === 'End') { event.preventDefault(); _setSelectActive(id, options.length - 1); return; }
+    if (key === 'Enter' || key === ' ') { event.preventDefault(); options[_activeSelectIndex(id)].click(); return; }
+
+    // Type-ahead, like a native select: consecutive letters within 800ms build
+    // up a prefix instead of each one starting a new search.
+    if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        const now = Date.now();
+        const carried = (_selectTypeahead.id === id && now - _selectTypeahead.at < 800) ? _selectTypeahead.text : '';
+        _selectTypeahead = { id, text: carried + key.toLowerCase(), at: now };
+        const match = options.findIndex(option => option.textContent.trim().toLowerCase().startsWith(_selectTypeahead.text));
+        if (match > -1) { event.preventDefault(); _setSelectActive(id, match); }
+    }
+};
+
 window.selectCustomOption = function(id, val, label, onChangeCode) {
     const hid = document.getElementById(id);
     const disp = document.getElementById(id + '-display');
-    const dd = document.getElementById(id + '-dropdown');
     if (hid) hid.value = val;
     if (disp) disp.value = label;
-    if (dd) dd.classList.add('hidden');
+    _selectParts(id).options.forEach(option => option.setAttribute('aria-selected', String(option.dataset.value === String(val))));
+    closeCustomSelect(id, false);
 
     if (onChangeCode) {
         // Safe dispatch instead of eval(): parse "fnName(args)" and invoke it.
@@ -310,9 +404,9 @@ function _dpBuildGrid() {
 
     panel.innerHTML = `
         <div class="dp-hd">
-            <button class="dp-nav-btn" data-onclick="dpPrev()"><i class="fa-solid fa-chevron-left" style="font-size:9px;"></i></button>
+            <button class="dp-nav-btn" aria-label="Previous month" title="Previous month" data-onclick="dpPrev()"><i class="fa-solid fa-chevron-left" style="font-size:9px;" aria-hidden="true"></i></button>
             <div class="dp-month-lbl">${_DP_MONTHS[_dpMonth]} ${_dpYear}</div>
-            <button class="dp-nav-btn" data-onclick="dpNext()"><i class="fa-solid fa-chevron-right" style="font-size:9px;"></i></button>
+            <button class="dp-nav-btn" aria-label="Next month" title="Next month" data-onclick="dpNext()"><i class="fa-solid fa-chevron-right" style="font-size:9px;" aria-hidden="true"></i></button>
         </div>
         <div class="dp-dow-row"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
         <div class="dp-grid">${cells}</div>

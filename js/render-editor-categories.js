@@ -10,18 +10,18 @@ function renderEditorCategory(context) {
         ${category === 'credential' ? `
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('usernameEmail')}</label>
-                <input id="ed-username" class="form-input" placeholder="e.g. admin" value="${escHtml(doc?.username || '')}">
+                <label for="ed-username" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('usernameEmail')}</label>
+                <input id="ed-username" class="form-input" autocomplete="off" placeholder="e.g. admin" value="${escHtml(doc?.username || '')}">
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('passwordField')}</label>
+                <label for="ed-password" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('passwordField')}</label>
                 <div class="flex items-center gap-2">
-                    <input type="password" id="ed-password" class="form-input" placeholder="••••••••" value="${escHtml(doc?.password || '')}">
-                    <button id="ed-password-btn" class="btn-s px-3 py-2" data-onclick="togglePasswordVisibility('ed-password')"><i class="fa-solid fa-eye"></i></button>
+                    <input type="password" id="ed-password" class="form-input" autocomplete="off" placeholder="••••••••" value="${escHtml(doc?.password || '')}">
+                    <button id="ed-password-btn" class="btn-s px-3 py-2" aria-label="Show password" title="Show password" data-onclick="togglePasswordVisibility('ed-password', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                 </div>
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Last Rotated <span style="color:var(--tx-d)">(optional)</span></label>
+                <label for="ed-cred-rotated" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Last Rotated <span style="color:var(--tx-d)">(optional)</span></label>
                 <input type="date" id="ed-cred-rotated" class="form-input" value="${escHtml(doc?.rotatedAt || '')}">
                 <p class="text-[10px] mt-1" style="color:var(--tx-d);">Used for the rotation-reminder badge. Leave blank to use the creation date.</p>
             </div>
@@ -29,15 +29,15 @@ function renderEditorCategory(context) {
         ` : category === 'bug' ? `
         <div class="grid sm:grid-cols-3 gap-4 mb-4">
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugEnv')}</label>
+                <label for="ed-bug-env" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugEnv')}</label>
                 <input id="ed-bug-env" class="form-input" placeholder="${t('bugEnvPl')}" value="${escHtml(bugData?.env || '')}">
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugDevice')}</label>
+                <label for="ed-bug-browser" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugDevice')}</label>
                 <input id="ed-bug-browser" class="form-input" placeholder="${t('bugDevicePl')}" value="${escHtml(bugData?.browser || '')}">
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
+                <label for="ed-bug-severity-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
                 ${renderSelect('ed-bug-severity', [
                     {value: 'Critical', label: t('severityCritical')},
                     {value: 'Major', label: t('severityMajor')},
@@ -49,11 +49,11 @@ function renderEditorCategory(context) {
 
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugAssignee')}</label>
+                <label for="ed-bug-assignee" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugAssignee')}</label>
                 <input id="ed-bug-assignee" class="form-input" placeholder="${t('bugAssigneePl')}" value="${escHtml(bugData?.assignee || '')}">
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Priority</label>
+                <label for="ed-bug-priority-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Priority</label>
                 ${renderSelect('ed-bug-priority', [
                     {value: 'P1', label: 'P1 — Urgent'},
                     {value: 'P2', label: 'P2 — High'},
@@ -69,7 +69,7 @@ function renderEditorCategory(context) {
             </div>
             <div class="grid sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('triageClassification')}</label>
+                    <label for="ed-bug-classification-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('triageClassification')}</label>
                     ${renderSelect('ed-bug-classification', [
                         {value: 'unclassified', label: t('triageUnclassified')},
                         {value: 'functional', label: t('triageTypeFunctional')},
@@ -82,7 +82,7 @@ function renderEditorCategory(context) {
                     ], bugData?.classification || 'unclassified', 'w-full')}
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('triageSla')}</label>
+                    <label for="ed-bug-sla-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('triageSla')}</label>
                     ${renderSelect('ed-bug-sla', [
                         {value: '4', label: t('triageSlaHours', {count: 4})},
                         {value: '24', label: t('triageSlaHours', {count: 24})},
@@ -97,7 +97,7 @@ function renderEditorCategory(context) {
 
 
         <div class="mb-4">
-            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Test Case <span style="color:var(--tx-d)">(Optional)</span></label>
+            <label for="ed-bug-linked-tc-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Test Case <span style="color:var(--tx-d)">(Optional)</span></label>
             ${renderSelect('ed-bug-linked-tc', [
                 { value: '', label: '— None —' },
                 ...documents.filter(d => d.category === 'testcases' && d.status !== 'deleted')
@@ -107,17 +107,19 @@ function renderEditorCategory(context) {
         </div>
 
         <div class="mb-4">
-            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugPrecond')}</label>
+            <label for="ed-bug-precond" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugPrecond')}</label>
             <textarea id="ed-bug-precond" class="form-input" style="height:60px;" placeholder="${t('bugPrecondPl')}">${escHtml(bugData?.precond || '')}</textarea>
         </div>
 
         <div class="mb-4">
-            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSteps')}</label>
-            <div id="bug-steps-container">
+            <!-- Labels a repeating set of inputs rather than one control, so it
+                 names a group instead of using for=. -->
+            <span id="bug-steps-label" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSteps')}</span>
+            <div id="bug-steps-container" role="group" aria-labelledby="bug-steps-label">
                 ${(Array.isArray(bugData?.steps) ? bugData.steps : (bugData?.steps ? [bugData.steps] : [''])).map((step, idx) => `
                     <div class="flex items-center gap-2 mb-2 bug-step-row">
-                        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
-                        <input class="form-input flex-1 bug-step-input" placeholder="${t('stepPl', {idx: idx + 1})}" value="${escHtml(step)}">
+                        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;" aria-hidden="true">${idx + 1}.</span>
+                        <input class="form-input flex-1 bug-step-input" aria-label="Step ${idx + 1}" placeholder="${t('stepPl', {idx: idx + 1})}" value="${escHtml(step)}">
                         <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 `).join('')}
@@ -127,11 +129,11 @@ function renderEditorCategory(context) {
 
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugExpected')}</label>
+                <label for="ed-bug-expected" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugExpected')}</label>
                 <textarea id="ed-bug-expected" class="form-input" style="height:100px;" placeholder="${t('bugExpectedPl')}">${escHtml(bugData?.expected || '')}</textarea>
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugActual')}</label>
+                <label for="ed-bug-actual" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugActual')}</label>
                 <textarea id="ed-bug-actual" class="form-input" style="height:100px;" placeholder="${t('bugActualPl')}">${escHtml(bugData?.actual || '')}</textarea>
             </div>
         </div>
@@ -139,34 +141,34 @@ function renderEditorCategory(context) {
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
             <div class="grid sm:grid-cols-3 gap-4 mb-4">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
+                    <label for="ed-tc-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
                     <input id="ed-tc-module" class="form-input" placeholder="${t('tcModulePl')}" value="${escHtml(tcData?.module || '')}">
                 </div>
                 <div class="sm:col-span-2">
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcData')}</label>
+                    <label for="ed-tc-data" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcData')}</label>
                     <input id="ed-tc-data" class="form-input" placeholder="${t('tcDataPl')}" value="${escHtml(tcData?.data || '')}">
                 </div>
             </div>
 
             <div class="mb-4">
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcPrecond')}</label>
+                <label for="ed-tc-precond" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcPrecond')}</label>
                 <textarea id="ed-tc-precond" class="form-input" style="height:60px;" placeholder="${t('tcPrecondPl')}">${escHtml(tcData?.precond || '')}</textarea>
             </div>
 
             <div class="mb-4">
                 <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('tcSteps')}</label>
+                    <span id="tc-steps-label" class="text-xs font-medium block" style="color:var(--tx-m);">${t('tcSteps')}</span>
                     <div class="flex items-center gap-2" style="width: calc(100% - 30px);">
                         <span class="text-xs font-medium flex-1 text-center" style="color:var(--tx-d);">${t('tcAction')}</span>
                         <span class="text-xs font-medium flex-1 text-center" style="color:var(--tx-d);">${t('tcExpected')}</span>
                     </div>
                 </div>
-                <div id="tc-steps-container">
+                <div id="tc-steps-container" role="group" aria-labelledby="tc-steps-label">
                     ${(tcData?.steps?.length ? tcData.steps : [{action: '', expected: ''}]).map((step, idx) => `
                         <div class="flex items-start gap-2 mb-2 tc-step-row">
-                            <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
-                            <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}">${escHtml(step.action || '')}</textarea>
-                            <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}">${escHtml(step.expected || '')}</textarea>
+                            <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;" aria-hidden="true">${idx + 1}.</span>
+                            <textarea class="form-input flex-1 tc-step-action" style="height:60px;" aria-label="Step ${idx + 1} action" placeholder="${t('tcActionPl')}">${escHtml(step.action || '')}</textarea>
+                            <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" aria-label="Step ${idx + 1} expected result" placeholder="${t('tcExpectedPl')}">${escHtml(step.expected || '')}</textarea>
                             <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     `).join('')}
@@ -178,7 +180,7 @@ function renderEditorCategory(context) {
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
             <div class="grid sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('healthStatus')}</label>
+                    <label for="ed-env-status-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('healthStatus')}</label>
                     ${renderSelect('ed-env-status', [
                         {value: 'healthy', label: '🟢 Healthy (Up & Running)'},
                         {value: 'maintenance', label: '🟡 Maintenance'},
@@ -188,9 +190,9 @@ function renderEditorCategory(context) {
             </div>
             <div class="mb-4">
                 <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium block" style="color:var(--tx-m);">${t('properties')}</label>
+                    <span id="env-props-label" class="text-xs font-medium block" style="color:var(--tx-m);">${t('properties')}</span>
                 </div>
-                <div id="env-props-container">
+                <div role="group" aria-labelledby="env-props-label" id="env-props-container">
                     ${((envData?.properties && envData.properties.length > 0) ? envData.properties : (envData?.frontendUrl || envData?.backendUrl || envData?.dbInfo) ?
                         [
                             ...(envData?.frontendUrl ? [{label: 'Frontend URL', value: envData.frontendUrl, secret: false}] : []),
@@ -212,8 +214,8 @@ function renderEditorCategory(context) {
                 <button class="btn-s text-sm mt-2" data-onclick="addEnvProp()"><i class="fa-solid fa-plus mr-1"></i> ${t('addProperty')}</button>
             </div>
             <div class="mb-4">
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('linkedCreds')}</label>
-                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
+                <span id="env-creds-label" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('linkedCreds')}</span>
+                <div role="group" aria-labelledby="env-creds-label" class="p-3 rounded-lg flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'credential' && d.status !== 'deleted').map(c => `
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" class="form-checkbox ed-env-cred" value="${c.id}" ${(envData?.linkedCreds || []).includes(c.id) ? 'checked' : ''}>
@@ -223,7 +225,7 @@ function renderEditorCategory(context) {
                 </div>
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('notes')}</label>
+                <label for="ed-env-notes" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('notes')}</label>
                 <textarea id="ed-env-notes" class="form-input text-sm w-full" style="height:80px;" placeholder="${t('envNotesPl')}">${escHtml(envData?.notes || '')}</textarea>
             </div>
         </div>
@@ -233,20 +235,20 @@ function renderEditorCategory(context) {
             <!-- Method + Endpoint unified bar -->
             <div class="flex items-stretch" style="background:var(--card);border-bottom:1px solid var(--brd);">
                 <div style="width:120px;flex-shrink:0;border-right:1px solid var(--brd);">
-                    ${renderSelect('ed-api-method', ['GET','POST','PUT','PATCH','DELETE'].map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono font-bold text-sm')}
+                    ${renderSelect('ed-api-method', ['GET','POST','PUT','PATCH','DELETE'].map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono font-bold text-sm', '', 'HTTP method')}
                 </div>
-                <input id="ed-api-endpoint" class="flex-1 bg-transparent border-0 outline-none font-mono text-sm px-4" style="color:var(--tx);min-width:0;" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
+                <input id="ed-api-endpoint" class="flex-1 bg-transparent border-0 outline-none font-mono text-sm px-4" style="color:var(--tx);min-width:0;" aria-label="Endpoint path" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
             </div>
 
             <div class="p-5">
                 <div class="api-impact-editor mb-6">
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiModule')}</label>
+                            <label for="ed-api-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiModule')}</label>
                             <input id="ed-api-module" class="form-input w-full" placeholder="${t('apiModulePlaceholder')}" value="${escHtml(apiData?.module || '')}">
                         </div>
                         <div>
-                            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiChangeImpact')}</label>
+                            <label for="ed-api-impact-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiChangeImpact')}</label>
                             ${renderSelect('ed-api-impact', [
                                 {value: 'none', label: t('apiImpactNone')},
                                 {value: 'low', label: t('apiImpactLow')},
@@ -255,7 +257,7 @@ function renderEditorCategory(context) {
                             ], apiData?.changeImpact || 'none', 'w-full')}
                         </div>
                     </div>
-                    <label class="api-impact-check mt-3">
+                    <label for="ed-api-mark-changed" class="api-impact-check mt-3">
                         <input id="ed-api-mark-changed" type="checkbox" class="form-checkbox">
                         <span>${t('apiMarkChanged')}</span>
                     </label>
@@ -336,7 +338,7 @@ function renderEditorCategory(context) {
                             {value: '500', label: '500 Internal Server Error'},
                             {value: '502', label: '502 Bad Gateway'},
                             {value: '503', label: '503 Service Unavailable'},
-                        ], apiData?.statusCode || '200', 'w-full font-mono text-xs')}
+                        ], apiData?.statusCode || '200', 'w-full font-mono text-xs', '', 'Response status code')}
                     </div>
                     <button class="text-[10px] opacity-60 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
                 </div>
@@ -345,7 +347,7 @@ function renderEditorCategory(context) {
         </div>
         ` : category === 'testrun' ? `
         <div class="mb-4">
-            <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Environment / Build <span style="color:var(--tx-d)">(Optional)</span></label>
+            <label for="ed-run-env" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Environment / Build <span style="color:var(--tx-d)">(Optional)</span></label>
             <input id="ed-run-env" class="form-input" placeholder="e.g. Staging · build #1234" value="${escHtml((isEdit ? doc.runData?.environment : state._newRunData?.environment) || '')}">
         </div>
         <div class="mb-4">
@@ -354,7 +356,7 @@ function renderEditorCategory(context) {
                 const targetIds = doc?.runData?.targetIds || state._newRunData?.targetIds || [];
                 return `
                 <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium" style="color:var(--tx-m);">Select Test Cases for Execution</label>
+                    <label for="ed-run-tc-search" class="text-xs font-medium" style="color:var(--tx-m);">Select Test Cases for Execution</label>
                     <span id="ed-run-tc-count" class="text-[11px]" style="color:var(--tx-d);">${targetIds.length > 0 ? `${targetIds.length} selected` : ''}</span>
                 </div>
                 ${allTc.length > 0 ? `<div class="search-w mb-2"><i class="fa-solid fa-search"></i><input type="text" id="ed-run-tc-search" class="form-input text-sm" placeholder="Filter test cases by title or module..." data-oninput="_filterTestRunTcList(this.value)"></div>` : ''}
@@ -379,8 +381,8 @@ function renderEditorCategory(context) {
         ` : category === 'testplan' ? `
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
             <div class="mb-4">
-                <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Cases <span class="opacity-60">(for coverage tracking)</span></label>
-                <div class="p-3 rounded-lg flex flex-col gap-1 max-h-52 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                <span id="plan-tcs-label" class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Cases <span class="opacity-60">(for coverage tracking)</span></span>
+                <div role="group" aria-labelledby="plan-tcs-label" class="p-3 rounded-lg flex flex-col gap-1 max-h-52 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0
                         ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test cases available.</div>`
                         : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
@@ -396,8 +398,8 @@ function renderEditorCategory(context) {
                 </div>
             </div>
             <div>
-                <label class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Runs <span class="opacity-60">(to view execution coverage)</span></label>
-                <div class="p-3 rounded-lg flex flex-col gap-1 max-h-40 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                <span id="plan-runs-label" class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Runs <span class="opacity-60">(to view execution coverage)</span></span>
+                <div role="group" aria-labelledby="plan-runs-label" class="p-3 rounded-lg flex flex-col gap-1 max-h-40 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').length === 0
                         ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test runs found.</div>`
                         : documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => {
@@ -417,11 +419,11 @@ function renderEditorCategory(context) {
         <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
             <div class="grid sm:grid-cols-3 gap-4 mb-4">
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Version</label>
+                    <label for="ed-rel-version" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Version</label>
                     <input id="ed-rel-version" class="form-input text-sm w-full font-mono" placeholder="e.g. v1.2.0" value="${escHtml(releaseData?.version || '')}">
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Status</label>
+                    <label for="ed-rel-status-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Status</label>
                     ${renderSelect('ed-rel-status', [
                         {value: 'planning', label: '📋 Planning'},
                         {value: 'in-progress', label: '🔨 In Progress'},
@@ -430,9 +432,9 @@ function renderEditorCategory(context) {
                     ], releaseData?.status || 'planning', 'w-full text-sm')}
                 </div>
                 <div>
-                    <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Release Date</label>
+                    <span id="rel-date-label" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Release Date</span>
                     <div class="dp-wrap" id="dp-wrap">
-                        <div class="dp-trigger" data-onclick="dpToggle()">
+                        <div class="dp-trigger" aria-labelledby="rel-date-label" data-onclick="dpToggle()">
                             ${releaseData?.releaseDate
                                 ? `<span class="dp-value">${(() => { const p = releaseData.releaseDate.split('-'); return p[1]+'/'+p[2]+'/'+p[0]; })()}</span>`
                                 : `<span class="dp-placeholder">mm/dd/yyyy</span>`}
@@ -452,30 +454,30 @@ function renderEditorCategory(context) {
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <div class="release-policy-grid">
-                    <label class="release-policy-rate">
+                    <label for="ed-rel-min-pass" class="release-policy-rate">
                         <span>Minimum pass rate</span>
                         <span class="release-rate-input"><input type="number" id="ed-rel-min-pass" min="0" max="100" value="${releasePolicy.minPassRate}"><b>%</b></span>
                     </label>
-                    <label class="release-policy-toggle">
+                    <label for="ed-rel-block-critical" class="release-policy-toggle">
                         <input type="checkbox" id="ed-rel-block-critical" ${releasePolicy.blockCritical ? 'checked' : ''}>
                         <span><b>Block Critical defects</b><small>Open Critical bugs prevent release.</small></span>
                     </label>
-                    <label class="release-policy-toggle">
+                    <label for="ed-rel-block-major" class="release-policy-toggle">
                         <input type="checkbox" id="ed-rel-block-major" ${releasePolicy.blockMajor ? 'checked' : ''}>
                         <span><b>Block Major defects</b><small>Open Major bugs also prevent release.</small></span>
                     </label>
-                    <label class="release-policy-toggle">
+                    <label for="ed-rel-complete-execution" class="release-policy-toggle">
                         <input type="checkbox" id="ed-rel-complete-execution" ${releasePolicy.requireCompleteExecution ? 'checked' : ''}>
                         <span><b>Require complete execution</b><small>Every linked run step needs a result.</small></span>
                     </label>
-                    <label class="release-policy-toggle">
+                    <label for="ed-rel-healthy-env" class="release-policy-toggle">
                         <input type="checkbox" id="ed-rel-healthy-env" ${releasePolicy.requireHealthyEnvironments ? 'checked' : ''}>
                         <span><b>Require healthy environments</b><small>At least one linked environment; all healthy.</small></span>
                     </label>
                 </div>
                 <div class="release-decision-editor">
                     <div>
-                        <label>Decision override</label>
+                        <label for="ed-rel-decision-display">Decision override</label>
                         ${renderSelect('ed-rel-decision', [
                             { value: 'auto', label: 'Automatic \u00b7 follow policy' },
                             { value: 'go-with-risk', label: 'GO WITH RISK \u00b7 accepted exception' },
@@ -483,14 +485,14 @@ function renderEditorCategory(context) {
                         ], releaseData?.manualDecision || 'auto', 'w-full text-sm')}
                     </div>
                     <div>
-                        <label>Reason <span>(required for override)</span></label>
+                        <label for="ed-rel-decision-reason">Reason <span>(required for override)</span></label>
                         <textarea id="ed-rel-decision-reason" class="form-input" rows="2" maxlength="500" placeholder="State the accepted risk or reason for holding the release...">${escHtml(releaseData?.decisionReason || '')}</textarea>
                     </div>
                 </div>
             </div>
             <div class="mb-4">
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Test Runs</label>
-                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                <span id="rel-runs-label" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Test Runs</span>
+                <div role="group" aria-labelledby="rel-runs-label" class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'testrun' && d.status !== 'deleted').map(run => `
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" class="form-checkbox ed-rel-run" value="${run.id}" ${(releaseData?.linkedRuns || []).includes(run.id) ? 'checked' : ''}>
@@ -501,8 +503,8 @@ function renderEditorCategory(context) {
                 </div>
             </div>
             <div class="mb-4">
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Bug Reports</label>
-                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                <span id="rel-bugs-label" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Bug Reports</span>
+                <div role="group" aria-labelledby="rel-bugs-label" class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'bug' && d.status !== 'deleted').map(bug => `
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" class="form-checkbox ed-rel-bug" value="${bug.id}" ${(releaseData?.linkedBugs || []).includes(bug.id) ? 'checked' : ''}>
@@ -514,8 +516,8 @@ function renderEditorCategory(context) {
                 </div>
             </div>
             <div>
-                <label class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Environments</label>
-                <div class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
+                <span id="rel-envs-label" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Linked Environments</span>
+                <div role="group" aria-labelledby="rel-envs-label" class="p-3 rounded-lg flex flex-col gap-2 max-h-36 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
                     ${documents.filter(d => d.category === 'environment' && d.status !== 'deleted').map(env => `
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" class="form-checkbox ed-rel-env" value="${env.id}" ${(releaseData?.linkedEnvs || []).includes(env.id) ? 'checked' : ''}>
@@ -529,7 +531,7 @@ function renderEditorCategory(context) {
         </div>
         <div class="mt-4">
             <div class="flex items-center justify-between mb-2">
-                <label class="text-xs font-medium" style="color:var(--tx-m);">Release Notes <span class="opacity-60">(markdown)</span></label>
+                <span class="text-xs font-medium" style="color:var(--tx-m);">Release Notes <span class="opacity-60">(markdown)</span></span>
                 <button type="button" class="btn-s text-[11px] py-1 px-2.5 flex items-center gap-1.5" data-onclick="generateReleaseNotes()"><i class="fa-solid fa-wand-magic-sparkles" style="font-size:10px;"></i> Generate from linked data</button>
             </div>
             <div id="editor-container" class="text-left"></div>
@@ -553,8 +555,8 @@ window.addBugStep = function() {
     const div = document.createElement('div');
     div.className = 'flex items-center gap-2 mb-2 bug-step-row';
     div.innerHTML = `
-        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
-        <input class="form-input flex-1 bug-step-input" placeholder="Step ${idx + 1}...">
+        <span class="text-xs font-semibold step-idx" style="color:var(--tx-m);width:20px;" aria-hidden="true">${idx + 1}.</span>
+        <input class="form-input flex-1 bug-step-input" aria-label="Step ${idx + 1}" placeholder="Step ${idx + 1}…">
         <button class="btn-s px-2 py-1.5" style="color:var(--tx-m);" data-onclick="removeBugStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
     `;
     container.appendChild(div);
@@ -566,7 +568,9 @@ window.removeBugStep = function(btn) {
     const container = document.getElementById('bug-steps-container');
     container.querySelectorAll('.bug-step-row').forEach((r, i) => {
         r.querySelector('.step-idx').textContent = (i + 1) + '.';
-        r.querySelector('.bug-step-input').placeholder = 'Step ' + (i + 1) + '...';
+        const input = r.querySelector('.bug-step-input');
+        input.placeholder = 'Step ' + (i + 1) + '…';
+        input.setAttribute('aria-label', 'Step ' + (i + 1));
     });
 };
 
@@ -580,9 +584,9 @@ window.addTcStep = function() {
     const div = document.createElement('div');
     div.className = 'flex items-start gap-2 mb-2 tc-step-row';
     div.innerHTML = `
-        <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;">${idx + 1}.</span>
-        <textarea class="form-input flex-1 tc-step-action" style="height:60px;" placeholder="${t('tcActionPl')}"></textarea>
-        <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" placeholder="${t('tcExpectedPl')}"></textarea>
+        <span class="text-xs font-semibold step-idx mt-2" style="color:var(--tx-m);width:20px;" aria-hidden="true">${idx + 1}.</span>
+        <textarea class="form-input flex-1 tc-step-action" style="height:60px;" aria-label="Step ${idx + 1} action" placeholder="${t('tcActionPl')}"></textarea>
+        <textarea class="form-input flex-1 tc-step-expected" style="height:60px;" aria-label="Step ${idx + 1} expected result" placeholder="${t('tcExpectedPl')}"></textarea>
         <button class="btn-s px-2 py-1.5 mt-1" style="color:var(--tx-m);" data-onclick="removeTcStep(this)" aria-label="Remove step" title="Remove step"><i class="fa-solid fa-trash"></i></button>
     `;
     container.appendChild(div);
@@ -594,6 +598,8 @@ window.removeTcStep = function(btn) {
     row.remove();
     container.querySelectorAll('.tc-step-row').forEach((r, i) => {
         r.querySelector('.step-idx').textContent = (i + 1) + '.';
+        r.querySelector('.tc-step-action').setAttribute('aria-label', 'Step ' + (i + 1) + ' action');
+        r.querySelector('.tc-step-expected').setAttribute('aria-label', 'Step ' + (i + 1) + ' expected result');
     });
 };
 

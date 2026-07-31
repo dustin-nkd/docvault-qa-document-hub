@@ -1120,6 +1120,10 @@
     .quality-module-row > span:nth-last-child(-n+2) { display:none; }
 }
 
+/* The keyboard-highlighted option in a custom select. Mirrors the hover
+   treatment so pointer and keyboard users see the same affordance. */
+.subfolder-option.is-active { background:var(--card-h); color:var(--tx); }
+
 /* Activity timeline — grouped by day, one row per recorded action.
    Uses only the existing palette tokens and the app's own glass-header
    treatment for the sticky day label, so nothing new enters the visual

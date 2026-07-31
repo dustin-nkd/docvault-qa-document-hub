@@ -59,7 +59,12 @@ const maintainabilityBudgets = {
     'js/actions-settings.js': 460,
     'js/actions-documents.js': 750,
     'js/render-core.js': 1700,
-    'js/render-editor.js': 420,
+    // Holds renderSelect() and its full combobox implementation (ARIA state,
+    // arrow/Home/End/Escape/type-ahead). Every dropdown in the app renders
+    // through it, and its callers span four files, so the keyboard contract has
+    // to live beside the markup that declares it rather than in a separate
+    // script a cached shell might not have loaded.
+    'js/render-editor.js': 500,
     'js/render-editor-categories.js': 720,
     'js/render-viewer.js': 150,
     'js/render-viewer-categories.js': 850,

@@ -176,6 +176,64 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('the custom select carries the full combobox contract', () => {
+    // Every dropdown in the app renders through renderSelect(). It was a
+    // readonly <input> beside a list of <div>s: announced as a text box, and
+    // impossible to open without a mouse, because the delegated keydown handler
+    // in events.js skips <input> on purpose.
+    const source = read('js/render-editor.js');
+    const markup = source.slice(source.indexOf('window.renderSelect'), source.indexOf('function _selectParts'));
+    for (const attribute of ['role="combobox"', 'aria-haspopup="listbox"', 'aria-expanded="false"', 'aria-controls=', 'role="listbox"', 'role="option"', 'aria-selected=']) {
+        assert.ok(markup.includes(attribute), 'renderSelect must emit ' + attribute);
+    }
+    assert.match(markup, /data-onkeydown="handleSelectKeydown\(event, '\$\{id\}'\)"/,
+        'the combobox must have its own keydown handler');
+
+    const keys = source.slice(source.indexOf('window.handleSelectKeydown'));
+    for (const key of ['Escape', 'Tab', 'ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter']) {
+        assert.ok(keys.includes(`'${key}'`), 'handleSelectKeydown must handle ' + key);
+    }
+    assert.match(keys, /aria-activedescendant|_setSelectActive/, 'the active option must be exposed');
+
+    // Escape inside the editor must close the dropdown, not discard the document.
+    const events = read('js/events.js');
+    const escape = events.slice(events.indexOf("if (e.key === 'Escape')"));
+    const closeAt = escape.indexOf('closeOpenCustomSelect');
+    const cancelAt = escape.indexOf('cancelEdit()');
+    assert.ok(closeAt > -1 && cancelAt > -1 && closeAt < cancelAt,
+        'an open custom select must be closed before cancelEdit() is reached');
+});
+
+test('editor form controls have programmatic labels', () => {
+    // Visual labels sat next to their inputs with no for= and no wrapping, so a
+    // screen reader announced every field by its placeholder or not at all.
+    for (const relativePath of ['js/render-editor.js', 'js/render-editor-categories.js']) {
+        const source = read(relativePath);
+        const labels = [...source.matchAll(/<label(?![^>]*\bfor=)[^>]*>/g)]
+            // A label that wraps its own control needs no for=; those all open
+            // with a flex/row class and contain the input directly.
+            .filter(match => !/class="[^"]*(?:flex|testrun-tc-row)/.test(match[0]));
+        assert.deepEqual(labels.map(m => m[0].slice(0, 60)), [],
+            relativePath + ' has labels that name no control');
+    }
+    // Repeating step rows are named as a group instead.
+    const categories = read('js/render-editor-categories.js');
+    assert.match(categories, /id="bug-steps-container" role="group" aria-labelledby="bug-steps-label"/);
+    assert.match(categories, /id="tc-steps-container" role="group" aria-labelledby="tc-steps-label"/);
+    assert.match(categories, /class="form-input flex-1 bug-step-input" aria-label="Step \$\{idx \+ 1\}"/);
+});
+
+test('the password reveal reports whether the secret is showing', () => {
+    // It flipped input.type silently: the icon stayed an open eye and the
+    // accessible name never changed.
+    const utils = read('js/utils.js');
+    const toggle = utils.slice(utils.indexOf('window.togglePasswordVisibility'));
+    const body = toggle.slice(0, toggle.indexOf('\n};'));
+    assert.match(body, /setAttribute\('aria-pressed'/);
+    assert.match(body, /setAttribute\('aria-label'/);
+    assert.match(body, /fa-eye-slash/, 'the icon must reflect the current state');
+});
+
 test('the activity timeline is a real list with full-row targets', () => {
     // The old rows were <div>s whose only hit target was the few characters of
     // the document title, wired up with a click handler on a <span>.

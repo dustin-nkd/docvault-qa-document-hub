@@ -43,6 +43,10 @@ document.addEventListener('keydown', (e) => {
         saveDoc();
     }
     if (e.key === 'Escape') {
+        // Innermost overlay first. An open custom select has to close before the
+        // editor does, or Escape would discard the whole document just because a
+        // dropdown was showing.
+        if (typeof closeOpenCustomSelect === 'function' && closeOpenCustomSelect(true)) return;
         const searchModal = document.getElementById('search-modal');
         if (searchModal && !searchModal.classList.contains('hidden')) { closeSearch(); return; }
         const modal = document.getElementById('modal');
