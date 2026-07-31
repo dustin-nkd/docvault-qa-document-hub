@@ -85,8 +85,23 @@ test('release readiness distinguishes missing evidence, passing evidence, blocke
         passRate: 50,
         openBugs: 0,
         critical: 0,
-        major: 0
+        major: 0,
+        deferred: 0
     });
+
+    // A deferred defect is a decision not to fix in this release, so it must
+    // stay out of the blocking checks while still being counted — shipping
+    // around a known bug should be visible on the release card.
+    data.closedCritical.bugData.resolution = 'deferred';
+    const withDeferred = api.evaluateReleaseReadiness(
+        { releaseData: { linkedRuns: ['run-1'], linkedBugs: ['bug-closed'], readinessPolicy: { minPassRate: 50 } } },
+        docs
+    );
+    assert.equal(withDeferred.outcome, 'go', 'a deferred bug must not block the release');
+    assert.equal(withDeferred.metrics.deferred, 1);
+    assert.equal(withDeferred.metrics.openBugs, 0);
+    assert.equal(withDeferred.checks.find(check => check.id === 'defects').deferred, 1);
+    data.closedCritical.bugData.resolution = '';
 
     data.majorBug.bugData.severity = 'Critical';
     const blockedRelease = {

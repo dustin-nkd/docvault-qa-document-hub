@@ -176,6 +176,40 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('a fixed bug can be recorded as fixed', () => {
+    // "fixed" was rendered by RES_LABEL and present in seed data, but no control
+    // could ever set it: all four menu actions forced the bug to closed, so the
+    // one outcome most bugs actually reach had no way to be recorded.
+    assert.match(read('js/constants.js'), /bugFixed: "Fixed",/);
+    assert.match(read('js/ui.js'), /resolveBug\('\$\{id\}','fixed','resolved'\)/,
+        'Fixed must land in Resolved so the retest and verify steps still happen');
+    const actions = read('js/actions-documents.js');
+    assert.match(actions, /window\.resolveBug = async function\(id, resolution, targetStatus\)/);
+    // A bug already out of play gains the missing reason without moving backwards.
+    assert.match(actions, /BUG_TERMINAL_STATUSES\.has\(normalizeBugStatusValue\(doc\.bugStatus\)\)\s*\n\s*\? doc\.bugStatus/);
+});
+
+test('a deferred defect is counted as accepted risk, not as a blocker', () => {
+    const state = read('js/state.js');
+    assert.match(state, /const deferred = linkedBugs\.filter\(bug => bug\.bugData\?\.resolution === 'deferred'\);/);
+    assert.match(state, /deferred: deferred\.length,/);
+    // It must not enter the blocking condition.
+    const defects = state.slice(state.indexOf("id: 'defects'"));
+    assert.doesNotMatch(defects.slice(0, defects.indexOf('docIds')), /deferred\.length > 0/,
+        'a deferred bug must never fail the defect policy check');
+    assert.match(read('js/render-viewer-categories.js'), /deferred \(accepted risk\)/);
+});
+
+test('the sync layer documents that last-write-wins discards history', () => {
+    // bugStatusEvents is append-only inside a document, but _merge() keeps whole
+    // documents. Nothing in the code can express that, so it is written down.
+    const readme = read('README.md');
+    assert.match(readme, /Known limit — last-write-wins discards, it does not combine/);
+    assert.match(readme, /bugStatusEvents/);
+    assert.match(read('storage.js'), /if \(!l \|\| remoteVersion > localVersion\) map\.set\(r\.id, r\);/,
+        'the README describes this line; keep them together');
+});
+
 test('leaving a closed bug withdraws its resolution on every route', () => {
     // A bug could sit in Open still labelled "Won't Fix" with its triage SLA
     // stopped, because only reopenBug() cleared the resolution and dragging

@@ -671,7 +671,7 @@ function renderViewerCategory(doc) {
                 evidence: ['Test evidence', `${check.value} linked test run${check.value === 1 ? '' : 's'}`],
                 'pass-rate': ['Pass rate threshold', check.value == null ? `No measurable result &middot; target ${check.threshold}%` : `${check.value}% &middot; target ${check.threshold}%`],
                 execution: ['Execution completeness', `${check.value}/${check.total} steps executed`],
-                defects: ['Defect policy', `${check.critical} Critical &middot; ${check.major} Major open`],
+                defects: ['Defect policy', `${check.critical} Critical &middot; ${check.major} Major open${check.deferred ? ` &middot; ${check.deferred} deferred (accepted risk)` : ''}`],
                 environments: ['Environment health', readiness.policy.requireHealthyEnvironments ? `${check.unhealthy} unhealthy of ${check.value}` : 'Not required by policy']
             })[check.id];
             const decisionLog = Array.isArray(doc.releaseData?.decisionLog) ? doc.releaseData.decisionLog : [];

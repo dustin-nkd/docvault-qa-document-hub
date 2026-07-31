@@ -76,6 +76,12 @@ Organize documents across specialized categories, each with its own dedicated fo
 - **Zero-config sync**: Documents are synced to a hardcoded GitHub repository (`dustin-nkd/docvault-assets`) via the GitHub API.
 - **Only a PAT (Personal Access Token) is needed** — no repo configuration required.
 - **Automatic merge**: Conflicts are resolved with a last-write-wins strategy per document.
+
+> **Known limit — last-write-wins discards, it does not combine.** `DocStorage._merge()` compares whole documents by `updatedAt` and keeps one of them; there is no field-level or per-log merge. If the same document is edited on two devices, everything the losing copy changed is dropped without a warning.
+>
+> This matters most for append-only histories carried inside a document — `bugStatusEvents`, which backs the bug lifecycle charts and the derived reopen count. Close a bug on the laptop, close the same bug differently on a phone that was offline, and the phone's version replaces the laptop's entire history.
+>
+> Left as-is deliberately: it is a property of the whole sync layer rather than of any one feature, and a single user moving between devices sequentially will not hit it. Fixing it properly means merging per field and rebuilding each event chain against the winning status — a naive union produces events whose `from` no longer matches the previous `to`, which would corrupt the lifecycle charts rather than protect them. Revisit if the vault is ever shared between people.
 - **Bootstrap from any device**: New devices can pull the entire document database from GitHub on first load.
 - **Image CDN**: Pasted images are automatically uploaded to GitHub and swapped from base64 to CDN URLs on save, eliminating storage bloat.
 
