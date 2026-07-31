@@ -70,7 +70,13 @@ function _slugifyWorkspaceName(name) {
 
 window.renderWorkspaceSwitcher = function() {
     const label = document.getElementById('workspace-switcher-name');
-    if (label) label.textContent = getActiveWorkspace().name;
+    if (!label) return;
+    // Guest mode must never read the real registry — not even for a name. It
+    // shows the demo's own single vault instead; renderGuestBanner() disables
+    // the control itself. This runs on every render, so it has to keep saying
+    // so rather than letting a later render restore a real workspace name.
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) { label.textContent = 'Demo vault'; return; }
+    label.textContent = getActiveWorkspace().name;
 };
 
 // ========================
