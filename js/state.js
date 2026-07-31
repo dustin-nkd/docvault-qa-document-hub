@@ -357,6 +357,14 @@ function getFocusDueState(workflow, now = new Date()) {
     };
 }
 
+// Card grids .slice() it, the editor spreads it, search calls .some() — all
+// unguarded. A document arriving without the array (an import need only carry
+// id, title and category) took the list and the editor down with it.
+function normalizeDocTags(docs) {
+    (docs || []).forEach(doc => { if (doc && !Array.isArray(doc.tags)) doc.tags = []; });
+    return docs;
+}
+
 // ========================
 // DOCUMENT HISTORY
 // ========================
@@ -496,6 +504,8 @@ async function hydrate() {
     } else {
         documents = [...SAMPLE_DOCS];
     }
+
+    normalizeDocTags(documents);
 
     let migrated = false;
     documents.forEach(d => {

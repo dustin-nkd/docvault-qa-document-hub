@@ -8,7 +8,11 @@ function renderEditor() {
     const category = isEdit ? doc.category : (state._newCat || 'runbook');
     const status = isEdit ? doc.status : (state._newStatus || 'draft');
     const content = isEdit ? doc.content : (state._newContent || '');
-    const tags = isEdit ? doc.tags : state.editorTags;
+    // state.editorTags is the only tag store the editor writes to, and the one
+    // saveDoc reads. Rendering doc.tags instead froze the chips while editing an
+    // existing document, yet the unseen change still landed on save. Every entry
+    // point seeds state.editorTags first, so it is the single source of truth.
+    const tags = state.editorTags;
     const bugData = isEdit ? doc.bugData : state._newBugData;
     const tcData = isEdit ? doc.tcData : state._newTcData;
     const apiData = isEdit ? doc.apiData : state._newApiData;
@@ -134,13 +138,10 @@ window.changeEditorCat = function(cat) {
 // ========================
 // CUSTOM SELECT (renderSelect)
 // ========================
-// This is a styled stand-in for <select>, so it has to carry the combobox role,
-// state, and keyboard contract itself. Before this it was a readonly <input>
-// next to a list of <div>s: assistive tech announced it as a plain text box,
-// and — because the delegated keydown handler in events.js deliberately skips
-// <input> — it could be focused but never opened without a mouse. Every
-// dropdown in the app comes from here, so that was a keyboard dead end for
-// severity, priority, status, sort, and every batch edit.
+// A styled stand-in for <select>, so it carries the combobox role, state and
+// keyboard contract itself. It was a readonly <input> beside a list of <div>s:
+// announced as a text box, and unopenable by keyboard because the delegated
+// keydown handler in events.js skips <input>. Every dropdown comes from here.
 window.renderSelect = function(id, options, selectedValue, customClass, onChangeCode, ariaLabel) {
     customClass = customClass || '';
     onChangeCode = onChangeCode || '';

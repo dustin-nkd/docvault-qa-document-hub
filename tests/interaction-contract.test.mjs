@@ -176,6 +176,40 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('the editor renders the tag list it actually saves', () => {
+    // renderEditor() read doc.tags while addTag/removeTag/Backspace mutated
+    // state.editorTags and saveDoc read state.editorTags. Editing an existing
+    // document therefore froze the chips on screen while the unseen change was
+    // still written on save.
+    const editor = read('js/render-editor.js');
+    assert.match(editor, /const tags = state\.editorTags;/, 'the chips must come from the store the editor writes to');
+    assert.doesNotMatch(editor, /const tags = isEdit \? doc\.tags/, 'doc.tags is not the editing source of truth');
+    // Every mutation and the save must agree on that one array.
+    for (const mutation of [/state\.editorTags\.push\(val\)/, /state\.editorTags\.pop\(\)/, /state\.editorTags\.splice\(i, 1\)/]) {
+        assert.match(editor, mutation);
+    }
+    assert.match(read('js/actions-documents.js'), /const tags = \[\.\.\.state\.editorTags\]/);
+    // And every route into the editor has to seed it, or the chips render empty.
+    // editDoc() and the history restore are the two routes that open an existing
+    // document; the rest start empty.
+    for (const relativePath of ['js/actions-documents.js', 'js/actions-batch-history.js']) {
+        assert.match(read(relativePath), /state\.editorTags = \[\.\.\.doc\.tags\]/,
+            relativePath + ' must seed editorTags when opening an existing document');
+    }
+});
+
+test('a document with no tags array cannot take the list or editor down', () => {
+    // Card grids .slice() doc.tags, the editor spreads it, search calls .some()
+    // — none of them check. An import only has to carry id, title and category.
+    const state = read('js/state.js');
+    assert.match(state, /function normalizeDocTags\(docs\)/);
+    assert.match(state, /if \(doc && !Array\.isArray\(doc\.tags\)\) doc\.tags = \[\];/);
+    assert.match(state, /normalizeDocTags\(documents\);/, 'hydrate must normalise on load');
+    // The two routes that put documents in memory without going through hydrate.
+    assert.match(read('js/actions-imports.js'), /typeof normalizeDocTags === 'function'\) normalizeDocTags\(fresh\)/);
+    assert.match(read('storage.js'), /typeof normalizeDocTags === 'function'\) normalizeDocTags\(documents\)/);
+});
+
 test('no rule animates every property', () => {
     // `transition: all` animates whatever happens to change, including layout
     // and paint properties nothing ever sets. Each of these now lists exactly

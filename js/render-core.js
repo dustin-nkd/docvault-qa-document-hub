@@ -1083,9 +1083,8 @@ function _renderUiState(icon, title, description = '', actionHtml = '', tone = '
     </section>`;
 }
 
-// The day header carries the date, so each row only needs a clock time. That
-// replaces the old right-hand column, which mixed relative and absolute formats
-// ("2 mins ago" above "07/22/2026") and could not be scanned as one column.
+// The day header carries the date, so a row needs only a clock time. The old
+// column mixed "2 mins ago" with "07/22/2026" and could not be scanned.
 function _activityDayLabel(ts) {
     const startOfDay = value => { const date = new Date(value); date.setHours(0, 0, 0, 0); return date; };
     const days = Math.round((startOfDay(Date.now()) - startOfDay(ts)) / 86400000);
@@ -1210,11 +1209,10 @@ window.clearDocumentFilters = function() {
     renderContent();
 };
 
-// Address for a document, matching what the app itself puts in the address bar.
-// _appUrl() lives in js/actions-batch-history.js and preserves guest=1, without
-// which opening a card in a new tab would drop a demo visitor into the real
-// locked vault. Guarded: a missing helper must degrade the link, not throw
-// while the whole list is rendering.
+// Matches what the app puts in the address bar. _appUrl() preserves guest=1,
+// without which opening a card in a new tab drops a demo visitor into the real
+// locked vault. Guarded so a missing helper degrades the link rather than
+// throwing mid-render.
 function _docHref(id) {
     return typeof _appUrl === 'function' ? _appUrl(id) : '?view=' + id;
 }

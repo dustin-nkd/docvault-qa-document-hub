@@ -552,6 +552,10 @@ window._doImportBackup = async function(mode) {
         // in-memory `documents` array — refresh it so the UI reflects the import
         // immediately instead of on next reload.
         const fresh = await DocStorage.getAll();
+        // An imported file only has to carry id/title/category, so its documents
+        // can arrive with no tags array. hydrate() normalises that on load; this
+        // path skips hydrate, so it must do the same or the next render throws.
+        if (typeof normalizeDocTags === 'function') normalizeDocTags(fresh);
         if (fresh) documents = fresh;
         render();
         toast(`Imported ${result.imported} document${result.imported !== 1 ? 's' : ''} (${result.total} total).`, 'success');

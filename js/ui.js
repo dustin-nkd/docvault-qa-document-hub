@@ -161,10 +161,9 @@ function enhanceInteractionSemantics(root = document, syncLayout = true) {
         }
     });
 
-    // Icon fonts render a private-use glyph that a screen reader either skips or
-    // reads as garbage, so every icon here is decoration. Hiding them centrally
-    // covers markup injected after render (card menus, added step rows) too, and
-    // cannot drift the way 250-odd hand-written attributes would.
+    // An icon font renders a private-use glyph a screen reader reads as noise, so
+    // every icon here is decoration. Hiding them centrally also covers markup
+    // injected after render, and cannot drift like 250 hand-written attributes.
     scope.querySelectorAll('i:not([aria-hidden])').forEach(icon => {
         if (!icon.textContent.trim() && !icon.hasAttribute('aria-label')) icon.setAttribute('aria-hidden', 'true');
     });
@@ -543,11 +542,9 @@ window.exportDoc = function(id) {
 // ========================
 // DOCUMENT CONTEXT MENU
 // ========================
-// The board's core action — moving a card to another column — used to be
-// reachable only by dragging. This puts it in the card menu, which is a real
-// <button> list and therefore works with a mouse, a keyboard, or a screen
-// reader. Rendered only when the mover is actually available, so a stale cached
-// script leaves no dead menu items behind.
+// Moving a card between columns was drag-only. The card menu is a real <button>
+// list, so it works with a mouse, a keyboard or a screen reader. Rendered only
+// when the mover exists, so a stale cached script leaves no dead entries.
 const KANBAN_TASK_COLUMNS = [
     { id: 'todo', label: 'To Do', icon: 'fa-regular fa-circle' },
     { id: 'in-progress', label: 'In Progress', icon: 'fa-solid fa-spinner' },

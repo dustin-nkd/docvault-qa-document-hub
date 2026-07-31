@@ -392,10 +392,9 @@ document.addEventListener('click', (e) => {
         if (!e.target.closest('#dp-wrap')) dpPanel.classList.add('hidden');
     }
 
-    // A document title is a real <a href="?view=…">, so Cmd/Ctrl-click, middle
-    // click and "Open in new tab" work the way they do anywhere else. A plain
-    // click still stays in the app rather than reloading it. Handled here, ahead
-    // of the generic delegator, so the surrounding card does not also fire.
+    // Document titles are real anchors so Cmd/Ctrl-click and "Open in new tab"
+    // behave normally; a plain click stays in the app. Handled before the generic
+    // delegator so the surrounding card does not fire as well.
     const docLink = e.target.closest('a[data-doc-link]');
     if (docLink) {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -469,10 +468,9 @@ window.handleDragOver = function(event) {
     event.dataTransfer.dropEffect = 'move';
 };
 
-// The single path a card takes to another column, whether it was dragged there
-// or moved from the card menu. Dragging used to be the only way to change a
-// task or bug status, which left the board's core action unreachable without a
-// mouse; both routes now run exactly the same code so they cannot drift.
+// The single path a card takes to another column, dragged or moved from its
+// menu. Dragging was once the only way, leaving the board's core action
+// unreachable without a mouse; both routes run this so they cannot drift.
 window.moveDocStatus = async function(id, newStatus) {
     const idx = documents.findIndex(d => d.id === id);
     if (idx === -1 || documents[idx].status === 'deleted') return false;
