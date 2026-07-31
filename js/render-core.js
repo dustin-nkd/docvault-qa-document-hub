@@ -1440,7 +1440,10 @@ function bugTriageInfo(doc) {
     const startedAt = Number(doc.createdAt) || Date.now();
     const dueAt = startedAt + slaHours * 3600000;
     const triagedAt = Number(data.triagedAt) || (data.resolution ? Number(doc.updatedAt) || null : null);
-    const duplicate = data.resolution === 'duplicate' && !!data.duplicateOf;
+    // The original has to still exist. The viewer already drops the link when it
+    // is trashed, but the triage chip kept reading "Linked to original".
+    const duplicate = data.resolution === 'duplicate' && !!data.duplicateOf
+        && documents.some(candidate => candidate.id === data.duplicateOf && candidate.status !== 'deleted');
     const clockAt = triagedAt || Date.now();
     const outsideSla = clockAt > dueAt;
     const remaining = dueAt - Date.now();
@@ -1504,7 +1507,7 @@ function renderBugKanban(docs, isMobileSearch) {
                     const browser = d.bugData?.browser && d.bugData.browser !== '-' ? d.bugData.browser : '';
                     const assignee = d.bugData?.assignee || '';
                     const resolution = d.bugData?.resolution || '';
-                    const reopenCount = d.bugData?.reopenCount || 0;
+                    const reopenCount = typeof bugReopenCount === 'function' ? bugReopenCount(d) : 0;
                     const priority = d.bugData?.priority || '';
                     const ref = bugRef(d);
                     const triage = bugTriageInfo(d);

@@ -613,10 +613,15 @@ function showDocMenu(id, btn) {
         if (bugDoc?.category === 'bug') {
             const bs = bugDoc.bugStatus || 'new';
             const isClosed = bs === 'closed';
+            // Dragging into Closed sets no resolution, and the menu hid the four
+            // resolution actions once closed — so a bug closed by drag could
+            // never be given a reason. Offer them whenever one is missing.
+            const needsResolution = !bugDoc.bugData?.resolution;
             menuHtml += `<div style="height:1px;background:var(--brd);margin:4px 0;"></div>`;
             if (isClosed) {
                 menuHtml += `<button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#fb923c;transition:background .15s;" data-onclick="reopenBug('${id}')"><i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('bugReopen')}</button>`;
-            } else {
+            }
+            if (!isClosed || needsResolution) {
                 menuHtml += `
                     <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="resolveBug('${id}','wont-fix')"><i class="fa-solid fa-ban w-4 text-center"></i> ${t('bugWontFix')}</button>
                     <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:#94a3b8;transition:background .15s;" data-onclick="promptDuplicateBug('${id}')"><i class="fa-solid fa-copy w-4 text-center"></i> ${t('bugDuplicate')}</button>
