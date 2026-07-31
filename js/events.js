@@ -392,6 +392,19 @@ document.addEventListener('click', (e) => {
         if (!e.target.closest('#dp-wrap')) dpPanel.classList.add('hidden');
     }
 
+    // A document title is a real <a href="?view=…">, so Cmd/Ctrl-click, middle
+    // click and "Open in new tab" work the way they do anywhere else. A plain
+    // click still stays in the app rather than reloading it. Handled here, ahead
+    // of the generic delegator, so the surrounding card does not also fire.
+    const docLink = e.target.closest('a[data-doc-link]');
+    if (docLink) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        // In batch mode the card selects instead of opening, so fall through to
+        // its own handler rather than navigating.
+        if (!state.batchMode) { viewDoc(docLink.getAttribute('data-doc-link')); return; }
+    }
+
     let target = e.target.closest('[data-onclick]');
     if (target) {
         executeAction(target.getAttribute('data-onclick'), e, target);

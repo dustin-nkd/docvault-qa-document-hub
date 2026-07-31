@@ -1210,6 +1210,15 @@ window.clearDocumentFilters = function() {
     renderContent();
 };
 
+// Address for a document, matching what the app itself puts in the address bar.
+// _appUrl() lives in js/actions-batch-history.js and preserves guest=1, without
+// which opening a card in a new tab would drop a demo visitor into the real
+// locked vault. Guarded: a missing helper must degrade the link, not throw
+// while the whole list is rendering.
+function _docHref(id) {
+    return typeof _appUrl === 'function' ? _appUrl(id) : '?view=' + id;
+}
+
 function renderDocList() {
     const docs = getFiltered();
     const isMobileSearch = state.view === 'documents' || state.view === 'favorites';
@@ -1271,18 +1280,23 @@ function renderDocList() {
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
-            ${renderSelect('hdr-status-filter', [
-                {value: 'all', label: t('allStatus')},
-                {value: 'published', label: 'Published'},
-                {value: 'draft', label: 'Draft'},
-                {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
-            ${renderSelect('hdr-sort-by', [
-                {value: 'updated', label: t('recentlyUpdated')},
-                {value: 'created', label: t('newest')},
-                {value: 'title', label: t('sortAZ')}
-            ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)', 'Sort documents')}
-            <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents${totalPages > 1 ? ` · page ${state.docListPage}/${totalPages}` : ''}</span>
+            <div class="flex items-center gap-2" role="group" aria-label="Filter and sort documents">
+                ${renderSelect('hdr-status-filter', [
+                    {value: 'all', label: t('allStatus')},
+                    {value: 'published', label: 'Published'},
+                    {value: 'draft', label: 'Draft'},
+                    {value: 'archived', label: 'Archived'}
+                ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
+                ${renderSelect('hdr-sort-by', [
+                    {value: 'updated', label: t('recentlyUpdated')},
+                    {value: 'created', label: t('newest')},
+                    {value: 'title', label: t('sortAZ')}
+                ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)', 'Sort documents')}
+            </div>
+            <!-- Filtering changed the result count silently; announcing it is the
+                 only signal a screen reader gets that anything happened. -->
+            <p class="text-xs" style="color:var(--tx-d);" aria-live="polite" aria-atomic="true">${docs.length} ${docs.length === 1 ? 'document' : 'documents'}${totalPages > 1 ? ` · page ${state.docListPage} of ${totalPages}` : ''}</p>
+            ${hasActiveFilters ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="clearDocumentFilters()"><i class="fa-solid fa-filter-circle-xmark" style="font-size:11px;"></i> Clear filters</button>` : ''}
             ${!inTrash ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="showSaveViewModal()" title="Save this category + filter + sort combination"><i class="fa-regular fa-bookmark" style="font-size:11px;"></i> Save View</button>` : ''}
             ${state.category === 'api' && !inTrash ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="triggerApiImport()" title="Import a Postman Collection or OpenAPI spec"><i class="fa-solid fa-file-import" style="font-size:11px;"></i> Import</button>` : ''}
             <div class="flex items-center gap-2 ml-auto">
@@ -1295,19 +1309,19 @@ function renderDocList() {
                         ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
                     </button>
                 ` : ''}
-                ${inTrash && docs.length > 0 ? `<button class="btn-d text-xs py-1 px-2.5" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
+                ${inTrash && docs.length > 0 ? `<span class="shrink-0" aria-hidden="true" style="width:1px;height:20px;background:var(--brd);"></span><button class="btn-d text-xs py-1 px-2.5" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
             </div>
         </div>
 
         <!-- Grid -->
         ${docs.length === 0 ? _renderUiState(emptyIcon, emptyTitle, emptyDescription, emptyAction, hasActiveFilters ? 'filtered' : 'neutral') : `
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            <ul class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4" style="list-style:none;margin:0;padding:0;">
                 ${pageDocs.map(d => {
                     if (d.category === 'credential') {
                         const domain = guessDomain(d.title);
                         const favUrl = `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`;
                         return `
-                        <div class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
+                        <li class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
                             ${batchCheckbox(d.id)}
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-3">
@@ -1316,7 +1330,7 @@ function renderDocList() {
                                         <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
                                     </div>
                                     <div class="min-w-0">
-                                        <h4 class="text-sm font-semibold leading-snug truncate" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                                        <h4 class="text-sm font-semibold leading-snug truncate" style="color:var(--tx);"><a class="doc-card-link" href="${_docHref(d.id)}" data-doc-link="${d.id}">${escHtml(d.title)}</a></h4>
                                         ${d.username ? `<p class="text-[11px] truncate mt-0.5" style="color:var(--tx-m);">${escHtml(d.username)}</p>` : ''}
                                     </div>
                                 </div>
@@ -1339,10 +1353,10 @@ function renderDocList() {
                                     <button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:all .15s;" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
                                 </div>
                             </div>
-                        </div>`;
+                        </li>`;
                     }
                     return `
-                    <div class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
+                    <li class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
                         ${batchCheckbox(d.id)}
                         <div class="flex items-start justify-between mb-2.5">
                             <div class="flex items-center gap-2 flex-wrap">
@@ -1359,16 +1373,16 @@ function renderDocList() {
                                 </button>
                             </div>
                         </div>
-                        <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                        <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);"><a class="doc-card-link" href="${_docHref(d.id)}" data-doc-link="${d.id}">${escHtml(d.title)}</a></h4>
                         <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${escHtml(excerpt(d.content, 100))}</p>
                         <div class="flex items-center gap-1.5 flex-wrap mb-3">
                             ${d.tags.slice(0, 3).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
                             ${d.tags.length > 3 ? `<span class="text-[10px]" style="color:var(--tx-d);">+${d.tags.length - 3}</span>` : ''}
                         </div>
                         <p class="text-[11px]" style="color:var(--tx-d);"><i class="fa-regular fa-clock mr-1"></i>${fmtDate(d.updatedAt)}</p>
-                    </div>
+                    </li>
                 `;}).join('')}
-            </div>
+            </ul>
         `}
 
         <!-- Pagination -->
