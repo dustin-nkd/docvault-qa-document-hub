@@ -1276,12 +1276,12 @@ function renderDocList() {
                 {value: 'published', label: 'Published'},
                 {value: 'draft', label: 'Draft'},
                 {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)')}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
             ${renderSelect('hdr-sort-by', [
                 {value: 'updated', label: t('recentlyUpdated')},
                 {value: 'created', label: t('newest')},
                 {value: 'title', label: t('sortAZ')}
-            ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)')}
+            ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)', 'Sort documents')}
             <span class="text-xs" style="color:var(--tx-d);">${docs.length} documents${totalPages > 1 ? ` · page ${state.docListPage}/${totalPages}` : ''}</span>
             ${!inTrash ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="showSaveViewModal()" title="Save this category + filter + sort combination"><i class="fa-regular fa-bookmark" style="font-size:11px;"></i> Save View</button>` : ''}
             ${state.category === 'api' && !inTrash ? `<button class="btn-s text-xs flex items-center gap-1.5" data-onclick="triggerApiImport()" title="Import a Postman Collection or OpenAPI spec"><i class="fa-solid fa-file-import" style="font-size:11px;"></i> Import</button>` : ''}
@@ -1566,7 +1566,7 @@ function renderBugKanban(docs, isMobileSearch) {
                 {value: 'published', label: 'Published'},
                 {value: 'draft', label: 'Draft'},
                 {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)')}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
             <button class="btn-s text-xs flex items-center gap-1.5" style="${showClosed ? 'color:var(--acc);' : 'color:var(--tx-d);'}" data-onclick="window._bugShowClosed=!window._bugShowClosed;renderContent();">
                 <i class="fa-solid fa-${showClosed ? 'eye-slash' : 'eye'}" style="font-size:10px;"></i>
                 ${showClosed ? 'Hide' : 'Show'} Closed${!showClosed && closedCount > 0 ? ` (${closedCount})` : ''}
@@ -1682,7 +1682,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
                 {value: 'published', label: 'Published'},
                 {value: 'draft', label: 'Draft'},
                 {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)')}
+            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
             <div class="flex-1"></div>
             <button class="btn-p text-sm" data-onclick="createDoc('task')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newTask')}</button>
         </div>

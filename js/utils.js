@@ -294,11 +294,22 @@ window.copyUsername = function(id, btn) {
     _copyText(doc.username, btn);
 };
 
-window.togglePasswordVisibility = function(inputId) {
+window.togglePasswordVisibility = function(inputId, button) {
     const input = document.getElementById(inputId);
     if (!input) return;
-    const isPassword = input.type === 'password';
-    input.type = isPassword ? 'text' : 'password';
+    const revealing = input.type === 'password';
+    input.type = revealing ? 'text' : 'password';
+    // The control used to flip the field silently: the icon stayed an open eye
+    // and the accessible name never changed, so neither a sighted nor a screen
+    // reader user could tell whether the secret was currently showing.
+    const control = button || document.querySelector(`[data-onclick*="togglePasswordVisibility('${inputId}'"]`);
+    if (!control) return;
+    const label = revealing ? 'Hide password' : 'Show password';
+    control.setAttribute('aria-label', label);
+    control.setAttribute('aria-pressed', String(revealing));
+    control.title = label;
+    const icon = control.querySelector('i');
+    if (icon) icon.className = revealing ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
 };
 
 // ========================
