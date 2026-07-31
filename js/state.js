@@ -40,6 +40,7 @@ let state = {
     lastSelectedId: null,
     docListPage: 1, // Sprint 22: pagination for the documents grid
     traceabilityFilter: 'all',
+    activityFilter: 'all', // Activity tab: 'all' or an ACTIVITY_META action type
     focusQueueTab: 'active'
 };
 
