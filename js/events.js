@@ -476,7 +476,16 @@ window.moveDocStatus = async function(id, newStatus) {
     if (idx === -1 || documents[idx].status === 'deleted') return false;
     const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
     if ((documents[idx][field] || (field === 'kanbanStatus' ? 'todo' : 'new')) === newStatus) return false;
-    if (field === 'bugStatus') recordBugStatusChange(documents[idx], newStatus);
+    if (field === 'bugStatus') {
+        // Reopening withdraws the decision that closed the bug. Without this a
+        // card sat in Open still labelled "Won't Fix" with its SLA stopped.
+        // Terminal → terminal is a corrected mis-close, not a reopen.
+        if (typeof isBugReopenTransition === 'function'
+            && isBugReopenTransition(documents[idx].bugStatus, newStatus)) {
+            archiveBugResolution(documents[idx]);
+        }
+        recordBugStatusChange(documents[idx], newStatus);
+    }
     else {
         documents[idx][field] = newStatus;
         documents[idx].updatedAt = Date.now();

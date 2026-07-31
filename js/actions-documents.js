@@ -176,6 +176,8 @@ window._selectDuplicateOfBug = async function(originalBugId) {
     const idx = documents.findIndex(d => d.id === id);
     if (idx === -1) return;
     const doc = documents[idx];
+    const rejection = _duplicateLinkProblem(id, originalBugId);
+    if (rejection) { toast(rejection, 'error'); return; }
     recordBugStatusChange(doc, 'closed');
     if (!doc.bugData) doc.bugData = {};
     doc.bugData.resolution = 'duplicate';
@@ -186,16 +188,38 @@ window._selectDuplicateOfBug = async function(originalBugId) {
     toast('Marked as Duplicate', 'info');
 };
 
+// "Duplicate of" had no constraints: self-links, mutual links and unbounded
+// chains were all accepted. Nothing crashed, the links just meant nothing. The
+// picker hides the bug itself, but the rule belongs with the write, not the
+// widget. Returns a refusal message, or '' when the link is fine.
+function _duplicateLinkProblem(bugId, originalId) {
+    if (!originalId) return 'Select the original bug first.';
+    if (bugId === originalId) return 'A bug cannot be a duplicate of itself.';
+    const original = documents.find(d => d.id === originalId);
+    if (!original || original.status === 'deleted') return 'That bug no longer exists.';
+    if (original.category !== 'bug') return 'A bug can only duplicate another bug.';
+    // Walk the chain from the proposed original; reaching this bug closes a loop.
+    const seen = new Set([bugId]);
+    let node = original;
+    while (node) {
+        if (seen.has(node.id)) return 'That would create a circular duplicate link.';
+        seen.add(node.id);
+        const next = node.bugData?.resolution === 'duplicate' ? node.bugData.duplicateOf : '';
+        node = next ? documents.find(d => d.id === next && d.status !== 'deleted') : null;
+    }
+    return '';
+}
+
 window.reopenBug = async function(id) {
     const idx = documents.findIndex(d => d.id === id);
     if (idx === -1) return;
     document.getElementById('doc-menu')?.remove();
     const doc = documents[idx];
-    recordBugStatusChange(doc, 'open');
     if (!doc.bugData) doc.bugData = {};
-    doc.bugData.reopenCount = (doc.bugData.reopenCount || 0) + 1;
-    doc.bugData.resolution = '';
-    doc.bugData.duplicateOf = '';
+    // Same withdrawal the drag path performs, via one helper so the two routes
+    // out of Closed cannot drift again. The count is derived, so nothing is +1'd.
+    archiveBugResolution(doc);
+    recordBugStatusChange(doc, 'open');
     await persist();
     renderContent();
     toast('Bug reopened', 'info');
@@ -432,7 +456,7 @@ async function saveDoc() {
         bugData = { env, browser, severity, priority, assignee, classification, slaHours, triagedAt, precond, steps, expected, actual, linkedTc,
             resolution: existing.resolution || '',
             duplicateOf: existing.duplicateOf || '',
-            reopenCount: existing.reopenCount || 0,
+            resolutionHistory: existing.resolutionHistory || [],
             foundInRun: existing.foundInRun, foundInTc: existing.foundInTc, foundInStep: existing.foundInStep };
 
         finalContent = `# ${title}
@@ -686,13 +710,18 @@ async function duplicateDoc(id) {
     // otherwise the copy would collide with the original's number.
     if (dup.category === 'bug') {
         dup.bugNumber = _nextBugNumber();
-        dup.bugStatus = normalizeBugStatusValue(dup.bugStatus);
+        // Copying a closed bug produced a report born closed, carrying the
+        // original's resolution and a history whose only entry was "closed" —
+        // never open, so every lifecycle metric on it was meaningless.
+        dup.bugStatus = 'new';
         dup.bugStatusEvents = [{
             type: 'status_changed',
             from: null,
-            to: dup.bugStatus,
+            to: 'new',
             ts: dup.createdAt
         }];
+        dup.bugData = { ...(dup.bugData || {}), resolution: '', duplicateOf: '', resolutionHistory: [], triagedAt: null };
+        delete dup.bugData.reopenCount;
     }
     documents.unshift(dup);
     ActivityLog.record('created', dup, { note: 'duplicated' });

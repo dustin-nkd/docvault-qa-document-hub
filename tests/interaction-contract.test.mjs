@@ -176,6 +176,65 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('leaving a closed bug withdraws its resolution on every route', () => {
+    // A bug could sit in Open still labelled "Won't Fix" with its triage SLA
+    // stopped, because only reopenBug() cleared the resolution and dragging
+    // never did. Both routes go through one helper now.
+    const state = read('js/state.js');
+    assert.match(state, /function archiveBugResolution\(doc\)/);
+    assert.match(state, /data\.resolutionHistory\.push\(/, 'the withdrawn decision is filed, not deleted');
+    assert.match(state, /data\.triagedAt = null;/, 'the SLA clock restarts with the decision withdrawn');
+    for (const relativePath of ['js/events.js', 'js/actions-documents.js']) {
+        assert.match(read(relativePath), /archiveBugResolution\(/, relativePath + ' must withdraw through the shared helper');
+    }
+    // Terminal → terminal is a corrected mis-close, not a reopen.
+    assert.match(state, /function isBugReopenTransition\(from, to\)/);
+    assert.match(state, /BUG_ACTIVE_STATUSES = new Set\(\['new', 'open', 'in-progress'\]\)/,
+        'retest must stay out: resolved → retest is the verification hand-off');
+});
+
+test('the reopen count is derived from history, not stored', () => {
+    // The stored counter only moved when reopenBug() ran, so five real reopens
+    // could read as three. bugStatusEvents already records every move.
+    const state = read('js/state.js');
+    assert.match(state, /function bugReopenCount\(doc\)/);
+    assert.match(state, /!event\.estimated && isBugReopenTransition/, 'backfilled transitions were inferred, not observed');
+    assert.match(read('js/render-core.js'), /typeof bugReopenCount === 'function' \? bugReopenCount\(d\)/);
+    // Nothing may write the counter back.
+    for (const relativePath of ['js/actions-documents.js', 'js/events.js', 'js/render-core.js']) {
+        assert.doesNotMatch(read(relativePath), /reopenCount\s*=\s*\(/, relativePath + ' still increments a stored counter');
+        assert.doesNotMatch(read(relativePath), /reopenCount:\s*existing\./, relativePath + ' still persists a stored counter');
+    }
+});
+
+test('duplicate links cannot be circular, self-referential or dangling', () => {
+    const source = read('js/actions-documents.js');
+    assert.match(source, /function _duplicateLinkProblem\(bugId, originalId\)/);
+    assert.match(source, /if \(bugId === originalId\)/);
+    assert.match(source, /circular duplicate link/);
+    assert.match(source, /const rejection = _duplicateLinkProblem\(id, originalBugId\);/,
+        'the check must run before the link is written');
+    // A duplicate whose original is gone is no longer a duplicate decision.
+    assert.match(read('js/render-core.js'), /documents\.some\(candidate => candidate\.id === data\.duplicateOf/);
+});
+
+test('copying a bug starts a new report, not a closed one', () => {
+    const source = read('js/actions-documents.js');
+    const block = source.slice(source.indexOf("if (dup.category === 'bug')"));
+    const body = block.slice(0, block.indexOf('\n    }'));
+    assert.match(body, /dup\.bugStatus = 'new';/);
+    assert.match(body, /resolution: '', duplicateOf: '', resolutionHistory: \[\], triagedAt: null/);
+    assert.match(body, /delete dup\.bugData\.reopenCount;/);
+});
+
+test('a closed bug with no reason can still be given one', () => {
+    // Dragging into Closed sets no resolution, and the menu hid the resolution
+    // actions for anything closed — so such a bug was a dead end.
+    const ui = read('js/ui.js');
+    assert.match(ui, /const needsResolution = !bugDoc\.bugData\?\.resolution;/);
+    assert.match(ui, /if \(!isClosed \|\| needsResolution\)/);
+});
+
 test('the editor renders the tag list it actually saves', () => {
     // renderEditor() read doc.tags while addTag/removeTag/Backspace mutated
     // state.editorTags and saveDoc read state.editorTags. Editing an existing

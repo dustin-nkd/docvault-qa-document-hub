@@ -55,6 +55,42 @@ let documents = [];
 // inferred timestamp as an exact historical fact.
 const BUG_STATUS_ALIASES = { confirmed: 'open', testing: 'retest' };
 const BUG_TERMINAL_STATUSES = new Set(['resolved', 'verified', 'closed']);
+// Where a bug lands when it re-enters somebody's queue. Excludes `retest`:
+// resolved → retest is the normal verification hand-off, not a reopen.
+const BUG_ACTIVE_STATUSES = new Set(['new', 'open', 'in-progress']);
+
+function isBugReopenTransition(from, to) {
+    return BUG_TERMINAL_STATUSES.has(normalizeBugStatusValue(from))
+        && BUG_ACTIVE_STATUSES.has(normalizeBugStatusValue(to));
+}
+
+// Derived, never stored. reopenCount was a counter only reopenBug() touched, so
+// reopens done by dragging went uncounted — five could read as three.
+// bugStatusEvents records every move already. Backfilled events are excluded:
+// their transitions were inferred, not observed.
+function bugReopenCount(doc) {
+    return (doc?.bugStatusEvents || []).filter(event =>
+        event && !event.estimated && isBugReopenTransition(event.from, event.to)
+    ).length;
+}
+
+// A resolution belongs to a bug that is out of play. Coming back into play makes
+// it untrue — but it still happened, so it is filed rather than deleted.
+function archiveBugResolution(doc) {
+    const data = doc?.bugData;
+    if (!data || !data.resolution) return false;
+    if (!Array.isArray(data.resolutionHistory)) data.resolutionHistory = [];
+    data.resolutionHistory.push({
+        resolution: data.resolution,
+        duplicateOf: data.duplicateOf || '',
+        clearedAt: Date.now()
+    });
+    data.resolution = '';
+    data.duplicateOf = '';
+    // The SLA clock was stopped by the decision that is now withdrawn.
+    data.triagedAt = null;
+    return true;
+}
 
 function normalizeBugStatusValue(status) {
     return BUG_STATUS_ALIASES[status] || status || 'new';
