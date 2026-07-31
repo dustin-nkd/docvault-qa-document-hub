@@ -1124,6 +1124,11 @@
    treatment so pointer and keyboard users see the same affordance. */
 .subfolder-option.is-active { background:var(--card-h); color:var(--tx); }
 
+/* A document title is a link so it can be opened in a new tab, but it must not
+   read as one — the card already signals that it is clickable. */
+.doc-card-link { color: inherit; text-decoration: none; }
+.doc-card-link:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; border-radius: 3px; }
+
 /* Scrolling past the end of a modal, dropdown or drawer used to hand the
    remaining scroll to the page behind it, which then moved under the overlay. */
 #modal [role="dialog"],

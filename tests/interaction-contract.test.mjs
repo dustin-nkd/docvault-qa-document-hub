@@ -176,6 +176,47 @@ test('every delete path revokes the share links publishing the document', () => 
     assert.match(read('js/actions-batch-history.js'), /typeof _revokeSharesForDeleted === 'function'/);
 });
 
+test('document titles are real links that can be opened in a new tab', () => {
+    // Cards were <div role="button">, so Cmd/Ctrl-click, middle-click and
+    // "Open link in new tab" — the ordinary way to work through a list — did
+    // nothing. The title is now an anchor; the surrounding card stays clickable,
+    // which is why the anchor cannot simply wrap the whole card (it contains
+    // the favourite and menu buttons, and interactive content cannot nest).
+    const source = read('js/render-core.js');
+    assert.equal((source.match(/<a class="doc-card-link" href="\$\{_docHref\(d\.id\)\}" data-doc-link="\$\{d\.id\}"/g) || []).length, 2,
+        'both card layouts must link their title');
+    // guest=1 must survive, or opening a card in a new tab drops a demo visitor
+    // into the real locked vault — the reason _appUrl() exists.
+    assert.match(source, /function _docHref\(id\)/);
+    assert.match(source, /typeof _appUrl === 'function' \? _appUrl\(id\)/);
+
+    const events = read('js/events.js');
+    const handler = events.slice(events.indexOf("a[data-doc-link]"));
+    assert.match(handler.slice(0, 400), /metaKey \|\| e\.ctrlKey \|\| e\.shiftKey \|\| e\.altKey/,
+        'modified clicks must be left to the browser');
+    assert.match(handler.slice(0, 400), /e\.preventDefault\(\)/);
+    assert.match(handler.slice(0, 500), /state\.batchMode/, 'batch mode must still select rather than open');
+    assert.ok(events.indexOf('a[data-doc-link]') < events.indexOf("e.target.closest('[data-onclick]')"),
+        'the link must be handled before the generic delegator, or the card fires too');
+
+    // It has to keep reading as a heading, not a link.
+    assert.match(read('style.css'), /\.doc-card-link \{ color: inherit; text-decoration: none; \}/);
+});
+
+test('the document list toolbar groups its controls', () => {
+    const source = read('js/render-core.js');
+    assert.match(source, /role="group" aria-label="Filter and sort documents"/);
+    // Filtering changed the count with no announcement at all.
+    assert.match(source, /aria-live="polite" aria-atomic="true">\$\{docs\.length\}/);
+    // A filtered list offered no way out unless it happened to be empty.
+    assert.match(source, /\$\{hasActiveFilters \? `<button[^`]*clearDocumentFilters\(\)/);
+    // Empty Trash is destructive and sat flush against ordinary controls.
+    assert.match(source, /aria-hidden="true" style="width:1px;height:20px;background:var\(--brd\);"><\/span><button class="btn-d[^>]*showEmptyTrashModal/);
+    // The grid is a list of documents.
+    assert.match(source, /<ul class="grid grid-cols-1/);
+    assert.equal((source.match(/<li class="\$\{cardCls\(d\.id\)\}"/g) || []).length, 2);
+});
+
 test('the shell declares its own dark scheme and drops the tap delay', () => {
     const html = read('index.html');
     // Without this the browser draws its own scrollbars, date pickers and
