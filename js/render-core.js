@@ -857,7 +857,11 @@ function _normImpactModule(value) {
     return String(value || '').trim().toLocaleLowerCase();
 }
 
+// An explicit decision on the run wins. The title/tag substring stays only as a
+// fallback for runs saved before the Test Run editor had the checkbox -- it is a
+// migration path, not the rule.
 function _isRegressionRun(run) {
+    if (typeof run.runData?.isRegression === 'boolean') return run.runData.isRegression;
     const haystack = `${run.title || ''} ${(run.tags || []).join(' ')}`.toLocaleLowerCase();
     return haystack.includes('regression');
 }

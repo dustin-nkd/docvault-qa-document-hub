@@ -321,7 +321,10 @@ window.rerunTestRun = async function(runId) {
         id: uid(), title: `${baseTitle} (Run ${cycleRunCount + 1})`, category: 'testrun',
         subfolder: orig.subfolder || '', status: 'draft', content: '',
         tags: [...(orig.tags || [])], favorite: false,
-        runData: { targetIds, results: {}, snapshot: _buildRunSnapshot(targetIds), environment: orig.runData?.environment || '', cycleId },
+        // Carry the decision forward only when the original made one -- otherwise
+        // leave it unset so the copied title still drives the legacy heuristic.
+        runData: { targetIds, results: {}, snapshot: _buildRunSnapshot(targetIds), environment: orig.runData?.environment || '', cycleId,
+            ...(typeof orig.runData?.isRegression === 'boolean' ? { isRegression: orig.runData.isRegression } : {}) },
         createdAt: Date.now(), updatedAt: Date.now()
     };
     documents.unshift(newRun);
@@ -561,7 +564,10 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         const snapshot = _buildRunSnapshot(targetIds);
         // Preserve cycle membership (B2) across edits of an existing run.
         const cycleId = state.editingDoc?.runData?.cycleId;
-        runData = { targetIds, results: existingResults, snapshot, environment, cycleId };
+        // Explicit from here on: saving a run records the decision instead of
+        // leaving Coverage & Impact to infer it from the title.
+        const isRegression = !!document.getElementById('ed-run-regression')?.checked;
+        runData = { targetIds, results: existingResults, snapshot, environment, cycleId, isRegression };
     } else if (cat === 'testplan') {
         const linkedTCs = Array.from(document.querySelectorAll('.tp-tc-cb:checked')).map(cb => cb.value);
         const linkedRuns = Array.from(document.querySelectorAll('.tp-run-cb:checked')).map(cb => cb.value);
