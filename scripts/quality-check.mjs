@@ -69,7 +69,11 @@ const maintainabilityBudgets = {
     // to live beside the markup that declares it rather than in a separate
     // script a cached shell might not have loaded.
     'js/render-editor.js': 500,
-    'js/render-editor-categories.js': 720,
+    // Raised from 720 for the module vocabulary and the regression-run checkbox.
+    // Both are joins the analytics read as business rules, so the helper that
+    // builds the vocabulary has to ship in the same file as the inputs that
+    // declare it -- splitting it back out is what the cache-skew rule forbids.
+    'js/render-editor-categories.js': 740,
     'js/render-viewer.js': 150,
     'js/render-viewer-categories.js': 850,
     'js/actions-focus.js': 240,

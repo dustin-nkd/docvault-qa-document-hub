@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v51'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v52'/);
     assert.match(read('sw.js'), /'\.\/js\/workspaces\.js'/, 'the workspace module must be cached in the app shell');
 });
 
@@ -612,4 +612,80 @@ test('deployment blocks on the locked browser regression suite', () => {
     assert.match(workflow, /run: npx playwright install --with-deps chromium/);
     assert.match(workflow, /run: npm run test:e2e/);
     assert.ok(workflow.indexOf('npm run test:e2e') < workflow.indexOf('peaceiris\/actions-gh-pages'));
+});
+
+test('module is offered as a vocabulary instead of being retyped from memory', () => {
+    // Coverage & Impact joins an API spec to its test cases on this field, and the
+    // release quality scorecard groups by it. Both compare normalized strings, so a
+    // typo on either side silently reports a coverage gap that does not exist.
+    const editors = read('js/render-editor-categories.js');
+    for (const id of ['ed-tc-module', 'ed-api-module']) {
+        const input = editors.match(new RegExp(`<input id="${id}"[^>]*>`));
+        assert.ok(input, id + ' input not found');
+        assert.match(input[0], /list="module-vocab"/,
+            id + ' must offer the existing module vocabulary');
+    }
+    assert.match(editors, /<datalist id="module-vocab">/,
+        'the module datalist must be rendered beside the inputs that reference it');
+    // The vocabulary has to be built in the same file as the markup: a cached
+    // renderer paired with a fresh one must not lose the helper.
+    assert.match(editors, /function _moduleVocabulary\(\)/,
+        '_moduleVocabulary must be co-located with the inputs that use it');
+    // Free text must survive -- a new module still has to be typeable.
+    assert.doesNotMatch(editors, /<select id="ed-(?:tc|api)-module"/,
+        'module must stay a free-text input so new modules can be added');
+});
+
+test('the module vocabulary collects both sides of the join and drops deleted docs', () => {
+    const source = read('js/render-editor-categories.js');
+    const body = source.match(/function _moduleVocabulary\(\)\s*\{[\s\S]*?\n\}/)[0];
+    const documents = [
+        { status: 'published', tcData: { module: 'Checkout' } },
+        { status: 'published', apiData: { module: 'checkout' } },   // same module, other case
+        { status: 'published', apiData: { module: '  Authentication  ' } },
+        { status: 'deleted', tcData: { module: 'Ghost' } },
+        { status: 'published', tcData: { module: '' } },
+        { status: 'published' }
+    ];
+    const escHtml = (s) => String(s ?? '');
+    const vocabulary = new Function('documents', 'escHtml',
+        body + '\nreturn _moduleVocabulary();')(documents, escHtml);
+    assert.deepEqual(vocabulary, ['Authentication', 'Checkout'],
+        'the vocabulary must be de-duplicated case-insensitively, trimmed and sorted');
+});
+
+test('a regression run is a recorded decision, not a word in the title', () => {
+    // The rule used to be "the title or a tag contains the word regression", which
+    // was written down nowhere and silently changed coverage when a run was renamed.
+    const core = read('js/render-core.js');
+    const matcher = core.match(/function _isRegressionRun\(run\)\s*\{[\s\S]*?\n\}/)[0];
+    assert.match(matcher, /run\.runData\?\.isRegression/,
+        'the explicit flag must be consulted before the title heuristic');
+    const isRegressionRun = new Function('run', matcher + '\nreturn _isRegressionRun(run);');
+
+    // Explicit wins in both directions.
+    assert.equal(isRegressionRun({ title: 'Sprint 30 Smoke', runData: { isRegression: true } }), true);
+    assert.equal(isRegressionRun({ title: 'Full Regression Suite', runData: { isRegression: false } }), false,
+        'an unticked run must not be counted just because its title says regression');
+    // The heuristic survives only for runs saved before the checkbox existed.
+    assert.equal(isRegressionRun({ title: 'Sprint 22 - Regression Run', tags: [] }), true);
+    assert.equal(isRegressionRun({ title: 'Sprint 21 Smoke', tags: ['regression'] }), true);
+    assert.equal(isRegressionRun({ title: 'Sprint 21 Smoke', tags: [] }), false);
+
+    // The decision has to be reachable and visible outside the matcher.
+    assert.match(read('js/render-editor-categories.js'), /id="ed-run-regression"/,
+        'the Test Run editor must expose the regression decision');
+    assert.match(read('js/actions-documents.js'), /isRegression = !!document\.getElementById\('ed-run-regression'\)/,
+        'saving a run must persist the regression decision');
+    assert.match(read('js/render-viewer-categories.js'), /runIsRegression/,
+        'the run viewer must show whether the run counts as regression');
+});
+
+test('re-running a run carries an explicit regression decision but never invents one', () => {
+    const source = read('js/actions-documents.js');
+    const rerun = source.match(/window\.rerunTestRun = async function[\s\S]*?\n\};/)[0];
+    assert.match(rerun, /typeof orig\.runData\?\.isRegression === 'boolean'/,
+        'rerun must only copy the flag when the original actually carries one');
+    assert.doesNotMatch(rerun, /isRegression:\s*!!orig/,
+        'coercing an unset flag to false would strip legacy runs of their coverage');
 });

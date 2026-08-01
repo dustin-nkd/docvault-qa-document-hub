@@ -1,6 +1,36 @@
 // ========================
 // CATEGORY-SPECIFIC EDITOR RENDERERS AND CONTROLS
 // ========================
+
+// "Module" is a join key, not a caption. Coverage & Impact matches an API spec to
+// its test cases on it, and the release quality scorecard groups by it -- both by
+// case-insensitive string equality. A typo or a rename on one side silently
+// detaches the coverage and reports a gap that does not exist, so both inputs
+// offer the vocabulary already in the vault instead of asking the user to retype
+// it from memory. A <datalist> keeps the field free-text (new modules are still
+// typed in) and needs no script, so it cannot break when a cached shell pairs
+// with a fresh renderer.
+function _moduleVocabulary() {
+    const names = new Map();
+    documents.forEach(d => {
+        if (d.status === 'deleted') return;
+        [d.tcData?.module, d.apiData?.module].forEach(value => {
+            const name = String(value || '').trim();
+            const key = name.toLocaleLowerCase();
+            // First spelling wins, so editing a doc never reshuffles the casing
+            // everyone else is already being suggested.
+            if (name && !names.has(key)) names.set(key, name);
+        });
+    });
+    return [...names.values()].sort((a, b) => a.localeCompare(b));
+}
+function _moduleDatalist() {
+    const options = _moduleVocabulary();
+    return options.length
+        ? `<datalist id="module-vocab">${options.map(n => `<option value="${escHtml(n)}"></option>`).join('')}</datalist>`
+        : '';
+}
+
 function renderEditorCategory(context) {
     const {
         doc, isEdit, category, content, bugData, tcData, apiData,
@@ -142,7 +172,9 @@ function renderEditorCategory(context) {
             <div class="grid sm:grid-cols-3 gap-4 mb-4">
                 <div>
                     <label for="ed-tc-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
-                    <input id="ed-tc-module" class="form-input" placeholder="${t('tcModulePl')}" value="${escHtml(tcData?.module || '')}">
+                    <input id="ed-tc-module" class="form-input" list="module-vocab" placeholder="${t('tcModulePl')}" value="${escHtml(tcData?.module || '')}">
+                    ${_moduleDatalist()}
+                    <p class="text-[10px] mt-1" style="color:var(--tx-d);">${t('moduleVocabHint')}</p>
                 </div>
                 <div class="sm:col-span-2">
                     <label for="ed-tc-data" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcData')}</label>
@@ -245,7 +277,8 @@ function renderEditorCategory(context) {
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div>
                             <label for="ed-api-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiModule')}</label>
-                            <input id="ed-api-module" class="form-input w-full" placeholder="${t('apiModulePlaceholder')}" value="${escHtml(apiData?.module || '')}">
+                            <input id="ed-api-module" class="form-input w-full" list="module-vocab" placeholder="${t('apiModulePlaceholder')}" value="${escHtml(apiData?.module || '')}">
+                            ${_moduleDatalist()}
                         </div>
                         <div>
                             <label for="ed-api-impact-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiChangeImpact')}</label>
@@ -350,6 +383,21 @@ function renderEditorCategory(context) {
             <label for="ed-run-env" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Environment / Build <span style="color:var(--tx-d)">(Optional)</span></label>
             <input id="ed-run-env" class="form-input" placeholder="e.g. Staging · build #1234" value="${escHtml((isEdit ? doc.runData?.environment : state._newRunData?.environment) || '')}">
         </div>
+        ${(() => {
+            // Before this field existed, a run counted as regression only if the word
+            // "regression" appeared in its title or tags -- a load-bearing rule that
+            // was written down nowhere. The checkbox makes it a decision; the old
+            // heuristic only seeds it, so runs saved before the field keep working.
+            const seed = `${(isEdit ? doc?.title : '') || ''} ${((isEdit ? doc?.tags : []) || []).join(' ')}`;
+            const checked = typeof runData?.isRegression === 'boolean'
+                ? runData.isRegression : seed.toLocaleLowerCase().includes('regression');
+            return `
+        <div class="mb-4"><label class="flex items-start gap-3 p-3 rounded-xl cursor-pointer ui-hover-card" style="background:var(--bg2); border:1px solid var(--brd);">
+            <input type="checkbox" id="ed-run-regression" class="form-checkbox mt-0.5" ${checked ? 'checked' : ''}>
+            <span><span class="text-sm font-medium block" style="color:var(--tx);">${t('runRegression')}</span>
+            <span class="text-[11px] block mt-0.5" style="color:var(--tx-d);">${t('runRegressionHint')}</span></span>
+        </label></div>`;
+        })()}
         <div class="mb-4">
             ${(() => {
                 const allTc = documents.filter(d => d.category === 'testcases' && d.status !== 'deleted');

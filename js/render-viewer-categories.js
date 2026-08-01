@@ -411,9 +411,19 @@ function renderViewerCategory(doc) {
             const cycleRuns = documents.filter(d => d.category === 'testrun' && d.status !== 'deleted' && (d.runData?.cycleId || d.id) === cycleId)
                 .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
+            // Same rule as _buildApiImpacts: the explicit flag wins, the title
+            // heuristic only covers runs saved before the checkbox existed. Kept
+            // local rather than shared so a cached renderer cannot lose it.
+            const runIsRegression = typeof doc.runData?.isRegression === 'boolean'
+                ? doc.runData.isRegression
+                : `${doc.title || ''} ${(doc.tags || []).join(' ')}`.toLocaleLowerCase().includes('regression');
+
             let html = `
-            ${(doc.runData?.environment || !state.sharedView) ? `<div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                ${doc.runData?.environment ? `<span class="text-xs flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" title="Environment / Build"><i class="fa-solid fa-server" style="font-size:10px;"></i>${escHtml(doc.runData.environment)}</span>` : '<span></span>'}
+            ${(doc.runData?.environment || runIsRegression || !state.sharedView) ? `<div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                <span class="flex items-center gap-2 flex-wrap">
+                    ${doc.runData?.environment ? `<span class="text-xs flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" title="Environment / Build"><i class="fa-solid fa-server" style="font-size:10px;"></i>${escHtml(doc.runData.environment)}</span>` : ''}
+                    ${runIsRegression ? `<span class="text-xs flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(52,211,153,0.12);color:#34d399;" title="${escHtml(t('runRegressionHint'))}"><i class="fa-solid fa-shield-halved" style="font-size:10px;"></i>${t('runRegressionBadge')}</span>` : ''}
+                </span>
                 ${state.sharedView ? '' : `<div class="flex items-center gap-2 ml-auto">
                     <button class="btn-s text-xs flex items-center gap-1.5" data-onclick="rerunTestRun('${doc.id}')" title="Start a fresh execution of the same test cases"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Re-run</button>
                     <button class="btn-s text-xs flex items-center gap-1.5" data-onclick="exportTestRunCsv('${doc.id}')" title="Export results to CSV"><i class="fa-solid fa-file-csv" style="font-size:11px;"></i> Export CSV</button>
