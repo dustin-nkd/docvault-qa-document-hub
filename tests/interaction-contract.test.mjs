@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v52'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v53'/);
     assert.match(read('sw.js'), /'\.\/js\/workspaces\.js'/, 'the workspace module must be cached in the app shell');
 });
 
@@ -688,4 +688,28 @@ test('re-running a run carries an explicit regression decision but never invents
         'rerun must only copy the flag when the original actually carries one');
     assert.doesNotMatch(rerun, /isRegression:\s*!!orig/,
         'coercing an unset flag to false would strip legacy runs of their coverage');
+});
+
+test('credential favicons are not lazy-loaded, because they start hidden', () => {
+    // .cred-favicon is display:none until _restoreFaviconState's load handler adds
+    // .loaded. A display:none image has no layout box, so the lazy loader never
+    // fetches it -- the load event never fires and the icon can never appear. The
+    // two conditions deadlock, and the fallback letter shows forever.
+    const css = read('index.html');
+    assert.match(css, /\.cred-favicon\s*\{[^}]*display:\s*none/,
+        'the hidden-until-loaded default is the reason lazy loading cannot be used here');
+    assert.match(css, /\.cred-favicon\.loaded\s*\{[^}]*display:\s*block/,
+        'only the load event may reveal the icon');
+
+    for (const relativePath of ['js/render-core.js', 'js/render-viewer-categories.js']) {
+        const tags = [...read(relativePath).matchAll(/<img[^>]*class="cred-favicon"[^>]*>/g)].map(m => m[0]);
+        assert.ok(tags.length > 0, relativePath + ' should render a credential favicon');
+        for (const tag of tags) {
+            assert.doesNotMatch(tag, /loading=["']lazy["']/,
+                relativePath + ' lazy-loads a credential favicon that starts hidden, so it will never load');
+        }
+    }
+    // The reveal path itself must stay wired up.
+    assert.match(read('js/render-core.js'), /img\.addEventListener\('load', markLoaded/,
+        'the load handler is the only thing that reveals the icon');
 });
