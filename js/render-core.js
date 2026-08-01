@@ -1328,7 +1328,11 @@ function renderDocList() {
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-3">
                                     <div class="cred-avatar ${credAvatarColor(d.title)}">
-                                        <img class="cred-favicon" src="${favUrl}" alt="" width="20" height="20" loading="lazy">
+                                        <!-- No loading="lazy" here: .cred-favicon starts at display:none and
+                                             only _restoreFaviconState's load handler reveals it. A display:none
+                                             image has no layout box, so the lazy loader never fetches it, the
+                                             load event never fires, and the icon can never appear. -->
+                                        <img class="cred-favicon" src="${favUrl}" alt="" width="20" height="20">
                                         <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
                                     </div>
                                     <div class="min-w-0">
