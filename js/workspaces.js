@@ -39,6 +39,30 @@ function _saveWsRegistry(list) {
     localStorage.setItem('docvault_workspaces', JSON.stringify(list));
 }
 
+// The registry is shared, not per-device: WorkspaceRegistry.sync() (storage.js)
+// publishes what changed here and adopts what other devices did. This owns only
+// what the UI does with the answer. Guarded rather than assumed — a stale
+// cached copy of this file can load beside a storage.js that predates it.
+let _wsRegistrySyncing = false;
+function _refreshWorkspaceRegistry(onChange) {
+    if (typeof WorkspaceRegistry === 'undefined') return Promise.resolve();
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return Promise.resolve();
+    if (_wsRegistrySyncing) return Promise.resolve();
+    _wsRegistrySyncing = true;
+    return WorkspaceRegistry.sync().then(result => {
+        if (result.changed) {
+            renderWorkspaceSwitcher();
+            if (typeof onChange === 'function') onChange();
+        }
+        if (result.activeWasDeleted) {
+            toast('This workspace was deleted on another device.', 'warning');
+            switchWorkspace(WS_DEFAULT);
+        }
+    }).catch(e => {
+        console.warn('[workspaces] registry sync failed', e);
+    }).finally(() => { _wsRegistrySyncing = false; });
+}
+
 // The default workspace is implicit — it exists before any registry does, and
 // holds the vault that was there before workspaces were introduced. Only its
 // label is ever stored, and only once it has been renamed.
@@ -166,7 +190,11 @@ window.createWorkspace = async function() {
     const id = _slugifyWorkspaceName(name);
     if (getWorkspaces().some(w => w.id === id)) { toast('A workspace with that name already exists.', 'error'); return; }
 
-    _saveWsRegistry([..._wsRegistry(), { id, name, createdAt: Date.now() }]);
+    const now = Date.now();
+    _saveWsRegistry([..._wsRegistry(), { id, name, createdAt: now, updatedAt: now }]);
+    // Publish before switching so the workspace reaches the user's other
+    // devices even if the switch (and its first vault push) is slow.
+    _refreshWorkspaceRegistry();
     await switchWorkspace(id);
 };
 
@@ -174,16 +202,21 @@ window.renameWorkspace = function(id) {
     const input = document.getElementById('ws-rename-input');
     const name = (input?.value || '').trim().slice(0, WS_NAME_MAX);
     if (!name) { toast('Enter a workspace name.', 'error'); return; }
+    // Renames merge across devices by recency, so every one carries the moment
+    // it happened — without it the two sides cannot be ordered.
     if (id === WS_DEFAULT) {
         // The default workspace has no registry entry to rename — only a label.
         localStorage.setItem('docvault_workspace_default_name', name);
+        localStorage.setItem('docvault_workspace_default_name_at', String(Date.now()));
     } else {
         const list = _wsRegistry();
         const entry = list.find(w => w.id === id);
         if (!entry) { toast('That workspace no longer exists.', 'error'); return; }
         entry.name = name;
+        entry.updatedAt = Date.now();
         _saveWsRegistry(list);
     }
+    _refreshWorkspaceRegistry();
     renderWorkspaceSwitcher();
     showWorkspaceManager();
     toast('Workspace renamed.', 'success');
@@ -224,20 +257,6 @@ window.confirmDeleteWorkspace = function(id) {
         </div>
     `);
 };
-
-// Removes every localStorage key this workspace owns. Enumerated by prefix
-// rather than by a fixed list because per-document history keys carry a
-// document id, so they cannot be named up front.
-function _purgeWorkspaceLocalData(id) {
-    const prefix = 'ws_' + id + '__';
-    const doomed = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(prefix)) doomed.push(key);
-    }
-    doomed.forEach(key => localStorage.removeItem(key));
-    return doomed.length;
-}
 
 // Best-effort removal of the workspace's folder in the vault repo. The Contents
 // API has no folder delete, so the files are listed from the git tree and
@@ -298,8 +317,17 @@ window.deleteWorkspace = async function(id) {
     try { remote = await _purgeWorkspaceRemoteData(id); }
     catch (e) { console.warn('[workspaces] remote purge failed', e); remote = { deleted: 0, failed: 1 }; }
 
-    _purgeWorkspaceLocalData(id);
+    // Same cache-skew guard as _refreshWorkspaceRegistry(): a stale copy of
+    // this file paired with an older storage.js still has to be able to finish
+    // a deletion, just without the parts that need the shared registry.
+    if (typeof WorkspaceRegistry !== 'undefined') {
+        WorkspaceRegistry.purgeLocalData(id);
+        // A tombstone, not just a removal: another device that still lists this
+        // workspace would otherwise re-publish it and bring it straight back.
+        WorkspaceRegistry.recordDeletion(id);
+    }
     _saveWsRegistry(_wsRegistry().filter(w => w.id !== id));
+    _refreshWorkspaceRegistry();
 
     renderWorkspaceSwitcher();
     if (remote.failed) toast(`Workspace deleted locally, but ${remote.failed} file${remote.failed > 1 ? 's' : ''} could not be removed from GitHub.`, 'warning');
@@ -314,6 +342,14 @@ window.showWorkspaceManager = function() {
         toast('Workspaces aren’t available in demo mode.', 'info');
         return;
     }
+    // Opening this list is the moment the user expects it to be complete, so
+    // check the shared registry now. Re-render only once something actually
+    // changed, and never over a half-typed name.
+    _refreshWorkspaceRegistry(() => {
+        const input = document.getElementById('ws-new-name');
+        if (input && !input.value.trim()) showWorkspaceManager();
+    });
+
     const activeId = _activeWsId();
     const rows = getWorkspaces().map(workspace => {
         const isActive = workspace.id === activeId;

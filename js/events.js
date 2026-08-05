@@ -174,6 +174,17 @@ async function startApp() {
     } else {
         sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
     }
+    // Which workspaces exist is shared state, not a per-device list. Reconcile
+    // it BEFORE the first hydrate so a workspace created on another device is
+    // already switchable, and so hydrate() never loads a workspace that was
+    // deleted elsewhere.
+    if (typeof WorkspaceRegistry !== 'undefined') {
+        const registry = await WorkspaceRegistry.sync().catch(() => null);
+        if (registry && registry.activeWasDeleted) {
+            localStorage.removeItem('docvault_active_workspace');
+            toast('The workspace this device was in has been deleted on another device.', 'warning');
+        }
+    }
     await init();
     updateSyncIndicator();
     // A previous push may have failed before this tab was closed. Retry immediately
