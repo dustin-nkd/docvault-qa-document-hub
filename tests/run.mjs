@@ -1,5 +1,6 @@
 import './state-calculations.test.mjs';
 import './storage-migrations.test.mjs';
+import './workspace-registry.test.mjs';
 import './sync-storage-performance.test.mjs';
 import './vault-encryption.test.mjs';
 import './security-headers.test.mjs';

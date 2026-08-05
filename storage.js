@@ -1136,6 +1136,240 @@ const GitHubSync = {
 window.GitHubSync = GitHubSync;
 
 // ========================
+// WORKSPACE REGISTRY — which workspaces exist, shared across devices
+// ========================
+// wsKey()/wsPath() at the top of this file namespace the CONTENTS of a
+// workspace. This is the index: which workspace ids exist and what they are
+// called. It used to live only in the browser that created them, so a
+// workspace created on one device pushed its documents to workspaces/<id>/ in
+// the vault repo and then stayed invisible everywhere else — a second device's
+// switcher only ever offered workspaces that device had created itself, and
+// the synced data had no way in.
+//
+// The registry travels with the vault now, in ONE global file. Deliberately
+// not wsPath()-scoped: it describes every workspace, so it cannot live inside
+// any single one of them. Encrypted like the rest of the vault, because
+// workspace names are user data and the vault repo is public.
+const WorkspaceRegistry = {
+    PATH: 'database/workspaces.json',
+    // Global too — one file, one sha. Namespacing this per workspace would give
+    // each one its own stale sha for the same file and turn every push into a
+    // conflict.
+    SHA_KEY: 'docvault_workspaces_sha',
+    TOMBSTONE_KEY: 'docvault_workspaces_deleted',
+    DEFAULT_NAME_KEY: 'docvault_workspace_default_name',
+    DEFAULT_NAME_AT_KEY: 'docvault_workspace_default_name_at',
+    NAME_MAX: 32,
+    // A deletion has to be recorded, not merely applied: any device that still
+    // holds the workspace would otherwise re-publish it on its next sync and
+    // resurrect it everywhere. Tombstones are kept long enough for every device
+    // to have synced at least once.
+    TOMBSTONE_TTL: 90 * 24 * 60 * 60 * 1000,
+
+    _list(key) {
+        try {
+            const stored = JSON.parse(localStorage.getItem(key) || '[]');
+            return Array.isArray(stored) ? stored : [];
+        } catch (e) { return []; }
+    },
+
+    // The registry as it stands on THIS device, in the shape that travels to
+    // GitHub. Normalised through merge() so local and remote are always
+    // compared like for like.
+    readLocal() {
+        let defaultName = '';
+        let defaultNameAt = 0;
+        try {
+            defaultName = localStorage.getItem(this.DEFAULT_NAME_KEY) || '';
+            defaultNameAt = Number(localStorage.getItem(this.DEFAULT_NAME_AT_KEY)) || 0;
+        } catch (e) { /* an unreadable label must not fail the whole sync */ }
+        return this.merge({
+            workspaces: this._list(WS_REGISTRY_KEY),
+            deleted: this._list(this.TOMBSTONE_KEY),
+            defaultName,
+            defaultNameAt
+        }, null);
+    },
+
+    // Union of both sides, last-write-wins per workspace. Both sides are
+    // untrusted input — an id becomes part of a localStorage key AND a GitHub
+    // path, so every one is re-validated here rather than on the way in.
+    merge(local, remote) {
+        const left = (local && typeof local === 'object') ? local : {};
+        const right = (remote && typeof remote === 'object') ? remote : {};
+        const now = Date.now();
+
+        const tombstones = new Map();
+        [...(left.deleted || []), ...(right.deleted || [])].forEach(entry => {
+            if (!entry || typeof entry.id !== 'string' || !WS_ID_PATTERN.test(entry.id) || entry.id === WS_DEFAULT_ID) return;
+            const deletedAt = Number(entry.deletedAt) || 0;
+            if (now - deletedAt > this.TOMBSTONE_TTL) return;
+            if (!(tombstones.get(entry.id) >= deletedAt)) tombstones.set(entry.id, deletedAt);
+        });
+
+        const workspaces = new Map();
+        [...(left.workspaces || []), ...(right.workspaces || [])].forEach(entry => {
+            if (!entry || typeof entry.id !== 'string' || !WS_ID_PATTERN.test(entry.id) || entry.id === WS_DEFAULT_ID) return;
+            const createdAt = Number(entry.createdAt) || 0;
+            const candidate = {
+                id: entry.id,
+                name: String(entry.name || entry.id).slice(0, this.NAME_MAX),
+                createdAt,
+                // Registry entries written before the registry synced carry no
+                // updatedAt; their creation time is the only version they have.
+                updatedAt: Number(entry.updatedAt) || createdAt
+            };
+            const seen = workspaces.get(candidate.id);
+            if (seen) {
+                // Keep the earliest creation date either side knows about; the
+                // name is whichever side renamed it last.
+                candidate.createdAt = Math.min(seen.createdAt || candidate.createdAt, candidate.createdAt || seen.createdAt);
+                if (seen.updatedAt >= candidate.updatedAt) {
+                    candidate.name = seen.name;
+                    candidate.updatedAt = seen.updatedAt;
+                }
+            }
+            workspaces.set(candidate.id, candidate);
+        });
+
+        const leftAt = Number(left.defaultNameAt) || 0;
+        const rightAt = Number(right.defaultNameAt) || 0;
+        const label = rightAt > leftAt ? right : left;
+        return {
+            workspaces: [...workspaces.values()]
+                // A tombstone wins unless the workspace was renamed or
+                // re-created after the deletion was recorded.
+                .filter(w => !(tombstones.has(w.id) && tombstones.get(w.id) >= w.updatedAt))
+                .sort((a, b) => (a.createdAt - b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+            deleted: [...tombstones.entries()]
+                .map(([id, deletedAt]) => ({ id, deletedAt }))
+                .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+            defaultName: String(label.defaultName || '').slice(0, this.NAME_MAX),
+            defaultNameAt: Math.max(leftAt, rightAt)
+        };
+    },
+
+    // Removes every localStorage key a workspace owns. Enumerated by prefix
+    // rather than by a fixed list because per-document history keys carry a
+    // document id, so they cannot be named up front.
+    purgeLocalData(id) {
+        if (typeof id !== 'string' || !WS_ID_PATTERN.test(id) || id === WS_DEFAULT_ID) return 0;
+        const prefix = 'ws_' + id + '__';
+        const doomed = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) doomed.push(key);
+        }
+        doomed.forEach(key => localStorage.removeItem(key));
+        return doomed.length;
+    },
+
+    // Records a deletion so other devices apply it instead of re-publishing the
+    // workspace back at us.
+    recordDeletion(id) {
+        if (typeof id !== 'string' || !WS_ID_PATTERN.test(id) || id === WS_DEFAULT_ID) return;
+        const kept = this._list(this.TOMBSTONE_KEY).filter(entry => !entry || entry.id !== id);
+        kept.push({ id, deletedAt: Date.now() });
+        try { localStorage.setItem(this.TOMBSTONE_KEY, JSON.stringify(kept)); }
+        catch (e) { console.warn('Could not record the workspace deletion for other devices:', e); }
+    },
+
+    // Writes a merged registry back to this device. Reports what changed, so a
+    // caller can re-render, and whether the workspace the user is currently in
+    // was deleted somewhere else.
+    writeLocal(payload) {
+        const before = JSON.stringify(this.readLocal());
+        const activeId = activeWorkspaceId();
+        const live = new Set(payload.workspaces.map(w => w.id));
+
+        localStorage.setItem(WS_REGISTRY_KEY, JSON.stringify(payload.workspaces));
+        localStorage.setItem(this.TOMBSTONE_KEY, JSON.stringify(payload.deleted));
+        if (payload.defaultName) localStorage.setItem(this.DEFAULT_NAME_KEY, payload.defaultName);
+        else localStorage.removeItem(this.DEFAULT_NAME_KEY);
+        if (payload.defaultNameAt) localStorage.setItem(this.DEFAULT_NAME_AT_KEY, String(payload.defaultNameAt));
+
+        // Documents belonging to a workspace deleted on another device are dead
+        // weight here. The one the user is sitting in is left intact — the
+        // caller moves them out of it first, so nothing is purged mid-session.
+        let activeWasDeleted = false;
+        payload.deleted.forEach(({ id }) => {
+            if (live.has(id)) return;
+            if (id === activeId) { activeWasDeleted = true; return; }
+            this.purgeLocalData(id);
+        });
+        return { changed: JSON.stringify(this.readLocal()) !== before, activeWasDeleted };
+    },
+
+    async _fetchRemote(settings, pwd) {
+        const file = await GitHubSync._getFile(this.PATH, settings);
+        if (!file) {
+            // Nothing published yet. A leftover sha would make the first push
+            // conflict against a file that does not exist.
+            localStorage.removeItem(this.SHA_KEY);
+            return null;
+        }
+        localStorage.setItem(this.SHA_KEY, file.sha);
+        try {
+            const parsed = await GitHubSync._decodePayload(GitHubSync._b64decode(file.content), pwd);
+            return (parsed && typeof parsed === 'object') ? parsed : null;
+        } catch (e) {
+            // Undecryptable is not the same as unreachable: this is what a
+            // master password changed on another device looks like. Treating it
+            // as an empty remote republishes the registry under the current
+            // password, which repairs it. With no password to re-encrypt under,
+            // bail instead — overwriting an encrypted registry with a plaintext
+            // one would leak every workspace name into a public repo.
+            if (!pwd) throw e;
+            console.warn('[workspaces] the shared workspace registry could not be decrypted; republishing it:', e);
+            return null;
+        }
+    },
+
+    // Pull, merge, write back, and publish when this device knows something the
+    // repo does not. Never throws: a registry that cannot be reached leaves the
+    // device on exactly the workspaces it already had, and the next sync
+    // retries.
+    async sync() {
+        const unchanged = { changed: false, activeWasDeleted: false };
+        let settings = null;
+        try { settings = await GitHubSync.getSettings(); } catch (e) { settings = null; }
+        if (!settings || !settings.token) return unchanged;
+        const pwd = sessionStorage.getItem('docvault_pwd') || null;
+
+        let remote;
+        try { remote = await this._fetchRemote(settings, pwd); }
+        catch (e) {
+            console.warn('[workspaces] could not read the shared workspace registry:', e);
+            return unchanged;
+        }
+
+        const merged = this.merge(this.readLocal(), remote);
+        const result = this.writeLocal(merged);
+
+        // Nothing to add — the repo already says everything this device knows.
+        if (remote && JSON.stringify(this.merge(remote, null)) === JSON.stringify(merged)) return result;
+
+        try {
+            const pushed = await GitHubSync._putWithMerge(
+                this.PATH, settings, this.SHA_KEY, pwd, merged,
+                (local, incoming) => this.merge(local, incoming)
+            );
+            if (pushed.merged) {
+                const reapplied = this.writeLocal(pushed.payload);
+                result.changed = result.changed || reapplied.changed;
+                result.activeWasDeleted = result.activeWasDeleted || reapplied.activeWasDeleted;
+            }
+        } catch (e) {
+            // Local state is already correct; only publishing failed.
+            console.warn('[workspaces] could not publish the shared workspace registry:', e);
+        }
+        return result;
+    }
+};
+
+window.WorkspaceRegistry = WorkspaceRegistry;
+
+// ========================
 // DOC STORAGE
 // ========================
 const DocStorage = {

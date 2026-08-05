@@ -77,7 +77,11 @@ const maintainabilityBudgets = {
     'js/render-viewer.js': 150,
     'js/render-viewer-categories.js': 850,
     'js/actions-focus.js': 240,
-    'js/workspaces.js': 380,
+    // Raised from 380 for registry sync. The data half lives in storage.js next
+    // to the GitHub plumbing it needs; what stays here is the UI reaction to a
+    // registry that changed underneath the user, which has to ship in the same
+    // file as the switcher and the manager modal it re-renders.
+    'js/workspaces.js': 420,
     'js/render-trends.js': 380
 };
 for (const [relativePath, maxLines] of Object.entries(maintainabilityBudgets)) {

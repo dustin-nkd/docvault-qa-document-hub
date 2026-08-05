@@ -16,6 +16,13 @@ export function createMemoryStorage(initial = {}) {
         setItem(key, value) { values.set(key, String(value)); },
         removeItem(key) { values.delete(key); },
         clear() { values.clear(); },
+        // Enumeration is part of the real Storage contract, and code that has to
+        // delete keys by prefix (workspace purges) depends on it.
+        get length() { return values.size; },
+        key(index) {
+            const keys = [...values.keys()];
+            return index >= 0 && index < keys.length ? keys[index] : null;
+        },
         dump() { return Object.fromEntries(values); }
     };
 }
@@ -83,7 +90,7 @@ export function loadStorage(options = {}) {
         confirm: () => false
     });
     const source = fs.readFileSync(path.join(root, 'storage.js'), 'utf8') +
-        '\n;globalThis.__storageTest = { DocStorage, GitHubSync, LocalAuth, Vault };';
+        '\n;globalThis.__storageTest = { DocStorage, GitHubSync, LocalAuth, Vault, WorkspaceRegistry };';
     vm.runInContext(source, context, { filename: 'storage.js' });
     return { api: context.__storageTest, localStorage, sessionStorage };
 }
