@@ -328,6 +328,9 @@ async function hardDeleteDoc(id) {
     if (doc) ActivityLog.record('deleted', doc);
     await DocStorage.addDeletedIds([id]);
     documents = documents.filter(d => d.id !== id);
+    if (typeof DocStorage !== 'undefined' && DocStorage.cleanOrphanedDocReferences) {
+        DocStorage.cleanOrphanedDocReferences(documents, [id]);
+    }
     await persist();
     await _revokeSharesForDeleted([id]);
     closeModal();
@@ -361,6 +364,9 @@ async function emptyTrash() {
     const trashedIds = trashed.map(d => d.id);
     await DocStorage.addDeletedIds(trashedIds);
     documents = documents.filter(d => d.status !== 'deleted');
+    if (typeof DocStorage !== 'undefined' && DocStorage.cleanOrphanedDocReferences) {
+        DocStorage.cleanOrphanedDocReferences(documents, trashedIds);
+    }
     await persist();
     await _revokeSharesForDeleted(trashedIds);
     closeModal();
