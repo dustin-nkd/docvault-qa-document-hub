@@ -62,8 +62,14 @@ function _settingsTabSecurity() {
 function _settingsTabSync() {
     const ghSettings = (window._settingsModalData && window._settingsModalData.ghSettings) || { token: '' };
     const imgCdnOn = localStorage.getItem('docvault_img_cdn') === '1';
+    const authConfigured = !!(window.LocalAuth && window.LocalAuth.isConfigured && window.LocalAuth.isConfigured());
     return `
         <div class="text-left">
+            ${!authConfigured ? `
+            <div class="rounded-lg px-3 py-2 mb-3 text-[11px]" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                <strong>Security Warning:</strong> No Master Password is set. Your token will be stored unencrypted in localStorage until you configure one in Security.
+            </div>` : ''}
             <div class="bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
                 <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
                 Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
@@ -284,7 +290,11 @@ window.saveGitHubSettings = async function() {
     const d = GitHubSync.DEFAULTS;
     if (token) {
         await GitHubSync.saveSettings({ ...d, token });
-        toast(t('ghSaveSuccess'), "success");
+        if (window.LocalAuth && window.LocalAuth.isConfigured && !window.LocalAuth.isConfigured()) {
+            toast('Token saved unencrypted. Configure a Master Password in Security to protect it.', 'warning');
+        } else {
+            toast(t('ghSaveSuccess'), 'success');
+        }
         closeModal();
     } else {
         GitHubSync.clearSettings();
