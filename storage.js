@@ -1491,6 +1491,55 @@ const DocStorage = {
         }
     },
 
+    _reconstructBugStatusChain(events) {
+        if (!Array.isArray(events) || !events.length) return [];
+        const map = new Map();
+        for (const ev of events) {
+            if (!ev || typeof ev !== 'object') continue;
+            const key = `${ev.type || 'status_changed'}|${ev.from == null ? 'null' : ev.from}|${ev.to || ''}|${Number(ev.ts) || 0}`;
+            const cur = map.get(key);
+            if (!cur || (cur.estimated && !ev.estimated)) map.set(key, ev);
+        }
+        const sorted = Array.from(map.values()).sort((a, b) => (Number(a.ts) || 0) - (Number(b.ts) || 0));
+        const chain = [];
+        let curr = null;
+        for (const ev of sorted) {
+            const to = String(ev.to || '');
+            if (!to) continue;
+            const from = curr === null ? (ev.from == null ? null : String(ev.from)) : curr;
+            if (from !== null && from === to) continue;
+            chain.push({ type: 'status_changed', from, to, ts: Number(ev.ts) || 0, ...(ev.estimated ? { estimated: true } : {}) });
+            curr = to;
+        }
+        return chain;
+    },
+
+    _mergeDocHistories(w, l) {
+        if (!w || !l) return w;
+        const out = { ...w };
+        const we = Array.isArray(w.bugStatusEvents) ? w.bugStatusEvents : [];
+        const le = Array.isArray(l.bugStatusEvents) ? l.bugStatusEvents : [];
+        if (we.length || le.length) {
+            const chain = this._reconstructBugStatusChain([...we, ...le]);
+            if (chain.length) {
+                out.bugStatusEvents = chain;
+                if (chain[chain.length - 1]?.to) out.bugStatus = chain[chain.length - 1].to;
+            }
+        }
+        const wr = Array.isArray(w.bugData?.resolutionHistory) ? w.bugData.resolutionHistory : [];
+        const lr = Array.isArray(l.bugData?.resolutionHistory) ? l.bugData.resolutionHistory : [];
+        if (wr.length || lr.length) {
+            const rMap = new Map();
+            for (const item of [...wr, ...lr]) {
+                if (!item || typeof item !== 'object') continue;
+                const k = `${item.resolution || ''}|${item.duplicateOf || ''}|${Number(item.clearedAt) || 0}`;
+                if (!rMap.has(k)) rMap.set(k, item);
+            }
+            out.bugData = { ...(out.bugData || {}), resolutionHistory: Array.from(rMap.values()).sort((a, b) => (Number(a.clearedAt) || 0) - (Number(b.clearedAt) || 0)) };
+        }
+        return out;
+    },
+
     _merge(local, remote, deletedIds = new Set()) {
         const map = new Map();
         (local || []).forEach(d => { if (!deletedIds.has(d.id)) map.set(d.id, d); });
@@ -1500,6 +1549,11 @@ const DocStorage = {
             const remoteVersion = Math.max(Number(r.updatedAt) || 0, Number(r.focusWorkflowUpdatedAt) || 0);
             const localVersion = Math.max(Number(l?.updatedAt) || 0, Number(l?.focusWorkflowUpdatedAt) || 0);
             if (!l || remoteVersion > localVersion) map.set(r.id, r);
+            if (l) {
+                const winner = map.get(r.id);
+                const loser = (winner === r) ? l : r;
+                map.set(r.id, this._mergeDocHistories(winner, loser));
+            }
         });
         return Array.from(map.values());
     },

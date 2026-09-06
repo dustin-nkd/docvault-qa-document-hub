@@ -160,3 +160,102 @@ test('resurrected documents survive sync pull and clear tombstones locally and r
     assert.equal(storage._getLocalResurrectedIds().size, 0, 'Resurrected IDs must be cleared after push');
 });
 
+test('document merge preserves bug lifecycle events and resolution history across concurrent updates', () => {
+    const { api } = loadStorage();
+
+    const localBug = {
+        id: 'bug-100',
+        category: 'bug',
+        title: 'Title updated on Device A',
+        bugStatus: 'open',
+        updatedAt: 500,
+        bugStatusEvents: [
+            { type: 'status_changed', from: null, to: 'new', ts: 100 },
+            { type: 'status_changed', from: 'new', to: 'open', ts: 200 }
+        ],
+        bugData: {
+            resolutionHistory: [{ resolution: 'Fixed', duplicateOf: '', clearedAt: 150 }]
+        }
+    };
+
+    const remoteBug = {
+        id: 'bug-100',
+        category: 'bug',
+        title: 'Older title from Device B',
+        bugStatus: 'closed',
+        updatedAt: 350,
+        bugStatusEvents: [
+            { type: 'status_changed', from: null, to: 'new', ts: 100 },
+            { type: 'status_changed', from: 'new', to: 'open', ts: 200 },
+            { type: 'status_changed', from: 'open', to: 'resolved', ts: 300 },
+            { type: 'status_changed', from: 'resolved', to: 'closed', ts: 350 }
+        ],
+        bugData: {
+            resolutionHistory: [{ resolution: "Won't Fix", duplicateOf: '', clearedAt: 250 }]
+        }
+    };
+
+    const merged = toPlain(api.DocStorage._merge([localBug], [remoteBug]));
+    assert.equal(merged.length, 1);
+    const result = merged[0];
+
+    // Winning content from Device A (updatedAt 500 > 350)
+    assert.equal(result.title, 'Title updated on Device A');
+
+    // Bug lifecycle events from both devices merged and rebuilt into valid chain
+    assert.equal(result.bugStatusEvents.length, 4);
+    assert.equal(result.bugStatusEvents[0].to, 'new');
+    assert.equal(result.bugStatusEvents[1].to, 'open');
+    assert.equal(result.bugStatusEvents[2].to, 'resolved');
+    assert.equal(result.bugStatusEvents[3].to, 'closed');
+    assert.equal(result.bugStatus, 'closed');
+
+    // Resolution history preserved from both devices
+    assert.equal(result.bugData.resolutionHistory.length, 2);
+    assert.equal(result.bugData.resolutionHistory[0].resolution, 'Fixed');
+    assert.equal(result.bugData.resolutionHistory[1].resolution, "Won't Fix");
+});
+
+test('document merge preserves reopen transitions when other device updated non-status fields', () => {
+    const { api } = loadStorage();
+
+    // Device A closed bug at 200, reopened at 300
+    const deviceABug = {
+        id: 'bug-200',
+        category: 'bug',
+        title: 'Device A bug',
+        bugStatus: 'open',
+        updatedAt: 300,
+        bugStatusEvents: [
+            { type: 'status_changed', from: null, to: 'new', ts: 100 },
+            { type: 'status_changed', from: 'new', to: 'closed', ts: 200 },
+            { type: 'status_changed', from: 'closed', to: 'open', ts: 300 }
+        ]
+    };
+
+    // Device B was offline and only edited title at 400 with older status 'closed'
+    const deviceBBug = {
+        id: 'bug-200',
+        category: 'bug',
+        title: 'Device B typo fix',
+        bugStatus: 'closed',
+        updatedAt: 400,
+        bugStatusEvents: [
+            { type: 'status_changed', from: null, to: 'new', ts: 100 },
+            { type: 'status_changed', from: 'new', to: 'closed', ts: 200 }
+        ]
+    };
+
+    const merged = toPlain(api.DocStorage._merge([deviceABug], [deviceBBug]));
+    const result = merged[0];
+
+    // Device B typo fix won content LWW
+    assert.equal(result.title, 'Device B typo fix');
+
+    // Reopen event from Device A is preserved and final status remains 'open'
+    assert.equal(result.bugStatus, 'open');
+    assert.equal(result.bugStatusEvents.length, 3);
+    assert.equal(result.bugStatusEvents[2].from, 'closed');
+    assert.equal(result.bugStatusEvents[2].to, 'open');
+});
+
