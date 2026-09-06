@@ -583,5 +583,14 @@ async function hydrate() {
         }
     });
 
+    // Clean up orphaned document references left behind by past hard-deletions or tombstones.
+    if (typeof DocStorage !== 'undefined' && typeof DocStorage.cleanOrphanedDocReferences === 'function') {
+        const deletedIds = (typeof DocStorage._getLocalDeletedIds === 'function') ? DocStorage._getLocalDeletedIds() : new Set();
+        const activeIds = new Set(documents.map(d => d.id));
+        if (DocStorage.cleanOrphanedDocReferences(documents, deletedIds, activeIds)) {
+            migrated = true;
+        }
+    }
+
     if (migrated) await persist();
 }

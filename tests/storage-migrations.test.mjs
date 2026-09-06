@@ -310,4 +310,93 @@ test('document merge deconflicts colliding bug numbers from remote sync', () => 
     assert.equal(byId['bug-remote'].bugNumber, 11);
 });
 
+test('cleanOrphanedDocReferences strips deleted test case, run, bug, and credential references', () => {
+    const { api } = loadStorage();
+
+    const run = {
+        id: 'run-1', category: 'testrun',
+        runData: {
+            targetIds: ['tc-active', 'tc-deleted'],
+            snapshot: { 'tc-active': [{ action: 'a' }], 'tc-deleted': [{ action: 'b' }] },
+            results: { 'tc-active': { 0: 'pass' }, 'tc-deleted': { 0: 'fail' } }
+        }
+    };
+    const plan = {
+        id: 'plan-1', category: 'testplan',
+        tcPlanData: { linkedTCs: ['tc-active', 'tc-deleted'], linkedRuns: ['run-1', 'run-deleted'] }
+    };
+    const release = {
+        id: 'rel-1', category: 'release',
+        releaseData: {
+            linkedRuns: ['run-1', 'run-deleted'],
+            linkedBugs: ['bug-active', 'bug-deleted'],
+            linkedEnvs: ['env-active', 'env-deleted']
+        }
+    };
+    const env = {
+        id: 'env-1', category: 'environment',
+        envData: { linkedCreds: ['cred-active', 'cred-deleted'] }
+    };
+    const bug = {
+        id: 'bug-1', category: 'bug',
+        bugData: {
+            linkedTc: 'tc-deleted',
+            foundInTc: 'tc-deleted',
+            foundInRun: 'run-deleted',
+            duplicateOf: 'bug-deleted',
+            resolution: 'duplicate',
+            triagedAt: 500
+        }
+    };
+
+    const docs = [run, plan, release, env, bug];
+    const deleted = ['tc-deleted', 'run-deleted', 'bug-deleted', 'env-deleted', 'cred-deleted'];
+
+    const changed = api.DocStorage.cleanOrphanedDocReferences(docs, deleted);
+    assert.equal(changed, true);
+
+    // Test run: targetIds, snapshot, and results pruned
+    assert.deepEqual(run.runData.targetIds, ['tc-active']);
+    assert.deepEqual(Object.keys(run.runData.snapshot), ['tc-active']);
+    assert.deepEqual(Object.keys(run.runData.results), ['tc-active']);
+
+    // Test plan: pruned
+    assert.deepEqual(plan.tcPlanData.linkedTCs, ['tc-active']);
+    assert.deepEqual(plan.tcPlanData.linkedRuns, ['run-1']);
+
+    // Release: pruned
+    assert.deepEqual(release.releaseData.linkedRuns, ['run-1']);
+    assert.deepEqual(release.releaseData.linkedBugs, ['bug-active']);
+    assert.deepEqual(release.releaseData.linkedEnvs, ['env-active']);
+
+    // Environment: pruned
+    assert.deepEqual(env.envData.linkedCreds, ['cred-active']);
+
+    // Bug: links cleared and duplicate resolution withdrawn
+    assert.equal(bug.bugData.linkedTc, '');
+    assert.equal(bug.bugData.foundInTc, undefined);
+    assert.equal(bug.bugData.foundInRun, undefined);
+    assert.equal(bug.bugData.duplicateOf, '');
+    assert.equal(bug.bugData.resolution, '');
+    assert.equal(bug.bugData.triagedAt, null);
+});
+
+test('document merge automatically strips orphaned references when tombstones arrive', () => {
+    const { api } = loadStorage();
+
+    const localRun = {
+        id: 'run-local', category: 'testrun', updatedAt: 100,
+        runData: {
+            targetIds: ['tc-keep', 'tc-tombstoned'],
+            snapshot: { 'tc-keep': [], 'tc-tombstoned': [] }
+        }
+    };
+
+    const merged = toPlain(api.DocStorage._merge([localRun], [], new Set(['tc-tombstoned'])));
+    assert.equal(merged.length, 1);
+    assert.deepEqual(merged[0].runData.targetIds, ['tc-keep']);
+    assert.deepEqual(Object.keys(merged[0].runData.snapshot), ['tc-keep']);
+});
+
+
 

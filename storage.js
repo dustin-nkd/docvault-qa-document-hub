@@ -1597,6 +1597,50 @@ const DocStorage = {
         return changed;
     },
 
+    cleanOrphanedDocReferences(docs, deletedIds = new Set(), existingIds = null) {
+        if (!Array.isArray(docs)) return false;
+        const del = (deletedIds instanceof Set) ? deletedIds : new Set(deletedIds || []);
+        const isOrphan = id => !id || del.has(id) || (existingIds && !existingIds.has(id));
+        let changed = false;
+        const cleanArr = (obj, key) => {
+            if (!obj || !Array.isArray(obj[key])) return;
+            const next = obj[key].filter(id => !isOrphan(id));
+            if (next.length !== obj[key].length) { obj[key] = next; changed = true; }
+        };
+        for (const d of docs) {
+            if (!d || typeof d !== 'object') continue;
+            if (d.category === 'testrun' && d.runData) {
+                cleanArr(d.runData, 'targetIds');
+                for (const k of ['snapshot', 'results']) {
+                    if (d.runData[k]) {
+                        for (const id of Object.keys(d.runData[k])) {
+                            if (isOrphan(id)) { delete d.runData[k][id]; changed = true; }
+                        }
+                    }
+                }
+            } else if (d.category === 'testplan' && d.tcPlanData) {
+                cleanArr(d.tcPlanData, 'linkedTCs');
+                cleanArr(d.tcPlanData, 'linkedRuns');
+            } else if (d.category === 'release' && d.releaseData) {
+                cleanArr(d.releaseData, 'linkedRuns');
+                cleanArr(d.releaseData, 'linkedBugs');
+                cleanArr(d.releaseData, 'linkedEnvs');
+            } else if (d.category === 'environment' && d.envData) {
+                cleanArr(d.envData, 'linkedCreds');
+            } else if (d.category === 'bug' && d.bugData) {
+                if (isOrphan(d.bugData.linkedTc)) { d.bugData.linkedTc = ''; changed = true; }
+                if (isOrphan(d.bugData.foundInTc)) { delete d.bugData.foundInTc; changed = true; }
+                if (isOrphan(d.bugData.foundInRun)) { delete d.bugData.foundInRun; changed = true; }
+                if (isOrphan(d.bugData.duplicateOf)) {
+                    d.bugData.duplicateOf = '';
+                    if (d.bugData.resolution === 'duplicate') { d.bugData.resolution = ''; d.bugData.triagedAt = null; }
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    },
+
     _merge(local, remote, deletedIds = new Set()) {
         const map = new Map();
         (local || []).forEach(d => { if (!deletedIds.has(d.id)) map.set(d.id, d); });
@@ -1614,6 +1658,7 @@ const DocStorage = {
         });
         const merged = Array.from(map.values());
         this.deconflictBugNumbers(merged);
+        this.cleanOrphanedDocReferences(merged, deletedIds);
         return merged;
     },
 
