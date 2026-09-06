@@ -259,3 +259,55 @@ test('document merge preserves reopen transitions when other device updated non-
     assert.equal(result.bugStatusEvents[2].to, 'open');
 });
 
+test('allocateBugNumber never reuses numbers of deleted bugs', () => {
+    const { api, localStorage } = loadStorage();
+
+    const n1 = api.DocStorage.allocateBugNumber(0);
+    const n2 = api.DocStorage.allocateBugNumber(n1);
+    const n3 = api.DocStorage.allocateBugNumber(n2);
+
+    assert.equal(n1, 1);
+    assert.equal(n2, 2);
+    assert.equal(n3, 3);
+
+    // Suppose bug 3 is deleted, so the in-memory documents max drops back to 2
+    const n4 = api.DocStorage.allocateBugNumber(2);
+    assert.equal(n4, 4, 'Bug number 3 must not be reused after deletion');
+    assert.equal(api.DocStorage._getMaxBugNumber(), 4);
+});
+
+test('deconflictBugNumbers resolves duplicate bug numbers between concurrent devices deterministically', () => {
+    const { api } = loadStorage();
+
+    const bugA = { id: 'bug-a', category: 'bug', bugNumber: 5, createdAt: 100 };
+    const bugB = { id: 'bug-b', category: 'bug', bugNumber: 5, createdAt: 200 };
+    const bugC = { id: 'bug-c', category: 'bug', bugNumber: 5, createdAt: 300 };
+
+    const docs = [bugC, bugA, bugB];
+    const changed = api.DocStorage.deconflictBugNumbers(docs);
+
+    assert.equal(changed, true);
+    // bugA (createdAt 100) keeps 5
+    assert.equal(bugA.bugNumber, 5);
+    // bugB (createdAt 200) gets 6
+    assert.equal(bugB.bugNumber, 6);
+    // bugC (createdAt 300) gets 7
+    assert.equal(bugC.bugNumber, 7);
+    assert.equal(api.DocStorage._getMaxBugNumber(), 7);
+});
+
+test('document merge deconflicts colliding bug numbers from remote sync', () => {
+    const { api } = loadStorage();
+
+    const localBug = { id: 'bug-local', category: 'bug', bugNumber: 10, createdAt: 100, updatedAt: 150 };
+    const remoteBug = { id: 'bug-remote', category: 'bug', bugNumber: 10, createdAt: 200, updatedAt: 250 };
+
+    const merged = toPlain(api.DocStorage._merge([localBug], [remoteBug]));
+    assert.equal(merged.length, 2);
+
+    const byId = Object.fromEntries(merged.map(d => [d.id, d]));
+    assert.equal(byId['bug-local'].bugNumber, 10);
+    assert.equal(byId['bug-remote'].bugNumber, 11);
+});
+
+

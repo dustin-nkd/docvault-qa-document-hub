@@ -1409,6 +1409,7 @@ const DocStorage = {
     get DELETED_IDS_KEY() { return wsKey('docvault_deleted_ids'); },
     get RESURRECTED_IDS_KEY() { return wsKey('docvault_resurrected_ids'); },
     get PENDING_SYNC_KEY() { return wsKey('docvault_sync_pending'); },
+    get MAX_BUG_NUMBER_KEY() { return wsKey('docvault_max_bug_number'); },
 
     _pwd() {
         return sessionStorage.getItem('docvault_pwd') || null;
@@ -1540,6 +1541,62 @@ const DocStorage = {
         return out;
     },
 
+    _getMaxBugNumber() {
+        try {
+            const n = Number(localStorage.getItem(this.MAX_BUG_NUMBER_KEY));
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        } catch(e) { return 0; }
+    },
+
+    _saveMaxBugNumber(n) {
+        try {
+            const next = Math.max(this._getMaxBugNumber(), Number(n) || 0);
+            localStorage.setItem(this.MAX_BUG_NUMBER_KEY, String(next));
+            return next;
+        } catch(e) { return Number(n) || 0; }
+    },
+
+    allocateBugNumber(currentDocMax = 0) {
+        const next = Math.max(this._getMaxBugNumber(), Number(currentDocMax) || 0) + 1;
+        this._saveMaxBugNumber(next);
+        return next;
+    },
+
+    deconflictBugNumbers(docs) {
+        if (!Array.isArray(docs) || !docs.length) return false;
+        let max = this._getMaxBugNumber();
+        const bugs = [];
+        for (const d of docs) {
+            if (d && d.category === 'bug') {
+                bugs.push(d);
+                if (typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber;
+            }
+        }
+        if (!bugs.length) return false;
+        const assigned = bugs.filter(b => typeof b.bugNumber === 'number' && b.bugNumber > 0);
+        const unassigned = bugs.filter(b => typeof b.bugNumber !== 'number' || b.bugNumber <= 0);
+        assigned.sort((a, b) => (a.bugNumber - b.bugNumber) || ((Number(a.createdAt) || 0) - (Number(b.createdAt) || 0)) || String(a.id || '').localeCompare(String(b.id || '')));
+        unassigned.sort((a, b) => ((Number(a.createdAt) || 0) - (Number(b.createdAt) || 0)) || String(a.id || '').localeCompare(String(b.id || '')));
+        let changed = false;
+        const seen = new Set();
+        for (const b of assigned) {
+            if (!seen.has(b.bugNumber)) {
+                seen.add(b.bugNumber);
+            } else {
+                b.bugNumber = ++max;
+                seen.add(b.bugNumber);
+                changed = true;
+            }
+        }
+        for (const b of unassigned) {
+            b.bugNumber = ++max;
+            seen.add(b.bugNumber);
+            changed = true;
+        }
+        this._saveMaxBugNumber(max);
+        return changed;
+    },
+
     _merge(local, remote, deletedIds = new Set()) {
         const map = new Map();
         (local || []).forEach(d => { if (!deletedIds.has(d.id)) map.set(d.id, d); });
@@ -1555,7 +1612,9 @@ const DocStorage = {
                 map.set(r.id, this._mergeDocHistories(winner, loser));
             }
         });
-        return Array.from(map.values());
+        const merged = Array.from(map.values());
+        this.deconflictBugNumbers(merged);
+        return merged;
     },
 
     async _getLocal() {
@@ -1707,6 +1766,7 @@ const DocStorage = {
             if (!existing || incomingVersion > existingVersion) byId.set(d.id, d);
         });
         documents = [...byId.values()];
+        this.deconflictBugNumbers(documents);
         // These come straight off a remote shard, bypassing hydrate() — a
         // document written by hand or by an older client can arrive with no tags
         // array, which the list renderer and editor read unguarded.
@@ -1815,6 +1875,7 @@ const DocStorage = {
                         if (droppedIds.length > 0) {
                             await this.addDeletedIds(droppedIds);
                         }
+                        this.deconflictBugNumbers(importDocs);
                         await this.save(importDocs);
                         resolve({ imported: importDocs.length, total: importDocs.length });
                     } else {
@@ -1831,6 +1892,7 @@ const DocStorage = {
                                 imported++;
                             }
                         }
+                        this.deconflictBugNumbers(existing);
                         await this.save(existing);
                         resolve({ imported, total: existing.length });
                     }
@@ -2141,7 +2203,10 @@ const LocalAuth = {
             localStorage.removeItem(this.HINT_KEY);
             // Every workspace is encrypted under this one password, so clearing
             // only the active one would leave undecryptable data behind.
-            workspaceIds().forEach(id => localStorage.removeItem(wsKeyFor(id, 'docvault_docs')));
+            workspaceIds().forEach(id => {
+                localStorage.removeItem(wsKeyFor(id, 'docvault_docs'));
+                localStorage.removeItem(wsKeyFor(id, 'docvault_max_bug_number'));
+            });
             localStorage.removeItem(GitHubSync.SETTINGS_KEY);
             localStorage.removeItem(Vault.SALT_KEY);
             sessionStorage.removeItem(this.SESSION_KEY);

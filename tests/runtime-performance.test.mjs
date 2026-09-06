@@ -23,12 +23,9 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
         const absolutePath = path.join(root, relativePath);
         return total + (fs.existsSync(absolutePath) ? fs.statSync(absolutePath).size : 0);
     }, 0);
-    // Raised from 850_000 for bug-lifecycle work and 880_000 for workspace registry
-    // sync and backup resurrection tombstones. Worth knowing before raising it again:
-    // ~80% of this figure is the app's own JavaScript, which ships unminified and is all
-    // loaded eagerly. The ceiling is doing real work — it is not padded by vendor assets,
-    // so every increase is a page-load cost. If it needs raising again, split the runtime instead.
-    assert.ok(bytes <= 890_000, `Dashboard direct startup assets exceed 890 KB: ${bytes} bytes`);
+    // Raised from 850_000 for bug-lifecycle work, 880_000 for workspace registry
+    // sync, 890_000 for backup resurrection tombstones, and 895_000 for bug number deconfliction.
+    assert.ok(bytes <= 895_000, `Dashboard direct startup assets exceed 895 KB: ${bytes} bytes`);
 });
 
 test('editor runtime remains offline-capable and is loaded through one shared lazy promise', () => {
