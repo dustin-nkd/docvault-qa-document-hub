@@ -526,7 +526,8 @@ const GitHubSync = {
         }
         // Re-encrypt credential passwords that were decrypted in memory before pushing
         const safeDocs = DocStorage ? await DocStorage._encryptCredPasswords(activeDocs, pwd) : activeDocs;
-        const deletedIds = DocStorage ? [...DocStorage._getLocalDeletedIds()] : [];
+        const resurrected = (DocStorage && typeof DocStorage._getLocalResurrectedIds === 'function') ? DocStorage._getLocalResurrectedIds() : new Set();
+        const deletedIds = (DocStorage && typeof DocStorage._getLocalDeletedIds === 'function') ? [...DocStorage._getLocalDeletedIds()].filter(id => !resurrected.has(id)) : [];
         const wrapper = { docs: safeDocs, cfg: cfg || null, deletedIds };
         const vaultContent = pwd
             ? await Vault.encrypt(wrapper, pwd)
@@ -674,14 +675,17 @@ const GitHubSync = {
                 const remote = await this.pull();
                 if (remote) {
                     const remoteDocs = remote.docs || remote;
-                    const remoteDeletedIds = new Set(remote.deletedIds || []);
+                    const resurrected = DocStorage ? DocStorage._getLocalResurrectedIds() : new Set();
+                    const remoteDeletedIds = (remote.deletedIds || []).filter(id => !resurrected.has(id));
                     const localDeletedIds = DocStorage._getLocalDeletedIds();
+                    resurrected.forEach(id => localDeletedIds.delete(id));
                     const allDeletedIds = new Set([...localDeletedIds, ...remoteDeletedIds]);
                     if (allDeletedIds.size > localDeletedIds.size) {
                         DocStorage._saveLocalDeletedIds(allDeletedIds);
                     }
                     const merged = DocStorage._merge(docs, remoteDocs, allDeletedIds);
                     await DocStorage._saveLocal(merged);
+                    if (DocStorage && DocStorage.clearResurrectedIds) await DocStorage.clearResurrectedIds();
                     return this.push(merged, false, options);
                 }
                 return this.push(docs, false, options);
@@ -695,6 +699,7 @@ const GitHubSync = {
             const data = await res.json();
             localStorage.setItem(this.SHA_KEY, data.content.sha);
             if (securityMeta) this._applySecurityMeta(securityMeta);
+            if (DocStorage && DocStorage.clearResurrectedIds) await DocStorage.clearResurrectedIds();
             console.log('[GitHubSync] push OK');
         } catch(e) {
             console.error('[GitHubSync] push failed:', e);
@@ -878,7 +883,9 @@ const GitHubSync = {
         const pwd = this._pwd();
         const safeDocs = await this._prepDocsForShards(docs);
         const shards = this._groupByShard(safeDocs);
-        const deletedIds = DocStorage._getLocalDeletedIds();
+        const resurrected = (DocStorage && typeof DocStorage._getLocalResurrectedIds === 'function') ? DocStorage._getLocalResurrectedIds() : new Set();
+        const deletedIds = (DocStorage && typeof DocStorage._getLocalDeletedIds === 'function') ? DocStorage._getLocalDeletedIds() : new Set();
+        resurrected.forEach(id => deletedIds.delete(id));
         const mergedDocs = [];
 
         for (let i = 0; i < this.SHARD_COUNT; i++) {
@@ -906,17 +913,23 @@ const GitHubSync = {
         if (metaFingerprint === localStorage.getItem(this.META_FP_KEY)) {
             if (securityMeta) this._applySecurityMeta(securityMeta);
             this._remoteSharded = true;
+            if (DocStorage && DocStorage.clearResurrectedIds) await DocStorage.clearResurrectedIds();
             return { mergedDocs };
         }
-        const metaResult = await this._putWithMerge(this.META_PATH, settings, this.META_SHA_KEY, pwd, metaPayload, (local, remote) => ({
-            cfg: local.cfg || remote.cfg,
-            rb: local.rb !== undefined ? local.rb : remote.rb,
-            hint: local.hint !== undefined ? local.hint : remote.hint,
-            deletedIds: [...new Set([...(local.deletedIds || []), ...(remote.deletedIds || [])])],
-            activityLog: (typeof ActivityLog !== 'undefined')
-                ? ActivityLog.merge(local.activityLog, remote.activityLog)
-                : (local.activityLog || remote.activityLog || [])
-        }));
+        const metaResult = await this._putWithMerge(this.META_PATH, settings, this.META_SHA_KEY, pwd, metaPayload, (local, remote) => {
+            const res = (DocStorage && typeof DocStorage._getLocalResurrectedIds === 'function') ? DocStorage._getLocalResurrectedIds() : new Set();
+            const combined = new Set([...(local.deletedIds || []), ...(remote.deletedIds || [])]);
+            res.forEach(id => combined.delete(id));
+            return {
+                cfg: local.cfg || remote.cfg,
+                rb: local.rb !== undefined ? local.rb : remote.rb,
+                hint: local.hint !== undefined ? local.hint : remote.hint,
+                deletedIds: [...combined].sort(),
+                activityLog: (typeof ActivityLog !== 'undefined')
+                    ? ActivityLog.merge(local.activityLog, remote.activityLog)
+                    : (local.activityLog || remote.activityLog || [])
+            };
+        });
         // A meta conflict means another device pushed activity entries we
         // don't have locally yet — fold the merged result back in now
         // rather than waiting for this device's next pull.
@@ -926,6 +939,7 @@ const GitHubSync = {
         this._cacheMetaFingerprint(await this._metaFingerprint(metaResult.payload));
         if (securityMeta) this._applySecurityMeta(securityMeta);
         this._remoteSharded = true;
+        if (DocStorage && DocStorage.clearResurrectedIds) await DocStorage.clearResurrectedIds();
 
         return { mergedDocs };
     },
@@ -1376,6 +1390,7 @@ const DocStorage = {
     // Workspace-scoped — see wsKey() at the top of this file.
     get STORAGE_KEY() { return wsKey('docvault_docs'); },
     get DELETED_IDS_KEY() { return wsKey('docvault_deleted_ids'); },
+    get RESURRECTED_IDS_KEY() { return wsKey('docvault_resurrected_ids'); },
     get PENDING_SYNC_KEY() { return wsKey('docvault_sync_pending'); },
 
     _pwd() {
@@ -1418,10 +1433,45 @@ const DocStorage = {
         localStorage.setItem(this.DELETED_IDS_KEY, JSON.stringify([...set]));
     },
 
+    _getLocalResurrectedIds() {
+        try {
+            return new Set(JSON.parse(localStorage.getItem(this.RESURRECTED_IDS_KEY) || '[]'));
+        } catch(e) { return new Set(); }
+    },
+
+    _saveLocalResurrectedIds(set) {
+        localStorage.setItem(this.RESURRECTED_IDS_KEY, JSON.stringify([...set]));
+    },
+
+    async addResurrectedIds(ids) {
+        if (!ids || !ids.length) return;
+        const set = this._getLocalResurrectedIds();
+        ids.forEach(id => set.add(id));
+        this._saveLocalResurrectedIds(set);
+    },
+
+    async clearResurrectedIds() {
+        try { localStorage.removeItem(this.RESURRECTED_IDS_KEY); } catch(e) {}
+    },
+
+    async removeDeletedIds(ids) {
+        if (!ids || !ids.length) return;
+        const set = this._getLocalDeletedIds();
+        ids.forEach(id => set.delete(id));
+        this._saveLocalDeletedIds(set);
+    },
+
     async addDeletedIds(ids) {
+        if (!ids || !ids.length) return;
         const set = this._getLocalDeletedIds();
         ids.forEach(id => set.add(id));
         this._saveLocalDeletedIds(set);
+        const res = this._getLocalResurrectedIds();
+        if (res.size > 0) {
+            let changed = false;
+            ids.forEach(id => { if (res.delete(id)) changed = true; });
+            if (changed) this._saveLocalResurrectedIds(res);
+        }
     },
 
     _merge(local, remote, deletedIds = new Set()) {
@@ -1518,7 +1568,15 @@ const DocStorage = {
 
     async getAll() {
         const local = await this._getLocal();
+        const resurrected = this._getLocalResurrectedIds();
         const localDeletedIds = this._getLocalDeletedIds();
+        if (resurrected.size > 0) {
+            let purged = false;
+            resurrected.forEach(id => {
+                if (localDeletedIds.delete(id)) purged = true;
+            });
+            if (purged) this._saveLocalDeletedIds(localDeletedIds);
+        }
 
         if (!(await GitHubSync.isConfigured())) return local;
 
@@ -1526,7 +1584,9 @@ const DocStorage = {
         if (!remote) return local;
 
         const { docs: remoteDocs, deletedIds: remoteDeletedIds } = remote;
-        const allDeletedIds = new Set([...localDeletedIds, ...(remoteDeletedIds || [])]);
+        const allDeletedIds = new Set(
+            [...localDeletedIds, ...(remoteDeletedIds || [])].filter(id => !resurrected.has(id))
+        );
         if (allDeletedIds.size > localDeletedIds.size) {
             this._saveLocalDeletedIds(allDeletedIds);
         }
@@ -1661,15 +1721,44 @@ const DocStorage = {
                     if (!importDocs || !importDocs.every(d => d.id && d.title && d.category)) {
                         return reject(new Error('Invalid document data.'));
                     }
+                    const now = Date.now();
+                    const importedIds = [];
+                    importDocs = importDocs.map(d => {
+                        importedIds.push(d.id);
+                        const doc = { ...d };
+                        if (doc.status === 'deleted') {
+                            doc.status = 'draft';
+                            delete doc.deletedAt;
+                        }
+                        doc.updatedAt = Math.max(Number(doc.updatedAt) || 0, now);
+                        return doc;
+                    });
+
+                    await this.removeDeletedIds(importedIds);
+                    await this.addResurrectedIds(importedIds);
+
                     if (mode === 'replace') {
+                        const existing = (await this._getLocal()) || [];
+                        const importIdSet = new Set(importedIds);
+                        const droppedIds = existing.map(d => d.id).filter(id => !importIdSet.has(id));
+                        if (droppedIds.length > 0) {
+                            await this.addDeletedIds(droppedIds);
+                        }
                         await this.save(importDocs);
                         resolve({ imported: importDocs.length, total: importDocs.length });
                     } else {
                         const existing = (await this.getAll()) || [];
-                        const existingIds = new Set(existing.map(d => d.id));
+                        const existingMap = new Map(existing.map(d => [d.id, d]));
                         let imported = 0;
                         for (const doc of importDocs) {
-                            if (!existingIds.has(doc.id)) { existing.push(doc); imported++; }
+                            if (!existingMap.has(doc.id)) {
+                                existing.push(doc);
+                                imported++;
+                            } else if (existingMap.get(doc.id).status === 'deleted') {
+                                const idx = existing.findIndex(d => d.id === doc.id);
+                                if (idx !== -1) existing[idx] = doc;
+                                imported++;
+                            }
                         }
                         await this.save(existing);
                         resolve({ imported, total: existing.length });

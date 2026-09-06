@@ -115,3 +115,48 @@ test('quota errors in history and activity logging do not interrupt document wor
     assert.doesNotThrow(() => harness.api.ActivityLog.record('updated', { id: 'doc-1', title: 'Title', category: 'knowledge' }));
     assert.doesNotThrow(() => harness.api.ActivityLog.mergeIncoming([{ id: 'remote-1', ts: 1 }]));
 });
+
+test('resurrected documents survive sync pull and clear tombstones locally and remotely', async () => {
+    const { api, localStorage } = loadStorage();
+    const storage = api.DocStorage;
+    const sync = api.GitHubSync;
+
+    await storage.addDeletedIds(['doc-1', 'doc-2']);
+    assert.deepEqual([...storage._getLocalDeletedIds()].sort(), ['doc-1', 'doc-2']);
+
+    await storage.removeDeletedIds(['doc-1']);
+    await storage.addResurrectedIds(['doc-1']);
+    assert.deepEqual([...storage._getLocalDeletedIds()], ['doc-2']);
+    assert.deepEqual([...storage._getLocalResurrectedIds()], ['doc-1']);
+
+    const restoredDoc = { id: 'doc-1', title: 'Restored from Backup', category: 'knowledge', updatedAt: 2000 };
+    await storage._saveLocal([restoredDoc]);
+
+    sync.isConfigured = async () => true;
+    sync.syncPull = async () => ({
+        docs: [],
+        deletedIds: ['doc-1', 'doc-2']
+    });
+
+    const fresh = await storage.getAll();
+    assert.ok(fresh.some(d => d.id === 'doc-1'), 'Restored doc must NOT be swallowed by remote deletedIds tombstone');
+    assert.ok(!storage._getLocalDeletedIds().has('doc-1'), 'Local deletedIds must not re-acquire resurrected doc-1');
+    assert.ok(storage._getLocalDeletedIds().has('doc-2'), 'Local deletedIds must retain legitimately deleted doc-2');
+
+    sync.SHARD_COUNT = 1;
+    sync.getSettings = async () => ({ owner: 'o', repo: 'r', branch: 'main', token: 't' });
+    sync._prepDocsForShards = async docs => docs;
+    sync._applySecurityMeta = () => {};
+    localStorage.setItem(sync.SHARD_FP_PREFIX + '0', '');
+    let pushedMeta = null;
+    sync._putWithMerge = async (path, settings, shaKey, pwd, payload) => {
+        if (path.includes('vault-meta')) pushedMeta = payload;
+        return { payload, merged: false };
+    };
+
+    await sync.pushSharded([restoredDoc], {});
+    assert.ok(pushedMeta, 'Meta must be written');
+    assert.deepEqual(toPlain(pushedMeta.deletedIds), ['doc-2'], 'Remote meta must exclude resurrected doc-1');
+    assert.equal(storage._getLocalResurrectedIds().size, 0, 'Resurrected IDs must be cleared after push');
+});
+
