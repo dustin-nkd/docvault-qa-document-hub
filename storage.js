@@ -378,6 +378,14 @@ const GitHubSync = {
         return sessionStorage.getItem('docvault_pwd') || null;
     },
 
+    // Strip sensitive secrets (PAT) before pushing configuration to remote repository
+    _sanitizeRemoteConfig(cfg) {
+        if (!cfg || typeof cfg !== 'object') return null;
+        const sanitized = { ...cfg };
+        delete sanitized.token;
+        return sanitized;
+    },
+
     // Returns merged settings: hardcoded defaults + stored overrides (token from stored)
     async getSettings() {
         const raw = localStorage.getItem(this.SETTINGS_KEY);
@@ -397,6 +405,15 @@ const GitHubSync = {
                     }
                 } else {
                     stored = JSON.parse(raw);
+                    const pwd = this._pwd();
+                    if (pwd && stored && typeof stored === 'object') {
+                        try {
+                            const upgraded = await Vault.encryptVerified(stored, pwd);
+                            localStorage.setItem(this.SETTINGS_KEY, upgraded);
+                        } catch (migrationError) {
+                            console.warn('Could not auto-encrypt plaintext GitHub settings:', migrationError);
+                        }
+                    }
                 }
             } catch(e) { stored = null; }
         }
@@ -408,7 +425,7 @@ const GitHubSync = {
         const previous = await this.getSettings();
         const pwd = this._pwd();
         const value = pwd
-            ? await Vault.encrypt(settings, pwd)
+            ? await Vault.encryptVerified(settings, pwd)
             : JSON.stringify(settings);
         localStorage.setItem(this.SETTINGS_KEY, value);
         const next = { ...this.DEFAULTS, ...(settings || {}) };
@@ -528,7 +545,7 @@ const GitHubSync = {
         const safeDocs = DocStorage ? await DocStorage._encryptCredPasswords(activeDocs, pwd) : activeDocs;
         const resurrected = (DocStorage && typeof DocStorage._getLocalResurrectedIds === 'function') ? DocStorage._getLocalResurrectedIds() : new Set();
         const deletedIds = (DocStorage && typeof DocStorage._getLocalDeletedIds === 'function') ? [...DocStorage._getLocalDeletedIds()].filter(id => !resurrected.has(id)) : [];
-        const wrapper = { docs: safeDocs, cfg: cfg || null, deletedIds };
+        const wrapper = { docs: safeDocs, cfg: this._sanitizeRemoteConfig(cfg), deletedIds };
         const vaultContent = pwd
             ? await Vault.encrypt(wrapper, pwd)
             : JSON.stringify(wrapper, null, 2);
@@ -617,8 +634,8 @@ const GitHubSync = {
 
         const { docs, cfg } = result;
 
-        // Use embedded cfg if available, else build minimal one from inputs
-        const finalCfg = cfg || { owner, repo, branch, token: token || '' };
+        // Use embedded cfg if available, else build minimal one from inputs (never adopt remote token)
+        const finalCfg = { ...(cfg || {}), owner: (cfg && cfg.owner) || owner, repo: (cfg && cfg.repo) || repo, branch: (cfg && cfg.branch) || branch, token: token || '' };
         await this.saveSettings(finalCfg);
 
         // Save docs locally
@@ -903,7 +920,7 @@ const GitHubSync = {
 
         const meta = securityMeta || this._getLocalSecurityMeta();
         const metaPayload = {
-            cfg: settings,
+            cfg: this._sanitizeRemoteConfig(settings),
             rb: meta.recoveryBlob || null,
             hint: meta.passwordHint || null,
             deletedIds: [...deletedIds].sort(),
@@ -921,7 +938,7 @@ const GitHubSync = {
             const combined = new Set([...(local.deletedIds || []), ...(remote.deletedIds || [])]);
             res.forEach(id => combined.delete(id));
             return {
-                cfg: local.cfg || remote.cfg,
+                cfg: this._sanitizeRemoteConfig(local.cfg) || this._sanitizeRemoteConfig(remote.cfg),
                 rb: local.rb !== undefined ? local.rb : remote.rb,
                 hint: local.hint !== undefined ? local.hint : remote.hint,
                 deletedIds: [...combined].sort(),
@@ -1511,7 +1528,7 @@ const DocStorage = {
                 parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
             }
             const decryptedDocs = await this._decryptCredPasswords(parsed, pwd);
-            if (sourceVersion === 1 && pwd) {
+            if ((sourceVersion === 1 || (!Vault.isEncrypted(raw) && raw)) && pwd) {
                 try {
                     const safeDocs = await this._encryptCredPasswords(decryptedDocs, pwd);
                     const upgraded = await Vault.encryptVerified(safeDocs, pwd);
@@ -1521,7 +1538,7 @@ const DocStorage = {
                         localStorage.setItem(key, upgraded);
                     }
                 } catch (migrationError) {
-                    console.warn('Local documents remain on Vault V1; migration will retry.', migrationError);
+                    console.warn('Local documents remain unencrypted or on Vault V1; migration will retry.', migrationError);
                 }
             }
             return decryptedDocs;
@@ -1902,6 +1919,31 @@ const LocalAuth = {
 
             sessionStorage.setItem(this.SESSION_PWD, password);
             sessionStorage.setItem(this.SESSION_KEY, '1');
+
+            // Upgrade unencrypted GitHub settings and workspace docs to Vault V2
+            try {
+                if (typeof GitHubSync !== 'undefined' && GitHubSync.getSettings) {
+                    await GitHubSync.getSettings();
+                }
+                if (typeof workspaceIds === 'function' && typeof wsKeyFor === 'function') {
+                    for (const workspaceId of workspaceIds()) {
+                        const docsKey = wsKeyFor(workspaceId, 'docvault_docs');
+                        const rawDocs = localStorage.getItem(docsKey);
+                        if (rawDocs && !Vault.isEncrypted(rawDocs)) {
+                            try {
+                                const parsed = JSON.parse(rawDocs);
+                                const safeDocs = DocStorage ? await DocStorage._encryptCredPasswords(parsed, password) : parsed;
+                                const enc = await Vault.encryptVerified(safeDocs, password);
+                                localStorage.setItem(docsKey, enc);
+                            } catch (migErr) {
+                                console.warn('Could not auto-encrypt workspace docs:', migErr);
+                            }
+                        }
+                    }
+                }
+            } catch (secErr) {
+                console.warn('Post-unlock auto-encryption warning:', secErr);
+            }
             document.getElementById('lock-screen').classList.add('hidden');
             if (window.resetLockFormState) window.resetLockFormState();
             if (typeof toast === 'function') toast(typeof t === 'function' ? t('vaultUnlocked') : 'Vault Unlocked', 'success');

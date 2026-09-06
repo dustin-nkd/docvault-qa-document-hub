@@ -236,3 +236,81 @@ test('password change rolls back earlier replacements when a later storage write
     assert.equal(localStorage.getItem('docvault_recovery_blob'), recovery);
     assert.equal(sessionStorage.getItem('docvault_pwd'), oldPassword);
 });
+
+test('plaintext GitHub settings auto-encrypts to Vault V2 when master password is present', async () => {
+    const password = 'test master password';
+    const settings = { owner: 'user', repo: 'vault', branch: 'main', token: 'secret-token-123' };
+    const { api, localStorage } = loadStorage({
+        localStorage: { github_settings: JSON.stringify(settings) },
+        sessionStorage: { docvault_pwd: password }
+    });
+
+    const retrieved = await api.GitHubSync.getSettings();
+    assert.equal(retrieved.token, 'secret-token-123');
+    const stored = localStorage.getItem('github_settings');
+    assert.equal(api.Vault.getVersion(stored), 2);
+    assert.deepEqual(toPlain(await api.Vault.decrypt(stored, password)), settings);
+});
+
+test('GitHubSync._sanitizeRemoteConfig strips token and remote payloads never expose token', async () => {
+    const { api } = loadStorage();
+    const config = { owner: 'user', repo: 'repo', branch: 'main', token: 'ghp_secret' };
+    const sanitized = api.GitHubSync._sanitizeRemoteConfig(config);
+    assert.equal(sanitized.token, undefined);
+    assert.equal(sanitized.owner, 'user');
+
+    const encodedB64 = await api.GitHubSync._encode([{ id: 'doc1', title: 'Test' }]);
+    const decodedWrapper = await api.GitHubSync._decode(encodedB64);
+    if (decodedWrapper.cfg) {
+        assert.equal(decodedWrapper.cfg.token, undefined);
+    }
+});
+
+test('GitHubSync.bootstrap never adopts token from remote configuration', async () => {
+    const { api } = loadStorage();
+    const remoteContent = {
+        docs: [{ id: 'd1', title: 'Doc 1' }],
+        cfg: { owner: 'remote-owner', repo: 'remote-repo', branch: 'main', token: 'leaked-remote-token' }
+    };
+    const envelope = JSON.stringify({ v: JSON.stringify(remoteContent) });
+    const b64 = btoa(unescape(encodeURIComponent(envelope)));
+
+    api.GitHubSync.fetchPublic = async () => api.GitHubSync._decode(b64);
+
+    const ok = await api.GitHubSync.bootstrap('my-owner', 'my-repo', 'main', 'my-local-token');
+    assert.equal(ok, true);
+    const saved = await api.GitHubSync.getSettings();
+    assert.equal(saved.token, 'my-local-token');
+    assert.notEqual(saved.token, 'leaked-remote-token');
+});
+
+test('LocalAuth.unlock automatically upgrades plaintext settings and workspace docs to Vault V2', async () => {
+    const lockScreen = { classList: { add() {} } };
+    const document = { getElementById(id) { return id === 'lock-screen' ? lockScreen : null; } };
+    const password = 'new master password 123';
+    const rawSettings = JSON.stringify({ owner: 'owner', repo: 'repo', token: 'token-abc' });
+    const rawDocs = JSON.stringify([{ id: 'doc-1', title: 'Plain Doc' }]);
+
+    const { api, localStorage, sessionStorage } = loadStorage({
+        document,
+        localStorage: {
+            github_settings: rawSettings,
+            docvault_docs: rawDocs
+        }
+    });
+
+    await api.LocalAuth.unlock(password);
+
+    assert.equal(sessionStorage.getItem('docvault_unlocked'), '1');
+    assert.equal(sessionStorage.getItem('docvault_pwd'), password);
+
+    const storedSettings = localStorage.getItem('github_settings');
+    assert.equal(api.Vault.getVersion(storedSettings), 2);
+    const decryptedSettings = await api.Vault.decrypt(storedSettings, password);
+    assert.equal(decryptedSettings.token, 'token-abc');
+
+    const storedDocs = localStorage.getItem('docvault_docs');
+    assert.equal(api.Vault.getVersion(storedDocs), 2);
+    const decryptedDocs = await api.Vault.decrypt(storedDocs, password);
+    assert.equal(decryptedDocs[0].title, 'Plain Doc');
+});
