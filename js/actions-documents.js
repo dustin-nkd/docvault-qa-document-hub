@@ -422,7 +422,7 @@ function _nextBugNumber() {
     documents.forEach(d => {
         if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber;
     });
-    return max + 1;
+    return (typeof DocStorage !== 'undefined' && DocStorage.allocateBugNumber) ? DocStorage.allocateBugNumber(max) : max + 1;
 }
 
 async function saveDoc() {

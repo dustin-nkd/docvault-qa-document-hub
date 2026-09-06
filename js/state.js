@@ -561,14 +561,17 @@ async function hydrate() {
         }
     });
 
-    // Backfill sequential bug numbers for bugs created before US-202, in creation
-    // order, so every bug has a stable BUG-### reference.
-    let maxBugNumber = documents.reduce((m, d) =>
-        (d.category === 'bug' && typeof d.bugNumber === 'number') ? Math.max(m, d.bugNumber) : m, 0);
-    documents
-        .filter(d => d.category === 'bug' && typeof d.bugNumber !== 'number')
-        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
-        .forEach(d => { d.bugNumber = ++maxBugNumber; migrated = true; });
+    // Backfill and deconflict sequential bug numbers so every bug has a unique, stable BUG-### reference (US-202).
+    if (typeof DocStorage !== 'undefined' && typeof DocStorage.deconflictBugNumbers === 'function') {
+        if (DocStorage.deconflictBugNumbers(documents)) migrated = true;
+    } else {
+        let maxBugNumber = documents.reduce((m, d) =>
+            (d.category === 'bug' && typeof d.bugNumber === 'number') ? Math.max(m, d.bugNumber) : m, 0);
+        documents
+            .filter(d => d.category === 'bug' && typeof d.bugNumber !== 'number')
+            .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+            .forEach(d => { d.bugNumber = ++maxBugNumber; migrated = true; });
+    }
 
     // B3: start carrying bug lifecycle events with every bug. Existing records
     // retain estimated markers because their historic transition times were not
