@@ -314,6 +314,10 @@ async function restoreDoc(id) {
         doc.updatedAt = Date.now();
         ActivityLog.record('restored', doc);
     }
+    if (typeof DocStorage !== 'undefined') {
+        if (DocStorage.removeDeletedIds) await DocStorage.removeDeletedIds([id]);
+        if (DocStorage.addResurrectedIds) await DocStorage.addResurrectedIds([id]);
+    }
     await persist();
     toast(t('docRestored') || "Document Restored", 'success');
     render();
