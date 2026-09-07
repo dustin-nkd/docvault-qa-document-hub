@@ -802,6 +802,12 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\[aria-labelledby=["']env-creds-label["']\]/, 'style.css must style environment linked credentials for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*label:has\(#ed-run-regression\)/, 'style.css must style regression run card for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\[aria-labelledby=["']rel-runs-label["']\]/, 'style.css must style release linked runs for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\](?:[\s\S]*?)\[aria-labelledby=["']rel-envs-label["']\]/, 'style.css must style release linked environments for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#editor-container\s+\.toastui-editor-toolbar-icons/, 'style.css must style editor toolbar icons for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.form-checkbox/, 'style.css must style checkboxes for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.release-cockpit-outcome/, 'style.css must style release cockpit for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.quality-score-overview/, 'style.css must style quality score overview for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.focus-workflow-modal-head/, 'style.css must style focus workflow modal for Bauhaus mode');
 });
 
 
