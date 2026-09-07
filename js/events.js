@@ -224,6 +224,12 @@ function renderGuestBanner() {
     banner.innerHTML = `<span class="gb-emoji">🎭</span><span class="gb-text">Guest Demo — sample data, nothing is saved</span><a href="${location.pathname}" class="gb-exit" style="color:#fff;background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:999px;text-decoration:none;white-space:nowrap;">Exit demo</a>`;
     document.body.appendChild(banner);
 
+    // Keep the floating UI style toggle button clear of the guest banner
+    const toggleBtn = document.getElementById('ui-style-toggle-btn');
+    if (toggleBtn) {
+        toggleBtn.style.bottom = window.innerWidth <= 640 ? '124px' : '74px';
+    }
+
     // Hide entry points to real-vault operations that make no sense (and must
     // never run) in demo mode. The handlers themselves are also guarded
     // (defense in depth), this just avoids dead clicks. Lock and Settings are
