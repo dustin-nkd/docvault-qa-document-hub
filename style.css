@@ -3367,6 +3367,107 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     letter-spacing: .04em !important;
 }
 
+/* ============================================
+   Bauhaus Sharing, History & Diff Views
+   ============================================ */
+
+/* Snapshot Diff Modal Shell */
+[data-ui-style="bauhaus"] #modal .fade-up.rounded-xl.w-full[style*="max-width:780px"] {
+    background: #FFFFFF !important;
+    border: 4px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 8px 8px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .fade-up.rounded-xl.w-full[style*="max-width:780px"] > div:first-child {
+    background: #F0F0F0 !important;
+    border-bottom: 2px solid #121212 !important;
+}
+
+/* Diff View Lines */
+[data-ui-style="bauhaus"] .diff-view {
+    background: #FFFFFF !important;
+    font-family: monospace !important;
+    font-weight: 600 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .diff-add {
+    background: #E8F5E9 !important;
+    color: #1B5E20 !important;
+    border-left: 5px solid #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] .diff-del {
+    background: #FFEBEE !important;
+    color: #B71C1C !important;
+    border-left: 5px solid #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] .diff-ctx {
+    color: #333333 !important;
+    border-left: 5px solid transparent !important;
+}
+
+[data-ui-style="bauhaus"] .diff-skip {
+    background: #F0F0F0 !important;
+    border-top: 1px solid #121212 !important;
+    border-bottom: 1px solid #121212 !important;
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 10px !important;
+    letter-spacing: .06em !important;
+}
+
+/* History Panel Row Cards */
+[data-ui-style="bauhaus"] #modal .flex.items-start.gap-3.p-3.rounded-lg {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    margin-bottom: 10px !important;
+}
+
+[data-ui-style="bauhaus"] #modal .flex.items-start.gap-3.p-3.rounded-lg .text-sm.font-semibold {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    color: #121212 !important;
+}
+
+/* Sharing URL Box */
+[data-ui-style="bauhaus"] #modal .flex.items-center.gap-2.p-3.rounded-lg.border {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #share-url-input {
+    color: #121212 !important;
+    font-family: monospace !important;
+    font-weight: 700 !important;
+}
+
+/* Save View Modal & Sharing Icon Badges */
+[data-ui-style="bauhaus"] #modal .w-12.h-12.rounded-full[style*="rgba(16,185,129"] {
+    border: 2px solid #1040C0 !important;
+    border-radius: 0 !important;
+    background: #EBF3FF !important;
+}
+
+[data-ui-style="bauhaus"] #modal .w-12.h-12.rounded-full[style*="rgba(16,185,129"] i {
+    color: #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .w-9.h-9.rounded-lg {
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    background: #FFFFFF !important;
+}
+
+
 
 
 
