@@ -31,7 +31,7 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     // Document List, Explorer & Kanban Bauhaus styling, 955_000 for
     // Document Viewer and Category Viewers Bauhaus styling, 965_000 for
     // Document Editor and Template Picker Modal Bauhaus styling, and 985_000 for
-    // Focus Mode and Traceability Matrix Bauhaus styling.
+    // Focus Mode, Traceability Matrix, and Activity Log Bauhaus styling.
     assert.ok(bytes <= 985_000, `Dashboard direct startup assets exceed 985 KB: ${bytes} bytes`);
 });
 

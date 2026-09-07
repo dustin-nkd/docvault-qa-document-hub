@@ -3138,6 +3138,124 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     padding: 2px 6px !important;
 }
 
+/* ============================================
+   Bauhaus Activity Log (Audit Timeline)
+   ============================================ */
+
+/* Activity Day Separator */
+[data-ui-style="bauhaus"] .act-day {
+    background: #FAF8F5 !important;
+    border-bottom: 2px solid #121212 !important;
+    padding: 12px 4px 6px !important;
+}
+
+[data-ui-style="bauhaus"] .act-day h3 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    color: #121212 !important;
+    font-size: 11px !important;
+    letter-spacing: .08em !important;
+    text-transform: uppercase !important;
+}
+
+[data-ui-style="bauhaus"] .act-day-rule {
+    background: #121212 !important;
+    height: 2px !important;
+}
+
+/* Activity List & Rows */
+[data-ui-style="bauhaus"] .act-list {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+    margin-bottom: 16px !important;
+}
+
+[data-ui-style="bauhaus"] .act-row + .act-row {
+    border-top: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .act-item {
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] button.act-item {
+    transition: background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] button.act-item:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] button.act-item:focus-visible {
+    outline: 3px solid #121212 !important;
+    outline-offset: -3px !important;
+}
+
+[data-ui-style="bauhaus"] .act-icon {
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+}
+
+[data-ui-style="bauhaus"] .act-title {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    color: #121212 !important;
+    font-size: 13.5px !important;
+}
+
+[data-ui-style="bauhaus"] .act-action {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+    letter-spacing: .02em !important;
+}
+
+[data-ui-style="bauhaus"] .act-note {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] .act-time {
+    font-family: monospace !important;
+    font-weight: 700 !important;
+    color: #121212 !important;
+    background: #F0F0F0 !important;
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    padding: 2px 6px !important;
+}
+
+/* Empty State */
+[data-ui-style="bauhaus"] .ui-state {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .ui-state-icon {
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    background: #F0C020 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .ui-state h3 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .ui-state p {
+    color: #444444 !important;
+    font-weight: 600 !important;
+}
+
+
 
 
 
