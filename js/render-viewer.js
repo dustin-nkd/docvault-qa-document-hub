@@ -5,7 +5,7 @@ function renderViewer() {
     const doc = documents.find(d => d.id === state.editingDoc?.id);
     if (!doc) return `<div class="text-center py-20" style="color:var(--tx-d);">Document not found.</div>`;
 
-    return `<div class="fade-up max-w-4xl mx-auto">
+    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
         <!-- Meta -->
         <div class="flex flex-wrap items-center gap-2.5 mb-4">
             <span class="cat-badge ${getCatMeta(doc.category).cls}">${getCatMeta(doc.category).label}</span>
