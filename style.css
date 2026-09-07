@@ -1303,3 +1303,160 @@ button[aria-busy="true"] { cursor:progress !important; }
     color: var(--acc) !important;
   }
 }
+
+/* ============================================
+   Bauhaus Design System Mode
+   Constructivist Modernism (1920s Poster Aesthetic)
+   ============================================ */
+
+:root[data-ui-style="bauhaus"] {
+    --bh-bg: #F0F0F0;
+    --bh-fg: #121212;
+    --bh-red: #D02020;
+    --bh-blue: #1040C0;
+    --bh-yellow: #F0C020;
+    --bh-border: #121212;
+    --bh-muted: #E0E0E0;
+    --bh-card: #FFFFFF;
+}
+
+/* Master Lock Screen in Bauhaus Mode */
+[data-ui-style="bauhaus"] #lock-screen {
+    background-color: #F0F0F0 !important;
+    background-image: radial-gradient(#121212 1.5px, transparent 1.5px) !important;
+    background-size: 24px 24px !important;
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    color: #121212 !important;
+    position: fixed;
+    overflow: hidden;
+}
+
+/* Decorative Constructivist Background Elements */
+[data-ui-style="bauhaus"] .bauhaus-decor-wrap { display: block !important; }
+
+.bauhaus-bg-circle {
+    position: absolute; bottom: -80px; left: -80px; width: 320px; height: 320px;
+    border-radius: 9999px; background-color: #D02020; border: 4px solid #121212;
+    box-shadow: 8px 8px 0px 0px #121212; opacity: 0.88;
+}
+.bauhaus-bg-square {
+    position: absolute; top: -60px; right: -60px; width: 240px; height: 240px;
+    background-color: #1040C0; border: 4px solid #121212; box-shadow: 8px 8px 0px 0px #121212;
+    transform: rotate(25deg); opacity: 0.88;
+}
+.bauhaus-bg-triangle {
+    position: absolute; top: 18%; left: 8%; width: 100px; height: 100px;
+    transform: rotate(-12deg); opacity: 0.92;
+}
+.bauhaus-bg-accent-bar {
+    position: absolute; bottom: 22%; right: 6%; width: 190px; height: 14px;
+    background-color: #F0C020; border: 3px solid #121212; box-shadow: 4px 4px 0px 0px #121212;
+    transform: rotate(45deg);
+}
+
+/* Bauhaus Lock Card */
+[data-ui-style="bauhaus"] #lock-screen .lock-card {
+    background-color: #FFFFFF !important; border: 4px solid #121212 !important; border-radius: 0px !important;
+    box-shadow: 8px 8px 0px 0px #121212 !important; padding: 36px 30px !important;
+    max-width: 440px !important; position: relative; z-index: 10;
+}
+[data-ui-style="bauhaus"] .bauhaus-card-corner-shape {
+    position: absolute; top: 0; right: 0; display: flex !important; align-items: center;
+    gap: 4px; padding: 6px 8px; border-left: 3px solid #121212; border-bottom: 3px solid #121212;
+    background-color: #F0F0F0;
+}
+[data-ui-style="bauhaus"] #lock-icon-box {
+    border-radius: 0px !important; background: #D02020 !important; border: 3px solid #121212 !important;
+    box-shadow: 4px 4px 0px 0px #121212 !important; width: 64px !important; height: 64px !important; margin-bottom: 20px !important;
+}
+[data-ui-style="bauhaus"] #lock-icon-box i { color: #FFFFFF !important; font-size: 26px !important; }
+
+[data-ui-style="bauhaus"] .bauhaus-poster-badge {
+    display: flex !important; align-items: center; justify-content: center; gap: 8px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em;
+    color: #121212; margin-bottom: 12px; border-bottom: 2px solid #121212; padding-bottom: 6px;
+}
+[data-ui-style="bauhaus"] #lock-screen h2 {
+    color: #121212 !important; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-weight: 900 !important; font-size: 32px !important; text-transform: uppercase !important;
+    letter-spacing: -0.04em !important; line-height: 0.95 !important; margin-bottom: 10px !important;
+}
+[data-ui-style="bauhaus"] #lock-screen-hint {
+    color: #333333 !important; font-size: 13px !important; font-weight: 500 !important;
+    line-height: 1.45 !important; margin-bottom: 24px !important;
+}
+[data-ui-style="bauhaus"] #master-password {
+    background-color: #FFFFFF !important; color: #121212 !important; border: 3px solid #121212 !important;
+    border-radius: 0px !important; box-shadow: 4px 4px 0px 0px #121212 !important;
+    font-size: 20px !important; letter-spacing: 0.3em !important; padding: 12px !important;
+    transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+[data-ui-style="bauhaus"] #master-password:focus {
+    background-color: #FFFDE7 !important; outline: none !important;
+    box-shadow: 6px 6px 0px 0px #121212 !important; transform: translate(-1px, -1px);
+}
+[data-ui-style="bauhaus"] #lock-submit-btn,
+[data-ui-style="bauhaus"] #lock-demo-btn,
+[data-ui-style="bauhaus"] #recover-submit-btn,
+[data-ui-style="bauhaus"] #ui-style-toggle-btn {
+    border-radius: 0px !important; cursor: pointer; text-transform: uppercase !important;
+    transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+[data-ui-style="bauhaus"] #lock-submit-btn {
+    background-color: #D02020 !important; color: #FFFFFF !important; border: 3px solid #121212 !important;
+    box-shadow: 4px 4px 0px 0px #121212 !important; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-weight: 900 !important; font-size: 15px !important; letter-spacing: 0.08em !important; padding: 14px !important;
+}
+[data-ui-style="bauhaus"] #lock-submit-btn:hover {
+    background-color: #B81818 !important; transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px #121212 !important;
+}
+[data-ui-style="bauhaus"] #lock-demo-btn {
+    background: #F0C020 !important; color: #121212 !important; border: 3px solid #121212 !important;
+    box-shadow: 4px 4px 0px 0px #121212 !important; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-weight: 800 !important; font-size: 13.5px !important; letter-spacing: 0.05em !important; padding: 12px !important;
+}
+[data-ui-style="bauhaus"] #lock-demo-btn:hover {
+    background: #E2B215 !important; transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px #121212 !important;
+}
+[data-ui-style="bauhaus"] #lock-submit-btn:active,
+[data-ui-style="bauhaus"] #lock-demo-btn:active,
+[data-ui-style="bauhaus"] #recover-submit-btn:active,
+[data-ui-style="bauhaus"] #ui-style-toggle-btn:active {
+    transform: translate(2px, 2px) !important; box-shadow: 0px 0px 0px 0px #121212 !important;
+}
+[data-ui-style="bauhaus"] #lock-screen .border-t { border-color: #121212 !important; border-top-width: 2px !important; }
+[data-ui-style="bauhaus"] #lock-pwd-hint {
+    background-color: #FFF9C4 !important; border: 2px solid #121212 !important; border-radius: 0px !important;
+    box-shadow: 3px 3px 0px 0px #121212 !important; color: #121212 !important;
+}
+[data-ui-style="bauhaus"] #lock-pwd-hint i { color: #D02020 !important; }
+[data-ui-style="bauhaus"] #lock-pwd-hint strong,
+[data-ui-style="bauhaus"] #lock-pwd-hint-text { color: #121212 !important; font-weight: 700 !important; }
+[data-ui-style="bauhaus"] #lock-screen-sub { color: #404040 !important; font-weight: 600 !important; font-size: 11.5px !important; }
+[data-ui-style="bauhaus"] #lock-recovery-toggle button {
+    color: #1040C0 !important; font-weight: 800 !important; text-transform: uppercase !important;
+    letter-spacing: 0.05em !important; font-size: 11.5px !important;
+}
+[data-ui-style="bauhaus"] #lock-recovery-panel {
+    background-color: #F8F8F8 !important; border: 2px solid #121212 !important; border-radius: 0px !important;
+    padding: 14px !important; box-shadow: 4px 4px 0px 0px #121212 !important;
+}
+[data-ui-style="bauhaus"] #lock-recovery-panel p { color: #121212 !important; font-weight: 700 !important; text-transform: uppercase !important; }
+[data-ui-style="bauhaus"] #recovery-code-input {
+    border: 2px solid #121212 !important; border-radius: 0px !important; background-color: #FFFFFF !important;
+    color: #121212 !important; box-shadow: 3px 3px 0px 0px #121212 !important;
+}
+[data-ui-style="bauhaus"] #recover-submit-btn {
+    background-color: #1040C0 !important; color: #FFFFFF !important; border: 2px solid #121212 !important;
+    box-shadow: 3px 3px 0px 0px #121212 !important; font-weight: 800 !important; letter-spacing: 0.06em !important;
+}
+[data-ui-style="bauhaus"] #recover-submit-btn:hover { background-color: #0c339c !important; transform: translate(-1px, -1px); }
+[data-ui-style="bauhaus"] #ui-style-toggle-btn {
+    background: #F0C020 !important; color: #121212 !important; border: 3px solid #121212 !important;
+    box-shadow: 4px 4px 0px 0px #121212 !important; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-weight: 800 !important; letter-spacing: 0.06em !important;
+}
+[data-ui-style="bauhaus"] #ui-style-toggle-btn:hover {
+    background: #E2B215 !important; transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px #121212 !important;
+}
+

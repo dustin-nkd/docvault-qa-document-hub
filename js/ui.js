@@ -1,6 +1,42 @@
 // ========================
-// THEME
+// UI STYLE SWITCHER (Bauhaus / Classic)
 // ========================
+window.updateUiStyleSwitcher = function() {
+    const btn = document.getElementById('ui-style-toggle-btn');
+    const text = document.getElementById('ui-style-toggle-text');
+    if (!btn) return;
+    const isBauhaus = document.documentElement.getAttribute('data-ui-style') === 'bauhaus';
+    if (isBauhaus) {
+        btn.setAttribute('title', 'Switch to Classic UI');
+        btn.setAttribute('aria-label', 'Switch to Classic UI');
+        if (text) text.textContent = 'Classic UI';
+    } else {
+        btn.setAttribute('title', 'Switch to Bauhaus UI');
+        btn.setAttribute('aria-label', 'Switch to Bauhaus UI');
+        if (text) text.textContent = 'Bauhaus UI';
+    }
+};
+
+window.toggleUiStyle = function() {
+    const isBauhaus = document.documentElement.getAttribute('data-ui-style') === 'bauhaus';
+    if (isBauhaus) {
+        document.documentElement.removeAttribute('data-ui-style');
+        try { localStorage.removeItem('docvault_ui_style'); } catch (e) {}
+    } else {
+        document.documentElement.setAttribute('data-ui-style', 'bauhaus');
+        try { localStorage.setItem('docvault_ui_style', 'bauhaus'); } catch (e) {}
+    }
+    updateUiStyleSwitcher();
+};
+
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateUiStyleSwitcher);
+    } else {
+        updateUiStyleSwitcher();
+    }
+}
+
 window.resetLockFormState = function() {
     const pwdInput = document.getElementById('master-password');
     if (pwdInput) pwdInput.value = '';

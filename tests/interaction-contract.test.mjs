@@ -713,3 +713,27 @@ test('credential favicons are not lazy-loaded, because they start hidden', () =>
     assert.match(read('js/render-core.js'), /img\.addEventListener\('load', markLoaded/,
         'the load handler is the only thing that reveals the icon');
 });
+
+test('the Bauhaus UI style switcher and lock screen contracts remain intact', () => {
+    const html = read('index.html');
+    assert.match(html, /id="ui-style-toggle-btn"/, 'UI style switcher button must exist in index.html');
+    assert.match(html, /data-onclick="toggleUiStyle\(\)"/, 'Switcher button must delegate through toggleUiStyle()');
+    assert.match(html, /aria-label="Toggle UI Style: Bauhaus or Classic"/, 'Switcher button must carry accessible label');
+    assert.match(html, /id="master-password"/, 'Master password field must exist in lock screen');
+    assert.match(html, /id="lock-submit-btn"/, 'Unlock submit button must exist in lock screen');
+
+    const bootstrap = read('js/bootstrap.js');
+    assert.match(bootstrap, /localStorage\.getItem\(['"]docvault_ui_style['"]\)\s*===\s*['"]bauhaus['"]/,
+        'bootstrap.js must read docvault_ui_style early to prevent FOUC');
+
+    const ui = read('js/ui.js');
+    assert.match(ui, /window\.toggleUiStyle\s*=\s*function/, 'ui.js must export toggleUiStyle');
+    assert.match(ui, /window\.updateUiStyleSwitcher\s*=\s*function/, 'ui.js must export updateUiStyleSwitcher');
+
+    const css = read('style.css');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#lock-screen/, 'style.css must declare Bauhaus lock screen styles');
+    assert.match(css, /--bh-red:\s*#D02020/, 'style.css must declare Bauhaus primary red token');
+    assert.match(css, /--bh-blue:\s*#1040C0/, 'style.css must declare Bauhaus primary blue token');
+    assert.match(css, /--bh-yellow:\s*#F0C020/, 'style.css must declare Bauhaus primary yellow token');
+    assert.match(css, /shadow:\s*8px 8px 0px 0px #121212/, 'Bauhaus lock card must declare 8px hard offset shadow');
+});

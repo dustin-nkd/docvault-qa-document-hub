@@ -385,11 +385,45 @@
     </button>
 
 
+    <!-- UI Style Switcher (Floating Bottom-Right) -->
+    <button id="ui-style-toggle-btn" class="fixed bottom-5 right-5 z-[110] flex items-center gap-2.5 px-3.5 py-2 rounded-full text-xs font-semibold cursor-pointer select-none transition-[background-color,border-color,transform,box-shadow]" style="background:var(--card);color:var(--tx);border:1px solid var(--brd);box-shadow:0 6px 20px rgba(0,0,0,0.35);" data-onclick="toggleUiStyle()" aria-label="Toggle UI Style: Bauhaus or Classic" title="Switch UI Style">
+        <span class="bauhaus-symbols-preview flex items-center gap-1 shrink-0" aria-hidden="true">
+            <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0" style="background:#D02020;"></span>
+            <span class="w-2.5 h-2.5 inline-block shrink-0" style="background:#1040C0;"></span>
+            <span class="w-0 h-0 inline-block shrink-0" style="border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:7px solid #F0C020;"></span>
+        </span>
+        <span id="ui-style-toggle-text">Bauhaus UI</span>
+    </button>
+
     <!-- Lock Screen -->
     <div id="lock-screen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--bg)] hidden">
-        <div class="text-center fade-up max-w-sm w-full px-6">
-            <div class="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6" style="background:var(--acc);">
+        <!-- Bauhaus Background Geometric Elements -->
+        <div class="bauhaus-decor-wrap pointer-events-none absolute inset-0 overflow-hidden hidden" aria-hidden="true">
+            <div class="bauhaus-bg-circle"></div>
+            <div class="bauhaus-bg-square"></div>
+            <div class="bauhaus-bg-triangle">
+                <svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true">
+                    <polygon points="50,6 94,94 6,94" fill="#F0C020" stroke="#121212" stroke-width="8" stroke-linejoin="round" />
+                </svg>
+            </div>
+            <div class="bauhaus-bg-accent-bar"></div>
+        </div>
+
+        <div class="lock-card text-center fade-up max-w-sm w-full px-6">
+            <!-- Bauhaus Corner Accent -->
+            <div class="bauhaus-card-corner-shape hidden" aria-hidden="true">
+                <span class="w-2 h-2 rounded-full inline-block" style="background:#D02020;"></span>
+                <span class="w-2 h-2 inline-block" style="background:#1040C0;"></span>
+                <span class="w-0 h-0 inline-block" style="border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-bottom:6px solid #F0C020;"></span>
+            </div>
+
+            <div id="lock-icon-box" class="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-6" style="background:var(--acc);">
                 <i class="fa-solid fa-lock text-white text-2xl" aria-hidden="true"></i>
+            </div>
+            <div class="bauhaus-poster-badge hidden" aria-hidden="true">
+                <span class="w-2 h-2 rounded-full inline-block" style="background:#D02020;"></span>
+                <span>BAUHAUS ARCHIVAL // SYSTEM</span>
+                <span class="w-2 h-2 inline-block" style="background:#1040C0;"></span>
             </div>
             <h2 class="font-heading font-bold text-2xl mb-2 text-[var(--tx)]">DocVault is Locked</h2>
             <p class="text-sm mb-8" style="color:var(--tx-m);" id="lock-screen-hint">Your vault is end-to-end encrypted. Enter your Master Password to decrypt.</p>
@@ -399,7 +433,7 @@
                 <button type="submit" id="lock-submit-btn" class="btn-p w-full py-3">Unlock Vault</button>
             </form>
 
-            <button type="button" data-onclick="enterGuestMode()" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
+            <button type="button" id="lock-demo-btn" data-onclick="enterGuestMode()" class="w-full py-3 mt-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;">
                 🎭 View Demo <span style="opacity:.85;font-weight:500;">— no password needed</span>
             </button>
 

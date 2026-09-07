@@ -25,8 +25,9 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     }, 0);
     // Raised from 850_000 for bug-lifecycle work, 880_000 for workspace registry
     // sync, 890_000 for backup resurrection tombstones, 895_000 for bug number deconfliction,
-    // and 900_000 for relational integrity and orphaned reference cleanup.
-    assert.ok(bytes <= 900_000, `Dashboard direct startup assets exceed 900 KB: ${bytes} bytes`);
+    // 900_000 for relational integrity and orphaned reference cleanup, and 915_000 for
+    // the Bauhaus design system UI switcher and lock screen styles.
+    assert.ok(bytes <= 915_000, `Dashboard direct startup assets exceed 915 KB: ${bytes} bytes`);
 });
 
 test('editor runtime remains offline-capable and is loaded through one shared lazy promise', () => {
