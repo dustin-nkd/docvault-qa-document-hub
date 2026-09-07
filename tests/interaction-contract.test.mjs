@@ -789,6 +789,19 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     const renderCore = read('js/render-core.js');
     assert.match(renderCore, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto focus-page/, 'Focus view must synchronize width with max-w-6xl 2xl:max-w-[1600px]');
     assert.match(renderCore, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto["'](?=[\s\S]*Activity)/, 'Activity view must synchronize width with max-w-6xl 2xl:max-w-[1600px]');
+
+    const wsJs = read('js/workspaces.js');
+    assert.doesNotMatch(wsJs, /placeholder="e\.g\. Trulioo"/, 'workspaces.js placeholder must not use Trulioo');
+    assert.match(wsJs, /placeholder="e\.g\. Mobile QA Hub"/, 'workspaces.js placeholder must be generic');
+
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#search-modal\s+\[role=["']dialog["']\]/, 'style.css must style search modal for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#toasts\s+\.toast/, 'style.css must style toasts for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#subfolder-dropdown/, 'style.css must style subfolder dropdown for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\[aria-labelledby=["']plan-tcs-label["']\]/, 'style.css must style test plan linked test cases for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.api-impact-editor/, 'style.css must style API impact editor for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\[aria-labelledby=["']env-creds-label["']\]/, 'style.css must style environment linked credentials for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*label:has\(#ed-run-regression\)/, 'style.css must style regression run card for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\[aria-labelledby=["']rel-runs-label["']\]/, 'style.css must style release linked runs for Bauhaus mode');
 });
 
 

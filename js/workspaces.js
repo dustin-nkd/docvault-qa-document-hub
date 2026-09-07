@@ -374,7 +374,7 @@ window.showWorkspaceManager = function() {
             <div class="mt-4 pt-4" style="border-top:1px solid var(--brd);">
                 <label class="block text-xs font-semibold tracking-wider uppercase mb-2" style="color:var(--tx-d);">New workspace</label>
                 <div class="flex gap-2">
-                    <input id="ws-new-name" type="text" class="form-input flex-1" maxlength="${WS_NAME_MAX}" placeholder="e.g. Trulioo">
+                    <input id="ws-new-name" type="text" class="form-input flex-1" maxlength="${WS_NAME_MAX}" placeholder="e.g. Mobile QA Hub">
                     <button class="btn-p shrink-0" data-onclick="createWorkspace()"><i class="fa-solid fa-plus mr-1.5"></i>Create</button>
                 </div>
             </div>

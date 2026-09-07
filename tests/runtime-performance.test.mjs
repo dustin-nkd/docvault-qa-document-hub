@@ -31,9 +31,10 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     // Document List, Explorer & Kanban Bauhaus styling, 955_000 for
     // Document Viewer and Category Viewers Bauhaus styling, 965_000 for
     // Document Editor and Template Picker Modal Bauhaus styling, 985_000 for
-    // Focus Mode, Traceability Matrix, and Activity Log Bauhaus styling, and 995_000 for
-    // Settings Modal, Workspace Dialogs, Sharing, History Panel, and Diff View Bauhaus styling.
-    assert.ok(bytes <= 995_000, `Dashboard direct startup assets exceed 995 KB: ${bytes} bytes`);
+    // Focus Mode, Traceability Matrix, and Activity Log Bauhaus styling, 995_000 for
+    // Settings Modal, Workspace Dialogs, Sharing, History Panel, and Diff View Bauhaus styling, and
+    // 1_015_000 for Bauhaus Search Modal, Category Editors, Subfolder Dropdowns, and Toast notifications.
+    assert.ok(bytes <= 1_015_000, `Dashboard direct startup assets exceed 1015 KB: ${bytes} bytes`);
 });
 
 test('editor runtime remains offline-capable and is loaded through one shared lazy promise', () => {

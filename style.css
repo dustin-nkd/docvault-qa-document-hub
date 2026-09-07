@@ -3639,6 +3639,406 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     background: #FFFFFF !important;
 }
 
+/* ============================================
+   Bauhaus Search Modal (Ctrl+K)
+   ============================================ */
+[data-ui-style="bauhaus"] #search-modal [role="dialog"] {
+    background: #FFFFFF !important;
+    border: 4px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 8px 8px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #search-modal [role="dialog"] > div:first-child {
+    background: #F0F0F0 !important;
+    border-bottom: 3px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #search-input {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+[data-ui-style="bauhaus"] #search-input::placeholder {
+    color: #555555 !important;
+}
+
+[data-ui-style="bauhaus"] #search-modal i.fa-magnifying-glass {
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #search-modal .text-\[10px\].text-\[var\(--tx-m\)\] {
+    background: #121212 !important;
+    color: #FFFFFF !important;
+    border-radius: 0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    padding: 3px 6px !important;
+}
+
+[data-ui-style="bauhaus"] .search-filter-bar {
+    border-bottom: 2px solid #121212 !important;
+    background: #FFFFFF !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+}
+
+[data-ui-style="bauhaus"] .search-filter-chip {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    transition: background-color .15s, color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .search-filter-chip:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] .search-filter-chip.active {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+    border-color: #121212 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .search-filter-count {
+    background: #121212 !important;
+    color: #F0C020 !important;
+    border-radius: 0 !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .search-item {
+    background: #FFFFFF !important;
+    border-bottom: 2px solid #121212 !important;
+    border-left: 4px solid transparent !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .search-item:hover,
+[data-ui-style="bauhaus"] .search-item.active {
+    background: #FFF9C4 !important;
+    border-left-color: #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] .search-item-title {
+    color: #121212 !important;
+    font-weight: 800 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+}
+
+[data-ui-style="bauhaus"] .search-item-match {
+    color: #1040C0 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] #search-results .text-center {
+    color: #555555 !important;
+    font-weight: 700 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+}
+
+/* ============================================
+   Bauhaus Toasts
+   ============================================ */
+[data-ui-style="bauhaus"] #toasts .toast {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #toasts .toast span {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] #toasts .toast.border-emerald-500 {
+    border-left: 8px solid #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] #toasts .toast.border-emerald-500 i {
+    color: #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] #toasts .toast.border-rose-500 {
+    border-left: 8px solid #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] #toasts .toast.border-rose-500 i {
+    color: #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] #toasts .toast.border-cyan-500 {
+    border-left: 8px solid #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] #toasts .toast.border-cyan-500 i {
+    color: #121212 !important;
+}
+
+/* ============================================
+   Bauhaus Subfolder & Custom Select Dropdowns
+   ============================================ */
+[data-ui-style="bauhaus"] #subfolder-dropdown,
+[data-ui-style="bauhaus"] .custom-select-dropdown {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .subfolder-option {
+    color: #121212 !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid #121212 !important;
+    border-radius: 0 !important;
+}
+
+[data-ui-style="bauhaus"] .subfolder-option:last-child {
+    border-bottom: none !important;
+}
+
+[data-ui-style="bauhaus"] .subfolder-option:hover,
+[data-ui-style="bauhaus"] .subfolder-option.is-active {
+    background: #FFF9C4 !important;
+    color: #121212 !important;
+}
+
+/* ============================================
+   Bauhaus Category Editors: Test Plan, API, Environment, Test Run, Release
+   ============================================ */
+
+/* Linked Test Cases & Runs in Test Plan */
+[data-ui-style="bauhaus"] [aria-labelledby="plan-tcs-label"],
+[data-ui-style="bauhaus"] [aria-labelledby="plan-runs-label"] {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="plan-tcs-label"] label,
+[data-ui-style="bauhaus"] [aria-labelledby="plan-runs-label"] label {
+    border-bottom: 1px solid #121212 !important;
+    border-radius: 0 !important;
+    padding: 6px 8px !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="plan-tcs-label"] label:last-child,
+[data-ui-style="bauhaus"] [aria-labelledby="plan-runs-label"] label:last-child {
+    border-bottom: none !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="plan-tcs-label"] label:hover,
+[data-ui-style="bauhaus"] [aria-labelledby="plan-runs-label"] label:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="plan-tcs-label"] [style*="color:var(--tx)"],
+[data-ui-style="bauhaus"] [aria-labelledby="plan-runs-label"] [style*="color:var(--tx)"] {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="plan-tcs-label"] [style*="color:var(--tx-d)"],
+[data-ui-style="bauhaus"] [aria-labelledby="plan-runs-label"] [style*="color:var(--tx-d)"] {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] #plan-tcs-label,
+[data-ui-style="bauhaus"] #plan-runs-label {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .04em !important;
+}
+
+/* API Spec Editor */
+[data-ui-style="bauhaus"] .rounded-xl.mb-4.overflow-hidden[style*="border:1px solid var(--brd)"] {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .rounded-xl.mb-4.overflow-hidden > .flex.items-stretch {
+    background: #F0F0F0 !important;
+    border-bottom: 3px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #ed-api-endpoint {
+    color: #121212 !important;
+    font-family: monospace !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .api-impact-editor {
+    background: #FAF8F5 !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    padding: 14px !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .api-impact-editor label,
+[data-ui-style="bauhaus"] .api-impact-editor p {
+    color: #121212 !important;
+    font-weight: 700 !important;
+}
+
+[data-ui-style="bauhaus"] .api-header-row input,
+[data-ui-style="bauhaus"] .api-param-row input,
+[data-ui-style="bauhaus"] #ed-api-body {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 700 !important;
+}
+
+[data-ui-style="bauhaus"] #ed-api-body {
+    box-shadow: 3px 3px 0 0 #121212 !important;
+}
+
+/* Environment Editor: Linked Credentials & Properties */
+[data-ui-style="bauhaus"] [aria-labelledby="env-creds-label"] {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="env-creds-label"] label {
+    padding: 6px 8px !important;
+    border-bottom: 1px solid #121212 !important;
+    border-radius: 0 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="env-creds-label"] label:last-child {
+    border-bottom: none !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="env-creds-label"] label:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="env-creds-label"] span {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] #env-creds-label,
+[data-ui-style="bauhaus"] #env-props-label {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .04em !important;
+}
+
+[data-ui-style="bauhaus"] .env-prop-row input {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 700 !important;
+}
+
+/* Test Run Editor: Regression Run Card & Selection */
+[data-ui-style="bauhaus"] label:has(#ed-run-regression) {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] label:has(#ed-run-regression):hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] label:has(#ed-run-regression) span span:first-child {
+    color: #121212 !important;
+    font-weight: 800 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+}
+
+[data-ui-style="bauhaus"] label:has(#ed-run-regression) span span:last-child {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] .p-3.rounded-xl:has(.testrun-tc-row) {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] label[for="ed-run-env"],
+[data-ui-style="bauhaus"] label[for="ed-run-tc-search"] {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .04em !important;
+}
+
+/* Release Editor: Linked Runs & Bugs */
+[data-ui-style="bauhaus"] [aria-labelledby="rel-runs-label"],
+[data-ui-style="bauhaus"] [aria-labelledby="rel-bugs-label"] {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="rel-runs-label"] label,
+[data-ui-style="bauhaus"] [aria-labelledby="rel-bugs-label"] label {
+    padding: 6px 8px !important;
+    border-bottom: 1px solid #121212 !important;
+    border-radius: 0 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="rel-runs-label"] label:last-child,
+[data-ui-style="bauhaus"] [aria-labelledby="rel-bugs-label"] label:last-child {
+    border-bottom: none !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="rel-runs-label"] label:hover,
+[data-ui-style="bauhaus"] [aria-labelledby="rel-bugs-label"] label:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] [aria-labelledby="rel-runs-label"] span,
+[data-ui-style="bauhaus"] [aria-labelledby="rel-bugs-label"] span {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] #rel-runs-label,
+[data-ui-style="bauhaus"] #rel-bugs-label,
+[data-ui-style="bauhaus"] label[for="ed-rel-version"],
+[data-ui-style="bauhaus"] label[for="ed-rel-status-display"],
+[data-ui-style="bauhaus"] #rel-date-label {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .04em !important;
+}
+
 
 
 
