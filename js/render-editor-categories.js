@@ -507,19 +507,19 @@ function renderEditorCategory(context) {
                         <span class="release-rate-input"><input type="number" id="ed-rel-min-pass" min="0" max="100" value="${releasePolicy.minPassRate}"><b>%</b></span>
                     </label>
                     <label for="ed-rel-block-critical" class="release-policy-toggle">
-                        <input type="checkbox" id="ed-rel-block-critical" ${releasePolicy.blockCritical ? 'checked' : ''}>
+                        <input type="checkbox" id="ed-rel-block-critical" class="form-checkbox" ${releasePolicy.blockCritical ? 'checked' : ''}>
                         <span><b>Block Critical defects</b><small>Open Critical bugs prevent release.</small></span>
                     </label>
                     <label for="ed-rel-block-major" class="release-policy-toggle">
-                        <input type="checkbox" id="ed-rel-block-major" ${releasePolicy.blockMajor ? 'checked' : ''}>
+                        <input type="checkbox" id="ed-rel-block-major" class="form-checkbox" ${releasePolicy.blockMajor ? 'checked' : ''}>
                         <span><b>Block Major defects</b><small>Open Major bugs also prevent release.</small></span>
                     </label>
                     <label for="ed-rel-complete-execution" class="release-policy-toggle">
-                        <input type="checkbox" id="ed-rel-complete-execution" ${releasePolicy.requireCompleteExecution ? 'checked' : ''}>
+                        <input type="checkbox" id="ed-rel-complete-execution" class="form-checkbox" ${releasePolicy.requireCompleteExecution ? 'checked' : ''}>
                         <span><b>Require complete execution</b><small>Every linked run step needs a result.</small></span>
                     </label>
                     <label for="ed-rel-healthy-env" class="release-policy-toggle">
-                        <input type="checkbox" id="ed-rel-healthy-env" ${releasePolicy.requireHealthyEnvironments ? 'checked' : ''}>
+                        <input type="checkbox" id="ed-rel-healthy-env" class="form-checkbox" ${releasePolicy.requireHealthyEnvironments ? 'checked' : ''}>
                         <span><b>Require healthy environments</b><small>At least one linked environment; all healthy.</small></span>
                     </label>
                 </div>
