@@ -776,8 +776,19 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.diff-add/, 'style.css must style diff-add for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#share-url-input/, 'style.css must style share url input for Bauhaus mode');
 
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.space-y-4\s*>\s*\.rounded-xl\.overflow-hidden\s+\.text-sm\.leading-relaxed/, 'style.css must ensure high contrast for test run step text');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.testrun-tc-row/, 'style.css must style test run test case rows for Bauhaus mode');
+
     assert.match(css, /body:has\(#guest-banner\)\s*#ui-style-toggle-btn/, 'style.css must elevate ui-style-toggle-btn above guest banner');
     assert.match(read('js/events.js'), /toggleBtn\.style\.bottom\s*=/, 'events.js must adjust ui-style-toggle-btn bottom when guest banner is present');
+
+    const uiJs = read('js/ui.js');
+    assert.match(uiJs, /document\.querySelectorAll\('#main-nav \.nav-item, #bottom-nav \.nav-item'\)/, 'ui.js must update main and bottom navigation without wiping category active state');
+    assert.match(uiJs, /data-view="documents"\s+data-cat="\${k}"/, 'ui.js must attach data-view and data-cat to category items');
+
+    const renderCore = read('js/render-core.js');
+    assert.match(renderCore, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto focus-page/, 'Focus view must synchronize width with max-w-6xl 2xl:max-w-[1600px]');
+    assert.match(renderCore, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto["'](?=[\s\S]*Activity)/, 'Activity view must synchronize width with max-w-6xl 2xl:max-w-[1600px]');
 });
 
 

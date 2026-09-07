@@ -2153,33 +2153,205 @@ body:has(#guest-banner) #ui-style-toggle-btn {
 
 /* Test Run Execution UI */
 [data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden {
-    background: #FFFFFF !important; border: 3px solid #121212 !important;
-    border-radius: 0 !important; box-shadow: 5px 5px 0 0 #121212 !important;
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 5px 5px 0 0 #121212 !important;
+    color: #121212 !important;
 }
 
 [data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden > div:first-child {
-    background: #F0F0F0 !important; border-bottom: 2px solid #121212 !important;
-    border-radius: 0 !important; color: #121212 !important; font-weight: 800 !important;
+    background: #F0F0F0 !important;
+    border-bottom: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
 }
 
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden > div:first-child span {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+/* Step rows inside test run */
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden .border-b {
+    border-bottom-color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden .bg-white\/5 {
+    background: #121212 !important;
+    color: #F0C020 !important;
+    border: 1px solid #121212 !important;
+    border-radius: 0 !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+}
+
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden .text-sm.leading-relaxed {
+    color: #121212 !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+}
+
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden .text-\[13px\].leading-relaxed {
+    color: #222222 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden .text-\[13px\].leading-relaxed span {
+    color: #1040C0 !important;
+    font-weight: 900 !important;
+    opacity: 1 !important;
+}
+
+/* Metric summary cards: Pass, Fail, Blocked, Untested */
 [data-ui-style="bauhaus"] .grid.grid-cols-2.sm\:grid-cols-4 > div {
-    background: #FFFFFF !important; border: 3px solid #121212 !important;
-    border-radius: 0 !important; box-shadow: 4px 4px 0 0 #121212 !important;
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .grid.grid-cols-2.sm\:grid-cols-4 > div .text-\[11px\] {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    letter-spacing: .06em !important;
 }
 
 [data-ui-style="bauhaus"] .grid.grid-cols-2.sm\:grid-cols-4 > div .text-3xl {
-    font-family: 'Space Grotesk', sans-serif !important; font-weight: 900 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .grid.grid-cols-2.sm\:grid-cols-4 > div .text-3xl[style*="color:var(--tx-m)"] {
+    color: #121212 !important;
+}
+
+/* Pass Rate Trend Box in Test Run */
+[data-ui-style="bauhaus"] .mb-5.p-4.rounded-xl[style*="background:var(--bg2)"] {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .mb-5.p-4.rounded-xl[style*="background:var(--bg2)"] p {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+}
+
+/* Progress bar & counters */
+[data-ui-style="bauhaus"] .mb-8 .flex.items-center.justify-between span {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .mb-8 .h-1\.5.rounded-full {
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    background: #EAEAEA !important;
+    height: 10px !important;
+}
+
+[data-ui-style="bauhaus"] .mb-8 .h-1\.5.rounded-full > div {
+    border-radius: 0 !important;
 }
 
 /* Pass / Fail / Blocked buttons group */
 [data-ui-style="bauhaus"] .flex.rounded-lg.overflow-hidden.border {
-    border: 2px solid #121212 !important; border-radius: 0 !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
     box-shadow: 3px 3px 0 0 #121212 !important;
+    background: #FFFFFF !important;
 }
 
 [data-ui-style="bauhaus"] .flex.rounded-lg.overflow-hidden.border button {
-    font-family: 'Space Grotesk', sans-serif !important; font-weight: 900 !important;
-    text-transform: uppercase !important; border-radius: 0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    border-radius: 0 !important;
+    border-right-color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .flex.rounded-lg.overflow-hidden.border button:not(.bg-emerald-500):not(.bg-rose-500):not(.bg-amber-500) {
+    background: #FFFFFF !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .flex.rounded-lg.overflow-hidden.border button:not(.bg-emerald-500):not(.bg-rose-500):not(.bg-amber-500):hover {
+    background: #F0C020 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .flex.rounded-lg.overflow-hidden.border button.bg-emerald-500 {
+    background: #1040C0 !important;
+    color: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] .flex.rounded-lg.overflow-hidden.border button.bg-rose-500 {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] .flex.rounded-lg.overflow-hidden.border button.bg-amber-500 {
+    background: #F0C020 !important;
+    color: #121212 !important;
+}
+
+/* Execution note in Test Run */
+[data-ui-style="bauhaus"] .space-y-4 .mt-4.pt-4.border-t {
+    border-top: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .space-y-4 .mt-4.pt-4.border-t p {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] textarea[id^="tr-note-"] {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 600 !important;
+}
+
+/* Test Run Editor rows & selection list */
+[data-ui-style="bauhaus"] .testrun-tc-row {
+    background: #FFFFFF !important;
+    border-bottom: 2px solid #121212 !important;
+    border-radius: 0 !important;
+}
+
+[data-ui-style="bauhaus"] .testrun-tc-row:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] .testrun-tc-row [style*="color:var(--tx)"] {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .testrun-tc-row [style*="color:var(--tx-d)"] {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+/* Document Viewer & Category Viewers text contrast */
+[data-ui-style="bauhaus"] .fade-up.max-w-4xl > h1,
+[data-ui-style="bauhaus"] .fade-up.max-w-4xl [style*="color:var(--tx)"] {
+    color: #121212 !important;
+}
+[data-ui-style="bauhaus"] .fade-up.max-w-4xl [style*="color:var(--tx-m)"] {
+    color: #333333 !important;
+}
+[data-ui-style="bauhaus"] .fade-up.max-w-4xl [style*="color:var(--tx-d)"] {
+    color: #555555 !important;
 }
 
 /* API Spec Viewer in Bauhaus */
