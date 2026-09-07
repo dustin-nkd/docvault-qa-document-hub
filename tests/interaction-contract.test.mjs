@@ -790,6 +790,9 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(renderCore, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto focus-page/, 'Focus view must synchronize width with max-w-6xl 2xl:max-w-[1600px]');
     assert.match(renderCore, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto["'](?=[\s\S]*Activity)/, 'Activity view must synchronize width with max-w-6xl 2xl:max-w-[1600px]');
 
+    const renderViewerJs = read('js/render-viewer.js');
+    assert.match(renderViewerJs, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto/, 'Document viewer must synchronize width with max-w-6xl 2xl:max-w-[1600px]');
+
     const wsJs = read('js/workspaces.js');
     assert.doesNotMatch(wsJs, /placeholder="e\.g\. Trulioo"/, 'workspaces.js placeholder must not use Trulioo');
     assert.match(wsJs, /placeholder="e\.g\. Mobile QA Hub"/, 'workspaces.js placeholder must be generic');
