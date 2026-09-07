@@ -66,11 +66,11 @@ function _settingsTabSync() {
     return `
         <div class="text-left">
             ${!authConfigured ? `
-            <div class="rounded-lg px-3 py-2 mb-3 text-[11px]" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;">
+            <div class="settings-warning-banner rounded-lg px-3 py-2 mb-3 text-[11px]" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;">
                 <i class="fa-solid fa-triangle-exclamation mr-1"></i>
                 <strong>Security Warning:</strong> No Master Password is set. Your token will be stored unencrypted in localStorage until you configure one in Security.
             </div>` : ''}
-            <div class="bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
+            <div class="settings-sync-banner bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
                 <i class="fa-solid fa-circle-info mr-1 text-[var(--acc)]"></i>
                 Syncing to <strong style="color:var(--tx)">dustin-nkd/docvault-assets</strong>. Only the token is needed — repo is fixed.
             </div>

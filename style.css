@@ -3527,13 +3527,75 @@ body:has(#guest-banner) #ui-style-toggle-btn {
 }
 
 /* Settings Info Banners */
-[data-ui-style="bauhaus"] #modal .bg-\[var\(--bg\)\]\.border\.border-\[var\(--brd\)\] {
+[data-ui-style="bauhaus"] #modal .settings-sync-banner,
+[data-ui-style="bauhaus"] #modal .bg-\[var\(--bg\)\].border {
     background: #FFF9C4 !important;
     border: 2px solid #121212 !important;
     border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
     color: #121212 !important;
     font-weight: 700 !important;
 }
+
+[data-ui-style="bauhaus"] #modal .settings-sync-banner i,
+[data-ui-style="bauhaus"] #modal .bg-\[var\(--bg\)\].border i {
+    color: #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .settings-sync-banner strong,
+[data-ui-style="bauhaus"] #modal .bg-\[var\(--bg\)\].border strong {
+    color: #121212 !important;
+    font-weight: 900 !important;
+}
+
+/* Settings Security Warning Banner */
+[data-ui-style="bauhaus"] #modal .settings-warning-banner,
+[data-ui-style="bauhaus"] #modal div[style*="rgba(239,68,68"] {
+    background: #FFF0F0 !important;
+    border: 2px solid #D02020 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+    color: #D02020 !important;
+    font-weight: 700 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .settings-warning-banner i,
+[data-ui-style="bauhaus"] #modal div[style*="rgba(239,68,68"] i {
+    color: #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .settings-warning-banner strong,
+[data-ui-style="bauhaus"] #modal div[style*="rgba(239,68,68"] strong {
+    color: #D02020 !important;
+    font-weight: 900 !important;
+}
+
+/* Settings Form Controls, Microcopy & Dividers */
+[data-ui-style="bauhaus"] #modal .form-input {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal #settings-modal-body p[style*="color:var(--tx-d)"],
+[data-ui-style="bauhaus"] #modal #settings-modal-body span[style*="color:var(--tx-d)"] {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] #modal #settings-modal-body p strong,
+[data-ui-style="bauhaus"] #modal #settings-modal-body span strong {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .border-t.border-\[var\(--brd\)\],
+[data-ui-style="bauhaus"] #modal .border-t[style*="var(--brd)"] {
+    border-top: 2px solid #121212 !important;
+}
+
 
 /* Tag Manager Rows in Settings */
 [data-ui-style="bauhaus"] #modal div[id^="tag-rename-"] {
