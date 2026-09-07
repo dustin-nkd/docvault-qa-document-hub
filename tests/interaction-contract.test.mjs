@@ -770,6 +770,9 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
 
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#modal\s+button\[data-onclick\^="_switchSettingsTab"\]/, 'style.css must style settings modal tabs for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#modal\s+\.flex\.items-center\.gap-3\.p-3\.rounded-lg\.mb-2/, 'style.css must style workspace manager rows for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#modal\s+\.settings-sync-banner/, 'style.css must style settings sync banner for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#modal\s+\.settings-warning-banner/, 'style.css must style settings warning banner for Bauhaus mode');
+    assert.match(read('js/actions-settings.js'), /class=["'][^"']*settings-sync-banner[^"']*["']/, 'actions-settings.js must attach settings-sync-banner class');
 
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#modal\s+\.fade-up\.rounded-xl\.w-full\[style\*="max-width:780px"\]/, 'style.css must style diff modal shell for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.diff-view/, 'style.css must style diff-view for Bauhaus mode');
