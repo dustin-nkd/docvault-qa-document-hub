@@ -722,6 +722,8 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(html, /id="master-password"/, 'Master password field must exist in lock screen');
     assert.match(html, /id="lock-submit-btn"/, 'Unlock submit button must exist in lock screen');
 
+    assert.match(html, /class="[^"]*sidebar-logo-bauhaus[^"]*"/, 'Bauhaus geometric logo must exist in sidebar');
+
     const bootstrap = read('js/bootstrap.js');
     assert.match(bootstrap, /localStorage\.getItem\(['"]docvault_ui_style['"]\)\s*===\s*['"]bauhaus['"]/,
         'bootstrap.js must read docvault_ui_style early to prevent FOUC');
@@ -736,4 +738,10 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /--bh-blue:\s*#1040C0/, 'style.css must declare Bauhaus primary blue token');
     assert.match(css, /--bh-yellow:\s*#F0C020/, 'style.css must declare Bauhaus primary yellow token');
     assert.match(css, /shadow:\s*8px 8px 0px 0px #121212/, 'Bauhaus lock card must declare 8px hard offset shadow');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#sidebar/, 'style.css must style sidebar for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#app-header/, 'style.css must style header for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.dashboard-hero/, 'style.css must style dashboard hero for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.insight-card/, 'style.css must style insight cards for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\](?:\s*[^,]+,\s*|\s*)\.trend-card/, 'style.css must style trend cards for Bauhaus mode');
 });
+
