@@ -3255,6 +3255,119 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     font-weight: 600 !important;
 }
 
+/* ============================================
+   Bauhaus Settings & Workspaces Dialogs
+   ============================================ */
+
+/* Settings Modal Tabs */
+[data-ui-style="bauhaus"] #modal .flex.gap-1.mb-5.p-1.rounded-lg {
+    background: #F0F0F0 !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal button[data-onclick^="_switchSettingsTab"] {
+    border-radius: 0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+    letter-spacing: .02em !important;
+    transition: background-color .15s, color .15s !important;
+}
+
+[data-ui-style="bauhaus"] #modal button[data-onclick^="_switchSettingsTab"]:hover {
+    background: #FFF9C4 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal button[data-onclick^="_switchSettingsTab"][style*="var(--acc)"],
+[data-ui-style="bauhaus"] #modal button[data-onclick^="_switchSettingsTab"][style*="#fff"] {
+    background: #1040C0 !important;
+    color: #FFFFFF !important;
+}
+
+/* Settings Form Labels */
+[data-ui-style="bauhaus"] #modal label[for="mp-current"],
+[data-ui-style="bauhaus"] #modal label[for="mp-new"],
+[data-ui-style="bauhaus"] #modal label[for="mp-confirm"],
+[data-ui-style="bauhaus"] #modal label[for="sec-hint"],
+[data-ui-style="bauhaus"] #modal label[for="gh-token"],
+[data-ui-style="bauhaus"] #modal span.block.text-\[11px\].font-bold {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+    letter-spacing: .03em !important;
+}
+
+/* Settings Info Banners */
+[data-ui-style="bauhaus"] #modal .bg-\[var\(--bg\)\]\.border\.border-\[var\(--brd\)\] {
+    background: #FFF9C4 !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 700 !important;
+}
+
+/* Tag Manager Rows in Settings */
+[data-ui-style="bauhaus"] #modal div[id^="tag-rename-"] {
+    background: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] #modal .flex.items-center.gap-1\.5.p-2.rounded-lg {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+}
+
+/* Workspace Manager Dialog Rows */
+[data-ui-style="bauhaus"] #modal .flex.items-center.gap-3.p-3.rounded-lg.mb-2 {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    margin-bottom: 10px !important;
+}
+
+[data-ui-style="bauhaus"] #modal .flex.items-center.gap-3.p-3.rounded-lg.mb-2 .text-sm.font-medium {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .flex.items-center.gap-3.p-3.rounded-lg.mb-2 .text-\[11px\] {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] #modal .flex.items-center.gap-3.p-3.rounded-lg.mb-2[style*="var(--acc)"] {
+    border: 2.5px solid #1040C0 !important;
+    box-shadow: 4px 4px 0 0 #1040C0 !important;
+    background: #F8FAFF !important;
+}
+
+[data-ui-style="bauhaus"] #modal .flex.items-center.gap-3.p-3.rounded-lg.mb-2[style*="var(--acc)"] i.fa-circle-check {
+    color: #1040C0 !important;
+    font-size: 14px !important;
+}
+
+/* Workspace Manager New Workspace Section */
+[data-ui-style="bauhaus"] #modal .mt-4.pt-4[style*="border-top"] {
+    border-top: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal label.block.text-xs.font-semibold.tracking-wider.uppercase {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    color: #121212 !important;
+    letter-spacing: .04em !important;
+}
+
+
 
 
 
