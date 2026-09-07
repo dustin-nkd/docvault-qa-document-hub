@@ -2612,6 +2612,533 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     color: #121212 !important;
 }
 
+/* ============================================
+   Bauhaus Focus Mode (Today / Action Queue)
+   ============================================ */
+
+/* Focus Hero & Counter */
+[data-ui-style="bauhaus"] .focus-hero h3 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: -.02em !important;
+    color: #121212 !important;
+    font-size: 24px !important;
+}
+
+[data-ui-style="bauhaus"] .focus-hero p {
+    color: #444444 !important;
+    font-weight: 500 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-total {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+    padding: 10px 16px !important;
+}
+
+[data-ui-style="bauhaus"] .focus-total b {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    color: #D02020 !important;
+    font-size: 32px !important;
+}
+
+[data-ui-style="bauhaus"] .focus-total span {
+    color: #121212 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 10px !important;
+    letter-spacing: .04em !important;
+}
+
+/* Focus Tabs */
+[data-ui-style="bauhaus"] .focus-tab {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .02em !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .focus-tab span {
+    background: #F0F0F0 !important;
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-tab:hover {
+    background: #F0C020 !important;
+    color: #121212 !important;
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-tab.is-active {
+    background: #121212 !important;
+    color: #FFFFFF !important;
+    border-color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-tab.is-active span {
+    background: #F0C020 !important;
+    color: #121212 !important;
+}
+
+/* Focus Groups & Cards */
+[data-ui-style="bauhaus"] .focus-group {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-group-head {
+    background: #F0F0F0 !important;
+    border-bottom: 2px solid #121212 !important;
+    padding: 12px 16px !important;
+}
+
+[data-ui-style="bauhaus"] .focus-group-icon {
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    background: #FFFFFF !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-group-head h4 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    color: #121212 !important;
+    letter-spacing: -.01em !important;
+}
+
+[data-ui-style="bauhaus"] .focus-group-head p {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-group-count {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    color: #121212 !important;
+}
+
+/* Focus List Items */
+[data-ui-style="bauhaus"] .focus-item {
+    border-bottom: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-item-open {
+    transition: background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .focus-item-open:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-item-icon {
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-item strong {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-item small {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-item-arrow {
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-workflow-row {
+    background: #FAF8F5 !important;
+    border-top: 1px solid #121212 !important;
+    padding: 8px 12px !important;
+}
+
+[data-ui-style="bauhaus"] .focus-chip {
+    background: #FFFFFF !important;
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 700 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-chip.is-overdue {
+    background: #FFF0F0 !important;
+    border-color: #D02020 !important;
+    color: #D02020 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-chip.is-today {
+    background: #FFF9C4 !important;
+    border-color: #121212 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-chip.is-snoozed {
+    background: #F3E8FF !important;
+    border-color: #121212 !important;
+    color: #581C87 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-chip.is-done {
+    background: #F0FFF4 !important;
+    border-color: #121212 !important;
+    color: #0A6638 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-workflow-action {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 10px !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .focus-workflow-action:hover {
+    background: #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-workflow-action.is-done {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+    border-color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-workflow-action.is-done:hover {
+    background: #B01818 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-clear {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 5px 5px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-clear i {
+    color: #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] .focus-clear p {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+}
+
+/* ============================================
+   Bauhaus Traceability Matrix & API Impact
+   ============================================ */
+
+/* Summary Bar */
+[data-ui-style="bauhaus"] .trace-summary-item {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+}
+
+[data-ui-style="bauhaus"] .trace-summary-item.is-covered b {
+    color: #1040C0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-summary-item.is-risk b {
+    color: #D02020 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-summary-item.is-missing b {
+    color: #B45309 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+}
+
+/* Traceability Filter Buttons */
+[data-ui-style="bauhaus"] .trace-filter {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .trace-filter:hover {
+    background: #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-filter.is-active {
+    background: #121212 !important;
+    color: #F0C020 !important;
+    border-color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-filter span {
+    font-weight: 800 !important;
+}
+
+/* API Impact Panel */
+[data-ui-style="bauhaus"] .impact-section {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-head {
+    background: #F0F0F0 !important;
+    border-bottom: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-head h3 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-total b {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    color: #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-summary {
+    background: #FFFFFF !important;
+    border-bottom: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-summary > span {
+    border-right: 2px solid #121212 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+}
+
+[data-ui-style="bauhaus"] .impact-summary .is-missing b,
+[data-ui-style="bauhaus"] .impact-summary .is-risk b {
+    color: #D02020 !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-summary .is-due b {
+    color: #B45309 !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-summary .is-covered b {
+    color: #1040C0 !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-row {
+    border-bottom: 2px solid #121212 !important;
+    background: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] .impact-row.is-missing,
+[data-ui-style="bauhaus"] .impact-row.is-risk {
+    box-shadow: inset 5px 0 0 #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-row.is-due {
+    box-shadow: inset 5px 0 0 #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-row.is-covered {
+    box-shadow: inset 5px 0 0 #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-priority {
+    background: #121212 !important;
+    color: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-method {
+    background: #1040C0 !important;
+    color: #FFFFFF !important;
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-state {
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+}
+
+[data-ui-style="bauhaus"] .impact-state.is-missing,
+[data-ui-style="bauhaus"] .impact-state.is-risk {
+    background: #FFF0F0 !important;
+    color: #D02020 !important;
+    border-color: #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-state.is-due {
+    background: #FFF9C4 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-state.is-covered {
+    background: #EBF3FF !important;
+    color: #1040C0 !important;
+    border-color: #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] .impact-tests .trace-link {
+    background: #FFFFFF !important;
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+    font-weight: 700 !important;
+    color: #121212 !important;
+}
+
+/* Traceability Matrix Table */
+[data-ui-style="bauhaus"] .trace-table-wrap {
+    background: #FFFFFF !important;
+    border: 4px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-table th {
+    background: #121212 !important;
+    color: #FFFFFF !important;
+    border-bottom: 3px solid #121212 !important;
+    border-right: 2px solid rgba(255,255,255,0.2) !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    padding: 12px 14px !important;
+}
+
+[data-ui-style="bauhaus"] .trace-table td {
+    border-bottom: 2px solid #121212 !important;
+    border-right: 1.5px solid #E0E0E0 !important;
+    color: #121212 !important;
+    padding: 12px 14px !important;
+    background: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] .trace-row:hover td {
+    background: #FFFDE7 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-row.is-risk td:first-child {
+    box-shadow: inset 5px 0 0 #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-row.is-missing td:first-child {
+    box-shadow: inset 5px 0 0 #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-row.is-covered td:first-child {
+    box-shadow: inset 5px 0 0 #1040C0 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-link {
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-link:hover {
+    color: #1040C0 !important;
+    text-decoration: underline !important;
+}
+
+[data-ui-style="bauhaus"] .trace-link.is-risk {
+    color: #D02020 !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-status {
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+}
+
+[data-ui-style="bauhaus"] .trace-status.is-pass {
+    background: #1040C0 !important;
+    color: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] .trace-status.is-fail {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] .trace-status.is-blocked {
+    background: #121212 !important;
+    color: #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-status.is-untested,
+[data-ui-style="bauhaus"] .trace-status.is-missing {
+    background: #F0C020 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .trace-env {
+    background: #F0F0F0 !important;
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-family: monospace !important;
+    font-weight: 700 !important;
+    padding: 2px 6px !important;
+}
+
+
 
 
 
