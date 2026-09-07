@@ -1460,3 +1460,316 @@ button[aria-busy="true"] { cursor:progress !important; }
     background: #E2B215 !important; transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px #121212 !important;
 }
 
+/* ============================================
+   Bauhaus App Shell: Sidebar & Navigation
+   ============================================ */
+[data-ui-style="bauhaus"] #sidebar {
+    background: #F0F0F0 !important;
+    border-color: #121212 !important;
+    border-right: 4px solid #121212 !important;
+    box-shadow: 4px 0 0 0 #121212 !important;
+    color: #121212 !important;
+}
+[data-ui-style="bauhaus"] .sidebar-line {
+    background: #D02020 !important;
+    height: 4px !important;
+}
+[data-ui-style="bauhaus"] .sidebar-logo-default { display: none !important; }
+[data-ui-style="bauhaus"] .sidebar-logo-bauhaus {
+    display: flex !important; align-items: center; gap: 4px;
+    padding: 6px 8px; border: 2px solid #121212; background: #FFFFFF;
+    box-shadow: 3px 3px 0px 0px #121212;
+}
+[data-ui-style="bauhaus"] .logo-brand {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: -.02em !important;
+}
+[data-ui-style="bauhaus"] .logo-sub {
+    color: #D02020 !important; font-weight: 800 !important; letter-spacing: .08em !important; font-size: 9.5px !important;
+}
+[data-ui-style="bauhaus"] #workspace-switcher button {
+    background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important; color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: .04em !important;
+    transition: transform .15s, box-shadow .15s;
+}
+[data-ui-style="bauhaus"] #workspace-switcher button:hover {
+    transform: translate(-1px, -1px); box-shadow: 4px 4px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] #workspace-switcher-name { color: #121212 !important; font-weight: 800 !important; }
+
+[data-ui-style="bauhaus"] #sidebar .nav-item {
+    border-radius: 0 !important; color: #333333 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 700 !important; font-size: 12.5px !important; letter-spacing: .02em !important;
+    border-left: 3px solid transparent !important;
+    transition: background-color .15s, border-left-color .15s, color .15s;
+}
+[data-ui-style="bauhaus"] #sidebar .nav-item:hover:not(.active) {
+    background: #E5E5E5 !important; color: #121212 !important; border-left-color: #121212 !important;
+}
+[data-ui-style="bauhaus"] #sidebar .nav-item.active {
+    background: #D02020 !important; color: #FFFFFF !important; border: 2px solid #121212 !important;
+    border-left: 2px solid #121212 !important; box-shadow: 3px 3px 0 0 #121212 !important; font-weight: 800 !important;
+}
+[data-ui-style="bauhaus"] #sidebar .nav-item .count {
+    border-radius: 0 !important; background: #E0E0E0 !important; color: #121212 !important;
+    border: 1px solid #121212 !important; font-weight: 800 !important;
+}
+[data-ui-style="bauhaus"] #sidebar .nav-item.active .count {
+    background: #121212 !important; color: #F0C020 !important; border: 1px solid #121212 !important; font-weight: 800 !important;
+}
+[data-ui-style="bauhaus"] #lbl-categories,
+[data-ui-style="bauhaus"] #saved-views-wrap p {
+    color: #121212 !important; font-weight: 900 !important; letter-spacing: .12em !important;
+    border-bottom: 2px solid #121212; padding-bottom: 4px;
+}
+[data-ui-style="bauhaus"] #sidebar-footer {
+    border-color: #121212 !important; border-top: 3px solid #121212 !important; background: #E8E8E8 !important;
+}
+[data-ui-style="bauhaus"] #sidebar-footer button {
+    background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important; color: #121212 !important;
+    font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: .05em !important;
+    margin: 0 4px; transition: transform .15s, box-shadow .15s, background-color .15s;
+}
+[data-ui-style="bauhaus"] #sidebar-footer button:hover {
+    background: #F0C020 !important; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] #sidebar-footer button:active {
+    transform: translate(1px, 1px) !important; box-shadow: 0 0 0 0 #121212 !important;
+}
+
+/* ============================================
+   Bauhaus App Shell: Header & Main Canvas
+   ============================================ */
+[data-ui-style="bauhaus"] #app-header {
+    background: #FFFFFF !important; border-color: #121212 !important;
+    border-bottom: 4px solid #121212 !important; box-shadow: 0 4px 0 0 #121212 !important;
+    backdrop-filter: none !important;
+}
+[data-ui-style="bauhaus"] #app-header h2 {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; font-size: 22px !important; text-transform: uppercase !important;
+    letter-spacing: -.03em !important;
+}
+[data-ui-style="bauhaus"] #app-header .header-new-doc-btn {
+    background: #D02020 !important; color: #FFFFFF !important; border: 3px solid #121212 !important;
+    border-radius: 0 !important; box-shadow: 4px 4px 0 0 #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important; font-weight: 900 !important;
+    text-transform: uppercase !important; letter-spacing: .06em !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s;
+}
+[data-ui-style="bauhaus"] #app-header .header-new-doc-btn:hover {
+    background: #B81818 !important; transform: translate(-1px, -1px); box-shadow: 5px 5px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] #app-header .header-new-doc-btn:active {
+    transform: translate(2px, 2px) !important; box-shadow: 0 0 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] #app-header button.btn-s {
+    background: #FFFFFF !important; color: #121212 !important; border: 2px solid #121212 !important;
+    border-radius: 0 !important; box-shadow: 3px 3px 0 0 #121212 !important; font-weight: 700 !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s;
+}
+[data-ui-style="bauhaus"] #app-header button.btn-s:hover {
+    background: #F0C020 !important; transform: translate(-1px, -1px); box-shadow: 4px 4px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] #app-header button.btn-s:active {
+    transform: translate(1px, 1px) !important; box-shadow: 0 0 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] main {
+    background-color: #F0F0F0 !important;
+    background-image: radial-gradient(#121212 1.5px, transparent 1.5px) !important;
+    background-size: 24px 24px !important;
+}
+[data-ui-style="bauhaus"] #content { color: #121212 !important; }
+
+/* ============================================
+   Bauhaus Dashboard Overview
+   ============================================ */
+[data-ui-style="bauhaus"] .dashboard-hero {
+    background: #1040C0 !important; border: 4px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 8px 8px 0 0 #121212 !important; padding: 26px 30px !important;
+    margin-bottom: 24px !important; position: relative; overflow: hidden;
+}
+[data-ui-style="bauhaus"] .dashboard-hero::after {
+    content: ''; position: absolute; top: 0; right: 0; width: 0; height: 0;
+    border-style: solid; border-width: 0 48px 48px 0;
+    border-color: transparent #F0C020 transparent transparent;
+}
+[data-ui-style="bauhaus"] .dashboard-eyebrow {
+    color: #F0C020 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-size: 18px !important; font-weight: 900 !important; text-transform: uppercase !important;
+    letter-spacing: -.02em !important;
+}
+[data-ui-style="bauhaus"] .dashboard-intro {
+    color: #FFFFFF !important; font-size: 13.5px !important; font-weight: 500 !important;
+    opacity: .95; margin-top: 6px !important;
+}
+
+[data-ui-style="bauhaus"] .dashboard-attention {
+    background: #FFFFFF !important; border: 4px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 8px 8px 0 0 #121212 !important; padding: 22px 24px !important; margin-bottom: 26px !important;
+}
+[data-ui-style="bauhaus"] .dashboard-attention.has-items { border-left: 10px solid #D02020 !important; }
+[data-ui-style="bauhaus"] .dashboard-attention.is-clear { border-left: 10px solid #1040C0 !important; }
+[data-ui-style="bauhaus"] .attention-head h3 {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-size: 15px !important; font-weight: 900 !important; text-transform: uppercase !important;
+}
+[data-ui-style="bauhaus"] .attention-head p { color: #404040 !important; font-size: 11px !important; font-weight: 600 !important; }
+[data-ui-style="bauhaus"] .attention-head-icon {
+    border-radius: 0 !important; border: 2px solid #121212 !important;
+    background: #D02020 !important; color: #FFFFFF !important; box-shadow: 2px 2px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .attention-count {
+    border-radius: 0 !important; border: 2px solid #121212 !important;
+    background: #121212 !important; color: #F0C020 !important; font-weight: 900 !important;
+}
+[data-ui-style="bauhaus"] .attention-item {
+    background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s;
+}
+[data-ui-style="bauhaus"] .attention-item:hover {
+    background: #FFF9C4 !important; transform: translate(-1px, -1px); box-shadow: 4px 4px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .attention-item:active {
+    transform: translate(2px, 2px) !important; box-shadow: 0 0 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .attention-icon { border-radius: 0 !important; border: 1px solid #121212 !important; }
+[data-ui-style="bauhaus"] .attention-title { color: #121212 !important; font-weight: 700 !important; }
+[data-ui-style="bauhaus"] .attention-meta { color: #555555 !important; font-weight: 600 !important; }
+
+[data-ui-style="bauhaus"] .dashboard-section-head h3 {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; font-size: 18px !important; text-transform: uppercase !important;
+    letter-spacing: -.02em !important; display: inline-block;
+    border-bottom: 3px solid #121212; padding-bottom: 2px;
+}
+[data-ui-style="bauhaus"] .dashboard-section-head p {
+    color: #555555 !important; font-size: 11.5px !important; font-weight: 600 !important;
+    text-transform: uppercase !important; letter-spacing: .05em !important;
+}
+[data-ui-style="bauhaus"] .insight-card {
+    background: #FFFFFF !important; border: 4px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important; color: #121212 !important;
+    transition: transform .15s, box-shadow .15s; position: relative; overflow: hidden;
+}
+[data-ui-style="bauhaus"] .insight-card::before { height: 6px !important; background: #121212 !important; }
+[data-ui-style="bauhaus"] .insight-card:hover {
+    transform: translate(-2px, -2px); box-shadow: 8px 8px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .insight-card:active {
+    transform: translate(2px, 2px) !important; box-shadow: 0 0 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .insight-card-icon {
+    border-radius: 0 !important; border: 2px solid #121212 !important;
+    background: #FFFFFF !important; color: #121212 !important; box-shadow: 2px 2px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .insight-card-label {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; font-size: 11px !important; letter-spacing: .08em !important;
+    text-transform: uppercase !important;
+}
+[data-ui-style="bauhaus"] .insight-card > strong {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-size: 32px !important; font-weight: 900 !important; letter-spacing: -.04em !important;
+}
+[data-ui-style="bauhaus"] .insight-card > small { color: #555555 !important; font-weight: 600 !important; font-size: 10px !important; }
+[data-ui-style="bauhaus"] .insight-segments {
+    border: 2px solid #121212 !important; border-radius: 0 !important; height: 8px !important; background: #EAEAEA !important;
+}
+[data-ui-style="bauhaus"] .insight-legend span { font-weight: 600 !important; }
+[data-ui-style="bauhaus"] .insight-legend i { border-radius: 0 !important; border: 1px solid #121212 !important; }
+[data-ui-style="bauhaus"] .insight-legend em { color: #404040 !important; font-weight: 600 !important; }
+[data-ui-style="bauhaus"] .insight-legend b { color: #121212 !important; font-weight: 800 !important; }
+
+[data-ui-style="bauhaus"] .dashboard-trends .doc-card,
+[data-ui-style="bauhaus"] .trend-card {
+    background: #FFFFFF !important; border: 4px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important; color: #121212 !important;
+}
+[data-ui-style="bauhaus"] .trend-card-head h4,
+[data-ui-style="bauhaus"] .trend-lifecycle-head h4 {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: -.02em !important;
+}
+[data-ui-style="bauhaus"] .trend-estimate {
+    border-radius: 0 !important; border: 2px solid #121212 !important;
+    background: #F0C020 !important; color: #121212 !important; font-weight: 800 !important;
+}
+[data-ui-style="bauhaus"] .trend-caption { color: #404040 !important; font-weight: 600 !important; }
+[data-ui-style="bauhaus"] .trend-lifecycle-block { border-color: #121212 !important; border-top: 3px solid #121212 !important; }
+[data-ui-style="bauhaus"] svg text { fill: #121212 !important; font-weight: 700 !important; }
+[data-ui-style="bauhaus"] svg line[stroke="var(--brd)"] { stroke: #121212 !important; }
+
+[data-ui-style="bauhaus"] .attention-clear {
+    background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important; color: #121212 !important;
+}
+[data-ui-style="bauhaus"] .attention-clear p { color: #121212 !important; }
+
+[data-ui-style="bauhaus"] .insight-module-row em { color: #404040 !important; font-weight: 700 !important; }
+[data-ui-style="bauhaus"] .insight-module-row strong { color: #121212 !important; font-weight: 900 !important; }
+[data-ui-style="bauhaus"] .insight-module-row i {
+    border: 1px solid #121212 !important; border-radius: 0 !important; background: #EAEAEA !important;
+}
+[data-ui-style="bauhaus"] .insight-module-row b { border-radius: 0 !important; }
+
+[data-ui-style="bauhaus"] .dashboard-trends h3 {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; font-size: 18px !important; text-transform: uppercase !important;
+    letter-spacing: -.02em !important; display: inline-block;
+    border-bottom: 3px solid #121212; padding-bottom: 2px;
+}
+[data-ui-style="bauhaus"] .dashboard-trends h3 span {
+    color: #555555 !important; font-weight: 700 !important; font-size: 11px !important;
+    text-transform: uppercase !important; letter-spacing: .04em !important;
+}
+[data-ui-style="bauhaus"] .dashboard-trends .flex.gap-1.p-1 {
+    background: #FFFFFF !important; border: 2px solid #121212 !important;
+    border-radius: 0 !important; box-shadow: 3px 3px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .dashboard-trends button[data-onclick^="setTrendsRange"] {
+    border-radius: 0 !important; border: 1.5px solid #121212 !important;
+    font-weight: 800 !important; font-family: 'Space Grotesk', sans-serif !important;
+    text-transform: uppercase !important;
+}
+[data-ui-style="bauhaus"] .trend-card-head p {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-size: 11px !important; font-weight: 900 !important; letter-spacing: .08em !important;
+}
+
+[data-ui-style="bauhaus"] #app-header .search-w {
+    background: #FFFFFF !important; border: 2px solid #121212 !important;
+    border-radius: 0 !important; box-shadow: 3px 3px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] #app-header .search-w input {
+    color: #121212 !important; font-weight: 600 !important;
+}
+[data-ui-style="bauhaus"] #app-header .search-w i { color: #121212 !important; }
+[data-ui-style="bauhaus"] #app-header button[data-onclick="toggleSidebar()"] {
+    border: 2px solid #121212 !important; border-radius: 0 !important;
+    background: #FFFFFF !important; color: #121212 !important; box-shadow: 2px 2px 0 0 #121212 !important;
+}
+
+/* Mobile Bottom Navigation in Bauhaus */
+[data-ui-style="bauhaus"] #bottom-nav {
+    background: #FFFFFF !important; border-color: #121212 !important;
+    border-top: 4px solid #121212 !important; box-shadow: 0 -4px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] #bottom-nav .nav-item { color: #404040 !important; font-weight: 800 !important; }
+[data-ui-style="bauhaus"] #bottom-nav .nav-item.active {
+    color: #D02020 !important; border-top: 3px solid #D02020 !important; border-left: none !important;
+}
+[data-ui-style="bauhaus"] #mobile-fab {
+    background: #D02020 !important; border: 3px solid #121212 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important; border-radius: 9999px !important;
+}
+[data-ui-style="bauhaus"] #mobile-fab:active {
+    transform: translate(-50%, 2px) !important; box-shadow: 0 0 0 0 #121212 !important;
+}
+
+
+
