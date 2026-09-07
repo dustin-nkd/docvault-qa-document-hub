@@ -756,6 +756,13 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#editor-container/, 'style.css must style editor-container for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.tc-step-row/, 'style.css must style tc-step-row for Bauhaus mode');
 
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.focus-hero\s+h3/, 'style.css must style focus hero for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.focus-tab/, 'style.css must style focus tab for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.focus-group/, 'style.css must style focus group for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.trace-summary-item/, 'style.css must style trace summary for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.impact-section/, 'style.css must style api impact section for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.trace-table-wrap/, 'style.css must style traceability table for Bauhaus mode');
+
     assert.match(css, /body:has\(#guest-banner\)\s*#ui-style-toggle-btn/, 'style.css must elevate ui-style-toggle-btn above guest banner');
     assert.match(read('js/events.js'), /toggleBtn\.style\.bottom\s*=/, 'events.js must adjust ui-style-toggle-btn bottom when guest banner is present');
 });

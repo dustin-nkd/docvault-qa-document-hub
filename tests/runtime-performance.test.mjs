@@ -29,9 +29,10 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     // the Bauhaus design system UI switcher and lock screen styles, 930_000 for
     // Bauhaus App Shell and Dashboard Overview styling, 945_000 for
     // Document List, Explorer & Kanban Bauhaus styling, 955_000 for
-    // Document Viewer and Category Viewers Bauhaus styling, and 965_000 for
-    // Document Editor and Template Picker Modal Bauhaus styling.
-    assert.ok(bytes <= 965_000, `Dashboard direct startup assets exceed 965 KB: ${bytes} bytes`);
+    // Document Viewer and Category Viewers Bauhaus styling, 965_000 for
+    // Document Editor and Template Picker Modal Bauhaus styling, and 985_000 for
+    // Focus Mode and Traceability Matrix Bauhaus styling.
+    assert.ok(bytes <= 985_000, `Dashboard direct startup assets exceed 985 KB: ${bytes} bytes`);
 });
 
 test('editor runtime remains offline-capable and is loaded through one shared lazy promise', () => {
