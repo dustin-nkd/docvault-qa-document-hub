@@ -2208,6 +2208,411 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     color: #121212 !important; font-weight: 800 !important;
 }
 
+/* ============================================
+   Bauhaus Modal Dialogs & Template Picker
+   ============================================ */
+
+/* Modal Dialog Box */
+[data-ui-style="bauhaus"] #modal [role="dialog"] {
+    background: #FFFFFF !important;
+    border: 4px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 8px 8px 0 0 #121212 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal [role="dialog"] h3 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: -.02em !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #modal [role="dialog"] p {
+    color: #444444 !important;
+    font-weight: 600 !important;
+}
+
+/* Template Picker Cards */
+[data-ui-style="bauhaus"] .tpl-card {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s, background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .tpl-card:hover,
+[data-ui-style="bauhaus"] .tpl-card:focus {
+    background: #FFF9C4 !important;
+    transform: translate(-2px, -2px) !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .tpl-card > div:first-child {
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+}
+
+[data-ui-style="bauhaus"] .tpl-card p.font-semibold {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    color: #121212 !important;
+    text-transform: uppercase !important;
+    letter-spacing: -.01em !important;
+}
+
+[data-ui-style="bauhaus"] .tpl-card p.text-xs,
+[data-ui-style="bauhaus"] .tpl-card p.text-\[11px\] {
+    color: #555555 !important;
+    font-weight: 600 !important;
+}
+
+/* Modal Danger Icon Circle */
+[data-ui-style="bauhaus"] #modal .w-12.h-12.rounded-full {
+    border: 2px solid #D02020 !important;
+    border-radius: 0 !important;
+    background: #FFF0F0 !important;
+}
+
+/* ============================================
+   Bauhaus Document Editor
+   ============================================ */
+
+/* Universal Button Tokens in Bauhaus */
+[data-ui-style="bauhaus"] .btn-p {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .02em !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .btn-p:hover {
+    background: #B01818 !important;
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .btn-s {
+    background: #FFFFFF !important;
+    color: #121212 !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 700 !important;
+    letter-spacing: .02em !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .btn-s:hover {
+    background: #F0C020 !important;
+    color: #121212 !important;
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .btn-d {
+    background: #FFF0F0 !important;
+    color: #D02020 !important;
+    border: 2px solid #D02020 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .02em !important;
+    transition: transform .15s, box-shadow .15s, background-color .15s !important;
+}
+
+[data-ui-style="bauhaus"] .btn-d:hover {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 4px 4px 0 0 #121212 !important;
+}
+
+/* Editor Form Labels */
+[data-ui-style="bauhaus"] label[for^="ed-"],
+[data-ui-style="bauhaus"] label[for="tag-input"],
+[data-ui-style="bauhaus"] span#bug-steps-label,
+[data-ui-style="bauhaus"] span#tc-steps-label,
+[data-ui-style="bauhaus"] span#env-props-label,
+[data-ui-style="bauhaus"] span#env-creds-label,
+[data-ui-style="bauhaus"] span#plan-tcs-label,
+[data-ui-style="bauhaus"] span#plan-runs-label,
+[data-ui-style="bauhaus"] span#rel-runs-label,
+[data-ui-style="bauhaus"] span#rel-bugs-label,
+[data-ui-style="bauhaus"] span#rel-envs-label,
+[data-ui-style="bauhaus"] span#rel-date-label {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+    letter-spacing: .03em !important;
+}
+
+/* Tag Container & Tags in Editor */
+[data-ui-style="bauhaus"] #tag-container {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #tag-container .tag {
+    background: #FFF9C4 !important;
+    color: #121212 !important;
+    border: 1.5px solid #121212 !important;
+    border-radius: 0 !important;
+    font-weight: 700 !important;
+}
+
+[data-ui-style="bauhaus"] #tag-container .tag .rm {
+    color: #D02020 !important;
+    font-weight: 900 !important;
+}
+
+/* Checkbox accent */
+[data-ui-style="bauhaus"] input[type="checkbox"].form-checkbox,
+[data-ui-style="bauhaus"] .form-checkbox {
+    accent-color: #D02020 !important;
+    cursor: pointer;
+}
+
+/* Step Rows (Test Cases & Bugs) */
+[data-ui-style="bauhaus"] .tc-step-row,
+[data-ui-style="bauhaus"] .bug-step-row {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+}
+
+[data-ui-style="bauhaus"] .tc-step-row .step-idx,
+[data-ui-style="bauhaus"] .bug-step-row .step-idx {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    color: #121212 !important;
+}
+
+/* Category Containers in Editor */
+[data-ui-style="bauhaus"] .fade-up.max-w-4xl > .p-4.rounded-xl,
+[data-ui-style="bauhaus"] .fade-up.max-w-4xl > .rounded-xl.overflow-hidden,
+[data-ui-style="bauhaus"] .bug-triage-editor,
+[data-ui-style="bauhaus"] .release-policy-card {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 5px 5px 0 0 #121212 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .bug-triage-editor-head,
+[data-ui-style="bauhaus"] .release-policy-head {
+    border-bottom: 2px solid #121212 !important;
+    padding-bottom: 10px !important;
+}
+
+[data-ui-style="bauhaus"] .bug-triage-editor-head h3,
+[data-ui-style="bauhaus"] .release-policy-head strong {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .bug-triage-editor-head > span {
+    background: #121212 !important;
+    color: #F0C020 !important;
+    border-radius: 0 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .release-policy-rate,
+[data-ui-style="bauhaus"] .release-policy-toggle {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .release-rate-input input {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+/* Date Picker in Release Editor */
+[data-ui-style="bauhaus"] .dp-trigger {
+    background: #FFFFFF !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 3px 3px 0 0 #121212 !important;
+    color: #121212 !important;
+    font-weight: 700 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-panel {
+    background: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-nav-btn {
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    background: #FFFFFF !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-nav-btn:hover {
+    background: #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-month-lbl {
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-cell {
+    border-radius: 0 !important;
+    font-weight: 700 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-cell:hover {
+    background: #FFF9C4 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-cell.dp-selected {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+    font-weight: 900 !important;
+}
+
+[data-ui-style="bauhaus"] .dp-cell.dp-today {
+    border: 2px solid #1040C0 !important;
+    outline: none !important;
+    font-weight: 900 !important;
+}
+
+/* Toast UI Markdown Editor in Bauhaus Edit Mode */
+[data-ui-style="bauhaus"] #editor-container {
+    background: #FFFFFF !important;
+    border: 4px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-defaultUI {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-defaultUI-toolbar,
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-toolbar {
+    background-color: #F0F0F0 !important;
+    border-bottom: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-toolbar-icons {
+    opacity: 1 !important;
+    border-radius: 0 !important;
+    transition: background-color .15s, transform .15s !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-toolbar-icons:hover {
+    background-color: #F0C020 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-toolbar-icons.active {
+    background-color: #D02020 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-toolbar-divider {
+    background-color: #121212 !important;
+    width: 2px !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-md-container,
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-ww-container {
+    background-color: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-md-splitter {
+    background-color: #121212 !important;
+    width: 3px !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-mode-switch {
+    background-color: #F0F0F0 !important;
+    border-top: 2px solid #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-mode-switch .tab-item {
+    color: #121212 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    border-radius: 0 !important;
+    opacity: 0.8 !important;
+    letter-spacing: .03em !important;
+    transition: background-color .15s, color .15s !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-mode-switch .tab-item.active {
+    background-color: #1040C0 !important;
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+    font-weight: 800 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-contents,
+[data-ui-style="bauhaus"] #editor-container .ProseMirror,
+[data-ui-style="bauhaus"] #editor-container .CodeMirror {
+    color: #121212 !important;
+    background-color: #FFFFFF !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .CodeMirror-cursor {
+    border-left-color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-popup,
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-dropdown-toolbar {
+    background-color: #FFFFFF !important;
+    border: 3px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 5px 5px 0 0 #121212 !important;
+    color: #121212 !important;
+}
+
+[data-ui-style="bauhaus"] #editor-container .toastui-editor-popup-body {
+    background-color: #FFFFFF !important;
+    color: #121212 !important;
+}
+
+
 
 
 
