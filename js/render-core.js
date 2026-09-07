@@ -803,7 +803,7 @@ function renderFocus() {
         </div>`;
     };
 
-    return `<div class="fade-up max-w-5xl mx-auto focus-page">
+    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto focus-page">
         <section class="focus-hero">
             <div>
                 <p class="dashboard-eyebrow">${t('focus')}</p>
@@ -1155,7 +1155,7 @@ function renderActivityLog() {
             'Nothing in the last ' + ActivityLog.MAX + ' actions matches this filter.',
             `<button class="btn-s" data-onclick="setActivityFilter('all')">Show all activity</button>`);
 
-    return `<div class="fade-up max-w-3xl mx-auto">
+    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div class="min-w-0">
                 <h2 class="font-heading font-semibold text-lg">Activity</h2>

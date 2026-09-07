@@ -514,7 +514,7 @@ function updateSidebar() {
             const cls = isActiveCat ? 'nav-item active flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm' : 'nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm';
 
             catHtml += `
-                <div class="${cls}" style="color:var(--tx-m); cursor:pointer;" data-onclick="navigate('documents','${k}')">
+                <div class="${cls}" style="color:var(--tx-m); cursor:pointer;" data-view="documents" data-cat="${k}" data-onclick="navigate('documents','${k}')">
                     <span class="w-2 h-2 rounded-full shrink-0" style="background:${m.color};"></span>
                     <span class="truncate">${m.label}</span>
                     <span class="count ml-auto">${catDocs.length}</span>
@@ -529,7 +529,7 @@ function updateSidebar() {
                     const sfCls = isActiveSf ? 'nav-item active flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2' : 'nav-item flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2';
 
                     catHtml += `
-                        <div class="${sfCls}" style="color:var(--tx-m); cursor:pointer; border-color:${isActiveSf ? m.color : 'transparent'}; transition:background-color 0.2s, border-color 0.2s, color 0.2s;" data-onclick="navigate('documents','${k}','${escHtml(sf.replace(/'/g, "\\'"))}')">
+                        <div class="${sfCls}" style="color:var(--tx-m); cursor:pointer; border-color:${isActiveSf ? m.color : 'transparent'}; transition:background-color 0.2s, border-color 0.2s, color 0.2s;" data-view="documents" data-cat="${k}" data-subfolder="${escHtml(sf)}" data-onclick="navigate('documents','${k}','${escHtml(sf.replace(/'/g, "\\'"))}')">
                             <i class="fa-regular fa-folder w-3 text-center opacity-50"></i>
                             <span class="truncate">${escHtml(sf)}</span>
                             <span class="count ml-auto" style="font-size:10px;">${sfCount}</span>
@@ -553,13 +553,25 @@ function updateSidebar() {
     const storageEl = document.getElementById('storage-info');
     if (storageEl) storageEl.textContent = activeDocs.length + ' documents saved locally';
 
-    document.querySelectorAll('.nav-item').forEach(n => {
+    document.querySelectorAll('#main-nav .nav-item, #bottom-nav .nav-item').forEach(n => {
         n.classList.remove('active');
         const v = n.dataset.view;
         const c = n.dataset.cat;
-        if (v === state.view && (v === 'dashboard' || v === 'favorites' || v === 'activity' || c === state.category)) {
-            n.classList.add('active');
+        let isActive = false;
+        if (v === 'dashboard' && state.view === 'dashboard') isActive = true;
+        else if (v === 'favorites' && state.view === 'favorites') isActive = true;
+        else if (v === 'trash' && state.view === 'trash') isActive = true;
+        else if (v === 'focus' && state.view === 'focus') isActive = true;
+        else if (v === 'traceability' && state.view === 'traceability') isActive = true;
+        else if (v === 'activity' && state.view === 'activity') isActive = true;
+        else if (v === 'documents') {
+            if (n.closest('#bottom-nav')) {
+                isActive = state.view === 'documents';
+            } else if (c === 'all') {
+                isActive = state.view === 'documents' && (state.category === 'all' || !state.category) && !state.subfolder;
+            }
         }
+        if (isActive) n.classList.add('active');
     });
 }
 
