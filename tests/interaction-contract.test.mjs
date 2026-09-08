@@ -827,6 +827,13 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(renderViewerJs, /subfolder-badge/, 'render-viewer.js must use subfolder-badge class');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.subfolder-badge/, 'style.css must style subfolder-badge for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#sidebar\s+\.nav-item\[data-subfolder\]/, 'style.css must style sidebar subfolders for Bauhaus mode');
+
+    const renderViewerCats = read('js/render-viewer-categories.js');
+    assert.match(renderViewerCats, /class=["'][^"']*cred-field-box[^"']*["']/, 'render-viewer-categories.js must attach cred-field-box class');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.cred-field-box/, 'style.css must style cred-field-box for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.cred-field-label/, 'style.css must style cred-field-label for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#view-pw/, 'style.css must style view-pw for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.cred-stale-banner/, 'style.css must style cred-stale-banner for Bauhaus mode');
 });
 
 
