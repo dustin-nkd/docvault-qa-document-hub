@@ -814,6 +814,11 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.release-cockpit-outcome/, 'style.css must style release cockpit for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.quality-score-overview/, 'style.css must style quality score overview for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.focus-workflow-modal-head/, 'style.css must style focus workflow modal for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.api-viewer-head/, 'style.css must style API viewer head for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.api-viewer-endpoint/, 'style.css must style API viewer endpoint for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.api-table-box/, 'style.css must style API table box for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.api-param-key/, 'style.css must style API param key for Bauhaus mode');
+    assert.match(read('js/render-viewer-categories.js'), /class=["'][^"']*api-viewer-endpoint[^"']*["']/, 'render-viewer-categories.js must attach api-viewer-endpoint class');
 });
 
 

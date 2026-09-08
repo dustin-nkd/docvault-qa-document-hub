@@ -2359,20 +2359,61 @@ body:has(#guest-banner) #ui-style-toggle-btn {
 }
 
 /* API Spec Viewer in Bauhaus */
+[data-ui-style="bauhaus"] .api-viewer-card,
 [data-ui-style="bauhaus"] .mb-6.rounded-xl.overflow-hidden {
     background: #FFFFFF !important; border: 3px solid #121212 !important;
     border-radius: 0 !important; box-shadow: 6px 6px 0 0 #121212 !important;
 }
-
+[data-ui-style="bauhaus"] .api-viewer-head,
 [data-ui-style="bauhaus"] .mb-6.rounded-xl.overflow-hidden > div:first-child {
-    background: #121212 !important; border-bottom: 3px solid #121212 !important; border-radius: 0 !important;
+    background: #F0F0F0 !important; border-bottom: 3px solid #121212 !important; border-radius: 0 !important;
 }
-
+[data-ui-style="bauhaus"] .api-viewer-method {
+    border: 2px solid #121212 !important; border-radius: 0 !important;
+    font-weight: 900 !important; letter-spacing: .04em !important; box-shadow: 2px 2px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .api-viewer-endpoint,
+[data-ui-style="bauhaus"] .mb-6.rounded-xl.overflow-hidden > div:first-child > span.font-mono {
+    color: #121212 !important; font-family: monospace !important; font-weight: 800 !important; font-size: 14px !important;
+}
+[data-ui-style="bauhaus"] .api-viewer-status {
+    border: 2px solid #121212 !important; border-radius: 0 !important;
+    font-weight: 900 !important; box-shadow: 2px 2px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .api-viewer-tryit { background: #FFFFFF !important; border-bottom: 2px solid #121212 !important; }
+[data-ui-style="bauhaus"] .api-viewer-tryit p,
+[data-ui-style="bauhaus"] .api-empty-hint { color: #555555 !important; font-weight: 600 !important; }
+[data-ui-style="bauhaus"] .api-section-title {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; letter-spacing: .08em !important; font-size: 11px !important;
+}
+[data-ui-style="bauhaus"] .api-section-line { background: #121212 !important; height: 2px !important; }
+[data-ui-style="bauhaus"] .api-table-title {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; text-transform: uppercase !important; font-size: 11px !important; letter-spacing: .04em !important;
+}
+[data-ui-style="bauhaus"] .api-table-box {
+    background: #FFFFFF !important; border: 2px solid #121212 !important;
+    border-radius: 0 !important; box-shadow: 3px 3px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .api-param-row-view { border-bottom: 1px solid #E5E5E5 !important; }
+[data-ui-style="bauhaus"] .api-param-row-view:last-child { border-bottom: none !important; }
+[data-ui-style="bauhaus"] .api-param-row-view:nth-child(even) { background: #F8F8F8 !important; }
+[data-ui-style="bauhaus"] .api-param-row-view:nth-child(odd) { background: #FFFFFF !important; }
+[data-ui-style="bauhaus"] .api-param-key { color: #121212 !important; font-weight: 800 !important; font-family: monospace !important; }
+[data-ui-style="bauhaus"] .api-param-req { color: #D02020 !important; font-weight: 900 !important; }
+[data-ui-style="bauhaus"] .api-param-val { color: #1040C0 !important; font-weight: 700 !important; font-family: monospace !important; }
 [data-ui-style="bauhaus"] #viewer-api-body,
-[data-ui-style="bauhaus"] #viewer-api-response {
+[data-ui-style="bauhaus"] #viewer-api-response,
+[data-ui-style="bauhaus"] #viewer-api-tryit-response {
     background: #FFFFFF !important; border: 2px solid #121212 !important;
     border-radius: 0 !important; color: #121212 !important; box-shadow: 3px 3px 0 0 #121212 !important;
 }
+[data-ui-style="bauhaus"] .code-copy-btn {
+    background: #FFFFFF !important; border: 1.5px solid #121212 !important;
+    border-radius: 0 !important; color: #121212 !important; box-shadow: 2px 2px 0 0 #121212 !important; opacity: 1 !important;
+}
+[data-ui-style="bauhaus"] .code-copy-btn:hover { background: #F0C020 !important; }
 
 /* Credential & Environment Viewers in Bauhaus */
 [data-ui-style="bauhaus"] .mb-6.p-5.rounded-xl {
@@ -4508,22 +4549,6 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     border-radius: 0 !important;
     background: #1040C0 !important;
 }
-
-[data-ui-style="bauhaus"] #viewer-api-tryit-response {
-    background: #FFFFFF !important;
-    border: 2px solid #121212 !important;
-    border-radius: 0 !important;
-    color: #121212 !important;
-    box-shadow: 3px 3px 0 0 #121212 !important;
-    font-weight: 700 !important;
-}
-
-
-
-
-
-
-
 
 
 
