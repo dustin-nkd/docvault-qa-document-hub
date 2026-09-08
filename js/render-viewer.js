@@ -34,15 +34,15 @@ function renderViewer() {
             if (!linkedBugs.length) return '';
             const SEV = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
             return `
-            <div class="mb-6">
-                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Bugs (${linkedBugs.length})</p>
+            <div class="mb-6 linked-bugs-section">
+                <p class="linked-bugs-title text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Bugs (${linkedBugs.length})</p>
                 <div class="space-y-2">
                     ${linkedBugs.map(b => {
                         const sev = b.bugData?.severity;
-                        return `<div class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${b.id}')">
-                            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0" style="background:var(--card);color:var(--c-bug);">${bugRef(b)}</span>
-                            <span class="text-sm font-medium flex-1 truncate" style="color:var(--tx);">${escHtml(b.title)}</span>
-                            ${sev ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style="background:${(SEV[sev] || '#94a3b8')}22;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
+                        return `<div class="linked-bug-item flex items-center gap-3 p-3 rounded-lg border cursor-pointer ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${b.id}')">
+                            <span class="bug-ref-chip text-[10px] font-mono font-bold px-2 py-0.5 rounded shrink-0" style="background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.4);color:#f87171;">${bugRef(b)}</span>
+                            <span class="linked-bug-title text-sm font-medium flex-1 truncate" style="color:var(--tx);">${escHtml(b.title)}</span>
+                            ${sev ? `<span class="linked-bug-sev text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style="background:${(SEV[sev] || '#94a3b8')}22;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
                         </div>`;
                     }).join('')}
                 </div>
