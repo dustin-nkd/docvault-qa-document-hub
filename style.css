@@ -2447,14 +2447,47 @@ body:has(#guest-banner) #ui-style-toggle-btn {
 [data-ui-style="bauhaus"] .code-copy-btn:hover { background: #F0C020 !important; }
 
 /* Credential & Environment Viewers in Bauhaus */
+[data-ui-style="bauhaus"] .credential-viewer-card,
+[data-ui-style="bauhaus"] .env-viewer-card,
 [data-ui-style="bauhaus"] .mb-6.p-5.rounded-xl {
     background: #FFFFFF !important; border: 3px solid #121212 !important;
     border-radius: 0 !important; box-shadow: 6px 6px 0 0 #121212 !important;
 }
-
-[data-ui-style="bauhaus"] #view-pw {
-    color: #121212 !important; font-weight: 800 !important;
+[data-ui-style="bauhaus"] .cred-stale-banner {
+    background: #FFF9C4 !important; border: 2px solid #121212 !important;
+    border-radius: 0 !important; box-shadow: 3px 3px 0 0 #121212 !important;
 }
+[data-ui-style="bauhaus"] .cred-stale-banner span { color: #121212 !important; font-weight: 700 !important; }
+[data-ui-style="bauhaus"] .cred-stale-banner i { color: #D02020 !important; }
+[data-ui-style="bauhaus"] .cred-field-label,
+[data-ui-style="bauhaus"] .env-prop-label,
+[data-ui-style="bauhaus"] .env-creds-heading {
+    color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 900 !important; letter-spacing: .06em !important; font-size: 11px !important; text-transform: uppercase !important;
+}
+[data-ui-style="bauhaus"] .cred-field-box {
+    background: #FFFFFF !important; border: 2px solid #121212 !important;
+    border-radius: 0 !important; box-shadow: 3px 3px 0 0 #121212 !important;
+}
+[data-ui-style="bauhaus"] .cred-field-val,
+[data-ui-style="bauhaus"] .cred-field-input,
+[data-ui-style="bauhaus"] #view-pw {
+    color: #121212 !important; font-weight: 800 !important; font-family: monospace !important;
+}
+[data-ui-style="bauhaus"] .cred-eye-btn,
+[data-ui-style="bauhaus"] #view-pw-btn { color: #121212 !important; opacity: .8 !important; }
+[data-ui-style="bauhaus"] .cred-eye-btn:hover,
+[data-ui-style="bauhaus"] #view-pw-btn:hover { color: #1040C0 !important; opacity: 1 !important; }
+[data-ui-style="bauhaus"] .env-viewer-title { color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important; font-weight: 900 !important; }
+[data-ui-style="bauhaus"] .env-viewer-status { border: 2px solid #121212 !important; border-radius: 0 !important; font-weight: 800 !important; box-shadow: 2px 2px 0 0 #121212 !important; }
+[data-ui-style="bauhaus"] .env-prop-card { background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important; box-shadow: 3px 3px 0 0 #121212 !important; }
+[data-ui-style="bauhaus"] .env-secret-box { background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important; box-shadow: 2px 2px 0 0 #121212 !important; }
+[data-ui-style="bauhaus"] .env-prop-card input,
+[data-ui-style="bauhaus"] .env-viewer-prop-val { color: #121212 !important; font-weight: 800 !important; }
+[data-ui-style="bauhaus"] .env-viewer-link { color: #1040C0 !important; font-weight: 800 !important; }
+[data-ui-style="bauhaus"] .env-linked-cred-item { background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important; box-shadow: 2px 2px 0 0 #121212 !important; color: #121212 !important; }
+[data-ui-style="bauhaus"] .env-linked-cred-item span { color: #121212 !important; font-weight: 800 !important; }
+[data-ui-style="bauhaus"] .env-linked-cred-item:hover { background: #FFF9C4 !important; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 0 #121212 !important; }
 
 /* ============================================
    Bauhaus Modal Dialogs & Template Picker

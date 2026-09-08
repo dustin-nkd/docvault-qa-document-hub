@@ -173,11 +173,11 @@ function renderViewerCategory(doc) {
         ${doc.category === 'bug' ? renderBugTriage(doc) : ''}
 
         ${doc.category === 'credential' ? `
-        <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+        <div class="credential-viewer-card mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
             ${(() => {
                 const info = credRotationInfo(doc);
                 if (!info.stale) return '';
-                return `<div class="flex items-center justify-between gap-3 mb-4 p-3 rounded-lg" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);">
+                return `<div class="cred-stale-banner flex items-center justify-between gap-3 mb-4 p-3 rounded-lg" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);">
                     <div class="flex items-center gap-2 min-w-0">
                         <i class="fa-solid fa-triangle-exclamation shrink-0" style="color:#f59e0b;"></i>
                         <span class="text-xs" style="color:var(--tx);">Not rotated in <strong>${info.ageDays} days</strong> — consider updating this credential.</span>
@@ -186,7 +186,7 @@ function renderViewerCategory(doc) {
                 </div>`;
             })()}
             <div class="mb-4">
-                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Username / Email</p>
+                <p class="cred-field-label text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Username / Email</p>
                 <div class="flex items-center gap-3">
                     <div class="cred-avatar ${credAvatarColor(doc.title)} shrink-0">
                         <!-- Must not be lazy: the icon starts hidden, so a lazy image is never
@@ -195,24 +195,24 @@ function renderViewerCategory(doc) {
                         <span>${escHtml(doc.title.charAt(0).toUpperCase())}</span>
                     </div>
                     <div class="flex-1 flex items-center gap-2 min-w-0">
-                        <div class="flex-1 flex items-center px-3 py-2 rounded-lg min-w-0" style="background:var(--bg);border:1px solid var(--brd);">
-                            <span class="text-sm font-mono truncate" style="color:var(--tx);">${escHtml(doc.username || 'N/A')}</span>
+                        <div class="cred-field-box flex-1 flex items-center px-3 py-2 rounded-lg min-w-0" style="background:var(--bg);border:1px solid var(--brd);">
+                            <span class="cred-field-val text-sm font-mono truncate" style="color:var(--tx);">${escHtml(doc.username || 'N/A')}</span>
                         </div>
                         ${doc.username ? `<button class="btn-s py-2 px-4 shrink-0" data-onclick="copyUsername('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>${t('copy')}</button>` : ''}
                     </div>
                 </div>
             </div>
             <div>
-                <p class="text-[11px] font-medium tracking-wide uppercase mb-1.5" style="color:var(--tx-d);">Password</p>
+                <p class="cred-field-label text-[11px] font-medium tracking-wide uppercase mb-1.5" style="color:var(--tx-d);">Password</p>
                 ${state.sharedView ? `
-                <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);">
+                <div class="cred-field-box flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);">
                     <i class="fa-solid fa-lock text-sm"></i>
-                    <span class="text-sm">Password hidden in shared view</span>
+                    <span class="cred-field-val text-sm">Password hidden in shared view</span>
                 </div>` : `
                 <div class="flex items-center gap-2">
-                    <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
-                        <input type="password" id="view-pw" value="${escHtml(doc.password || '')}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider" style="color:var(--tx);" readonly>
-                        <button id="view-pw-btn" class="text-xs p-1 ui-hover-text" style="color:var(--tx-m);transition:color .2s;" aria-label="Show password" title="Show password" data-onclick="togglePasswordVisibility('view-pw', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                    <div class="cred-field-box flex-1 flex items-center gap-2 px-3 py-2 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+                        <input type="password" id="view-pw" value="${escHtml(doc.password || '')}" class="cred-field-input bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider" style="color:var(--tx);" readonly>
+                        <button id="view-pw-btn" class="cred-eye-btn text-xs p-1 ui-hover-text" style="color:var(--tx-m);transition:color .2s;" aria-label="Show password" title="Show password" data-onclick="togglePasswordVisibility('view-pw', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                     </div>
                     <button class="btn-p py-2 px-4" data-onclick="copyPassword('${doc.id}', this)"><i class="fa-solid fa-copy mr-1.5"></i>Copy</button>
                 </div>`}
@@ -221,10 +221,10 @@ function renderViewerCategory(doc) {
         ` : ''}
 
         ${doc.category === 'environment' ? `
-        <div class="mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+        <div class="env-viewer-card mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
             <div class="flex items-center justify-between mb-5">
-                <h3 class="font-heading font-semibold text-lg" style="color:var(--tx);">Environment Details</h3>
-                <span class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${doc.envData?.status === 'healthy' ? '#10b98122' : doc.envData?.status === 'down' ? '#ef444422' : '#f59e0b22'}; color:${doc.envData?.status === 'healthy' ? '#10b981' : doc.envData?.status === 'down' ? '#ef4444' : '#f59e0b'}; border:1px solid ${doc.envData?.status === 'healthy' ? '#10b98155' : doc.envData?.status === 'down' ? '#ef444455' : '#f59e0b55'};">
+                <h3 class="env-viewer-title font-heading font-semibold text-lg" style="color:var(--tx);">Environment Details</h3>
+                <span class="env-viewer-status px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${doc.envData?.status === 'healthy' ? '#10b98122' : doc.envData?.status === 'down' ? '#ef444422' : '#f59e0b22'}; color:${doc.envData?.status === 'healthy' ? '#10b981' : doc.envData?.status === 'down' ? '#ef4444' : '#f59e0b'}; border:1px solid ${doc.envData?.status === 'healthy' ? '#10b98155' : doc.envData?.status === 'down' ? '#ef444455' : '#f59e0b55'};">
                     <i class="fa-solid fa-circle text-[8px] mr-1.5"></i>${doc.envData?.status || 'Unknown'}
                 </span>
             </div>
@@ -242,16 +242,18 @@ function renderViewerCategory(doc) {
 
                 return `<div class="grid sm:grid-cols-2 gap-4 mb-5">
                     ${allProps.map(prop => `
-                    <div class="p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
-                        <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${escHtml(prop.label)}</p>
+                    <div class="env-prop-card p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+                        <p class="env-prop-label text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${escHtml(prop.label)}</p>
                         <div class="flex items-center gap-2">
                             ${prop.secret ? `
-                                <input type="password" id="view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}" value="${escHtml(prop.value)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
-                                <button class="btn-s px-2 py-1 text-xs" aria-label="Show ${escHtml(prop.label)}" title="Show ${escHtml(prop.label)}" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                                <div class="env-secret-box flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+                                    <input type="password" id="view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}" value="${escHtml(prop.value)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
+                                    <button class="btn-s px-2 py-1 text-xs" aria-label="Show ${escHtml(prop.label)}" title="Show ${escHtml(prop.label)}" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                                </div>
                             ` : `
                                 ${prop.value.startsWith('http') ?
-                                    `<a href="${escHtml(prop.value)}" target="_blank" class="text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(prop.value)}</a>` :
-                                    `<span class="text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`
+                                    `<a href="${escHtml(prop.value)}" target="_blank" class="env-viewer-link text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(prop.value)}</a>` :
+                                    `<span class="env-viewer-prop-val text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`
                                 }
                             `}
                             <button class="btn-s px-2 py-1 text-xs" aria-label="Copy ${escHtml(prop.label)}" title="Copy ${escHtml(prop.label)}" data-copy-value="${escHtml(prop.value)}" data-onclick="_copyProp(this)"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
@@ -263,13 +265,13 @@ function renderViewerCategory(doc) {
 
             ${doc.envData?.linkedCreds?.length ? `
             <div>
-                <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Credentials</p>
+                <p class="env-creds-heading text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Credentials</p>
                 <div class="flex flex-wrap gap-2">
                     ${doc.envData.linkedCreds.map(id => {
                         const cred = documents.find(d => d.id === id && d.status !== 'deleted');
                         if (!cred) return '';
                         return `
-                        <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${cred.id}')">
+                        <div class="env-linked-cred-item flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${cred.id}')">
                             <i class="fa-solid fa-key text-xs" style="color:var(--c-cred);"></i>
                             <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(cred.title)}</span>
                         </div>`;
