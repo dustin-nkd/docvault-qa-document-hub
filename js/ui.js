@@ -529,9 +529,9 @@ function updateSidebar() {
                     const sfCls = isActiveSf ? 'nav-item active flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2' : 'nav-item flex items-center gap-2 px-3 py-1.5 rounded-r-lg text-xs ml-4 border-l-2';
 
                     catHtml += `
-                        <div class="${sfCls}" style="color:var(--tx-m); cursor:pointer; border-color:${isActiveSf ? m.color : 'transparent'}; transition:background-color 0.2s, border-color 0.2s, color 0.2s;" data-view="documents" data-cat="${k}" data-subfolder="${escHtml(sf)}" data-onclick="navigate('documents','${k}','${escHtml(sf.replace(/'/g, "\\'"))}')">
-                            <i class="fa-regular fa-folder w-3 text-center opacity-50"></i>
-                            <span class="truncate">${escHtml(sf)}</span>
+                        <div class="${sfCls}" style="color:${isActiveSf ? 'var(--acc-l)' : 'var(--tx)'}; cursor:pointer; border-color:${isActiveSf ? m.color : 'transparent'}; transition:background-color 0.2s, border-color 0.2s, color 0.2s;" data-view="documents" data-cat="${k}" data-subfolder="${escHtml(sf)}" data-onclick="navigate('documents','${k}','${escHtml(sf.replace(/'/g, "\\'"))}')">
+                            <i class="fa-regular fa-folder w-3 text-center mr-0.5" style="color:${isActiveSf ? 'inherit' : 'var(--acc)'}; opacity:0.9;"></i>
+                            <span class="truncate font-medium">${escHtml(sf)}</span>
                             <span class="count ml-auto" style="font-size:10px;">${sfCount}</span>
                         </div>
                     `;

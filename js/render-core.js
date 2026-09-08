@@ -1367,7 +1367,7 @@ function renderDocList() {
                         <div class="flex items-start justify-between mb-2.5">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="cat-badge ${getCatMeta(d.category).cls}">${getCatMeta(d.category).label}</span>
-                                ${d.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(d.subfolder)}</span>` : ''}
+                                ${d.subfolder ? `<span class="cat-badge subfolder-badge" style="background:var(--card);border:1px solid var(--brd);color:var(--tx);"><i class="fa-regular fa-folder mr-1" style="color:var(--acc);"></i>${escHtml(d.subfolder)}</span>` : ''}
                                 <span class="st-badge st-${d.status}">${d.status}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
