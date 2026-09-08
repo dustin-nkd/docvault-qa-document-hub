@@ -834,6 +834,11 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.cred-field-label/, 'style.css must style cred-field-label for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#view-pw/, 'style.css must style view-pw for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.cred-stale-banner/, 'style.css must style cred-stale-banner for Bauhaus mode');
+
+    assert.match(renderViewerJs, /class=["'][^"']*bug-ref-chip[^"']*["']/, 'render-viewer.js must attach bug-ref-chip class');
+    assert.match(renderViewerJs, /class=["'][^"']*linked-bug-item[^"']*["']/, 'render-viewer.js must attach linked-bug-item class');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.bug-ref-chip/, 'style.css must style bug-ref-chip for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.linked-bug-item/, 'style.css must style linked-bug-item for Bauhaus mode');
 });
 
 

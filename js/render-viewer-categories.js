@@ -144,7 +144,7 @@ function renderViewerCategory(doc) {
             const ref = bugRef(doc);
             return `
         <div class="mb-6 flex flex-wrap items-center gap-2">
-            ${ref ? `<span class="font-mono text-sm font-bold px-2.5 py-1 rounded" style="background:var(--card);border:1px solid var(--brd);color:var(--c-bug);">${ref}</span>` : ''}
+            ${ref ? `<span class="bug-ref-chip font-mono text-sm font-bold px-2.5 py-1 rounded" style="background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.4);color:#f87171;">${ref}</span>` : ''}
             ${sev ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${(SEV[sev] || '#94a3b8')}20;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
             ${prio ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${prioColor}20;color:${prioColor};" title="Priority">${escHtml(prio)}</span>` : ''}
             ${doc.bugData?.assignee ? `<span class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:10px;"></i>${escHtml(doc.bugData.assignee)}</span>` : ''}
