@@ -1519,6 +1519,21 @@ button[aria-busy="true"] { cursor:progress !important; }
 [data-ui-style="bauhaus"] #sidebar .nav-item.active .count {
     background: #121212 !important; color: #F0C020 !important; border: 1px solid #121212 !important; font-weight: 800 !important;
 }
+[data-ui-style="bauhaus"] #sidebar .nav-item[data-subfolder] {
+    color: #121212 !important;
+    font-weight: 700 !important;
+}
+[data-ui-style="bauhaus"] #sidebar .nav-item[data-subfolder] i {
+    color: #1040C0 !important;
+    opacity: 1 !important;
+}
+[data-ui-style="bauhaus"] #sidebar .nav-item[data-subfolder].active {
+    background: #D02020 !important;
+    color: #FFFFFF !important;
+}
+[data-ui-style="bauhaus"] #sidebar .nav-item[data-subfolder].active i {
+    color: #FFFFFF !important;
+}
 [data-ui-style="bauhaus"] #lbl-categories,
 [data-ui-style="bauhaus"] #saved-views-wrap p {
     color: #121212 !important; font-weight: 900 !important; letter-spacing: .12em !important;
@@ -1865,6 +1880,19 @@ body:has(#guest-banner) #ui-style-toggle-btn {
 [data-ui-style="bauhaus"] .cat-badge.cat-release {
     background: #FFFFFF !important; color: #121212 !important;
 }
+[data-ui-style="bauhaus"] .subfolder-badge,
+[data-ui-style="bauhaus"] .cat-badge.subfolder-badge {
+    background: #FFF9C4 !important;
+    border: 2px solid #121212 !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 2px 0 0 #121212 !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+}
+[data-ui-style="bauhaus"] .subfolder-badge i,
+[data-ui-style="bauhaus"] .cat-badge.subfolder-badge i {
+    color: #1040C0 !important;
+}
 [data-ui-style="bauhaus"] .st-badge {
     border: 1.5px solid #121212 !important; border-radius: 0 !important;
     font-weight: 800 !important; font-size: 9.5px !important;
@@ -2029,6 +2057,9 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     color: #121212 !important; font-family: 'Space Grotesk', sans-serif !important;
     font-weight: 900 !important; text-transform: uppercase !important;
     letter-spacing: -.03em !important; font-size: 26px !important;
+}
+[data-ui-style="bauhaus"] .viewer-bottom-actions {
+    border-top: 2px solid #121212 !important;
 }
 
 /* Markdown Content Container */

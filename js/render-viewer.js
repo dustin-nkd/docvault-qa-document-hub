@@ -5,11 +5,11 @@ function renderViewer() {
     const doc = documents.find(d => d.id === state.editingDoc?.id);
     if (!doc) return `<div class="text-center py-20" style="color:var(--tx-d);">Document not found.</div>`;
 
-    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
+    return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto pb-44">
         <!-- Meta -->
         <div class="flex flex-wrap items-center gap-2.5 mb-4">
             <span class="cat-badge ${getCatMeta(doc.category).cls}">${getCatMeta(doc.category).label}</span>
-            ${doc.subfolder ? `<span class="cat-badge" style="background:var(--bg);border:1px solid var(--brd);color:var(--tx-m);"><i class="fa-regular fa-folder mr-1"></i>${escHtml(doc.subfolder)}</span>` : ''}
+            ${doc.subfolder ? `<span class="cat-badge subfolder-badge" style="background:var(--card);border:1px solid var(--brd);color:var(--tx);"><i class="fa-regular fa-folder mr-1" style="color:var(--acc);"></i>${escHtml(doc.subfolder)}</span>` : ''}
             <span class="st-badge st-${escHtml(doc.status)}">${escHtml(doc.status)}</span>
             ${(doc.tags || []).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
             ${state.sharedView ? '' : `<button class="fav-btn ${doc.favorite ? 'on' : ''} text-sm ml-auto" style="color:${doc.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${doc.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="toggleFav('${doc.id}')">
@@ -54,7 +54,7 @@ function renderViewer() {
 
         <!-- Actions bottom (hidden in shared view) -->
         ${state.sharedView ? '' : `
-        <div class="flex items-center gap-3 mt-5">
+        <div class="viewer-bottom-actions flex flex-wrap items-center gap-3 mt-8 pt-4 border-t border-[var(--brd)] pr-0 sm:pr-48">
             <button class="btn-p" data-onclick="editDoc('${doc.id}')"><i class="fa-solid fa-pen mr-1.5"></i>${t('edit')}</button>
             <button class="btn-s" data-onclick="duplicateDoc('${doc.id}')"><i class="fa-solid fa-copy mr-1.5"></i>${t('duplicate')}</button>
             <button class="btn-d ml-auto" data-onclick="showDeleteModal('${doc.id}')"><i class="fa-solid fa-trash mr-1.5"></i>${t('delete')}</button>

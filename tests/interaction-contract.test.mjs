@@ -819,6 +819,14 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.api-table-box/, 'style.css must style API table box for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.api-param-key/, 'style.css must style API param key for Bauhaus mode');
     assert.match(read('js/render-viewer-categories.js'), /class=["'][^"']*api-viewer-endpoint[^"']*["']/, 'render-viewer-categories.js must attach api-viewer-endpoint class');
+
+    assert.match(renderViewerJs, /fade-up max-w-6xl 2xl:max-w-\[1600px\] mx-auto pb-44/, 'Document viewer must have pb-44 bottom padding');
+    assert.match(renderViewerJs, /class=["'][^"']*viewer-bottom-actions[^"']*["']/, 'Document viewer must have viewer-bottom-actions container');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.viewer-bottom-actions/, 'style.css must style viewer-bottom-actions for Bauhaus mode');
+    assert.match(read('js/render-core.js'), /subfolder-badge/, 'render-core.js must use subfolder-badge class');
+    assert.match(renderViewerJs, /subfolder-badge/, 'render-viewer.js must use subfolder-badge class');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.subfolder-badge/, 'style.css must style subfolder-badge for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*#sidebar\s+\.nav-item\[data-subfolder\]/, 'style.css must style sidebar subfolders for Bauhaus mode');
 });
 
 
