@@ -290,13 +290,13 @@ function renderViewerCategory(doc) {
             const headers = (api.headers || []).filter(h => h.key);
             const params = (api.params || []).filter(p => p.key);
             return `
-            <div class="mb-6 rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+            <div class="api-viewer-card mb-6 rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
 
                 <!-- Method + Endpoint + Status header bar -->
-                <div class="flex items-center gap-3 px-4 py-3" style="background:var(--card);border-bottom:1px solid var(--brd);">
-                    <span class="text-xs font-bold px-2.5 py-1 rounded font-mono shrink-0" style="background:${methodColor}22;color:${methodColor};letter-spacing:.03em;">${escHtml(method)}</span>
-                    <span class="font-mono text-sm flex-1 truncate" style="color:var(--tx);">${escHtml(api.endpoint || '/')}</span>
-                    <span class="text-xs font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
+                <div class="api-viewer-head flex items-center gap-3 px-4 py-3" style="background:var(--card);border-bottom:1px solid var(--brd);">
+                    <span class="api-viewer-method text-xs font-bold px-2.5 py-1 rounded font-mono shrink-0" style="background:${methodColor}22;color:${methodColor};letter-spacing:.03em;">${escHtml(method)}</span>
+                    <span class="api-viewer-endpoint font-mono text-sm flex-1 truncate" style="color:var(--tx);">${escHtml(api.endpoint || '/')}</span>
+                    <span class="api-viewer-status text-xs font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
                 </div>
                 ${(api.module || ['low', 'medium', 'high'].includes(api.changeImpact)) ? `
                 <div class="api-impact-view">
@@ -306,42 +306,42 @@ function renderViewerCategory(doc) {
                 </div>` : ''}
 
                 <!-- Try it: send a live request from the browser -->
-                <div class="flex items-center gap-2 px-4 py-3 flex-wrap" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
+                <div class="api-viewer-tryit flex items-center gap-2 px-4 py-3 flex-wrap" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
                     <input id="api-tryit-baseurl" type="text" class="form-input text-xs font-mono flex-1" style="min-width:200px;" placeholder="https://api.example.com (base URL)" value="${escHtml(localStorage.getItem('docvault_api_tryit_baseurl') || API_TRYIT_MOCK_BASE)}" data-onchange="saveApiTryitBaseUrl(this.value)">
                     <button id="api-tryit-btn" class="btn-p text-xs py-1.5 px-3 shrink-0" data-onclick="tryApiRequest('${doc.id}')" title="Send a request using this base URL + the endpoint/headers/params/body above"><i class="fa-solid fa-play mr-1.5"></i>Try it</button>
                     <p class="text-[11px] w-full" style="color:var(--tx-d);">Prefilled with a built-in mock server (no real network call) so you can try this out. Point it at a real base URL to send an actual request.</p>
                 </div>
                 <div id="api-tryit-result" aria-live="polite" aria-atomic="true"></div>
 
-                <div class="p-5">
+                <div class="api-viewer-body p-5">
                     ${(headers.length || params.length) ? `
                     <!-- REQUEST section label -->
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Request</span>
-                        <div class="flex-1" style="height:1px;background:var(--brd);"></div>
+                    <div class="api-section-divider flex items-center gap-3 mb-3">
+                        <span class="api-section-title text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Request</span>
+                        <div class="api-section-line flex-1" style="height:1px;background:var(--brd);"></div>
                     </div>
 
                     <!-- Headers + Params -->
                     <div class="grid ${headers.length && params.length ? 'sm:grid-cols-2' : 'grid-cols-1'} gap-4 mb-5">
                         ${headers.length ? `
                         <div>
-                            <p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">Headers</p>
-                            <div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
+                            <p class="api-table-title text-[11px] font-medium mb-2" style="color:var(--tx-m);">Headers</p>
+                            <div class="api-table-box rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
                                 ${headers.map((h, i) => `
-                                <div class="flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};">
-                                    <span class="shrink-0 font-medium" style="color:var(--tx-d);min-width:100px;word-break:break-all;">${escHtml(h.key)}${h.req ? '<span style="color:#f97316;margin-left:2px;">*</span>' : ''}</span>
-                                    <span style="color:var(--tx);word-break:break-all;">${escHtml(h.value || '—')}</span>
+                                <div class="api-param-row-view flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};">
+                                    <span class="api-param-key shrink-0 font-medium" style="color:var(--tx-d);min-width:100px;word-break:break-all;">${escHtml(h.key)}${h.req ? '<span class="api-param-req" style="color:#f97316;margin-left:2px;">*</span>' : ''}</span>
+                                    <span class="api-param-val" style="color:var(--tx);word-break:break-all;">${escHtml(h.value || '—')}</span>
                                 </div>`).join('')}
                             </div>
                         </div>` : ''}
                         ${params.length ? `
                         <div>
-                            <p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">Query Parameters</p>
-                            <div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
+                            <p class="api-table-title text-[11px] font-medium mb-2" style="color:var(--tx-m);">Query Parameters</p>
+                            <div class="api-table-box rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
                                 ${params.map((p, i) => `
-                                <div class="flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};">
-                                    <span class="shrink-0 font-medium" style="color:var(--tx-d);min-width:100px;word-break:break-all;">${escHtml(p.key)}${p.req ? '<span style="color:#f97316;margin-left:2px;">*</span>' : ''}</span>
-                                    <span style="color:var(--tx);word-break:break-all;">${escHtml(p.value || '—')}</span>
+                                <div class="api-param-row-view flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${i % 2 === 0 ? 'var(--card)' : 'transparent'};">
+                                    <span class="api-param-key shrink-0 font-medium" style="color:var(--tx-d);min-width:100px;word-break:break-all;">${escHtml(p.key)}${p.req ? '<span class="api-param-req" style="color:#f97316;margin-left:2px;">*</span>' : ''}</span>
+                                    <span class="api-param-val" style="color:var(--tx);word-break:break-all;">${escHtml(p.value || '—')}</span>
                                 </div>`).join('')}
                             </div>
                         </div>` : ''}
@@ -349,24 +349,24 @@ function renderViewerCategory(doc) {
 
                     ${api.body ? `
                     ${!(headers.length || params.length) ? `
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Request</span>
-                        <div class="flex-1" style="height:1px;background:var(--brd);"></div>
+                    <div class="api-section-divider flex items-center gap-3 mb-3">
+                        <span class="api-section-title text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Request</span>
+                        <div class="api-section-line flex-1" style="height:1px;background:var(--brd);"></div>
                     </div>` : ''}
                     <div class="mb-5">
-                        <p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">Body</p>
+                        <p class="api-table-title text-[11px] font-medium mb-2" style="color:var(--tx-m);">Body</p>
                         <pre id="viewer-api-body" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-body', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(api.body)}</pre>
                     </div>` : ''}
 
                     <!-- RESPONSE section label -->
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Response</span>
-                        <div class="flex-1" style="height:1px;background:var(--brd);"></div>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
+                    <div class="api-section-divider flex items-center gap-3 mb-3">
+                        <span class="api-section-title text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Response</span>
+                        <div class="api-section-line flex-1" style="height:1px;background:var(--brd);"></div>
+                        <span class="api-viewer-status text-[10px] font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
                     </div>
                     ${api.response
                         ? `<pre id="viewer-api-response" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-response', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(api.response)}</pre>`
-                        : `<p class="text-xs py-2" style="color:var(--tx-d);">No response body defined.</p>`}
+                        : `<p class="api-empty-hint text-xs py-2" style="color:var(--tx-d);">No response body defined.</p>`}
                 </div>
             </div>`;
         })()}
