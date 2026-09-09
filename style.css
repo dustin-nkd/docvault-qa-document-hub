@@ -2535,6 +2535,13 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     font-weight: 600 !important;
 }
 
+.delete-target-name { color: #fff !important; background: rgba(244,63,94,.18); border: 1px solid rgba(244,63,94,.4); padding: 1px 7px; border-radius: 4px; display: inline-block; font-weight: 700; word-break: break-all; }
+.delete-warning-callout { color: var(--tx-m); background: rgba(244,63,94,.08); border: 1px solid rgba(244,63,94,.25); }
+[data-ui-style="bauhaus"] .delete-target-name { background: #FFF0F0 !important; color: #D02020 !important; border: 2px solid #121212 !important; box-shadow: 2px 2px 0 0 #121212 !important; border-radius: 0 !important; font-weight: 800 !important; }
+[data-ui-style="bauhaus"] .delete-warning-callout { background: #FFF0F0 !important; border: 2px solid #D02020 !important; border-radius: 0 !important; color: #121212 !important; font-weight: 600 !important; }
+[data-ui-style="bauhaus"] .delete-warning-callout em { color: #D02020 !important; font-weight: 800 !important; font-style: normal !important; }
+[data-ui-style="bauhaus"] #modal [role="dialog"] strong { color: #121212 !important; }
+
 /* Template Picker Cards */
 [data-ui-style="bauhaus"] .tpl-card {
     background: #FFFFFF !important;

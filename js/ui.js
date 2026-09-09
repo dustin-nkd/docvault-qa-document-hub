@@ -302,8 +302,8 @@ function showDeleteModal(id, isPermanent = false) {
                 <i class="fa-solid fa-trash text-rose-400"></i>
             </div>
             <h3 class="font-heading font-semibold text-lg mb-2">${titleStr}</h3>
-            <p class="text-sm ${sharedCount ? 'mb-3' : 'mb-6'}" style="color:var(--tx-m);">${warningStr} "<strong style="color:var(--tx);">${escHtml(doc.title)}</strong>"?</p>
-            ${sharedCount ? `<p class="text-xs mb-6 py-2 px-3 rounded-lg" style="color:var(--tx-m);background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.25);"><i class="fa-solid fa-link-slash mr-1.5" style="color:#f43f5e;"></i>${sharedCount} share link${sharedCount > 1 ? 's' : ''} will be revoked, so recipients lose access.</p>` : ''}
+            <p class="text-sm ${sharedCount ? 'mb-3' : 'mb-6'}" style="color:var(--tx-m);">${warningStr} <strong class="delete-target-name">${escHtml(doc.title)}</strong>?</p>
+            ${sharedCount ? `<p class="delete-warning-callout text-xs mb-6 py-2 px-3 rounded-lg"><i class="fa-solid fa-link-slash mr-1.5" style="color:#f43f5e;"></i>${sharedCount} share link${sharedCount > 1 ? 's' : ''} will be revoked, so recipients lose access.</p>` : ''}
             <div class="flex gap-3 justify-center">
                 <button class="btn-s" data-onclick="closeModal()">${t('cancel')}</button>
                 <button class="btn-d" data-onclick="${actionStr}">${btnStr}</button>

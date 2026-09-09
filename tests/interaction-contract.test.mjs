@@ -851,3 +851,20 @@ test('workspace deletion uses atomic Git Trees commit purge and shows a loading 
     assert.match(code, /window\._isDeletingWorkspace/, 'deletion must have concurrent click guard');
     assert.match(read('js/events.js'), /window\._isDeletingWorkspace/, 'Escape key must not dismiss modal during deletion');
 });
+
+test('delete confirmation modals use high-contrast target names and accessible warning callouts', () => {
+    const wsCode = read('js/workspaces.js');
+    const uiCode = read('js/ui.js');
+    const css = read('style.css');
+
+    assert.match(wsCode, /class=["'][^"']*delete-target-name[^"']*["']/, 'workspaces.js must use delete-target-name class');
+    assert.match(wsCode, /class=["'][^"']*delete-warning-callout[^"']*["']/, 'workspaces.js must use delete-warning-callout class');
+    assert.doesNotMatch(wsCode, /strong style=["']color:var\(--tx\);?["']/, 'workspaces.js must not force faint inline --tx color on target name');
+
+    assert.match(uiCode, /class=["'][^"']*delete-target-name[^"']*["']/, 'ui.js must use delete-target-name class in showDeleteModal');
+    assert.doesNotMatch(uiCode, /strong style=["']color:var\(--tx\);?["']/, 'ui.js must not force faint inline --tx color in showDeleteModal');
+
+    assert.match(css, /\.delete-target-name\s*\{[^}]*color:\s*#fff/i, 'style.css must style delete-target-name in high contrast');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.delete-target-name/, 'style.css must style delete-target-name for Bauhaus mode');
+    assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.delete-warning-callout/, 'style.css must style delete-warning-callout for Bauhaus mode');
+});
