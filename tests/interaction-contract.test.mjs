@@ -841,5 +841,13 @@ test('the Bauhaus UI style switcher and lock screen contracts remain intact', ()
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.linked-bug-item/, 'style.css must style linked-bug-item for Bauhaus mode');
 });
 
-
-
+test('workspace deletion uses atomic Git Trees commit purge and shows a loading spinner modal', () => {
+    const code = read('js/workspaces.js');
+    assert.match(code, /git\/trees/, 'workspace purge must use atomic Git Trees API');
+    assert.match(code, /git\/commits/, 'workspace purge must create atomic git commit');
+    assert.match(code, /git\/refs\/heads/, 'workspace purge must update branch ref atomically');
+    assert.match(code, /Deleting workspace/, 'deletion must render loading spinner with polite status');
+    assert.match(code, /ws-delete-loading-state/, 'loading state modal id must be present');
+    assert.match(code, /window\._isDeletingWorkspace/, 'deletion must have concurrent click guard');
+    assert.match(read('js/events.js'), /window\._isDeletingWorkspace/, 'Escape key must not dismiss modal during deletion');
+});
