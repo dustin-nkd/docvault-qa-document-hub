@@ -50,7 +50,11 @@ document.addEventListener('keydown', (e) => {
         const searchModal = document.getElementById('search-modal');
         if (searchModal && !searchModal.classList.contains('hidden')) { closeSearch(); return; }
         const modal = document.getElementById('modal');
-        if (modal && !modal.classList.contains('hidden')) { closeModal(); return; }
+        if (modal && !modal.classList.contains('hidden')) {
+            if (window._isDeletingWorkspace) return;
+            closeModal();
+            return;
+        }
         const menu = document.getElementById('doc-menu');
         if (menu) { menu.remove(); return; }
         if (state.sidebarOpen) { toggleSidebar(); return; }

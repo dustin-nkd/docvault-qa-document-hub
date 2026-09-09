@@ -112,7 +112,7 @@ window.renderWorkspaceSwitcher = function() {
 //   2. no GitHub push is still in flight — that push resolves its target paths
 //      and shas lazily, so letting it land after the switch would write this
 //      workspace's documents over the next workspace's shards.
-window.switchWorkspace = async function(id) {
+window.switchWorkspace = async function(id, options = {}) {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         toast('Workspaces aren’t available in demo mode.', 'info');
         return;
@@ -121,7 +121,10 @@ window.switchWorkspace = async function(id) {
         toast('That workspace no longer exists.', 'error');
         return;
     }
-    if (id === _activeWsId()) { closeModal(); return; }
+    if (id === _activeWsId()) {
+        if (!options.keepModal) closeModal();
+        return;
+    }
 
     if (state.view === 'editor' && state._editorSnapshot !== undefined
         && typeof _captureEditorFormState === 'function'
@@ -130,15 +133,17 @@ window.switchWorkspace = async function(id) {
         return;
     }
 
-    closeModal();
+    if (!options.keepModal) closeModal();
     const target = getWorkspaces().find(w => w.id === id);
-    toast(`Switching to ${target.name}…`, 'info');
+    if (!options.silent) toast(`Switching to ${target.name}…`, 'info');
 
-    try {
-        await _flushActiveWorkspaceSync();
-    } catch (e) {
-        console.warn('[workspaces] could not flush pending sync before switching', e);
-        toast('Changes in the previous workspace are still waiting to sync — they will retry when you return to it.', 'warning');
+    if (!options.skipFlush) {
+        try {
+            await _flushActiveWorkspaceSync();
+        } catch (e) {
+            console.warn('[workspaces] could not flush pending sync before switching', e);
+            if (!options.silent) toast('Changes in the previous workspace are still waiting to sync — they will retry when you return to it.', 'warning');
+        }
     }
 
     localStorage.setItem('docvault_active_workspace', id);
@@ -167,7 +172,7 @@ window.switchWorkspace = async function(id) {
     await hydrate();
     render();
     if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
-    toast(`Workspace: ${target.name}`, 'success');
+    if (!options.silent) toast(`Workspace: ${target.name}`, 'success');
 };
 
 // Waits for any in-flight push, then drains anything still queued, so nothing
@@ -252,16 +257,14 @@ window.confirmDeleteWorkspace = function(id) {
             </p>
             <div class="flex gap-3 justify-center">
                 <button class="btn-s" data-onclick="showWorkspaceManager()">Cancel</button>
-                <button class="btn-d" data-onclick="deleteWorkspace('${workspace.id}')">Delete workspace</button>
+                <button id="btn-confirm-delete-ws" class="btn-d" data-onclick="deleteWorkspace('${workspace.id}')">Delete workspace</button>
             </div>
         </div>
     `);
 };
 
-// Best-effort removal of the workspace's folder in the vault repo. The Contents
-// API has no folder delete, so the files are listed from the git tree and
-// deleted one by one. A failure here is reported, never fatal: the local data
-// is already gone and the user can retry from GitHub directly.
+// Best-effort removal of workspace remote data. Uses atomic Git Trees commit deletion
+// (single commit for all files, ~1-2s) and falls back to Contents API with a timeout.
 async function _purgeWorkspaceRemoteData(id) {
     let settings = null;
     try { settings = await GitHubSync.getSettings(); } catch (e) { settings = null; }
@@ -271,65 +274,91 @@ async function _purgeWorkspaceRemoteData(id) {
 
     const prefix = 'workspaces/' + id + '/';
     const paths = Object.keys(tree).filter(path => path.startsWith(prefix));
-    const headers = {
-        'Authorization': `token ${settings.token}`,
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json'
-    };
-    let deleted = 0;
-    let failed = 0;
-    for (const path of paths) {
-        try {
-            const res = await fetch(`https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${path}`, {
-                method: 'DELETE',
-                headers,
-                body: JSON.stringify({ message: `Delete workspace ${id}`, sha: tree[path], branch: settings.branch || 'main' })
-            });
-            if (res.ok || res.status === 404) deleted++;
-            else failed++;
-        } catch (e) {
-            failed++;
-            console.warn('[workspaces] could not delete', path, e);
+    if (!paths.length) return { deleted: 0, failed: 0 };
+
+    const headers = { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+    const branch = settings.branch || 'main';
+    const repoBase = `https://api.github.com/repos/${settings.owner}/${settings.repo}`;
+
+    try {
+        const refData = await (await fetch(`${repoBase}/git/refs/heads/${branch}`, { headers })).json();
+        const commitSha = refData.object?.sha || (Array.isArray(refData) ? refData[0]?.object?.sha : null);
+        const commitData = await (await fetch(`${repoBase}/git/commits/${commitSha}`, { headers })).json();
+        const treeEntries = paths.map(path => ({ path, mode: '100644', type: 'blob', sha: null }));
+        const newTree = await (await fetch(`${repoBase}/git/trees`, { method: 'POST', headers, body: JSON.stringify({ base_tree: commitData.tree.sha, tree: treeEntries }) })).json();
+        const newCommit = await (await fetch(`${repoBase}/git/commits`, { method: 'POST', headers, body: JSON.stringify({ message: `Delete workspace ${id}`, tree: newTree.sha, parents: [commitSha] }) })).json();
+        const updateRef = await fetch(`${repoBase}/git/refs/heads/${branch}`, { method: 'PATCH', headers, body: JSON.stringify({ sha: newCommit.sha }) });
+        if (updateRef.ok) return { deleted: paths.length, failed: 0 };
+    } catch (e) { console.warn('[workspaces] git tree purge fallback to contents', e); }
+
+    let deleted = 0, failed = 0;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        for (const path of paths) {
+            try {
+                const res = await fetch(`${repoBase}/contents/${path}`, { method: 'DELETE', headers, signal: controller.signal, body: JSON.stringify({ message: `Delete workspace ${id}`, sha: tree[path], branch }) });
+                if (res.ok || res.status === 404) deleted++; else failed++;
+            } catch (e) { failed++; if (controller.signal.aborted) break; }
         }
-    }
+    } finally { clearTimeout(timeout); }
     return { deleted, failed };
 }
 
 window.deleteWorkspace = async function(id) {
+    if (window._isDeletingWorkspace) return;
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
     if (id === WS_DEFAULT || !WS_ID_RE.test(id)) return;
-    closeModal();
 
-    // Leave first if it is the workspace being deleted — otherwise the app would
-    // be sitting on documents whose storage is about to disappear.
-    if (_activeWsId() === id) await switchWorkspace(WS_DEFAULT);
-
-    // Published links outlive local data, so revoke them before the registry
-    // that names them is purged.
-    if (typeof revokeSharesInWorkspace === 'function') {
-        try {
-            const { failed } = await revokeSharesInWorkspace(id);
-            if (failed) toast(`${failed} share link${failed > 1 ? 's' : ''} from that workspace could not be revoked.`, 'warning');
-        } catch (e) { console.warn('[workspaces] share revocation failed', e); }
-    }
+    window._isDeletingWorkspace = true;
+    showModal(`
+        <div class="text-center py-4" id="ws-delete-loading-state" role="status" aria-live="polite">
+            <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.12);"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-rose-400"></i></div>
+            <h3 class="font-heading font-semibold text-lg mb-2" style="color:var(--tx);">Deleting workspace…</h3>
+            <p class="text-sm max-w-sm mx-auto" style="color:var(--tx-m);">Cleaning up workspace data, share links, and remote files on GitHub.</p>
+        </div>
+    `);
+    const modalEl = document.getElementById('modal');
+    if (modalEl) modalEl.onclick = null;
 
     let remote = { deleted: 0, failed: 0 };
-    try { remote = await _purgeWorkspaceRemoteData(id); }
-    catch (e) { console.warn('[workspaces] remote purge failed', e); remote = { deleted: 0, failed: 1 }; }
+    try {
+        // Leave first if it is the workspace being deleted — otherwise the app would
+        // be sitting on documents whose storage is about to disappear.
+        if (_activeWsId() === id) {
+            await switchWorkspace(WS_DEFAULT, { keepModal: true, silent: true, skipFlush: true });
+        }
 
-    // Same cache-skew guard as _refreshWorkspaceRegistry(): a stale copy of
-    // this file paired with an older storage.js still has to be able to finish
-    // a deletion, just without the parts that need the shared registry.
-    if (typeof WorkspaceRegistry !== 'undefined') {
-        WorkspaceRegistry.purgeLocalData(id);
-        // A tombstone, not just a removal: another device that still lists this
-        // workspace would otherwise re-publish it and bring it straight back.
-        WorkspaceRegistry.recordDeletion(id);
+        // Published links outlive local data, so revoke them before the registry
+        // that names them is purged.
+        if (typeof revokeSharesInWorkspace === 'function') {
+            try {
+                const { failed } = await revokeSharesInWorkspace(id);
+                if (failed) toast(`${failed} share link${failed > 1 ? 's' : ''} from that workspace could not be revoked.`, 'warning');
+            } catch (e) { console.warn('[workspaces] share revocation failed', e); }
+        }
+
+        try { remote = await _purgeWorkspaceRemoteData(id); }
+        catch (e) { console.warn('[workspaces] remote purge failed', e); remote = { deleted: 0, failed: 1 }; }
+
+        // Same cache-skew guard as _refreshWorkspaceRegistry(): a stale copy of
+        // this file paired with an older storage.js still has to be able to finish
+        // a deletion, just without the parts that need the shared registry.
+        if (typeof WorkspaceRegistry !== 'undefined') {
+            WorkspaceRegistry.purgeLocalData(id);
+            // A tombstone, not just a removal: another device that still lists this
+            // workspace would otherwise re-publish it and bring it straight back.
+            WorkspaceRegistry.recordDeletion(id);
+        }
+        _saveWsRegistry(_wsRegistry().filter(w => w.id !== id));
+        _refreshWorkspaceRegistry();
+
+        renderWorkspaceSwitcher();
+    } finally {
+        window._isDeletingWorkspace = false;
+        closeModal();
     }
-    _saveWsRegistry(_wsRegistry().filter(w => w.id !== id));
-    _refreshWorkspaceRegistry();
 
-    renderWorkspaceSwitcher();
     if (remote.failed) toast(`Workspace deleted locally, but ${remote.failed} file${remote.failed > 1 ? 's' : ''} could not be removed from GitHub.`, 'warning');
     else toast('Workspace deleted.', 'success');
 };
