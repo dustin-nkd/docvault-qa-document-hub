@@ -251,8 +251,8 @@ window.confirmDeleteWorkspace = function(id) {
                 <i class="fa-solid fa-trash text-rose-400"></i>
             </div>
             <h3 class="font-heading font-semibold text-lg mb-2">Delete workspace</h3>
-            <p class="text-sm mb-3" style="color:var(--tx-m);">Permanently delete "<strong style="color:var(--tx);">${escHtml(workspace.name)}</strong>" and everything in it?</p>
-            <p class="text-xs mb-6 py-2 px-3 rounded-lg text-left" style="color:var(--tx-m);background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.25);">
+            <p class="text-sm mb-3" style="color:var(--tx-m);">Permanently delete <strong class="delete-target-name">${escHtml(workspace.name)}</strong> and everything in it?</p>
+            <p class="delete-warning-callout text-xs mb-6 py-2 px-3 rounded-lg text-left">
                 Every document, its trash, its activity log and its share links are removed from this device <em>and</em> from GitHub. This cannot be undone.
             </p>
             <div class="flex gap-3 justify-center">
