@@ -373,17 +373,136 @@ const GitHubSync = {
     get SHA_KEY() { return wsKey('github_data_sha'); },
     // Global: one token, one repo, shared by every workspace.
     SETTINGS_KEY: 'github_settings',
+    // The PAT cannot live in localStorage alone — a new browser or an incognito
+    // window starts empty and then cannot push. It also cannot travel in the
+    // plaintext vault config, because that file is in a public repo. This one
+    // global file holds the token encrypted with the master password. Not
+    // workspace-scoped: there is one token for every workspace.
+    SEALED_TOKEN_PATH: 'database/sealed-token.json',
+    SEALED_TOKEN_SHA_KEY: 'github_sealed_token_sha',
 
     _pwd() {
         return sessionStorage.getItem('docvault_pwd') || null;
     },
 
-    // Strip sensitive secrets (PAT) before pushing configuration to remote repository
+    // Strip sensitive secrets (PAT) before pushing configuration to remote repository.
+    // The token has its own encrypted file (see publishSealedToken). Putting it
+    // in cfg would publish it in plaintext whenever the vault has no password.
     _sanitizeRemoteConfig(cfg) {
         if (!cfg || typeof cfg !== 'object') return null;
         const sanitized = { ...cfg };
         delete sanitized.token;
         return sanitized;
+    },
+
+    // Public read of one repo file. No Authorization header: a fresh browser
+    // does not have a token yet, and a bad Authorization header makes GitHub
+    // reject even a public file.
+    async _fetchPublicContents(path) {
+        const { owner, repo, branch } = this.DEFAULTS;
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch || 'main'}`;
+        try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
+            if (!res.ok) return null;
+            const data = await res.json();
+            return { sha: data.sha || '', raw: this._b64decode(data.content || '') };
+        } catch (e) {
+            return null;
+        }
+    },
+
+    // Decrypt the sealed PAT. Returns '' when there is no master password, the
+    // file is missing, or the file is plaintext — a plaintext token in a public
+    // repo is never adopted.
+    async readSealedToken() {
+        const pwd = this._pwd();
+        if (!pwd) return '';
+        const file = await this._fetchPublicContents(this.SEALED_TOKEN_PATH);
+        if (!file || !file.raw) return '';
+        if (file.sha) {
+            try { localStorage.setItem(this.SEALED_TOKEN_SHA_KEY, file.sha); } catch (e) { /* sha is only an optimization */ }
+        }
+        if (!Vault.isEncrypted(file.raw)) return '';
+        try {
+            const payload = await Vault.decrypt(file.raw, pwd);
+            return (payload && typeof payload.token === 'string') ? payload.token : '';
+        } catch (e) {
+            return '';
+        }
+    },
+
+    // Encrypt the current PAT into the vault repo so another browser can restore
+    // it after the same master password is entered. No-op without a password:
+    // there is then no key that can hide the token from the public repo.
+    async publishSealedToken() {
+        const pwd = this._pwd();
+        const settings = await this.getSettings();
+        if (!pwd || !settings || !settings.token) return false;
+        try {
+            const remoteToken = await this.readSealedToken();
+            if (remoteToken === settings.token) return true;
+            const content = this._b64encode(await Vault.encrypt({ token: settings.token }, pwd));
+            const put = async (sha) => {
+                const body = {
+                    message: `DocVault seal token ${new Date().toISOString()}`,
+                    content,
+                    branch: settings.branch || 'main'
+                };
+                if (sha) body.sha = sha;
+                const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${this.SEALED_TOKEN_PATH}`;
+                return fetch(url, { method: 'PUT', headers: this._headers(settings.token), body: JSON.stringify(body) });
+            };
+            let sha = localStorage.getItem(this.SEALED_TOKEN_SHA_KEY) || '';
+            let res = await put(sha);
+            if (!res.ok && (res.status === 409 || res.status === 422 || !sha)) {
+                const file = await this._fetchPublicContents(this.SEALED_TOKEN_PATH);
+                if (file && file.sha && file.sha !== sha) res = await put(file.sha);
+            }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || `GitHub seal error: ${res.status}`);
+            }
+            const data = await res.json();
+            if (data.content && data.content.sha) localStorage.setItem(this.SEALED_TOKEN_SHA_KEY, data.content.sha);
+            return true;
+        } catch (e) {
+            console.warn('[GitHubSync] could not publish the sealed token:', e);
+            return false;
+        }
+    },
+
+    // Remove the sealed copy. Called while the local token is still available,
+    // because the delete needs it to authenticate. Returns true when there is
+    // nothing left to revoke.
+    async revokeSealedToken() {
+        const settings = await this.getSettings();
+        if (!settings || !settings.token) return true;
+        try {
+            const file = await this._fetchPublicContents(this.SEALED_TOKEN_PATH);
+            if (!file || !file.sha) {
+                localStorage.removeItem(this.SEALED_TOKEN_SHA_KEY);
+                return true;
+            }
+            const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/${this.SEALED_TOKEN_PATH}`;
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: this._headers(settings.token),
+                body: JSON.stringify({
+                    message: 'DocVault revoke sealed token',
+                    sha: file.sha,
+                    branch: settings.branch || 'main'
+                })
+            });
+            if (!res.ok && res.status !== 404) {
+                console.warn('[GitHubSync] could not revoke the sealed token:', res.status);
+                return false;
+            }
+            localStorage.removeItem(this.SEALED_TOKEN_SHA_KEY);
+            return true;
+        } catch (e) {
+            console.warn('[GitHubSync] could not revoke the sealed token:', e);
+            return false;
+        }
     },
 
     // Returns merged settings: hardcoded defaults + stored overrides (token from stored)
@@ -435,6 +554,7 @@ const GitHubSync = {
 
     clearSettings() {
         localStorage.removeItem(this.SETTINGS_KEY);
+        localStorage.removeItem(this.SEALED_TOKEN_SHA_KEY);
         this._resetRemoteCaches();
     },
 
@@ -619,11 +739,20 @@ const GitHubSync = {
         // Try without token first (public repo)
         let result = await this.fetchPublic(owner, repo, branch);
 
+        // A fresh browser has an empty localStorage. Restore the PAT from the
+        // sealed file once the master password is in this session. Never take
+        // a token out of the vault cfg: that object is stripped on the way up
+        // and, if one is present anyway, it arrived in a file the public can read.
+        let sealedToken = '';
+        if (!token && this._pwd()) sealedToken = await this.readSealedToken();
+        const authToken = token || sealedToken || '';
+
         // Fallback: try with token (private repo or auth required)
-        if (!result && token) {
-            const tempSettings = { owner, repo, branch, token };
+        if (!result && authToken) {
+            const tempSettings = { owner, repo, branch, token: authToken };
             await this.saveSettings(tempSettings);
             result = await this.pull();
+            if (!result) result = await this.pullSharded();
             if (!result) {
                 this.clearSettings();
                 return false;
@@ -634,8 +763,11 @@ const GitHubSync = {
 
         const { docs, cfg } = result;
 
-        // Use embedded cfg if available, else build minimal one from inputs (never adopt remote token)
-        const finalCfg = { ...(cfg || {}), owner: (cfg && cfg.owner) || owner, repo: (cfg && cfg.repo) || repo, branch: (cfg && cfg.branch) || branch, token: token || '' };
+        // Use embedded cfg if available, else build minimal one from inputs.
+        // authToken is the only token allowed in: the one this device was given,
+        // or the one just decrypted from the sealed file.
+        const safeCfg = this._sanitizeRemoteConfig(cfg) || {};
+        const finalCfg = { ...safeCfg, owner: (cfg && cfg.owner) || owner, repo: (cfg && cfg.repo) || repo, branch: (cfg && cfg.branch) || branch, token: authToken };
         await this.saveSettings(finalCfg);
 
         // Save docs locally
@@ -1159,8 +1291,13 @@ const GitHubSync = {
 
     async syncPush(docs, options = {}) {
         const isSharded = await this.isRemoteSharded();
-        if (isSharded) return this.pushSharded(docs, options.securityMeta);
-        return this.push(docs, true, options);
+        const result = isSharded
+            ? await this.pushSharded(docs, options.securityMeta)
+            : await this.push(docs, true, options);
+        // The device that already has the PAT seals it on the way out, so a
+        // browser that has never seen the Settings form can still restore it.
+        await this.publishSealedToken();
+        return result;
     }
 };
 

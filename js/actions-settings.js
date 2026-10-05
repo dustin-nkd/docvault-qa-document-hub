@@ -79,7 +79,7 @@ function _settingsTabSync() {
                 <div>
                     <label for="gh-token" class="block text-[11px] font-bold mb-1" style="color:var(--tx-m)">Personal Access Token (PAT)</label>
                     <input type="password" id="gh-token" class="form-input w-full py-1.5 px-3 text-xs" autocomplete="off" placeholder="github_pat_..." value="${escHtml(ghSettings.token || '')}">
-                    <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo.</p>
+                    <p class="text-[10px] mt-1" style="color:var(--tx-d)">Token requires <strong>Contents: Read & Write</strong> permission on the repo. With a Master Password set, it is sealed into the encrypted vault and restored after you unlock on another browser or an incognito window. Without a Master Password it stays on this browser only.</p>
                 </div>
                 <label class="flex items-start gap-2 cursor-pointer">
                     <input type="checkbox" id="gh-img-cdn" class="form-checkbox mt-0.5" ${imgCdnOn ? 'checked' : ''} data-onchange="toggleImageCdn(this)">
@@ -290,15 +290,19 @@ window.saveGitHubSettings = async function() {
     const d = GitHubSync.DEFAULTS;
     if (token) {
         await GitHubSync.saveSettings({ ...d, token });
-        if (window.LocalAuth && window.LocalAuth.isConfigured && !window.LocalAuth.isConfigured()) {
-            toast('Token saved unencrypted. Configure a Master Password in Security to protect it.', 'warning');
-        } else {
+        const hasPassword = !!(window.LocalAuth && window.LocalAuth.isConfigured && window.LocalAuth.isConfigured());
+        if (!hasPassword) {
+            toast('Token saved on this browser only. Set a Master Password to use it on another browser.', 'warning');
+        } else if (await GitHubSync.publishSealedToken()) {
             toast(t('ghSaveSuccess'), 'success');
+        } else {
+            toast('Token saved on this browser, but it could not be sealed for your other browsers.', 'warning');
         }
         closeModal();
     } else {
+        const revoked = await GitHubSync.revokeSealedToken();
         GitHubSync.clearSettings();
-        toast(t('ghCleared'), "info");
+        toast(revoked ? t('ghCleared') : 'Token removed on this browser. The sealed copy could not be removed, so other browsers may still restore it.', revoked ? 'info' : 'warning');
         closeModal();
     }
 };
