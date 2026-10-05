@@ -266,6 +266,40 @@ test('GitHubSync._sanitizeRemoteConfig strips token and remote payloads never ex
     }
 });
 
+function fakeGitHub() {
+    const files = new Map();
+    let sequence = 0;
+    const fetch = async (url, opts = {}) => {
+        const method = (opts.method || 'GET').toUpperCase();
+        const path = String(url).split('/contents/')[1].split('?')[0];
+        if (method === 'GET') {
+            const file = files.get(path);
+            if (!file) return { ok: false, status: 404, json: async () => ({}) };
+            return { ok: true, status: 200, json: async () => ({ content: file.content, sha: file.sha }) };
+        }
+        if (method === 'PUT') {
+            const body = JSON.parse(opts.body);
+            const existing = files.get(path);
+            if (existing && body.sha !== existing.sha) {
+                return { ok: false, status: 409, json: async () => ({ message: 'conflict' }) };
+            }
+            const sha = 'sha-' + (++sequence);
+            files.set(path, { content: body.content, sha });
+            return { ok: true, status: 201, json: async () => ({ content: { sha } }) };
+        }
+        if (method === 'DELETE') {
+            const body = JSON.parse(opts.body || '{}');
+            const existing = files.get(path);
+            if (!existing) return { ok: false, status: 404, json: async () => ({}) };
+            if (body.sha !== existing.sha) return { ok: false, status: 409, json: async () => ({ message: 'conflict' }) };
+            files.delete(path);
+            return { ok: true, status: 200, json: async () => ({}) };
+        }
+        return { ok: false, status: 400, json: async () => ({}) };
+    };
+    return { fetch, files };
+}
+
 test('GitHubSync.bootstrap never adopts token from remote configuration', async () => {
     const { api } = loadStorage();
     const remoteContent = {
@@ -282,6 +316,76 @@ test('GitHubSync.bootstrap never adopts token from remote configuration', async 
     const saved = await api.GitHubSync.getSettings();
     assert.equal(saved.token, 'my-local-token');
     assert.notEqual(saved.token, 'leaked-remote-token');
+});
+
+test('bootstrap leaves the token empty when the remote config token is plaintext', async () => {
+    const hub = fakeGitHub();
+    const { api } = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: 'test master password' }
+    });
+    api.GitHubSync.fetchPublic = async () => ({
+        docs: [{ id: 'd1', title: 'Doc' }],
+        cfg: { token: 'leaked-remote-token', owner: 'o', repo: 'r', branch: 'main' }
+    });
+    const ok = await api.GitHubSync.bootstrap('o', 'r', 'main');
+    assert.equal(ok, true);
+    assert.equal((await api.GitHubSync.getSettings()).token, '');
+});
+
+test('a sealed PAT is restored on a fresh browser and stays out of the public file', async () => {
+    const password = 'test master password';
+    const hub = fakeGitHub();
+    const origin = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: password }
+    });
+    await origin.api.GitHubSync.saveSettings({
+        owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main', token: 'ghp_secret_value'
+    });
+    assert.equal(await origin.api.GitHubSync.publishSealedToken(), true);
+    const stored = hub.files.get('database/sealed-token.json');
+    const cipher = origin.api.GitHubSync._b64decode(stored.content);
+    assert.equal(cipher.includes('ghp_secret_value'), false);
+    assert.equal(origin.api.Vault.isEncrypted(cipher), true);
+
+    const fresh = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: password }
+    });
+    fresh.api.GitHubSync.fetchPublic = async () => ({
+        docs: [{ id: 'd1', title: 'Doc' }],
+        cfg: { owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main', token: 'leaked-plaintext' }
+    });
+    assert.equal(await fresh.api.GitHubSync.bootstrap('dustin-nkd', 'docvault-assets', 'main'), true);
+    assert.equal((await fresh.api.GitHubSync.getSettings()).token, 'ghp_secret_value');
+});
+
+test('sealed token is not published when the vault has no master password', async () => {
+    const hub = fakeGitHub();
+    const { api } = loadStorage({ fetch: hub.fetch });
+    await api.GitHubSync.saveSettings({ owner: 'o', repo: 'r', branch: 'main', token: 'ghp_secret_value' });
+    assert.equal(await api.GitHubSync.publishSealedToken(), false);
+    assert.equal(hub.files.size, 0);
+});
+
+test('syncPush seals the saved token and revoke removes that file', async () => {
+    const password = 'test master password';
+    const hub = fakeGitHub();
+    const { api } = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: password }
+    });
+    await api.GitHubSync.saveSettings({ owner: 'o', repo: 'r', branch: 'main', token: 'ghp_from_sync' });
+    api.GitHubSync.isRemoteSharded = async () => false;
+    api.GitHubSync.push = async () => {};
+    await api.GitHubSync.syncPush([]);
+    const stored = hub.files.get('database/sealed-token.json');
+    const cipher = api.GitHubSync._b64decode(stored.content);
+    assert.equal(cipher.includes('ghp_from_sync'), false);
+    assert.equal((await api.Vault.decrypt(cipher, password)).token, 'ghp_from_sync');
+    assert.equal(await api.GitHubSync.revokeSealedToken(), true);
+    assert.equal(hub.files.has('database/sealed-token.json'), false);
 });
 
 test('LocalAuth.unlock automatically upgrades plaintext settings and workspace docs to Vault V2', async () => {

@@ -84,7 +84,7 @@ export function loadStorage(options = {}) {
         crypto: globalThis.crypto,
         btoa: globalThis.btoa,
         atob: globalThis.atob,
-        fetch: globalThis.fetch,
+        fetch: options.fetch || globalThis.fetch,
         setTimeout,
         clearTimeout,
         confirm: () => false
