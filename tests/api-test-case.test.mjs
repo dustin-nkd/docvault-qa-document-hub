@@ -69,3 +69,10 @@ test('API test markdown keeps the request, the checks, and escapes table cells',
     assert.match(md, /\| error\.code \| empty_cart \|/);
     assert.match(md, /\| a\\\|b \| x y \|/);
 });
+
+test('the API test method menu is not clipped inside the request bar', () => {
+    const source = fs.readFileSync(path.join(root, 'js/render-editor-categories.js'), 'utf8');
+    const bar = source.match(/<div class="apitc-request-bar[^"]*"/);
+    assert.ok(bar, 'the method and endpoint share the apitc-request-bar');
+    assert.doesNotMatch(bar[0], /overflow-hidden/);
+});
