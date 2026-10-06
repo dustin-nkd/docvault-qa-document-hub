@@ -4131,6 +4131,23 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     font-weight: 800 !important;
 }
 
+/* The method list hangs below a 120px control. overflow:hidden on that bar
+   clipped every option, so a new case stayed on GET. */
+.apitc-request-bar .custom-select-wrapper,
+.apitc-request-bar .form-select { height: 100%; }
+.apitc-request-bar .form-select {
+    border: 0;
+    border-radius: 8px 0 0 8px;
+    background-color: transparent;
+    box-shadow: none;
+}
+[data-ui-style="bauhaus"] .apitc-request-bar .form-select {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
 [data-ui-style="bauhaus"] .api-impact-editor {
     background: #FAF8F5 !important;
     border: 2px solid #121212 !important;

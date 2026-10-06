@@ -437,7 +437,7 @@ function renderEditorCategory(context) {
                 <label for="ed-apitc-precond" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcPrecond')}</label>
                 <textarea id="ed-apitc-precond" class="form-input" style="height:60px;" placeholder="${t('tcPrecondPl')}">${escHtml(tc.precond || '')}</textarea>
             </div>
-            <div class="flex items-stretch mb-4 rounded-lg overflow-hidden" style="border:1px solid var(--brd);background:var(--card);">
+            <div class="apitc-request-bar flex items-stretch mb-4 rounded-lg" style="border:1px solid var(--brd);background:var(--card);">
                 <div style="width:120px;flex-shrink:0;border-right:1px solid var(--brd);">
                     ${renderSelect('ed-apitc-method', API_HTTP_METHODS.map(m => ({value: m, label: m})), tc.method || 'GET', 'w-full font-mono font-bold text-sm', '', 'HTTP method')}
                 </div>
