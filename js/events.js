@@ -193,8 +193,10 @@ async function startApp() {
     // A PAT saved before sealed-token sync existed lives only in this browser.
     // Publish it once the vault is unlocked so the next browser can restore it.
     if (GitHubSync._pwd() && await GitHubSync.isConfigured()) {
-        try { await GitHubSync.publishSealedToken(); }
-        catch (e) { /* publishSealedToken already reports the failure */ }
+        let sealed = false;
+        try { sealed = await GitHubSync.publishSealedToken(); }
+        catch (e) { sealed = false; }
+        if (!sealed) toast('GitHub token is saved on this browser, but it could not be sealed for your other browsers.', 'warning');
     }
     updateSyncIndicator();
     // A previous push may have failed before this tab was closed. Retry immediately

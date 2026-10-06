@@ -333,6 +333,53 @@ test('bootstrap leaves the token empty when the remote config token is plaintext
     assert.equal((await api.GitHubSync.getSettings()).token, '');
 });
 
+test('bootstrap restores a PAT that was sealed inside the encrypted vault', async () => {
+    const password = 'test master password';
+    const hub = fakeGitHub();
+    const { api } = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: password }
+    });
+    const wrapper = {
+        docs: [{ id: 'd1', title: 'Doc' }],
+        cfg: { owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main', token: 'ghp_from_encrypted_cfg' },
+        deletedIds: []
+    };
+    const envelope = JSON.stringify({ v: await api.Vault.encrypt(wrapper, password) });
+    const b64 = btoa(unescape(encodeURIComponent(envelope)));
+    api.GitHubSync.fetchPublic = async () => api.GitHubSync._decode(b64);
+    assert.equal(await api.GitHubSync.bootstrap('dustin-nkd', 'docvault-assets', 'main'), true);
+    assert.equal((await api.GitHubSync.getSettings()).token, 'ghp_from_encrypted_cfg');
+});
+
+test('a sealed PAT wins over a token carried in the encrypted vault', async () => {
+    const password = 'test master password';
+    const hub = fakeGitHub();
+    const origin = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: password }
+    });
+    await origin.api.GitHubSync.saveSettings({
+        owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main', token: 'ghp_sealed_current'
+    });
+    assert.equal(await origin.api.GitHubSync.publishSealedToken(), true);
+
+    const fresh = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: password }
+    });
+    const wrapper = {
+        docs: [{ id: 'd1', title: 'Doc' }],
+        cfg: { owner: 'dustin-nkd', repo: 'docvault-assets', branch: 'main', token: 'ghp_old_cfg' },
+        deletedIds: []
+    };
+    const envelope = JSON.stringify({ v: await fresh.api.Vault.encrypt(wrapper, password) });
+    const b64 = btoa(unescape(encodeURIComponent(envelope)));
+    fresh.api.GitHubSync.fetchPublic = async () => fresh.api.GitHubSync._decode(b64);
+    assert.equal(await fresh.api.GitHubSync.bootstrap('dustin-nkd', 'docvault-assets', 'main'), true);
+    assert.equal((await fresh.api.GitHubSync.getSettings()).token, 'ghp_sealed_current');
+});
+
 test('a sealed PAT is restored on a fresh browser and stays out of the public file', async () => {
     const password = 'test master password';
     const hub = fakeGitHub();
@@ -386,6 +433,22 @@ test('syncPush seals the saved token and revoke removes that file', async () => 
     assert.equal((await api.Vault.decrypt(cipher, password)).token, 'ghp_from_sync');
     assert.equal(await api.GitHubSync.revokeSealedToken(), true);
     assert.equal(hub.files.has('database/sealed-token.json'), false);
+});
+
+test('syncPush still seals the token when the document push fails', async () => {
+    const password = 'test master password';
+    const hub = fakeGitHub();
+    const { api } = loadStorage({
+        fetch: hub.fetch,
+        sessionStorage: { docvault_pwd: password }
+    });
+    await api.GitHubSync.saveSettings({ owner: 'o', repo: 'r', branch: 'main', token: 'ghp_despite_push_failure' });
+    api.GitHubSync.isRemoteSharded = async () => false;
+    api.GitHubSync.push = async () => { throw new Error('push failed'); };
+    await assert.rejects(() => api.GitHubSync.syncPush([]), /push failed/);
+    const stored = hub.files.get('database/sealed-token.json');
+    const cipher = api.GitHubSync._b64decode(stored.content);
+    assert.equal((await api.Vault.decrypt(cipher, password)).token, 'ghp_despite_push_failure');
 });
 
 test('LocalAuth.unlock automatically upgrades plaintext settings and workspace docs to Vault V2', async () => {
