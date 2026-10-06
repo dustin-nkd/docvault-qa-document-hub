@@ -572,8 +572,10 @@ const GitHubSync = {
         };
     },
 
-    // Parse raw content string → {docs, cfg, deletedIds}
+    // Parse raw content string → {docs, cfg, deletedIds, vaultEncrypted}
     // Handles: new envelope {v, rb, hint}, old encrypted string, old plain JSON.
+    // vaultEncrypted is true only when the inner payload was ciphertext, so a
+    // token inside cfg was not readable by someone who merely downloaded the file.
     // Side effect: restores lock-screen security metadata from remote data.
     async _parseContent(content) {
         const pwd = this._pwd();
@@ -608,15 +610,16 @@ const GitHubSync = {
             LocalAuth.setHint(passwordHint);
         }
 
+        const vaultEncrypted = Vault.isEncrypted(vaultContent);
         let payload;
-        if (Vault.isEncrypted(vaultContent)) {
+        if (vaultEncrypted) {
             if (!pwd) throw new Error('Vault is locked');
             payload = await Vault.decrypt(vaultContent, pwd);
         } else {
             payload = JSON.parse(vaultContent);
         }
-        if (Array.isArray(payload)) return { docs: payload, cfg: null, deletedIds: [] }; // old format
-        return { docs: payload.docs || [], cfg: payload.cfg || null, deletedIds: payload.deletedIds || [] };
+        if (Array.isArray(payload)) return { docs: payload, cfg: null, deletedIds: [], vaultEncrypted }; // old format
+        return { docs: payload.docs || [], cfg: payload.cfg || null, deletedIds: payload.deletedIds || [], vaultEncrypted };
     },
 
     // Encode docs + cfg for GitHub API (base64 of UTF-8 file content).
@@ -740,12 +743,17 @@ const GitHubSync = {
         let result = await this.fetchPublic(owner, repo, branch);
 
         // A fresh browser has an empty localStorage. Restore the PAT from the
-        // sealed file once the master password is in this session. Never take
-        // a token out of the vault cfg: that object is stripped on the way up
-        // and, if one is present anyway, it arrived in a file the public can read.
+        // sealed file once the master password is in this session. If that file
+        // was never published, the legacy vault ciphertext still carries the
+        // token from before remote cfg was stripped. Accept that copy only when
+        // the payload was encrypted — a plaintext cfg.token is world-readable
+        // and must not be adopted.
         let sealedToken = '';
         if (!token && this._pwd()) sealedToken = await this.readSealedToken();
-        const authToken = token || sealedToken || '';
+        const encryptedCfgToken = (result && result.vaultEncrypted && result.cfg && typeof result.cfg.token === 'string')
+            ? result.cfg.token
+            : '';
+        const authToken = token || sealedToken || encryptedCfgToken || '';
 
         // Fallback: try with token (private repo or auth required)
         if (!result && authToken) {
@@ -765,7 +773,8 @@ const GitHubSync = {
 
         // Use embedded cfg if available, else build minimal one from inputs.
         // authToken is the only token allowed in: the one this device was given,
-        // or the one just decrypted from the sealed file.
+        // the one decrypted from the sealed file, or the one carried inside
+        // an encrypted vault payload.
         const safeCfg = this._sanitizeRemoteConfig(cfg) || {};
         const finalCfg = { ...safeCfg, owner: (cfg && cfg.owner) || owner, repo: (cfg && cfg.repo) || repo, branch: (cfg && cfg.branch) || branch, token: authToken };
         await this.saveSettings(finalCfg);
@@ -1290,14 +1299,17 @@ const GitHubSync = {
     },
 
     async syncPush(docs, options = {}) {
-        const isSharded = await this.isRemoteSharded();
-        const result = isSharded
-            ? await this.pushSharded(docs, options.securityMeta)
-            : await this.push(docs, true, options);
-        // The device that already has the PAT seals it on the way out, so a
-        // browser that has never seen the Settings form can still restore it.
-        await this.publishSealedToken();
-        return result;
+        try {
+            const isSharded = await this.isRemoteSharded();
+            const result = isSharded
+                ? await this.pushSharded(docs, options.securityMeta)
+                : await this.push(docs, true, options);
+            return result;
+        } finally {
+            // Seal even when the document push fails. A new browser needs the
+            // PAT before it can retry the documents themselves.
+            await this.publishSealedToken();
+        }
     }
 };
 
