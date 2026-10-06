@@ -35,6 +35,7 @@ function createDoc(cat) {
     state._newBugData = null;
     state._newTcData = null;
     state._newApiData = null;
+    state._newApiTcData = null;
     state._newRunData = null;
     state._newTcPlanData = null;
     state._newReleaseData = null;
@@ -77,7 +78,8 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
     const run = documents.find(d => d.id === runId);
     const tc = documents.find(d => d.id === tcId);
     if (!run || !tc) { toast('Test run or test case not found.', 'error'); return; }
-    const steps = (run.runData?.snapshot?.[tcId]) || tc.tcData?.steps || [];
+    const liveSteps = tc.category === 'apitest' ? tc.apiTcData?.steps : tc.tcData?.steps;
+    const steps = (run.runData?.snapshot?.[tcId]) || liveSteps || [];
     const step = steps[stepIdx];
     if (!step) { toast('Step not found.', 'error'); return; }
 
@@ -90,7 +92,7 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
     state._newTitle = `[BUG] ${tc.title} — Step ${stepIdx + 1} failed`;
     state._newSubfolder = '';
     state._newStatus = 'draft';
-    state._newTcData = null; state._newApiData = null; state._newRunData = null; state._newTcPlanData = null;
+    state._newTcData = null; state._newApiData = null; state._newApiTcData = null; state._newRunData = null; state._newTcPlanData = null;
     state._newBugData = {
         severity: 'Major', priority: 'P2', env: run.runData?.environment || '', browser: '', precond: '',
         // Repro steps = the test case's actions up to and including the failed step.
@@ -292,8 +294,9 @@ function _buildRunSnapshot(targetIds) {
     const snapshot = {};
     targetIds.forEach(id => {
         const tc = documents.find(d => d.id === id);
-        if (tc && tc.tcData && Array.isArray(tc.tcData.steps)) {
-            snapshot[id] = tc.tcData.steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+        const steps = tc?.category === 'apitest' ? tc.apiTcData?.steps : tc?.tcData?.steps;
+        if (tc && Array.isArray(steps)) {
+            snapshot[id] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
         }
     });
     return snapshot;
@@ -436,6 +439,7 @@ async function saveDoc() {
     let bugData = null;
     let tcData = null;
     let apiData = null;
+    let apiTcData = null;
     let runData = null;
     let envData = null;
     let releaseData = null;
@@ -555,6 +559,10 @@ ${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} |
 ${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${mdCell(p.key) || '-'} | ${mdCell(p.value) || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
 ${body ? `## ${t('apiBody')}\n\`\`\`json\n${body}\n\`\`\`\n` : ''}
 ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
+    } else if (cat === 'apitest') {
+        apiTcData = readApiTestCaseForm();
+        apiTcData.steps = buildApiTestSteps(apiTcData);
+        finalContent = apiTestCaseMarkdown(title, apiTcData);
     } else if (cat === 'testrun') {
         const checkboxes = document.querySelectorAll('.testrun-tc-cb:checked');
         const targetIds = Array.from(checkboxes).map(cb => cb.value);
@@ -645,7 +653,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     if (editingIdx !== -1) {
         const idx = editingIdx;
         DocHistory.save(documents[idx]);
-        documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
+        documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, apiTcData: apiTcData !== null ? apiTcData : documents[idx].apiTcData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
         ActivityLog.record('updated', documents[idx]);
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
@@ -656,7 +664,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         // documents[-1] (which previously produced a broken "?view=undefined" viewer).
         const revivedAt = Date.now();
         const revivedBugStatus = cat === 'bug' ? normalizeBugStatusValue(state.editingDoc.bugStatus) : undefined;
-        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
+        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
         documents.unshift(revived);
         toast('Original document was removed elsewhere — saved as a new copy.', 'info');
         state.editingDoc = { ...revived };
@@ -664,7 +672,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         state.category = cat;
     } else {
         const createdAt = Date.now();
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt, updatedAt: createdAt };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt, updatedAt: createdAt };
         documents.unshift(newDoc);
         ActivityLog.record('created', newDoc);
         toast(t('docCreated'), 'success');

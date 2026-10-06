@@ -117,6 +117,12 @@ window.syncEditorState = function() {
     let bugData = null;
     let tcData = null;
     let apiData = null;
+    let apiTcData = null;
+    // applyLinkedApiSpec writes the merged case, then re-renders. The spec's
+    // inputs are not in the DOM yet, so reading the form here would throw that
+    // copy away. The flag tells this pass to keep the stored case.
+    const apiTcAuthoritative = !!state._apiTcFormAuthoritative;
+    state._apiTcFormAuthoritative = false;
     if (cat === 'bug') {
         const previousBug = state.editingDoc?.bugData || state._newBugData || {};
         bugData = {
@@ -167,6 +173,13 @@ window.syncEditorState = function() {
             statusCode: document.getElementById('ed-api-status')?.value || '200',
             response: document.getElementById('ed-api-response')?.value || ''
         };
+    } else if (cat === 'apitest') {
+        if (apiTcAuthoritative) {
+            apiTcData = (state.editingDoc ? state.editingDoc.apiTcData : state._newApiTcData) || readApiTestCaseForm();
+        } else {
+            apiTcData = readApiTestCaseForm();
+            apiTcData.steps = buildApiTestSteps(apiTcData);
+        }
     }
 
     if (state.editingDoc) {
@@ -178,6 +191,7 @@ window.syncEditorState = function() {
         if (cat === 'bug') state.editingDoc.bugData = bugData;
         if (cat === 'testcases') state.editingDoc.tcData = tcData;
         if (cat === 'api') state.editingDoc.apiData = apiData;
+        if (cat === 'apitest') state.editingDoc.apiTcData = apiTcData;
     } else {
         state._newTitle = title;
         state._newSubfolder = subfolder;
@@ -187,6 +201,7 @@ window.syncEditorState = function() {
         state._newBugData = bugData;
         state._newTcData = tcData;
         state._newApiData = apiData;
+        state._newApiTcData = apiTcData;
     }
 };
 
@@ -423,8 +438,9 @@ function _getDashboardMetrics(docs) {
         .filter(b => b.bugData?.severity === 'Critical' && (now - (b.createdAt || 0)) > SLA_MS)
         .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
-    // Coverage by module — test cases whose subfolder = module, covered = included in any run
-    const tcs = docs.filter(d => d.category === 'testcases');
+    // Coverage by module — test cases whose subfolder = module, covered = included in any run.
+    // API test cases count here too: a run can target them the same way.
+    const tcs = docs.filter(d => d.category === 'testcases' || d.category === 'apitest');
     const coveredIds = new Set(runs.flatMap(r => r.runData?.targetIds || []));
     const modMap = {};
     tcs.forEach(tc => {
@@ -856,6 +872,9 @@ function _traceRunOutcome(run, tcId) {
 function _normImpactModule(value) {
     return String(value || '').trim().toLocaleLowerCase();
 }
+function _caseModule(tc) {
+    return (tc?.category === 'apitest' ? tc.apiTcData?.module : tc.tcData?.module) || '';
+}
 
 // An explicit decision on the run wins. The title/tag substring stays only as a
 // fallback for runs saved before the Test Run editor had the checkbox -- it is a
@@ -876,7 +895,7 @@ function _buildApiImpacts(apis, testCases, runs) {
     ).map(api => {
         const moduleKey = _normImpactModule(api.apiData?.module);
         const matchedTests = moduleKey
-            ? testCases.filter(tc => _normImpactModule(tc.tcData?.module) === moduleKey)
+            ? testCases.filter(tc => _normImpactModule(_caseModule(tc)) === moduleKey)
             : [];
         const executions = matchedTests.map(tc => {
             const run = runs.find(candidate =>
@@ -962,7 +981,7 @@ function _renderImpactPanel(items, docButton) {
 
 function renderTraceability() {
     const activeDocs = documents.filter(doc => doc.status !== 'deleted');
-    const testCases = activeDocs.filter(doc => doc.category === 'testcases')
+    const testCases = activeDocs.filter(doc => doc.category === 'testcases' || doc.category === 'apitest')
         .sort((a, b) => a.title.localeCompare(b.title));
     const runs = activeDocs.filter(doc => doc.category === 'testrun')
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -1048,7 +1067,7 @@ function renderTraceability() {
                         ? `<div class="trace-cell-stack">${row.relatedReleases.slice(0, 2).map(release => docButton(release)).join('')}${row.relatedReleases.length > 2 ? `<span class="trace-muted">+${row.relatedReleases.length - 2}</span>` : ''}</div>`
                         : `<span class="trace-muted">${t('traceNoRelease')}</span>`;
                     return `<tr class="trace-row is-${row.stateName}">
-                        <td><div class="trace-tc">${docButton(row.tc)}<span>${escHtml(row.tc.tcData?.module || '')}</span></div></td>
+                        <td><div class="trace-tc">${docButton(row.tc)}<span>${escHtml(_caseModule(row.tc))}</span></div></td>
                         <td>${execution}</td>
                         <td>${bugCell}</td>
                         <td>${row.latestRun?.runData?.environment ? `<span class="trace-env">${escHtml(row.latestRun.runData.environment)}</span>` : '<span class="trace-muted">—</span>'}</td>

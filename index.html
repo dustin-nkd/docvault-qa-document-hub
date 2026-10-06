@@ -46,6 +46,7 @@
             --c-tp: #3b82f6;
             --c-mtg: #f97316;
             --c-api: #ec4899;
+            --c-apitest: #38bdf8;
             --c-cred: #eab308;
             --c-testrun: #6366f1;
             --c-rel: #a855f7;
@@ -94,6 +95,7 @@
         .cat-testplan { background: rgba(59,130,246,0.12); color: var(--c-tp); }
         .cat-meeting { background: rgba(249,115,22,0.12); color: var(--c-mtg); }
         .cat-api { background: rgba(236,72,153,0.12); color: var(--c-api); }
+        .cat-apitest { background: rgba(56,189,248,0.12); color: var(--c-apitest); }
         .cat-credential { background: rgba(234,179,8,0.12); color: var(--c-cred); }
         .cat-environment { background: rgba(6,182,212,0.12); color: var(--c-env); }
         .cat-testrun { background: rgba(99,102,241,0.12); color: var(--c-testrun); }
@@ -561,6 +563,9 @@
                 </div>
                 <div class="nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="documents" data-cat="api" data-onclick="navigate('documents','api')">
                     <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-api);"></span><span>API Specs</span><span class="count ml-auto" id="cnt-api">0</span>
+                </div>
+                <div class="nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="documents" data-cat="apitest" data-onclick="navigate('documents','apitest')">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-apitest);"></span><span>API Tests</span><span class="count ml-auto" id="cnt-apitest">0</span>
                 </div>
                 <div class="nav-item flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm" style="color:var(--tx-m);" data-view="documents" data-cat="credential" data-onclick="navigate('documents','credential')">
                     <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-cred);"></span><span>Credentials</span><span class="count ml-auto" id="cnt-credential">0</span>

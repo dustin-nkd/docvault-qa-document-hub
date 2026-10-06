@@ -93,6 +93,22 @@ const STRINGS = {
     apiKey: "Key",
     apiValue: "Value",
     apiRequired: "Required",
+    apitest: "API Tests",
+    apiTcLinked: "API Spec",
+    apiTcNoSpec: "No linked spec",
+    apiTcScenario: "Scenario",
+    apiTcPositive: "Positive",
+    apiTcNegative: "Negative",
+    apiTcAuth: "Auth",
+    apiTcBoundary: "Boundary",
+    apiTcContract: "Contract",
+    apiTcPriority: "Priority",
+    apiTcPath: "Path parameters",
+    apiTcChecks: "Checks",
+    apiTcCheckPath: "JSON path",
+    apiTcExpectedStatus: "Expected status",
+    apiTcExpectedBody: "Expected body",
+    apiTcStepHint: "Saving turns this request and the expected result into one step a test run can mark pass or fail.",
     dashboard: "Dashboard",
     categories: "Categories",
     documents: "Documents",
@@ -364,6 +380,7 @@ const CAT_META = {
     bug: { get label() { return t('bug'); }, get labelPlural() { return t('bug') + 's'; }, icon: 'fa-bug', color: 'var(--c-bug)', cls: 'cat-bug' },
     testplan: { get label() { return t('testplan'); }, get labelPlural() { return t('testplan') + 's'; }, icon: 'fa-clipboard-list', color: 'var(--c-tp)', cls: 'cat-testplan' },
     api: { label: 'API Specs', labelPlural: 'API Specs', icon: 'fa-server', color: 'var(--c-api)', cls: 'cat-api' },
+    apitest: { get label() { return t('apitest'); }, get labelPlural() { return t('apitest'); }, icon: 'fa-vial', color: 'var(--c-apitest)', cls: 'cat-apitest' },
     credential: { label: 'Credentials', labelPlural: 'Credentials', icon: 'fa-key', color: 'var(--c-cred)', cls: 'cat-credential' },
     environment: { label: 'Environments', labelPlural: 'Environments', icon: 'fa-network-wired', color: 'var(--c-env)', cls: 'cat-environment' },
     testrun: { get label() { return t('testrun'); }, get labelPlural() { return t('testrun'); }, icon: 'fa-play-circle', color: 'var(--c-testrun)', cls: 'cat-testrun' },
@@ -1008,13 +1025,34 @@ const GUEST_DEMO_DOCS = (() => {
         content: '## Baseline\nStable regression baseline before the Checkout reliability work.', createdAt: days(12), updatedAt: days(8)
     };
 
+    const apiTcOrder = {
+        id: 'gd_apitest_order', title: 'POST /api/v1/orders — order is confirmed', category: 'apitest',
+        subfolder: 'Orders Service', tags: ['orders', 'api'], status: 'published', favorite: false,
+        apiTcData: {
+            linkedApiId: apiOrders.id, module: 'Checkout', scenario: 'positive', priority: 'P1',
+            precond: 'A shopper is signed in and the cart has one in-stock item.',
+            method: 'POST', endpoint: '/api/v1/orders', pathParams: [], query: [],
+            headers: [{ key: 'Authorization', value: 'Bearer {{token}}' }, { key: 'Content-Type', value: 'application/json' }],
+            body: '{\n  "items": [{ "sku": "TSHIRT-M-BLK", "qty": 2 }],\n  "paymentMethod": "credit_card"\n}',
+            expectedStatus: '201',
+            expectedBody: '{\n  "orderId": "ord_5521",\n  "status": "confirmed",\n  "total": 458000\n}',
+            checks: [{ path: 'status', expected: 'confirmed' }, { path: 'orderId', expected: '' }],
+            steps: [{
+                action: 'Send POST /api/v1/orders with headers Authorization, Content-Type; the saved request body.',
+                expected: 'Status 201. response body matches the expected sample. status = confirmed. orderId is present'
+            }]
+        },
+        content: '# POST /api/v1/orders — order is confirmed\n\n**Scenario:** positive | **Priority:** P1\n**Module:** Checkout\n**Request:** `POST /api/v1/orders`\n**Expected status:** `201`\n',
+        createdAt: days(4), updatedAt: days(1)
+    };
+
     return [
         runbook1, knowledge1, knowledge2,
         tcLogin, tcCheckout, tcSearch,
         ...tasks,
         bug1, bug2, bug3, bug4, bug5, bug6,
         testplan1,
-        apiUsers, apiOrders,
+        apiUsers, apiOrders, apiTcOrder,
         credAdmin, credPayment,
         envStaging, envProd,
         runS21, runS22, runS23, runSprint,

@@ -1776,6 +1776,9 @@ const DocStorage = {
                 cleanArr(d.releaseData, 'linkedEnvs');
             } else if (d.category === 'environment' && d.envData) {
                 cleanArr(d.envData, 'linkedCreds');
+            } else if (d.category === 'apitest' && d.apiTcData && d.apiTcData.linkedApiId && isOrphan(d.apiTcData.linkedApiId)) {
+                d.apiTcData.linkedApiId = '';
+                changed = true;
             } else if (d.category === 'bug' && d.bugData) {
                 if (isOrphan(d.bugData.linkedTc)) { d.bugData.linkedTc = ''; changed = true; }
                 if (isOrphan(d.bugData.foundInTc)) { delete d.bugData.foundInTc; changed = true; }
