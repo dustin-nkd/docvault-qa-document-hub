@@ -16,6 +16,7 @@ function renderEditor() {
     const bugData = isEdit ? doc.bugData : state._newBugData;
     const tcData = isEdit ? doc.tcData : state._newTcData;
     const apiData = isEdit ? doc.apiData : state._newApiData;
+    const apiTcData = isEdit ? doc.apiTcData : state._newApiTcData;
     const runData = isEdit ? doc.runData : state._newRunData;
     const envData = isEdit ? doc.envData : state._newEnvData;
     const releaseData = isEdit ? doc.releaseData : state._newReleaseData;
@@ -70,7 +71,7 @@ function renderEditor() {
         </div>
 
         ${renderEditorCategory({
-            doc, isEdit, category, content, bugData, tcData, apiData,
+            doc, isEdit, category, content, bugData, tcData, apiData, apiTcData,
             runData, envData, releaseData, releasePolicy, tcPlanData, bugDefaultSla
         })}
         <div class="flex items-center gap-3 mt-5">
@@ -118,12 +119,14 @@ window.changeEditorCat = function(cat) {
         if (cat === 'bug' && !state.editingDoc.bugData) state.editingDoc.bugData = {};
         if (cat === 'testcases' && !state.editingDoc.tcData) state.editingDoc.tcData = {};
         if (cat === 'api' && !state.editingDoc.apiData) state.editingDoc.apiData = {};
+        if (cat === 'apitest' && !state.editingDoc.apiTcData) state.editingDoc.apiTcData = {};
     } else {
         state._newCat = cat;
         state._newTitle = document.getElementById('ed-title')?.value || '';
         state._newSubfolder = document.getElementById('ed-subfolder')?.value || '';
         if (cat === 'testcases' && !state._newTcData) state._newTcData = {};
         if (cat === 'api' && !state._newApiData) state._newApiData = {};
+        if (cat === 'apitest' && !state._newApiTcData) state._newApiTcData = {};
     }
     render();
     setTimeout(() => {

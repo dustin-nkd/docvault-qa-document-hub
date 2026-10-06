@@ -201,13 +201,16 @@ function _buildSharePayload(doc) {
         : [];
     const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
         ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
-              .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, content: d.content, tags: d.tags || [] }))
+              .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, apiTcData: d.apiTcData, content: d.content, tags: d.tags || [] }))
+        : doc.category === 'apitest' && doc.apiTcData?.linkedApiId
+        ? documents.filter(d => d.id === doc.apiTcData.linkedApiId && d.category === 'api' && d.status !== 'deleted')
+            .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, apiData: d.apiData, content: d.content, tags: d.tags || [] }))
         : doc.category === 'environment' && doc.envData?.linkedCreds?.length
         ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
               .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
         : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
         ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
-              .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: _stripEnvSecrets(d.envData), tcData: d.tcData }))
+              .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: _stripEnvSecrets(d.envData), tcData: d.tcData, apiTcData: d.apiTcData }))
         : [];
     return {
         title: doc.title, category: doc.category, content: doc.content,
@@ -215,7 +218,7 @@ function _buildSharePayload(doc) {
         envData: _stripEnvSecrets(doc.envData),
         runData: doc.runData,
         releaseData: doc.releaseData,
-        tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData,
+        tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData, apiTcData: doc.apiTcData,
         tcPlanData: doc.tcPlanData,
         _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
     };

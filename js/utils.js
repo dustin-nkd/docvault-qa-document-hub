@@ -330,3 +330,60 @@ function uint8ToBase64(bytes) {
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     return btoa(binary);
 }
+
+// One executable step for a test run. The structured request stays on the case;
+// the run only knows how to mark an action and an expected result.
+function buildApiTestSteps(data) {
+    const d = data || {};
+    const method = d.method || 'GET';
+    const endpoint = d.endpoint || '/';
+    const detail = [];
+    const named = (rows) => (rows || []).filter(row => row && String(row.key || '').trim());
+    const path = named(d.pathParams);
+    const query = named(d.query);
+    const headers = named(d.headers);
+    if (path.length) detail.push('path ' + path.map(row => row.key + '=' + (row.value || '')).join(', '));
+    if (query.length) detail.push('query ' + query.map(row => row.key + '=' + (row.value || '')).join(', '));
+    if (headers.length) detail.push('headers ' + headers.map(row => row.key).join(', '));
+    if (String(d.body || '').trim()) detail.push('the saved request body');
+    const action = 'Send ' + method + ' ' + endpoint + (detail.length ? ' with ' + detail.join('; ') : '') + '.';
+    const expected = [];
+    if (d.expectedStatus) expected.push('Status ' + d.expectedStatus);
+    if (String(d.expectedBody || '').trim()) expected.push('response body matches the expected sample');
+    (d.checks || []).forEach(check => {
+        const pathName = String(check && check.path || '').trim();
+        if (!pathName) return;
+        const value = String(check.expected || '').trim();
+        expected.push(value ? pathName + ' = ' + value : pathName + ' is present');
+    });
+    return [{ action, expected: expected.join('. ') || 'Response matches this case.' }];
+}
+
+function _apiTestCell(value) {
+    return String(value || '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+}
+
+function apiTestCaseMarkdown(title, data) {
+    const d = data || {};
+    const table = (heading, rows) => {
+        const filled = (rows || []).filter(row => row && (String(row.key || '').trim() || String(row.value || '').trim()));
+        if (!filled.length) return '';
+        return '## ' + heading + '\n| Key | Value |\n|---|---|\n' + filled.map(row => '| ' + _apiTestCell(row.key) + ' | ' + _apiTestCell(row.value) + ' |').join('\n') + '\n';
+    };
+    const parts = [
+        '# ' + (title || 'API Test'),
+        '',
+        '**Scenario:** ' + (d.scenario || 'positive') + ' | **Priority:** ' + (d.priority || 'P2'),
+        d.module ? '**Module:** ' + d.module : '',
+        '**Request:** `' + (d.method || 'GET') + ' ' + (d.endpoint || '/') + '`',
+        '**Expected status:** `' + (d.expectedStatus || '') + '`',
+        d.precond ? '\n## Pre-conditions\n' + d.precond + '\n' : '',
+        table('Path parameters', d.pathParams),
+        table('Query', d.query),
+        table('Headers', d.headers),
+        String(d.body || '').trim() ? '## Request body\n```json\n' + d.body + '\n```\n' : '',
+        String(d.expectedBody || '').trim() ? '## Expected body\n```json\n' + d.expectedBody + '\n```\n' : '',
+        table('Checks', (d.checks || []).map(check => ({ key: check.path, value: check.expected })))
+    ];
+    return parts.filter(part => part !== '').join('\n');
+}

@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v55'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v56'/);
     assert.match(read('sw.js'), /'\.\/js\/workspaces\.js'/, 'the workspace module must be cached in the app shell');
 });
 
@@ -619,7 +619,7 @@ test('module is offered as a vocabulary instead of being retyped from memory', (
     // release quality scorecard groups by it. Both compare normalized strings, so a
     // typo on either side silently reports a coverage gap that does not exist.
     const editors = read('js/render-editor-categories.js');
-    for (const id of ['ed-tc-module', 'ed-api-module']) {
+    for (const id of ['ed-tc-module', 'ed-api-module', 'ed-apitc-module']) {
         const input = editors.match(new RegExp(`<input id="${id}"[^>]*>`));
         assert.ok(input, id + ' input not found');
         assert.match(input[0], /list="module-vocab"/,
@@ -645,12 +645,13 @@ test('the module vocabulary collects both sides of the join and drops deleted do
         { status: 'published', apiData: { module: '  Authentication  ' } },
         { status: 'deleted', tcData: { module: 'Ghost' } },
         { status: 'published', tcData: { module: '' } },
+        { status: 'published', apiTcData: { module: 'Payments' } },
         { status: 'published' }
     ];
     const escHtml = (s) => String(s ?? '');
     const vocabulary = new Function('documents', 'escHtml',
         body + '\nreturn _moduleVocabulary();')(documents, escHtml);
-    assert.deepEqual(vocabulary, ['Authentication', 'Checkout'],
+    assert.deepEqual(vocabulary, ['Authentication', 'Checkout', 'Payments'],
         'the vocabulary must be de-duplicated case-insensitively, trimmed and sorted');
 });
 

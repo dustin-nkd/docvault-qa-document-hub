@@ -159,6 +159,34 @@ test('release quality score remains stable across pass, execution, coverage, and
     ]);
 });
 
+test('release quality counts an API test case by its module and generated step', () => {
+    const { api } = loadState();
+    const data = fixture();
+    const apiCase = {
+        id: 'tc-api-order',
+        category: 'apitest',
+        status: 'published',
+        apiTcData: { module: 'Checkout', steps: [{ action: 'Send POST /api/v1/orders.' }] }
+    };
+    data.run.runData.targetIds = ['tc-checkout', 'tc-api-order'];
+    data.run.runData.snapshot['tc-api-order'] = [{}];
+    data.run.runData.results['tc-api-order'] = { 0: 'pass' };
+    const quality = api.calculateReleaseQuality(
+        data.release,
+        [data.checkout, data.auth, apiCase, data.run, data.majorBug, data.closedCritical]
+    );
+    assert.equal(quality.totalCases, 3);
+    assert.equal(quality.targetedCases, 2);
+    assert.equal(quality.passRate, 67);
+    assert.equal(quality.execution, 100);
+    assert.equal(quality.coverage, 67);
+    assert.equal(quality.score, 74);
+    assert.deepEqual(toPlain(quality.modules.map(item => ({ name: item.name, score: item.score }))), [
+        { name: 'Auth', score: 20 },
+        { name: 'Checkout', score: 79 }
+    ]);
+});
+
 test('stored release quality snapshot wins over live recalculation', () => {
     const { api } = loadState();
     const snapshot = { score: 88, modules: [], capturedAt: 1234 };

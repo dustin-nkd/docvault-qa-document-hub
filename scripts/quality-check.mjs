@@ -57,7 +57,9 @@ const maintainabilityBudgets = {
     'js/actions-sharing.js': 420,
     'js/actions-imports.js': 650,
     'js/actions-settings.js': 460,
-    'js/actions-documents.js': 750,
+    // Raised from 750 so saving an API test case can rebuild its runnable step
+    // in the same save path as the other category payloads.
+    'js/actions-documents.js': 753,
     // The largest renderer in the app: dashboard, document list, both Kanban
     // boards, traceability and the activity timeline. Splitting it would break
     // the rule that a caller and its markup ship in one file (see the
@@ -69,13 +71,16 @@ const maintainabilityBudgets = {
     // to live beside the markup that declares it rather than in a separate
     // script a cached shell might not have loaded.
     'js/render-editor.js': 500,
-    // Raised from 720 for the module vocabulary and the regression-run checkbox.
-    // Both are joins the analytics read as business rules, so the helper that
-    // builds the vocabulary has to ship in the same file as the inputs that
-    // declare it -- splitting it back out is what the cache-skew rule forbids.
-    'js/render-editor-categories.js': 740,
+    // Raised from 720 for the module vocabulary and the regression-run checkbox,
+    // then to 921 for the API test case form. The spec link, request, expected
+    // result and the copy-from-spec behavior are one editor, so they stay in
+    // this file with the other category forms.
+    'js/render-editor-categories.js': 921,
     'js/render-viewer.js': 150,
-    'js/render-viewer-categories.js': 850,
+    // Raised from 850 for the API test case viewer. It has to ship beside the
+    // other category viewers so a cached shell cannot pair an old viewer with
+    // the new case shape.
+    'js/render-viewer-categories.js': 868,
     'js/actions-focus.js': 240,
     // Raised from 380 for registry sync. The data half lives in storage.js next
     // to the GitHub plumbing it needs; what stays here is the UI reaction to a

@@ -134,6 +134,55 @@ function renderReleaseQualityScorecard(release) {
     </section>`;
 }
 
+function _liveCaseSteps(tc) {
+    const steps = tc?.category === 'apitest' ? tc.apiTcData?.steps : tc?.tcData?.steps;
+    return Array.isArray(steps) ? steps : [];
+}
+
+function renderApiTestViewer(doc) {
+    const tc = doc.apiTcData || {};
+    const method = tc.method || 'GET';
+    const methodColor = { GET: '#10b981', POST: '#6366f1', PUT: '#f97316', PATCH: '#f59e0b', DELETE: '#ef4444' }[method] || '#60a5fa';
+    const statusCode = String(tc.expectedStatus || '');
+    const statusNum = parseInt(statusCode, 10);
+    const statusColor = statusNum < 300 ? '#10b981' : statusNum < 400 ? '#60a5fa' : statusNum < 500 ? '#f97316' : '#ef4444';
+    const scenarioLabels = { positive: t('apiTcPositive'), negative: t('apiTcNegative'), auth: t('apiTcAuth'), boundary: t('apiTcBoundary'), contract: t('apiTcContract') };
+    const spec = tc.linkedApiId ? documents.find(item => item.id === tc.linkedApiId && item.status !== 'deleted') : null;
+    const filled = list => (list || []).filter(row => row && String(row.key || '').trim());
+    const table = (title, list) => {
+        const rows = filled(list);
+        if (!rows.length) return '';
+        return `<div><p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">${title}</p><div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">${rows.map((row, index) => `<div class="flex items-baseline gap-3 px-3 py-2 font-mono text-xs" style="background:${index % 2 ? 'transparent' : 'var(--card)'};"><span class="shrink-0 font-medium" style="color:var(--tx-d);min-width:96px;word-break:break-all;">${escHtml(row.key)}</span><span style="color:var(--tx);word-break:break-all;">${escHtml(row.value || '—')}</span></div>`).join('')}</div></div>`;
+    };
+    const checks = (tc.checks || []).filter(check => check && String(check.path || '').trim()).map(check => ({
+        key: check.path,
+        value: String(check.expected || '').trim() ? check.expected : 'present'
+    }));
+    const blocks = [table(t('apiTcPath'), tc.pathParams), table(t('apiParams'), tc.query), table(t('apiHeaders'), tc.headers), table(t('apiTcChecks'), checks)].filter(Boolean);
+    const step = (tc.steps || [])[0] || {};
+    const pre = value => `<pre class="text-xs p-3 rounded-lg overflow-x-auto" style="background:var(--card);border:1px solid var(--brd);color:var(--tx);white-space:pre-wrap;word-break:break-all;margin:0;">${escHtml(value)}</pre>`;
+    return `<div class="api-viewer-card mb-6 rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+        <div class="flex items-center gap-3 px-4 py-3" style="background:var(--card);border-bottom:1px solid var(--brd);">
+            <span class="text-xs font-bold px-2.5 py-1 rounded font-mono shrink-0" style="background:${methodColor}22;color:${methodColor};">${escHtml(method)}</span>
+            <span class="font-mono text-sm flex-1 truncate" style="color:var(--tx);">${escHtml(tc.endpoint || '/')}</span>
+            ${statusCode ? `<span class="text-xs font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>` : ''}
+        </div>
+        <div class="px-4 py-3 flex flex-wrap items-center gap-2 text-[11px]" style="color:var(--tx-m);background:var(--bg2);border-bottom:1px solid var(--brd);">
+            <span class="font-semibold" style="color:var(--tx);">${escHtml(scenarioLabels[tc.scenario] || tc.scenario || t('apiTcPositive'))}</span>
+            <span>${escHtml(tc.priority || 'P2')}</span>
+            ${tc.module ? `<span>${escHtml(tc.module)}</span>` : ''}
+            ${spec ? `<button class="underline" data-onclick="viewDoc('${spec.id}')">${escHtml(spec.title)}</button>` : ''}
+        </div>
+        <div class="p-5">
+            ${tc.precond ? `<p class="text-sm mb-4" style="color:var(--tx);"><b style="color:var(--tx-m);">${t('tcPrecond')}</b> ${escHtml(tc.precond)}</p>` : ''}
+            ${blocks.length ? `<div class="grid sm:grid-cols-2 gap-4 mb-4">${blocks.join('')}</div>` : ''}
+            ${tc.body ? `<div class="mb-4"><p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">${t('apiBody')}</p>${pre(tc.body)}</div>` : ''}
+            ${tc.expectedBody ? `<div class="mb-4"><p class="text-[11px] font-medium mb-2" style="color:var(--tx-m);">${t('apiTcExpectedBody')}</p>${pre(tc.expectedBody)}</div>` : ''}
+            ${step.action ? `<div class="text-sm" style="color:var(--tx);"><p class="text-[11px] font-medium mb-1" style="color:var(--tx-m);">${t('tcSteps')}</p><p>${escHtml(step.action)}</p>${step.expected ? `<p class="mt-1" style="color:var(--tx-m);">${escHtml(step.expected)}</p>` : ''}</div>` : ''}
+        </div>
+    </div>`;
+}
+
 function renderViewerCategory(doc) {
     return `
         ${doc.category === 'bug' ? (() => {
@@ -374,6 +423,8 @@ function renderViewerCategory(doc) {
         })()}
         ` : ''}
 
+        ${doc.category === 'apitest' ? renderApiTestViewer(doc) : ''}
+
         ${doc.category === 'testrun' ? `
         <!-- Test Run Execution UI -->
         ${(() => {
@@ -382,9 +433,9 @@ function renderViewerCategory(doc) {
             const targets = documents.filter(d => targetIds.includes(d.id) && d.status !== 'deleted');
             // Render against the step snapshot captured when the run was saved (US-103),
             // so results stay aligned even if the test case is edited afterwards.
-            const stepsOf = tc => (doc.runData?.snapshot?.[tc.id] || tc.tcData?.steps || []);
+            const stepsOf = tc => (doc.runData?.snapshot?.[tc.id] || _liveCaseSteps(tc));
             const isDrifted = tc => !!doc.runData?.snapshot?.[tc.id]
-                && JSON.stringify(doc.runData.snapshot[tc.id]) !== JSON.stringify(tc.tcData?.steps || []);
+                && JSON.stringify(doc.runData.snapshot[tc.id]) !== JSON.stringify(_liveCaseSteps(tc));
 
             let totalSteps = 0;
             let passCount = 0;
@@ -574,7 +625,7 @@ function renderViewerCategory(doc) {
             linkedRuns.forEach(run => {
                 const results = run.runData?.results || {};
                 linkedTCs.forEach(tc => {
-                    const steps = tc.tcData?.steps || [];
+                    const steps = _liveCaseSteps(tc);
                     totalSteps += steps.length;
                     steps.forEach((_, i) => { if (results[tc.id]?.[i] === 'pass') passSteps++; });
                 });
@@ -641,7 +692,7 @@ function renderViewerCategory(doc) {
                         const results = run.runData?.results || {};
                         let rTotal = 0, rPass = 0;
                         linkedTCs.forEach(tc => {
-                            const steps = tc.tcData?.steps || [];
+                            const steps = _liveCaseSteps(tc);
                             rTotal += steps.length;
                             steps.forEach((_, i) => { if (results[tc.id]?.[i] === 'pass') rPass++; });
                         });
@@ -762,7 +813,7 @@ function renderViewerCategory(doc) {
                         (run.runData?.targetIds || []).forEach(tcId => {
                             const tc = documents.find(d => d.id === tcId);
                             if (!tc) return;
-                            const steps = tc.tcData?.steps || [];
+                            const steps = _liveCaseSteps(tc);
                             rTotal += steps.length;
                             steps.forEach((_, i) => { if (results[tcId]?.[i] === 'pass') rPass++; });
                         });
@@ -807,7 +858,7 @@ function renderViewerCategory(doc) {
             <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
             <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
         </div>` : ''}
-        ` : (doc.category === 'api' || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
+        ` : (doc.category === 'api' || doc.category === 'apitest' || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
         </div>

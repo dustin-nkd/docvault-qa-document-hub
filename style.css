@@ -27,6 +27,7 @@
   --c-tp: #3b82f6;
   --c-testrun: #f97316;
   --c-api: #ec4899;
+  --c-apitest: #38bdf8;
   --c-cred: #eab308;
   --c-rel: #a855f7;
   --radius: 8px;
@@ -1875,6 +1876,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
 [data-ui-style="bauhaus"] .cat-badge.cat-runbook,
 [data-ui-style="bauhaus"] .cat-badge.cat-knowledge,
 [data-ui-style="bauhaus"] .cat-badge.cat-api,
+[data-ui-style="bauhaus"] .cat-badge.cat-apitest,
 [data-ui-style="bauhaus"] .cat-badge.cat-environment,
 [data-ui-style="bauhaus"] .cat-badge.cat-testrun,
 [data-ui-style="bauhaus"] .cat-badge.cat-release {

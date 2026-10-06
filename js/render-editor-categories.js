@@ -14,7 +14,7 @@ function _moduleVocabulary() {
     const names = new Map();
     documents.forEach(d => {
         if (d.status === 'deleted') return;
-        [d.tcData?.module, d.apiData?.module].forEach(value => {
+        [d.tcData?.module, d.apiData?.module, d.apiTcData?.module].forEach(value => {
             const name = String(value || '').trim();
             const key = name.toLocaleLowerCase();
             // First spelling wins, so editing a doc never reshuffles the casing
@@ -31,9 +31,36 @@ function _moduleDatalist() {
         : '';
 }
 
+const API_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+const API_STATUS_OPTIONS = [
+    {value: '200', label: '200 OK'},
+    {value: '201', label: '201 Created'},
+    {value: '204', label: '204 No Content'},
+    {value: '301', label: '301 Moved Permanently'},
+    {value: '400', label: '400 Bad Request'},
+    {value: '401', label: '401 Unauthorized'},
+    {value: '403', label: '403 Forbidden'},
+    {value: '404', label: '404 Not Found'},
+    {value: '409', label: '409 Conflict'},
+    {value: '422', label: '422 Unprocessable Entity'},
+    {value: '429', label: '429 Too Many Requests'},
+    {value: '500', label: '500 Internal Server Error'},
+    {value: '502', label: '502 Bad Gateway'},
+    {value: '503', label: '503 Service Unavailable'}
+];
+
+function _apiTcKvRows(rows, rowClass, keyPlaceholder) {
+    return (rows || []).map(row => `
+        <div class="flex items-center gap-1.5 mb-1.5 apitc-row ${rowClass}">
+            <input class="form-input flex-1 apitc-key text-xs font-mono" placeholder="${escHtml(keyPlaceholder)}" value="${escHtml(row.key || '')}">
+            <input class="form-input flex-1 apitc-value text-xs font-mono" placeholder="${t('apiValue')}" value="${escHtml(row.value || '')}">
+            <button type="button" class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiTcRow(this)" aria-label="Remove row" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+        </div>`).join('');
+}
+
 function renderEditorCategory(context) {
     const {
-        doc, isEdit, category, content, bugData, tcData, apiData,
+        doc, isEdit, category, content, bugData, tcData, apiData, apiTcData,
         runData, envData, releaseData, releasePolicy, tcPlanData, bugDefaultSla
     } = context;
     return`
@@ -267,7 +294,7 @@ function renderEditorCategory(context) {
             <!-- Method + Endpoint unified bar -->
             <div class="flex items-stretch" style="background:var(--card);border-bottom:1px solid var(--brd);">
                 <div style="width:120px;flex-shrink:0;border-right:1px solid var(--brd);">
-                    ${renderSelect('ed-api-method', ['GET','POST','PUT','PATCH','DELETE'].map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono font-bold text-sm', '', 'HTTP method')}
+                    ${renderSelect('ed-api-method', API_HTTP_METHODS.map(m => ({value: m, label: m})), apiData?.method || 'GET', 'w-full font-mono font-bold text-sm', '', 'HTTP method')}
                 </div>
                 <input id="ed-api-endpoint" class="flex-1 bg-transparent border-0 outline-none font-mono text-sm px-4" style="color:var(--tx);min-width:0;" aria-label="Endpoint path" placeholder="/api/v1/users" value="${escHtml(apiData?.endpoint || '')}">
             </div>
@@ -356,28 +383,99 @@ function renderEditorCategory(context) {
                 <!-- Status code + Format -->
                 <div class="flex items-center justify-between mb-2">
                     <div style="width:165px;">
-                        ${renderSelect('ed-api-status', [
-                            {value: '200', label: '200 OK'},
-                            {value: '201', label: '201 Created'},
-                            {value: '204', label: '204 No Content'},
-                            {value: '301', label: '301 Moved Permanently'},
-                            {value: '400', label: '400 Bad Request'},
-                            {value: '401', label: '401 Unauthorized'},
-                            {value: '403', label: '403 Forbidden'},
-                            {value: '404', label: '404 Not Found'},
-                            {value: '409', label: '409 Conflict'},
-                            {value: '422', label: '422 Unprocessable Entity'},
-                            {value: '429', label: '429 Too Many Requests'},
-                            {value: '500', label: '500 Internal Server Error'},
-                            {value: '502', label: '502 Bad Gateway'},
-                            {value: '503', label: '503 Service Unavailable'},
-                        ], apiData?.statusCode || '200', 'w-full font-mono text-xs', '', 'Response status code')}
+                        ${renderSelect('ed-api-status', API_STATUS_OPTIONS, apiData?.statusCode || '200', 'w-full font-mono text-xs', '', 'Response status code')}
                     </div>
                     <button class="text-[10px] opacity-60 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
                 </div>
                 <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:110px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
             </div>
         </div>
+        ` : category === 'apitest' ? `
+        ${(() => {
+            const tc = apiTcData || {};
+            const specs = documents.filter(d => d.category === 'api' && d.status !== 'deleted');
+            const specOptions = [{ value: '', label: t('apiTcNoSpec') }].concat(specs.map(spec => ({
+                value: spec.id,
+                label: ((spec.apiData?.method || 'API') + ' ' + (spec.apiData?.endpoint || spec.title)).trim()
+            })));
+            const kvBlock = (label, containerId, rowClass, rows, keyPlaceholder) => `
+                <div>
+                    <p class="text-xs font-medium mb-2" style="color:var(--tx-m);">${label}</p>
+                    <div id="${containerId}">${_apiTcKvRows(rows, rowClass, keyPlaceholder)}</div>
+                    <button type="button" class="btn-s text-xs mt-1" data-onclick="addApiTcRow('${containerId}', '${rowClass}')"><i class="fa-solid fa-plus mr-1"></i>Add</button>
+                </div>`;
+            return `
+        <div class="p-4 rounded-xl mb-4" style="background:var(--bg2); border:1px solid var(--brd);">
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="ed-apitc-api-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiTcLinked')}</label>
+                    ${renderSelect('ed-apitc-api', specOptions, tc.linkedApiId || '', 'w-full text-sm', 'applyLinkedApiSpec(this.value)', 'Linked API spec')}
+                </div>
+                <div>
+                    <label for="ed-apitc-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
+                    <input id="ed-apitc-module" class="form-input" list="module-vocab" placeholder="${t('tcModulePl')}" value="${escHtml(tc.module || '')}">
+                    ${_moduleDatalist()}
+                </div>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="ed-apitc-scenario-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiTcScenario')}</label>
+                    ${renderSelect('ed-apitc-scenario', [
+                        {value: 'positive', label: t('apiTcPositive')},
+                        {value: 'negative', label: t('apiTcNegative')},
+                        {value: 'auth', label: t('apiTcAuth')},
+                        {value: 'boundary', label: t('apiTcBoundary')},
+                        {value: 'contract', label: t('apiTcContract')}
+                    ], tc.scenario || 'positive', 'w-full text-sm', '', 'Scenario')}
+                </div>
+                <div>
+                    <label for="ed-apitc-priority-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiTcPriority')}</label>
+                    ${renderSelect('ed-apitc-priority', ['P1','P2','P3','P4'].map(p => ({value: p, label: p})), tc.priority || 'P2', 'w-full text-sm', '', 'Priority')}
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="ed-apitc-precond" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcPrecond')}</label>
+                <textarea id="ed-apitc-precond" class="form-input" style="height:60px;" placeholder="${t('tcPrecondPl')}">${escHtml(tc.precond || '')}</textarea>
+            </div>
+            <div class="flex items-stretch mb-4 rounded-lg overflow-hidden" style="border:1px solid var(--brd);background:var(--card);">
+                <div style="width:120px;flex-shrink:0;border-right:1px solid var(--brd);">
+                    ${renderSelect('ed-apitc-method', API_HTTP_METHODS.map(m => ({value: m, label: m})), tc.method || 'GET', 'w-full font-mono font-bold text-sm', '', 'HTTP method')}
+                </div>
+                <input id="ed-apitc-endpoint" class="flex-1 bg-transparent border-0 outline-none font-mono text-sm px-4" style="color:var(--tx);min-width:0;" aria-label="Endpoint path" placeholder="/api/v1/orders/{id}" value="${escHtml(tc.endpoint || '')}">
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                ${kvBlock(t('apiTcPath'), 'apitc-path-container', 'apitc-path-row', tc.pathParams, t('apiKey'))}
+                ${kvBlock(t('apiParams'), 'apitc-query-container', 'apitc-query-row', tc.query, t('apiKey'))}
+            </div>
+            <div class="mb-4">
+                ${kvBlock(t('apiHeaders'), 'apitc-header-container', 'apitc-header-row', tc.headers, t('apiKey'))}
+            </div>
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label for="ed-apitc-body" class="text-xs font-medium" style="color:var(--tx-m);">${t('apiBody')}</label>
+                    <button type="button" class="text-[10px] opacity-60 hover:opacity-100" data-onclick="formatJson('ed-apitc-body')"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                </div>
+                <textarea id="ed-apitc-body" class="form-input font-mono text-xs w-full" style="height:110px;" placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}">${escHtml(tc.body || '')}</textarea>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="ed-apitc-status-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiTcExpectedStatus')}</label>
+                    ${renderSelect('ed-apitc-status', API_STATUS_OPTIONS, tc.expectedStatus || '200', 'w-full font-mono text-xs', '', 'Expected status')}
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="ed-apitc-expected-body" class="text-xs font-medium" style="color:var(--tx-m);">${t('apiTcExpectedBody')}</label>
+                        <button type="button" class="text-[10px] opacity-60 hover:opacity-100" data-onclick="formatJson('ed-apitc-expected-body')"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                    </div>
+                    <textarea id="ed-apitc-expected-body" class="form-input font-mono text-xs w-full" style="height:88px;">${escHtml(tc.expectedBody || '')}</textarea>
+                </div>
+            </div>
+            <div class="mb-2">
+                ${kvBlock(t('apiTcChecks'), 'apitc-check-container', 'apitc-check-row', (tc.checks || []).map(check => ({ key: check.path || '', value: check.expected || '' })), t('apiTcCheckPath'))}
+            </div>
+            <p class="text-[11px] mt-3" style="color:var(--tx-d);">${t('apiTcStepHint')}</p>
+        </div>`;
+        })()}
         ` : category === 'testrun' ? `
         <div class="mb-4">
             <label for="ed-run-env" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Environment / Build <span style="color:var(--tx-d)">(Optional)</span></label>
@@ -400,7 +498,7 @@ function renderEditorCategory(context) {
         })()}
         <div class="mb-4">
             ${(() => {
-                const allTc = documents.filter(d => d.category === 'testcases' && d.status !== 'deleted');
+                const allTc = documents.filter(d => (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted');
                 const targetIds = doc?.runData?.targetIds || state._newRunData?.targetIds || [];
                 return `
                 <div class="flex items-center justify-between mb-2">
@@ -411,13 +509,13 @@ function renderEditorCategory(context) {
                 <div class="p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: 300px; overflow-y: auto;">
                     ${allTc.length === 0 ? `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases available. Please create some Test Cases first.</div>` : allTc.map(tc => {
                         const isChecked = targetIds.includes(tc.id);
-                        const filterKey = `${tc.title} ${tc.tcData?.module || ''}`.toLowerCase();
+                        const filterKey = `${tc.title} ${tc.tcData?.module || tc.apiTcData?.module || ''} ${tc.apiTcData?.endpoint || ''}`.toLowerCase();
                         return `
                         <label class="testrun-tc-row flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ui-hover-card" data-filter-key="${escHtml(filterKey)}" style="border-bottom: 1px solid var(--brd); transition: background .15s;">
                             <input type="checkbox" class="form-checkbox testrun-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''} data-onchange="_updateTestRunTcCount()">
                             <div class="flex-1">
                                 <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
-                                <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.module ? escHtml(tc.tcData.module) + ' · ' : ''}${tc.tcData?.steps?.length || 0} steps</div>
+                                <div class="text-[11px]" style="color:var(--tx-d);">${(tc.tcData?.module || tc.apiTcData?.module) ? escHtml(tc.tcData?.module || tc.apiTcData?.module) + ' · ' : ''}${(tc.tcData?.steps || tc.apiTcData?.steps || []).length} steps</div>
                             </div>
                         </label>
                         `;
@@ -431,15 +529,15 @@ function renderEditorCategory(context) {
             <div class="mb-4">
                 <span id="plan-tcs-label" class="text-xs font-medium block mb-2" style="color:var(--tx-m);">Linked Test Cases <span class="opacity-60">(for coverage tracking)</span></span>
                 <div role="group" aria-labelledby="plan-tcs-label" class="p-3 rounded-lg flex flex-col gap-1 max-h-52 overflow-y-auto" style="background:var(--card); border:1px solid var(--brd);">
-                    ${documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').length === 0
+                    ${documents.filter(d => (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted').length === 0
                         ? `<div class="text-xs text-center py-3" style="color:var(--tx-d);">No test cases available.</div>`
-                        : documents.filter(d => d.category === 'testcases' && d.status !== 'deleted').map(tc => {
+                        : documents.filter(d => (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted').map(tc => {
                             const isChecked = (tcPlanData?.linkedTCs || []).includes(tc.id);
                             return `<label class="flex items-center gap-3 p-2 rounded cursor-pointer ui-hover-bg2" style="border-bottom:1px solid var(--brd); transition:background .15s;">
                                 <input type="checkbox" class="form-checkbox tp-tc-cb" value="${tc.id}" ${isChecked ? 'checked' : ''}>
                                 <div class="flex-1">
                                     <div class="text-sm font-medium" style="color:var(--tx);">${escHtml(tc.title)}</div>
-                                    <div class="text-[11px]" style="color:var(--tx-d);">${tc.tcData?.steps?.length || 0} steps · ${tc.tcData?.module ? escHtml(tc.tcData.module) : 'no module'}</div>
+                                    <div class="text-[11px]" style="color:var(--tx-d);">${(tc.tcData?.steps || tc.apiTcData?.steps || []).length} steps · ${(tc.tcData?.module || tc.apiTcData?.module) ? escHtml(tc.tcData?.module || tc.apiTcData?.module) : 'no module'}</div>
                                 </div>
                             </label>`;
                         }).join('')}
@@ -687,6 +785,104 @@ window.addApiParam = function() {
     container.appendChild(div);
 };
 window.removeApiParam = function(btn) { btn.closest('.api-param-row').remove(); };
+
+function _readApiTcRows(selector) {
+    return Array.from(document.querySelectorAll(selector)).map(row => ({
+        key: row.querySelector('.apitc-key')?.value.trim() || '',
+        value: row.querySelector('.apitc-value')?.value.trim() || ''
+    })).filter(row => row.key || row.value);
+}
+
+function readApiTestCaseForm() {
+    const checks = Array.from(document.querySelectorAll('.apitc-check-row')).map(row => ({
+        path: row.querySelector('.apitc-key')?.value.trim() || '',
+        expected: row.querySelector('.apitc-value')?.value.trim() || ''
+    })).filter(row => row.path || row.expected);
+    return {
+        linkedApiId: document.getElementById('ed-apitc-api')?.value || '',
+        module: document.getElementById('ed-apitc-module')?.value.trim() || '',
+        scenario: document.getElementById('ed-apitc-scenario')?.value || 'positive',
+        priority: document.getElementById('ed-apitc-priority')?.value || 'P2',
+        precond: document.getElementById('ed-apitc-precond')?.value || '',
+        method: document.getElementById('ed-apitc-method')?.value || 'GET',
+        endpoint: document.getElementById('ed-apitc-endpoint')?.value.trim() || '',
+        pathParams: _readApiTcRows('.apitc-path-row'),
+        query: _readApiTcRows('.apitc-query-row'),
+        headers: _readApiTcRows('.apitc-header-row'),
+        body: document.getElementById('ed-apitc-body')?.value || '',
+        expectedStatus: document.getElementById('ed-apitc-status')?.value || '200',
+        expectedBody: document.getElementById('ed-apitc-expected-body')?.value || '',
+        checks
+    };
+}
+
+function storeApiTestCase(data) {
+    const stored = { ...data, steps: buildApiTestSteps(data) };
+    if (state.editingDoc) state.editingDoc.apiTcData = stored;
+    else state._newApiTcData = stored;
+    return stored;
+}
+
+window.addApiTcRow = function(containerId, rowClass) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-1.5 mb-1.5 apitc-row ' + rowClass;
+    const keyPlaceholder = rowClass === 'apitc-check-row' ? t('apiTcCheckPath') : t('apiKey');
+    div.innerHTML = `
+        <input class="form-input flex-1 apitc-key text-xs font-mono" placeholder="${escHtml(keyPlaceholder)}">
+        <input class="form-input flex-1 apitc-value text-xs font-mono" placeholder="${t('apiValue')}">
+        <button type="button" class="btn-s px-2 py-1" style="color:var(--tx-m);" data-onclick="removeApiTcRow(this)" aria-label="Remove row" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    container.appendChild(div);
+    div.querySelector('.apitc-key')?.focus();
+};
+
+window.removeApiTcRow = function(btn) {
+    btn.closest('.apitc-row')?.remove();
+};
+
+window.applyLinkedApiSpec = function(apiId) {
+    const current = readApiTestCaseForm();
+    // The combobox writes the new id into the hidden input before this runs, so
+    // the form already shows the new link. The stored id is the one we had.
+    const previousId = (state.editingDoc?.apiTcData || state._newApiTcData || {}).linkedApiId || '';
+    const commit = (data) => {
+        storeApiTestCase(data);
+        state._apiTcFormAuthoritative = true;
+        render();
+    };
+    if (!apiId) {
+        commit({ ...current, linkedApiId: '' });
+        return;
+    }
+    const spec = documents.find(d => d.id === apiId && d.category === 'api' && d.status !== 'deleted');
+    if (!spec) {
+        commit({ ...current, linkedApiId: '' });
+        return;
+    }
+    const api = spec.apiData || {};
+    const endpoint = api.endpoint || '';
+    const previous = new Map((current.pathParams || []).map(row => [row.key, row.value]));
+    const pathParams = [...endpoint.matchAll(/\{([^}]+)\}/g)].map(match => ({
+        key: match[1],
+        value: previous.get(match[1]) || ''
+    }));
+    const switching = previousId !== apiId;
+    commit({
+        ...current,
+        linkedApiId: apiId,
+        module: api.module || current.module,
+        method: api.method || 'GET',
+        endpoint,
+        headers: (api.headers || []).map(row => ({ key: row.key || '', value: row.value || '' })),
+        query: (api.params || []).map(row => ({ key: row.key || '', value: row.value || '' })),
+        pathParams,
+        body: api.body || '',
+        expectedStatus: switching ? (api.statusCode || '200') : current.expectedStatus,
+        expectedBody: switching ? (api.response || '') : current.expectedBody
+    });
+};
 
 // ========================
 // ENVIRONMENT PROPERTY HELPERS

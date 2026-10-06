@@ -247,6 +247,16 @@ function _qualityModuleKey(value) {
     return String(value || '').trim().toLocaleLowerCase();
 }
 
+function _qualityCaseModule(tc) {
+    const raw = tc?.category === 'apitest' ? tc.apiTcData?.module : tc?.tcData?.module;
+    return String(raw || '').trim();
+}
+
+function _qualityCaseSteps(tc) {
+    const steps = tc?.category === 'apitest' ? tc.apiTcData?.steps : tc?.tcData?.steps;
+    return Array.isArray(steps) ? steps : [];
+}
+
 function _qualityDefectPoints(bugs) {
     const penalty = bugs.reduce((sum, bug) => {
         const weight = { Critical: 12, Major: 6, Minor: 3, Trivial: 1 }[bug.bugData?.severity] || 2;
@@ -258,11 +268,11 @@ function _qualityDefectPoints(bugs) {
 function calculateReleaseQuality(release, docs = documents) {
     const active = docs.filter(item => item.status !== 'deleted');
     const readiness = evaluateReleaseReadiness(release, active);
-    const testCases = active.filter(item => item.category === 'testcases');
+    const testCases = active.filter(item => item.category === 'testcases' || item.category === 'apitest');
     const tcById = new Map(testCases.map(tc => [tc.id, tc]));
     const moduleNames = new Map();
     testCases.forEach(tc => {
-        const name = String(tc.tcData?.module || '').trim();
+        const name = _qualityCaseModule(tc);
         if (name) moduleNames.set(_qualityModuleKey(name), name);
     });
 
@@ -275,10 +285,10 @@ function calculateReleaseQuality(release, docs = documents) {
             const tc = tcById.get(tcId);
             if (!tc) return;
             targetedIds.add(tcId);
-            const moduleKey = _qualityModuleKey(tc.tcData?.module);
+            const moduleKey = _qualityModuleKey(_qualityCaseModule(tc));
             const stat = moduleStats.get(moduleKey);
             if (stat) stat.targetedIds.add(tcId);
-            const steps = run.runData?.snapshot?.[tcId] || tc.tcData?.steps || [];
+            const steps = run.runData?.snapshot?.[tcId] || _qualityCaseSteps(tc);
             steps.forEach((_, index) => {
                 const result = results[tcId]?.[index];
                 totals.steps++;
@@ -299,7 +309,7 @@ function calculateReleaseQuality(release, docs = documents) {
     let unmappedBugs = 0;
     openBugs.forEach(bug => {
         const linkedTc = tcById.get(bug.bugData?.foundInTc || bug.bugData?.linkedTc);
-        let key = _qualityModuleKey(linkedTc?.tcData?.module);
+        let key = _qualityModuleKey(linkedTc ? _qualityCaseModule(linkedTc) : '');
         if (!key) key = [...moduleNames.keys()].find(moduleKey => (bug.tags || []).some(tag => _qualityModuleKey(tag) === moduleKey)) || '';
         if (key && moduleStats.has(key)) moduleStats.get(key).bugs.push(bug);
         else unmappedBugs++;
@@ -317,7 +327,7 @@ function calculateReleaseQuality(release, docs = documents) {
         defect
     );
     const modules = [...moduleStats.values()].map(stat => {
-        const moduleTotal = testCases.filter(tc => _qualityModuleKey(tc.tcData?.module) === stat.key).length;
+        const moduleTotal = testCases.filter(tc => _qualityModuleKey(_qualityCaseModule(tc)) === stat.key).length;
         const modulePass = percentage(stat.pass, stat.steps);
         const moduleExecution = percentage(stat.executed, stat.steps);
         const moduleCoverage = percentage(stat.targetedIds.size, moduleTotal);

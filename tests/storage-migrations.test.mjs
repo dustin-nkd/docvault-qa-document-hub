@@ -381,6 +381,26 @@ test('cleanOrphanedDocReferences strips deleted test case, run, bug, and credent
     assert.equal(bug.bugData.triagedAt, null);
 });
 
+test('cleanOrphanedDocReferences clears a dangling API spec link and leaves an empty one alone', () => {
+    const { api } = loadStorage();
+    const dangling = {
+        id: 'case-1', category: 'apitest',
+        apiTcData: { linkedApiId: 'api-deleted', method: 'POST', endpoint: '/api/v1/orders' }
+    };
+    const empty = { id: 'case-2', category: 'apitest', apiTcData: { linkedApiId: '', method: 'GET' } };
+    const kept = { id: 'case-3', category: 'apitest', apiTcData: { linkedApiId: 'api-live', method: 'GET' } };
+    const present = new Set(['case-1', 'case-2', 'case-3', 'api-live']);
+
+    const changed = api.DocStorage.cleanOrphanedDocReferences([dangling, empty, kept], ['api-deleted'], present);
+    assert.equal(changed, true);
+    assert.equal(dangling.apiTcData.linkedApiId, '');
+    assert.equal(dangling.apiTcData.endpoint, '/api/v1/orders');
+    assert.equal(empty.apiTcData.linkedApiId, '');
+    assert.equal(kept.apiTcData.linkedApiId, 'api-live');
+
+    assert.equal(api.DocStorage.cleanOrphanedDocReferences([empty], [], new Set(['case-2'])), false);
+});
+
 test('document merge automatically strips orphaned references when tombstones arrive', () => {
     const { api } = loadStorage();
 

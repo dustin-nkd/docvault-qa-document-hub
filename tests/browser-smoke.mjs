@@ -196,6 +196,7 @@ async function run() {
             ['gd_bug_1', 'Cart loses products after refreshing Checkout'],
             ['gd_testplan_1', 'Release v2.4.0 Test Plan'],
             ['gd_api_users', 'GET /api/v1/users/{id}'],
+            ['gd_apitest_order', 'POST /api/v1/orders — order is confirmed'],
             ['gd_cred_admin', 'staging-admin.shop.test'],
             ['gd_env_staging', 'Staging'],
             ['gd_run_sprint24', 'Sprint 24 — Regression Run'],

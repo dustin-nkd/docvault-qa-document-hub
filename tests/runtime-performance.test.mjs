@@ -36,7 +36,8 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     // 1_035_000 for Credential and Environment Document Viewers Bauhaus styling (username & password cards, copy buttons, property cards, and linked credentials),
     // 1_040_000 for Workspace and Document Delete Confirmation Modals Bauhaus styling (high-contrast delete target badges and warning callouts), and
     // 1_045_000 for restoring the GitHub PAT from the encrypted vault on a new browser.
-    assert.ok(bytes <= 1_045_000, `Dashboard direct startup assets exceed 1045 KB: ${bytes} bytes`);
+    // 1_070_000 for the API test case form, its viewer, and the coverage joins.
+    assert.ok(bytes <= 1_070_000, `Dashboard direct startup assets exceed 1070 KB: ${bytes} bytes`);
 });
 
 test('editor runtime remains offline-capable and is loaded through one shared lazy promise', () => {
