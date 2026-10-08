@@ -2,8 +2,164 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function teamDoc() {
+      return get(/databases/$(database)/documents/meta/team);
+    }
+
+    function isTeamOwner() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/meta/team) &&
+        teamDoc().data.ownerUid == request.auth.uid;
+    }
+
+    function memberDoc(uid) {
+      return get(/databases/$(database)/documents/members/$(uid));
+    }
+
+    function isMember() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/members/$(request.auth.uid));
+    }
+
+    function currentMemberRole() {
+      return memberDoc(request.auth.uid).data.role;
+    }
+
+    function isEditorOrOwner() {
+      return isMember() &&
+        (currentMemberRole() == 'editor' || currentMemberRole() == 'owner');
+    }
+
+    // Default deny for everything not explicitly allowed
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    // 1. meta/team: Single team vault metadata
+    match /meta/team {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        !exists(/databases/$(database)/documents/meta/team) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.initialized == true;
+      allow update, delete: if false;
+    }
+
+    // 2. members/{uid}: Team membership and roles
+    match /members/{uid} {
+      allow get: if isAuthenticated() && (request.auth.uid == uid || isMember());
+      allow list: if isMember();
+
+      // Bootstrap owner
+      allow create: if isAuthenticated() &&
+        request.auth.uid == uid &&
+        request.resource.data.role == 'owner' &&
+        isTeamOwner();
+
+      // Accept invite
+      allow create: if isAuthenticated() &&
+        request.auth.uid == uid &&
+        request.auth.token.email != null &&
+        exists(/databases/$(database)/documents/invites/$(request.auth.token.email)) &&
+        (get(/databases/$(database)/documents/invites/$(request.auth.token.email)).data.role == 'editor' ||
+         get(/databases/$(database)/documents/invites/$(request.auth.token.email)).data.role == 'viewer') &&
+        request.resource.data.role == get(/databases/$(database)/documents/invites/$(request.auth.token.email)).data.role &&
+        request.resource.data.email == request.auth.token.email;
+
+      // Owner updates another member's role (cannot demote team owner, cannot change uid or email)
+      allow update: if isTeamOwner() &&
+        uid != teamDoc().data.ownerUid &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        (request.resource.data.role == 'editor' || request.resource.data.role == 'viewer');
+
+      // Owner deletes a member (except team owner)
+      allow delete: if isTeamOwner() && uid != teamDoc().data.ownerUid;
+    }
+
+    // 3. invites/{email}: Invitations to join the vault
+    match /invites/{email} {
+      allow get: if isAuthenticated() && (request.auth.token.email == email || isMember());
+      allow list: if isMember();
+
+      allow create, update: if isTeamOwner() &&
+        request.resource.data.email == email &&
+        (request.resource.data.role == 'editor' || request.resource.data.role == 'viewer');
+
+      // Owner can revoke invite, or invited user deletes it when joining
+      allow delete: if isTeamOwner() || (isAuthenticated() && request.auth.token.email == email);
+    }
+
+    // 4. documents/{id}: Vault documents
+    match /documents/{id} {
+      allow read: if isMember();
+
+      allow create: if isEditorOrOwner() &&
+        request.resource.data.version == 1 &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isEditorOrOwner() &&
+        request.resource.data.version == resource.data.version + 1 &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+        (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+        request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isTeamOwner();
+
+      // 4b. documents/{id}/history/{snapId}: Document revision history
+      match /history/{snapId} {
+        allow read: if isMember();
+        allow create: if isEditorOrOwner() &&
+          request.resource.data.savedBy == request.auth.uid;
+        allow update: if false;
+        allow delete: if isTeamOwner();
+      }
+    }
+
+    // 5. activity/{id}: Append-only audit activity log
+    match /activity/{id} {
+      allow read: if isMember();
+      allow create: if isEditorOrOwner() &&
+        request.resource.data.actorUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isTeamOwner();
+    }
+
+    // 6. counters/{counterId}: Shared monotonic sequence counters
+    match /counters/{counterId} {
+      allow read: if isMember();
+      allow create: if isTeamOwner() || isEditorOrOwner();
+      allow update: if isEditorOrOwner() &&
+        request.resource.data.next == resource.data.next + 1;
+      allow delete: if isTeamOwner();
+    }
+
+    // 7. shares/{shareId}: Encrypted shared snapshots
+    match /shares/{shareId} {
+      allow get: if true;
+      allow list: if isMember();
+      allow create, update: if isEditorOrOwner();
+      allow delete: if isEditorOrOwner();
+    }
+
+    // 8. images/{imageId}: Compressed vault images
+    match /images/{imageId} {
+      allow read: if isMember();
+      allow create: if isEditorOrOwner() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        (request.resource.data.contentType == 'image/jpeg' || request.resource.data.contentType == 'image/png') &&
+        request.resource.data.byteSize is int &&
+        request.resource.data.byteSize <= 700000;
+      allow update: if false;
+      allow delete: if isEditorOrOwner() &&
+        (resource.data.createdBy == request.auth.uid || isTeamOwner());
     }
   }
 }
