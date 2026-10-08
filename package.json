@@ -7,6 +7,7 @@
   "scripts": {
     "check": "node scripts/quality-check.mjs && npm test",
     "test": "node tests/run.mjs",
+    "test:rules": "firebase emulators:exec --only firestore,auth \"node --test tests/firestore-rules.test.mjs\"",
     "test:e2e": "node tests/browser-smoke.mjs",
     "dev": "vite",
     "build": "vite build",
@@ -15,7 +16,9 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
     "autoprefixer": "^10.5.0",
+    "firebase-tools": "^14.27.0",
     "playwright": "^1.61.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
