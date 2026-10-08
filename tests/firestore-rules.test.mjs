@@ -43,10 +43,15 @@ async function seed(fn) {
 // ---------------------------------------------------------------------------
 // 1. meta/team
 // ---------------------------------------------------------------------------
-test('Branch 1 (meta/team): allows authenticated user to create meta/team with ownerUid == auth.uid when absent', async () => {
+test('Branch 1 (meta/team): allows authenticated user to get when absent, and create once with ownerUid == auth.uid', async () => {
     const owner = testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' });
     const db = owner.firestore();
 
+    // Authenticated user can get meta/team when it does not exist yet
+    const preSnap = await assertSucceeds(db.collection('meta').doc('team').get());
+    assert.equal(preSnap.exists, false);
+
+    // Creates meta/team
     await assertSucceeds(db.collection('meta').doc('team').set({
         ownerUid: 'owner-uid',
         name: 'QA Vault',
@@ -55,7 +60,7 @@ test('Branch 1 (meta/team): allows authenticated user to create meta/team with o
     }));
 });
 
-test('Branch 1 (meta/team): denies creating meta/team if ownerUid does not match auth.uid, if already exists, or anonymous', async () => {
+test('Branch 1 (meta/team): denies stranger read after team exists, denies update and delete, and denies anonymous create', async () => {
     const unauthed = testEnv.unauthenticatedContext().firestore();
     await assertFails(unauthed.collection('meta').doc('team').set({
         ownerUid: 'anon',
@@ -70,20 +75,44 @@ test('Branch 1 (meta/team): denies creating meta/team if ownerUid does not match
         initialized: true
     }));
 
-    // Seed meta/team then verify duplicate creation is rejected
+    // Seed meta/team and owner member
     await seed(async (context) => {
-        await context.firestore().collection('meta').doc('team').set({
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({
             ownerUid: 'owner-uid',
+            name: 'QA Vault',
             initialized: true
+        });
+        await db.collection('members').doc('owner-uid').set({
+            uid: 'owner-uid',
+            role: 'owner'
         });
     });
 
-    const secondUser = testEnv.authenticatedContext('second-user').firestore();
-    await assertFails(secondUser.collection('meta').doc('team').set({
-        ownerUid: 'second-user',
-        name: 'Duplicate Vault',
+    // Stranger (authenticated non-member) CANNOT read meta/team once team exists
+    const stranger = testEnv.authenticatedContext('stranger-uid', { email: 'stranger@example.com' }).firestore();
+    await assertFails(stranger.collection('meta').doc('team').get());
+
+    // Anonymous cannot read
+    await assertFails(unauthed.collection('meta').doc('team').get());
+
+    // Member CAN read meta/team
+    const owner = testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' }).firestore();
+    const snap = await assertSucceeds(owner.collection('meta').doc('team').get());
+    assert.equal(snap.data().ownerUid, 'owner-uid');
+
+    // Duplicate creation is denied
+    await assertFails(user.collection('meta').doc('team').set({
+        ownerUid: 'user-1',
+        name: 'Duplicate',
         initialized: true
     }));
+
+    // Update and delete on meta/team are strictly denied
+    await assertFails(owner.collection('meta').doc('team').update({ name: 'Hacked Vault' }));
+    await assertFails(owner.collection('meta').doc('team').delete());
+    await assertFails(stranger.collection('meta').doc('team').update({ name: 'Hacked Vault' }));
+    await assertFails(stranger.collection('meta').doc('team').delete());
 });
 
 // ---------------------------------------------------------------------------
@@ -161,16 +190,24 @@ test('Branch 3 (accept invite): allows authenticated user with matching invite t
     await assertSucceeds(db.collection('invites').doc('CollabUser@example.com').delete());
 });
 
-test('Branch 3 (accept invite): denies joining without invite, role mismatch, or deleting another invite', async () => {
+test('Branch 3 (accept invite): denies joining without invite, case mismatch, role mismatch, or deleting another invite', async () => {
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
-        await db.collection('invites').doc('viewer@example.com').set({
-            email: 'viewer@example.com',
+        await db.collection('invites').doc('CollabUser@example.com').set({
+            email: 'CollabUser@example.com',
             role: 'viewer',
             invitedBy: 'owner-uid'
         });
     });
+
+    // Token collabuser@example.com (lowercase) cannot accept invite CollabUser@example.com (exact match required)
+    const lowerCaseUser = testEnv.authenticatedContext('lower-uid', { email: 'collabuser@example.com' }).firestore();
+    await assertFails(lowerCaseUser.collection('members').doc('lower-uid').set({
+        uid: 'lower-uid',
+        email: 'collabuser@example.com',
+        role: 'viewer'
+    }));
 
     // No invite exists for stranger
     const stranger = testEnv.authenticatedContext('stranger-uid', { email: 'stranger@example.com' }).firestore();
@@ -181,15 +218,15 @@ test('Branch 3 (accept invite): denies joining without invite, role mismatch, or
     }));
 
     // Role mismatch: invite is viewer, user requests editor
-    const invitedViewer = testEnv.authenticatedContext('v-uid', { email: 'viewer@example.com' }).firestore();
+    const invitedViewer = testEnv.authenticatedContext('v-uid', { email: 'CollabUser@example.com' }).firestore();
     await assertFails(invitedViewer.collection('members').doc('v-uid').set({
         uid: 'v-uid',
-        email: 'viewer@example.com',
+        email: 'CollabUser@example.com',
         role: 'editor'
     }));
 
-    // Stranger cannot delete viewer's invite
-    await assertFails(stranger.collection('invites').doc('viewer@example.com').delete());
+    // Stranger cannot delete another user's invite
+    await assertFails(stranger.collection('invites').doc('CollabUser@example.com').delete());
 });
 
 // ---------------------------------------------------------------------------
@@ -256,20 +293,37 @@ test('Branch 5 (member reads): allows member to read all hub collections', async
     await assertSucceeds(member.collection('images').doc('img-1').get());
 });
 
-test('Branch 5 (member reads): denies non-members and anonymous users from reading collections', async () => {
+test('Branch 5 (member reads): denies non-members and anonymous users from reading history, activity, counters, members, invites, documents, images', async () => {
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', email: 'owner@example.com', role: 'owner' });
         await db.collection('documents').doc('doc-1').set({ title: 'Secret', version: 1, createdBy: 'owner-uid', updatedBy: 'owner-uid' });
+        await db.collection('documents').doc('doc-1').collection('history').doc('snap-1').set({ title: 'Snap', savedBy: 'owner-uid' });
+        await db.collection('activity').doc('act-1').set({ action: 'create', actorUid: 'owner-uid' });
+        await db.collection('counters').doc('bugs').set({ next: 10 });
+        await db.collection('invites').doc('other@example.com').set({ email: 'other@example.com', role: 'viewer' });
         await db.collection('images').doc('img-1').set({ data: 'secret-img', byteSize: 100, createdBy: 'owner-uid', contentType: 'image/png' });
     });
 
+    // Anonymous cannot read any collection
     const anon = testEnv.unauthenticatedContext().firestore();
     await assertFails(anon.collection('documents').doc('doc-1').get());
+    await assertFails(anon.collection('documents').doc('doc-1').collection('history').doc('snap-1').get());
+    await assertFails(anon.collection('activity').doc('act-1').get());
+    await assertFails(anon.collection('counters').doc('bugs').get());
+    await assertFails(anon.collection('members').doc('owner-uid').get());
+    await assertFails(anon.collection('invites').doc('other@example.com').get());
     await assertFails(anon.collection('images').doc('img-1').get());
 
+    // Authenticated non-member (stranger) cannot read any collection
     const outsider = testEnv.authenticatedContext('outsider-uid', { email: 'outsider@example.com' }).firestore();
     await assertFails(outsider.collection('documents').doc('doc-1').get());
+    await assertFails(outsider.collection('documents').doc('doc-1').collection('history').doc('snap-1').get());
+    await assertFails(outsider.collection('activity').doc('act-1').get());
+    await assertFails(outsider.collection('counters').doc('bugs').get());
+    await assertFails(outsider.collection('members').doc('owner-uid').get());
+    await assertFails(outsider.collection('invites').doc('other@example.com').get());
     await assertFails(outsider.collection('images').doc('img-1').get());
 });
 
@@ -359,7 +413,7 @@ test('Branch 7 (update document): allows editor/owner to update with version inc
     }));
 });
 
-test('Branch 7 (update document): denies viewer, version mismatch, or tampering with createdBy/createdAt/id', async () => {
+test('Branch 7 (update document): denies viewer, version mismatch, or tampering with createdBy, createdAt, or id', async () => {
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
@@ -396,6 +450,18 @@ test('Branch 7 (update document): denies viewer, version mismatch, or tampering 
     await assertFails(editor.collection('documents').doc('doc-1').update({
         version: 2,
         createdBy: 'ed-uid',
+        updatedBy: 'ed-uid'
+    }));
+    // Cannot tamper with createdAt
+    await assertFails(editor.collection('documents').doc('doc-1').update({
+        version: 2,
+        createdAt: '2026-10-09T00:00:00Z',
+        updatedBy: 'ed-uid'
+    }));
+    // Cannot tamper with id
+    await assertFails(editor.collection('documents').doc('doc-1').update({
+        version: 2,
+        id: 'tampered-id',
         updatedBy: 'ed-uid'
     }));
 });
@@ -445,7 +511,9 @@ test('Branch 8 (delete paths): denies editor and viewer from hard deleting docum
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
         await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
+        await db.collection('members').doc('vw-uid').set({ uid: 'vw-uid', role: 'viewer' });
         await db.collection('documents').doc('doc-1').set({ id: 'doc-1', version: 1, createdBy: 'ed-uid', updatedBy: 'ed-uid' });
         await db.collection('documents').doc('doc-1').collection('history').doc('snap-1').set({ savedBy: 'ed-uid' });
         await db.collection('activity').doc('act-1').set({ actorUid: 'ed-uid' });
@@ -455,6 +523,11 @@ test('Branch 8 (delete paths): denies editor and viewer from hard deleting docum
     await assertFails(editor.collection('documents').doc('doc-1').delete());
     await assertFails(editor.collection('documents').doc('doc-1').collection('history').doc('snap-1').delete());
     await assertFails(editor.collection('activity').doc('act-1').delete());
+
+    const viewer = testEnv.authenticatedContext('vw-uid').firestore();
+    await assertFails(viewer.collection('documents').doc('doc-1').delete());
+    await assertFails(viewer.collection('documents').doc('doc-1').collection('history').doc('snap-1').delete());
+    await assertFails(viewer.collection('activity').doc('act-1').delete());
 });
 
 // ---------------------------------------------------------------------------
@@ -575,7 +648,7 @@ test('Branch 11 (images): allows editor create <=700kB jpeg/png, creator delete,
     });
 
     const editor = testEnv.authenticatedContext('ed-uid').firestore();
-    // Editor creates valid JPEG <= 700000 bytes
+    // Editor creates valid JPEG <= 700000 bytes with non-negative byteSize
     await assertSucceeds(editor.collection('images').doc('img-new').set({
         data: 'base64jpeg',
         byteSize: 699999,
@@ -591,7 +664,7 @@ test('Branch 11 (images): allows editor create <=700kB jpeg/png, creator delete,
     await assertSucceeds(owner.collection('images').doc('img-ed').delete());
 });
 
-test('Branch 11 (images): denies byteSize > 700kB, unsupported type, updates, and delete by other editor', async () => {
+test('Branch 11 (images): denies negative byteSize, byteSize > 700kB, unsupported type, updates, and delete by other editor', async () => {
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
@@ -606,6 +679,14 @@ test('Branch 11 (images): denies byteSize > 700kB, unsupported type, updates, an
     });
 
     const editor1 = testEnv.authenticatedContext('ed-1').firestore();
+    // Deny negative byteSize: -1
+    await assertFails(editor1.collection('images').doc('img-neg').set({
+        data: 'neg',
+        byteSize: -1,
+        createdBy: 'ed-1',
+        contentType: 'image/png'
+    }));
+
     // Deny > 700000 bytes
     await assertFails(editor1.collection('images').doc('img-oversize').set({
         data: 'huge',
@@ -635,35 +716,59 @@ test('Branch 11 (images): denies byteSize > 700kB, unsupported type, updates, an
 // ---------------------------------------------------------------------------
 // 12. counters/bugs
 // ---------------------------------------------------------------------------
-test('Branch 12 (counters/bugs): allows editor to increment next by exactly 1', async () => {
+test('Branch 12 (counters/bugs): allows editor create next: 1, owner create next: 100, and editor increment by exactly 1', async () => {
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
         await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
-        await db.collection('counters').doc('bugs').set({ next: 100 });
     });
 
+    // Editor creates counters/bugs with next: 1
     const editor = testEnv.authenticatedContext('ed-uid').firestore();
+    await assertSucceeds(editor.collection('counters').doc('bugs').set({ next: 1 }));
+
+    // Editor increments next by exactly 1
     await assertSucceeds(editor.collection('counters').doc('bugs').update({
-        next: 101
+        next: 2
     }));
+
+    // Clean for owner test
+    await seed(async (context) => {
+        await context.firestore().collection('counters').doc('bugs').delete();
+    });
+
+    // Owner can create counters/bugs with next: 100 (for Phase 10 import)
+    const owner = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(owner.collection('counters').doc('bugs').set({ next: 100 }));
 });
 
-test('Branch 12 (counters/bugs): denies increments not equal to 1 and viewer update', async () => {
+test('Branch 12 (counters/bugs): denies editor create next: 100, editor create other counters, increments not equal to 1, and viewer update', async () => {
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
         await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
         await db.collection('members').doc('vw-uid').set({ uid: 'vw-uid', role: 'viewer' });
-        await db.collection('counters').doc('bugs').set({ next: 100 });
     });
 
     const editor = testEnv.authenticatedContext('ed-uid').firestore();
+    // Deny editor creating counters/bugs with next: 100
+    await assertFails(editor.collection('counters').doc('bugs').set({ next: 100 }));
+
+    // Deny editor creating counter other than counters/bugs
+    await assertFails(editor.collection('counters').doc('other').set({ next: 1 }));
+
+    // Seed counters/bugs at next: 100
+    await seed(async (context) => {
+        await context.firestore().collection('counters').doc('bugs').set({ next: 100 });
+    });
+
     // Cannot jump by 2
     await assertFails(editor.collection('counters').doc('bugs').update({ next: 102 }));
     // Cannot stay same
     await assertFails(editor.collection('counters').doc('bugs').update({ next: 100 }));
 
+    // Viewer cannot update counter
     const viewer = testEnv.authenticatedContext('vw-uid').firestore();
     await assertFails(viewer.collection('counters').doc('bugs').update({ next: 101 }));
 });

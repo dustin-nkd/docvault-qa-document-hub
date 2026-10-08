@@ -42,7 +42,9 @@ service cloud.firestore {
 
     // 1. meta/team: Single team vault metadata
     match /meta/team {
-      allow read: if isAuthenticated();
+      allow get: if isAuthenticated() &&
+        (!exists(/databases/$(database)/documents/meta/team) || isMember());
+      allow list: if isMember();
       allow create: if isAuthenticated() &&
         !exists(/databases/$(database)/documents/meta/team) &&
         request.resource.data.ownerUid == request.auth.uid &&
@@ -132,11 +134,15 @@ service cloud.firestore {
       allow delete: if isTeamOwner();
     }
 
-    // 6. counters/{counterId}: Shared monotonic sequence counters
-    match /counters/{counterId} {
+    // 6. counters/bugs: Shared monotonic sequence counter for bug numbers
+    match /counters/bugs {
       allow read: if isMember();
-      allow create: if isTeamOwner() || isEditorOrOwner();
+      allow create: if request.resource.data.next is int && (
+        (isTeamOwner() && request.resource.data.next >= 1) ||
+        (isEditorOrOwner() && request.resource.data.next == 1)
+      );
       allow update: if isEditorOrOwner() &&
+        request.resource.data.next is int &&
         request.resource.data.next == resource.data.next + 1;
       allow delete: if isTeamOwner();
     }
@@ -156,6 +162,7 @@ service cloud.firestore {
         request.resource.data.createdBy == request.auth.uid &&
         (request.resource.data.contentType == 'image/jpeg' || request.resource.data.contentType == 'image/png') &&
         request.resource.data.byteSize is int &&
+        request.resource.data.byteSize >= 0 &&
         request.resource.data.byteSize <= 700000;
       allow update: if false;
       allow delete: if isEditorOrOwner() &&
