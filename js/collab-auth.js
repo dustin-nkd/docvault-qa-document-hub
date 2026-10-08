@@ -69,15 +69,24 @@
 
     function onAuthChanged(callback) {
         let unsubscribe = null;
+        let cancelled = false;
+
         getAuthInstance().then(auth => {
+            if (cancelled) return;
             unsubscribe = auth.onAuthStateChanged(callback);
+            if (cancelled && typeof unsubscribe === 'function') {
+                unsubscribe();
+                unsubscribe = null;
+            }
         }).catch(err => {
             console.error('[CollabAuth] Failed to subscribe to auth state:', err);
         });
 
         return function removeListener() {
+            cancelled = true;
             if (typeof unsubscribe === 'function') {
                 unsubscribe();
+                unsubscribe = null;
             }
         };
     }

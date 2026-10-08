@@ -53,31 +53,58 @@ test('js/firebase-config.js defines valid public config and contains no secrets'
     assert.ok(config.appId, 'Must contain appId');
 });
 
-test('js/collab-config.js evaluates edition flags, guest mode, and hostname', () => {
+test('js/collab-config.js evaluates edition flags, guest mode, and hostname dynamically', () => {
     const source = read('js/collab-config.js');
     const ctx = {
         URLSearchParams,
         window: {
             FIREBASE_CONFIG: { projectId: 'docvault-qa-team' },
-            location: { hostname: 'dustin-nkd.github.io', search: '' }
+            location: { hostname: 'docvault-qa-team.firebaseapp.com', search: '' }
         }
     };
     ctx.globalThis = ctx.window;
     vm.runInNewContext(source, ctx);
 
     assert.ok(ctx.window.CollabConfig, 'CollabConfig must be exported on window');
-    // On GitHub Pages without DOCVAULT_EDITION === 'team', collab mode is false
+
+    // If js/edition.js has not loaded yet (DOCVAULT_EDITION not set), COLLAB_MODE is false
     assert.equal(ctx.window.COLLAB_MODE, false);
     assert.equal(ctx.window.CollabConfig.isCollabMode(), false);
 
-    // With ?guest=1, collab mode is false even on team hostname
-    ctx.window.location = { hostname: 'docvault-qa-team.web.app', search: '?guest=1' };
+    // When js/edition.js loads later, reading COLLAB_MODE recalculates dynamically to true
     ctx.window.DOCVAULT_EDITION = 'team';
-    assert.equal(ctx.window.CollabConfig.isGuestMode(), true);
+    assert.equal(ctx.window.COLLAB_MODE, true, 'docvault-qa-team.firebaseapp.com + team edition + no guest is true');
+    assert.equal(ctx.window.CollabConfig.isCollabMode(), true);
+
+    // 1. github.io + DOCVAULT_EDITION = "team" is still false
+    ctx.window.location = { hostname: 'dustin-nkd.github.io', search: '' };
+    assert.equal(ctx.window.COLLAB_MODE, false, 'github.io + edition team must be false');
     assert.equal(ctx.window.CollabConfig.isCollabMode(), false);
 
-    // On team hostname with edition 'team' and no guest flag, collab mode is true
+    // 2. localhost + edition team is still false
+    ctx.window.location = { hostname: 'localhost', search: '' };
+    assert.equal(ctx.window.COLLAB_MODE, false, 'localhost + edition team must be false');
+    assert.equal(ctx.window.CollabConfig.isCollabMode(), false);
+
+    // 2b. 127.0.0.1 + edition team is still false
+    ctx.window.location = { hostname: '127.0.0.1', search: '' };
+    assert.equal(ctx.window.COLLAB_MODE, false, '127.0.0.1 + edition team must be false');
+    assert.equal(ctx.window.CollabConfig.isCollabMode(), false);
+
+    // 3. docvault-qa-team.firebaseapp.com + edition team + ?guest=1 is false
+    ctx.window.location = { hostname: 'docvault-qa-team.firebaseapp.com', search: '?guest=1' };
+    assert.equal(ctx.window.CollabConfig.isGuestMode(), true);
+    assert.equal(ctx.window.COLLAB_MODE, false, 'team hostname with ?guest=1 must be false');
+    assert.equal(ctx.window.CollabConfig.isCollabMode(), false);
+
+    // 4. docvault-qa-team.firebaseapp.com + edition team, no guest, is true
+    ctx.window.location = { hostname: 'docvault-qa-team.firebaseapp.com', search: '' };
+    assert.equal(ctx.window.COLLAB_MODE, true, 'docvault-qa-team.firebaseapp.com + edition team without guest must be true');
+    assert.equal(ctx.window.CollabConfig.isCollabMode(), true);
+
+    // 5. docvault-qa-team.web.app + edition team, no guest, is true
     ctx.window.location = { hostname: 'docvault-qa-team.web.app', search: '' };
+    assert.equal(ctx.window.COLLAB_MODE, true, 'docvault-qa-team.web.app + edition team without guest must be true');
     assert.equal(ctx.window.CollabConfig.isCollabMode(), true);
 });
 
@@ -245,4 +272,94 @@ test('collab-auth initializes with Auth emulator and calls getRedirectResult suc
     });
     assert.equal(typeof unsub, 'function', 'onAuthChanged must return an unsubscribe function');
     unsub();
+});
+
+test('onAuthChanged() early cancellation prevents listener attachment when getAuthInstance resolves', async () => {
+    let resolveFirebase;
+    const fakeFirebasePromise = new Promise(resolve => {
+        resolveFirebase = resolve;
+    });
+
+    let listenerAttached = false;
+    let authCallbackReceived = false;
+
+    const mockAuth = {
+        onAuthStateChanged: (cb) => {
+            listenerAttached = true;
+            cb({ uid: 'test-user' });
+            return () => { listenerAttached = false; };
+        }
+    };
+
+    const ctx = {
+        console,
+        ensureFirebase: () => fakeFirebasePromise,
+        CollabConfig: { getFirebaseConfig: () => ({ projectId: 'docvault-qa-team' }) },
+        location: { hostname: 'localhost' }
+    };
+    ctx.window = ctx;
+    ctx.globalThis = ctx;
+
+    const authSource = read('js/collab-auth.js');
+    vm.runInNewContext(authSource, ctx);
+
+    // Call onAuthChanged while getAuthInstance() is still pending
+    const unsub = ctx.CollabAuth.onAuthChanged(() => {
+        authCallbackReceived = true;
+    });
+    assert.equal(typeof unsub, 'function', 'Must return an unsubscribe function synchronously');
+
+    // Cancel early before getAuthInstance() resolves
+    unsub();
+
+    // Now resolve Firebase SDK loading
+    resolveFirebase({
+        apps: [{ name: '[DEFAULT]' }],
+        auth: () => mockAuth
+    });
+
+    // Wait for promise chain / microtasks to settle
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    // Assert that the listener was never attached and callback was never called
+    assert.equal(listenerAttached, false, 'Listener must NOT be attached to auth instance when cancelled early');
+    assert.equal(authCallbackReceived, false, 'Callback must NOT be called when cancelled early');
+});
+
+test('onAuthChanged() unsubscribe after resolution properly detaches listener', async () => {
+    let listenerAttached = false;
+    let unsubCalled = false;
+
+    const mockAuth = {
+        onAuthStateChanged: (cb) => {
+            listenerAttached = true;
+            return () => {
+                unsubCalled = true;
+                listenerAttached = false;
+            };
+        }
+    };
+
+    const ctx = {
+        console,
+        ensureFirebase: () => Promise.resolve({
+            apps: [{ name: '[DEFAULT]' }],
+            auth: () => mockAuth
+        }),
+        CollabConfig: { getFirebaseConfig: () => ({ projectId: 'docvault-qa-team' }) },
+        location: { hostname: 'localhost' }
+    };
+    ctx.window = ctx;
+    ctx.globalThis = ctx;
+
+    const authSource = read('js/collab-auth.js');
+    vm.runInNewContext(authSource, ctx);
+
+    const unsub = ctx.CollabAuth.onAuthChanged(() => {});
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    assert.equal(listenerAttached, true, 'Listener was attached after resolution');
+    unsub();
+    assert.equal(unsubCalled, true, 'Underlying unsubscribe was called');
+    assert.equal(listenerAttached, false, 'Listener was detached');
 });

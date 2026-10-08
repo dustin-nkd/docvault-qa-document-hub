@@ -20,9 +20,7 @@
         try {
             const host = root.location?.hostname || '';
             return host.endsWith('.web.app') ||
-                host.endsWith('.firebaseapp.com') ||
-                host === 'localhost' ||
-                host === '127.0.0.1';
+                host.endsWith('.firebaseapp.com');
         } catch (_) {
             return false;
         }
@@ -32,7 +30,7 @@
         // Must meet all 3 criteria:
         // 1. Not in guest demo mode (?guest=1)
         // 2. Build edition is explicitly set to "team"
-        // 3. Running on Firebase Hosting (*.web.app, *.firebaseapp.com) or local emulator host
+        // 3. Running on Firebase Hosting (*.web.app, *.firebaseapp.com)
         if (isGuestMode()) return false;
         if (root.DOCVAULT_EDITION !== 'team') return false;
         return isTeamHostname();
@@ -49,5 +47,13 @@
         getFirebaseConfig
     };
 
-    root.COLLAB_MODE = isCollabMode();
+    try {
+        Object.defineProperty(root, 'COLLAB_MODE', {
+            get: isCollabMode,
+            configurable: true,
+            enumerable: true
+        });
+    } catch (_) {
+        root.COLLAB_MODE = isCollabMode();
+    }
 })(typeof window !== 'undefined' ? window : globalThis);
