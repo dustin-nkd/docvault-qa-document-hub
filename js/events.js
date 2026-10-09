@@ -134,11 +134,15 @@ async function init() {
 
 async function startApp() {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
-        // Guest demo: skip LocalAuth and GitHubSync entirely — no lock screen, no
-        // password hash checks, no real-token bootstrap/pull/push. Just load the
-        // isolated in-memory sample set and render.
+        // Guest demo: skip LocalAuth/GitHubSync and render in-memory fixtures.
         await init();
         renderGuestBanner();
+        handleUrlParams();
+        return;
+    }
+    if (window.COLLAB_MODE) {
+        documents = [];
+        await init();
         handleUrlParams();
         return;
     }
@@ -153,11 +157,7 @@ async function startApp() {
             const hasRemoteData = await _checkRemoteExists(d.owner, d.repo, d.branch);
             const provisional = sessionStorage.getItem(LocalAuth.PROVISIONAL_KEY) === '1';
             if (hasRemoteData && provisional) {
-                // The master password just created on this device can't decrypt the
-                // existing remote vault, so it was the wrong password. Roll it back
-                // (instead of locking the user into a wrong hash forever) and re-lock
-                // for another attempt (US-401). Only fires for a freshly-minted hash,
-                // never for a returning user whose local hash already matched.
+                // Wrong provisional password rollback (US-401).
                 localStorage.removeItem(LocalAuth.HASH_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_PWD);
@@ -675,6 +675,10 @@ if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
 } else if (_shareIdOnLoad) {
     const _shareKey = decodeURIComponent(location.hash.replace('#key=', ''));
     loadSharedDoc(_shareIdOnLoad, _shareKey);
+} else if (window.COLLAB_MODE) {
+    if (window.CollabBootstrap?.start) {
+        window.CollabBootstrap.start();
+    }
 } else if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
     const ls = document.getElementById('lock-screen');
     if (ls) {
