@@ -517,6 +517,9 @@ async function persist() {
     // happens to be configured in this browser, push demo edits to the real repo.
     // Guest edits simply live for the session and vanish on reload.
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
+    if (typeof window !== 'undefined' && window.COLLAB_MODE) {
+        return window.CollabStore?.persist?.(documents);
+    }
     await DocStorage.save(documents);
     // Best-effort, non-blocking: push fresh snapshots for any shared documents
     // that changed, so viewers see the update on their next reload
@@ -532,29 +535,21 @@ async function hydrate() {
         documents = JSON.parse(JSON.stringify(GUEST_DEMO_DOCS));
         return;
     }
+    if (typeof window !== 'undefined' && window.COLLAB_MODE) {
+        documents = (await window.CollabStore?.loadDocuments?.()) || [];
+        normalizeDocTags(documents);
+        return;
+    }
 
     // Clean up legacy keys from old Firebase/E2EE architecture
-    localStorage.removeItem('firebase_config');
-    localStorage.removeItem('e2ee_api_key');
-    localStorage.removeItem('e2ee_bin_id');
+    ['firebase_config', 'e2ee_api_key', 'e2ee_bin_id', 'qahub_theme'].forEach(k => localStorage.removeItem(k));
     sessionStorage.removeItem('e2ee_master_password');
-    // DocVault is dark-theme only; drop the stored preference from when it wasn't.
-    localStorage.removeItem('qahub_theme');
 
     const settings = await DocStorage.getSettings();
     const saved = await DocStorage.getAll();
     // _wsKey() only rewrites the key outside the default workspace, so this is a
     // self-contained "am I in an extra workspace?" check that needs no other file.
-    const isDefaultWorkspace = _wsKey('w') === 'w';
-    if (saved && Array.isArray(saved) && saved.length > 0) {
-        documents = saved;
-    } else if (!isDefaultWorkspace) {
-        // A workspace the user created on purpose starts empty. SAMPLE_DOCS is
-        // first-run onboarding for a brand-new install, not content to inherit.
-        documents = [];
-    } else {
-        documents = [...SAMPLE_DOCS];
-    }
+    documents = (Array.isArray(saved) && saved.length > 0) ? saved : (_wsKey('w') === 'w' ? [...SAMPLE_DOCS] : []);
 
     normalizeDocTags(documents);
 
