@@ -140,18 +140,13 @@ async function startApp() {
         handleUrlParams();
         return;
     }
-    if (window.COLLAB_MODE) {
-        documents = [];
-        render();
-        handleUrlParams();
-        return;
-    }
+    if (window.COLLAB_MODE) { documents = []; render(); handleUrlParams(); return; }
     const configured = await GitHubSync.isConfigured();
     if (!configured) {
         const d = GitHubSync.DEFAULTS;
         const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
+        sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
         if (ok) {
-            sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
             toast('Vault synced from GitHub', 'success');
         } else {
             const hasRemoteData = await _checkRemoteExists(d.owner, d.repo, d.branch);
@@ -161,16 +156,14 @@ async function startApp() {
                 localStorage.removeItem(LocalAuth.HASH_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_PWD);
-                if (window.Vault?.clearKeyCache) window.Vault.clearKeyCache();
-                sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
+                window.Vault?.clearKeyCache?.();
                 toast('Wrong master password — enter the same password you used on your other device.', 'error');
                 const ls = document.getElementById('lock-screen');
                 if (ls) ls.classList.remove('hidden');
-                if (window.resetLockFormState) window.resetLockFormState();
-                if (window.updateLockSecurityState) window.updateLockSecurityState();
+                window.resetLockFormState?.();
+                window.updateLockSecurityState?.();
                 return;
             }
-            sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
             if (hasRemoteData) {
                 toast('Sync failed: wrong master password — enter the same password you used on your other device.', 'error');
             }
@@ -673,35 +666,38 @@ if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
     document.getElementById('lock-screen')?.classList.add('hidden');
     startApp();
 } else if (_shareIdOnLoad) {
-    const _shareKey = decodeURIComponent(location.hash.replace('#key=', ''));
-    loadSharedDoc(_shareIdOnLoad, _shareKey);
-} else if (window.COLLAB_MODE) {
-    if (window.CollabBootstrap?.start) {
-        window.CollabBootstrap.start();
-    }
-} else if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
-    const ls = document.getElementById('lock-screen');
-    if (ls) {
-        ls.classList.remove('hidden');
-        const refreshLockSecurityMeta = () => {
-            window.GitHubSync.fetchSecurityMetaPublic().then(meta => {
-                if (!meta) return;
-                window.GitHubSync._applySecurityMeta(meta);
-                if (window.updateLockSecurityState) window.updateLockSecurityState();
-            });
-        };
-
-        if (!window.LocalAuth.isConfigured()) {
-            const hint = document.getElementById('lock-screen-hint');
-            const sub = document.getElementById('lock-screen-sub');
-            if (hint) hint.textContent = 'Enter your Master Password to sync your data from GitHub.';
-            if (sub) sub.textContent = 'Use the same password from your other device. First time? Enter any password to create your vault.';
-            refreshLockSecurityMeta();
-        } else {
-            if (window.updateLockSecurityState) window.updateLockSecurityState();
-            refreshLockSecurityMeta();
-        }
-    }
+    loadSharedDoc(_shareIdOnLoad, decodeURIComponent(location.hash.replace('#key=', '')));
 } else {
-    startApp();
+    (async () => {
+        const _s = u => new Promise((r, j) => { const el = document.createElement('script'); el.src = u; el.onload = r; el.onerror = j; document.head.appendChild(el); });
+        try { await _s('js/collab-config.js'); } catch (_) {}
+        if (window.COLLAB_MODE) {
+            try {
+                for (const u of ['firebase-config', 'collab-loader', 'collab-auth', 'collab-bootstrap']) await _s('js/' + u + '.js');
+                window.CollabBootstrap?.start();
+            } catch (err) { console.error(err); }
+            return;
+        }
+        if (window.LocalAuth && !window.LocalAuth.isUnlocked()) {
+            const ls = document.getElementById('lock-screen');
+            if (ls) {
+                ls.classList.remove('hidden');
+                const h = document.getElementById('lock-screen-hint');
+                const s = document.getElementById('lock-screen-sub');
+                if (!window.LocalAuth.isConfigured()) {
+                    if (h) h.textContent = 'Enter your Master Password to sync your data from GitHub.';
+                    if (s) s.textContent = 'Use the same password from your other device. First time? Enter any password to create your vault.';
+                } else if (window.updateLockSecurityState) {
+                    window.updateLockSecurityState();
+                }
+                window.GitHubSync.fetchSecurityMetaPublic().then(meta => {
+                    if (!meta) return;
+                    window.GitHubSync._applySecurityMeta(meta);
+                    if (window.updateLockSecurityState) window.updateLockSecurityState();
+                });
+            }
+        } else {
+            startApp();
+        }
+    })();
 }

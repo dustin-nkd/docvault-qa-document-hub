@@ -288,11 +288,85 @@ test('start() concludes redirect result without triggering handleUserAuth direct
         authHandled = true;
         return originalHandle(user);
     };
-
     ctx.CollabBootstrap.start();
     await new Promise(r => setTimeout(r, 10));
 
     assert.equal(redirectResolved, true, 'getRedirectResult was called to conclude redirect flow');
     assert.equal(authHandled, false, 'getRedirectResult must NOT call handleUserAuth directly');
 });
+
+test('network errors reading members or invites propagate and display error state without showing uninvited card', async () => {
+    // 1. Network error on members/{uid}
+    const store = new Map([['meta/team', { ownerUid: 'owner-1', initialized: true }]]);
+    const firestoreMockMemberError = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    if (colName === 'meta' && docId === 'team') return { exists: true, data: () => store.get('meta/team') };
+                    if (colName === 'members') {
+                        const err = new Error('14 UNAVAILABLE: member transport error');
+                        err.code = 'unavailable';
+                        throw err;
+                    }
+                    return { exists: false, data: () => null };
+                }
+            })
+        })
+    };
+
+    const ctxMember = createBootstrapContext(firestoreMockMemberError);
+    const userMember = { uid: 'user-member-err', email: 'member_err@example.com' };
+
+    await assert.rejects(
+        () => ctxMember.CollabBootstrap.initTeamUser(userMember),
+        /member transport error/
+    );
+    await ctxMember.CollabBootstrap.handleUserAuth(userMember);
+    assert.equal(ctxMember.elements['collab-uninvited-card'].classList.contains('hidden'), true);
+    assert.match(ctxMember.elements['lock-screen-hint'].textContent, /member transport error|failed to connect/i);
+
+    // 2. Network error on invites/{email}
+    const firestoreMockInviteError = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    if (colName === 'meta' && docId === 'team') return { exists: true, data: () => store.get('meta/team') };
+                    if (colName === 'members') return { exists: false, data: () => null };
+                    if (colName === 'invites') {
+                        const err = new Error('14 UNAVAILABLE: invite transport error');
+                        err.code = 'unavailable';
+                        throw err;
+                    }
+                    return { exists: false, data: () => null };
+                }
+            })
+        })
+    };
+
+    const ctxInvite = createBootstrapContext(firestoreMockInviteError);
+    const userInvite = { uid: 'user-invite-err', email: 'invite_err@example.com' };
+
+    await assert.rejects(
+        () => ctxInvite.CollabBootstrap.initTeamUser(userInvite),
+        /invite transport error/
+    );
+    await ctxInvite.CollabBootstrap.handleUserAuth(userInvite);
+    assert.equal(ctxInvite.elements['collab-uninvited-card'].classList.contains('hidden'), true);
+    assert.match(ctxInvite.elements['lock-screen-hint'].textContent, /invite transport error|failed to connect/i);
+});
+
+test('index.html layout and dynamic script loading contract in events.js', () => {
+    const html = read('index.html');
+    assert.match(html, /<link rel="apple-touch-icon" href="icons\/icon128\.png">/);
+    assert.match(html, /<link href="vendor\/fontawesome\/css\/all\.min\.css" rel="stylesheet">/);
+    assert.doesNotMatch(html, /@import\s+["']vendor\/fontawesome/);
+    assert.doesNotMatch(html, /<script[^>]+src="js\/collab-config\.js"/);
+    assert.doesNotMatch(html, /<script[^>]+src="js\/collab-bootstrap\.js"/);
+
+    const events = read('js/events.js');
+    assert.match(events, /js\/collab-config\.js/);
+    assert.match(events, /window\.COLLAB_MODE/);
+    assert.match(events, /CollabBootstrap\?\.start/);
+});
+
 

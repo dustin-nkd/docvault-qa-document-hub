@@ -58,9 +58,7 @@
         }
 
         let memberSnap = null;
-        try {
-            memberSnap = await db.collection('members').doc(user.uid).get();
-        } catch (_) {}
+        memberSnap = await db.collection('members').doc(user.uid).get();
 
         if (memberSnap && memberSnap.exists) {
             const memberData = memberSnap.data();
@@ -70,9 +68,7 @@
 
         let inviteSnap = null;
         if (user.email) {
-            try {
-                inviteSnap = await db.collection('invites').doc(user.email).get();
-            } catch (_) {}
+            inviteSnap = await db.collection('invites').doc(user.email).get();
         }
 
         if (inviteSnap && inviteSnap.exists) {
