@@ -250,12 +250,8 @@
         const currentIds = new Set(currentDocuments.filter(d => d && d.id).map(d => d.id));
         for (const [id, known] of Array.from(_knownDocs.entries())) {
             if (!currentIds.has(id)) {
-                try {
-                    await db.collection('documents').doc(id).delete();
-                    _knownDocs.delete(id);
-                } catch (err) {
-                    console.error('[CollabStore] Document deletion rejected:', id, err);
-                }
+                await db.collection('documents').doc(id).delete();
+                _knownDocs.delete(id);
             }
         }
     }

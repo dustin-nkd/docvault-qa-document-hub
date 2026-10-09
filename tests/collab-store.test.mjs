@@ -375,6 +375,61 @@ test('persist() deletes documents from Firestore when they disappear from local 
     assert.equal(ctx.CollabStore.getKnownDocs().has('doc-to-keep'), true);
 });
 
+test('persist() does not swallow delete rejection and lets error propagate', async () => {
+    const initialDocs = {
+        'doc-to-delete': {
+            id: 'doc-to-delete',
+            title: 'Delete me',
+            version: 1,
+            updatedAt: 1000
+        }
+    };
+
+    const ctx = createStoreContext({
+        initialDocs,
+        user: { uid: 'editor-user' }
+    });
+
+    const origCol = ctx.firebase.firestore().collection;
+    ctx.firebase.firestore().collection = (col) => {
+        const c = origCol(col);
+        return {
+            ...c,
+            doc: (docId) => {
+                const d = c.doc(docId);
+                return {
+                    ...d,
+                    delete: async () => {
+                        const err = new Error('PERMISSION_DENIED: only owner can delete');
+                        err.code = 'permission-denied';
+                        throw err;
+                    }
+                };
+            }
+        };
+    };
+
+    const docs = await ctx.CollabStore.loadDocuments();
+    assert.equal(docs.length, 1);
+
+    await assert.rejects(
+        () => ctx.CollabStore.persist([]),
+        /permission-denied|only owner can delete/
+    );
+
+    assert.equal(ctx.CollabStore.getKnownDocs().has('doc-to-delete'), true, 'Document retained in _knownDocs on delete failure');
+});
+
+test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v60', () => {
+    const events = read('js/events.js');
+    assert.match(events, /'collab-store'/);
+    assert.ok(events.indexOf("'collab-store'") < events.indexOf('CollabBootstrap?.start'));
+
+    const sw = read('sw.js');
+    assert.match(sw, /const SW_VERSION = 'v60'/);
+    assert.match(sw, /'\.\/js\/collab-store\.js'/);
+});
+
 test('js/state.js persist() and hydrate() integrate with CollabStore when COLLAB_MODE is enabled', async () => {
     const stateFile = read('js/state.js');
     assert.match(stateFile, /window\.COLLAB_MODE/);
