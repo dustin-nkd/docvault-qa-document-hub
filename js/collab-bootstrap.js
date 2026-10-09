@@ -1,5 +1,4 @@
 // DocVault team collaboration bootstrap module
-// Manages Google sign-in on lock screen, team initialization, and member access verification.
 (function(root) {
     let _currentMember = null;
 
@@ -7,8 +6,7 @@
         if (!root.firebase || !root.firebase.firestore) return null;
         const db = root.firebase.firestore();
         const host = root.location?.hostname || '';
-        const isLocal = host === 'localhost' || host === '127.0.0.1';
-        if (isLocal && !db._emulatorConnected) {
+        if ((host === 'localhost' || host === '127.0.0.1') && !db._emulatorConnected) {
             try {
                 db.useEmulator('127.0.0.1', 8080);
                 db._emulatorConnected = true;
@@ -19,25 +17,25 @@
 
     async function initTeamUser(user) {
         if (!user) return { status: 'unauthenticated' };
-
-        if (root.ensureFirebase) {
-            await root.ensureFirebase();
-        }
-
+        if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
 
-        // Check if meta/team already exists
         let isTeamInitialized = false;
         try {
             const metaSnap = await db.collection('meta').doc('team').get();
             isTeamInitialized = metaSnap.exists;
         } catch (err) {
-            // Under firestore.rules, strangers receive permission-denied once team exists
-            isTeamInitialized = true;
+            const isPermissionDenied = err?.code === 'permission-denied' ||
+                err?.code === 7 ||
+                String(err?.message || '').includes('PERMISSION_DENIED');
+            if (isPermissionDenied) {
+                isTeamInitialized = true;
+            } else {
+                throw err;
+            }
         }
 
-        // First user bootstrapping: create meta/team and member with role owner
         if (!isTeamInitialized) {
             const now = new Date().toISOString();
             await db.collection('meta').doc('team').set({
@@ -46,7 +44,6 @@
                 createdAt: now,
                 initialized: true
             });
-
             const ownerMember = {
                 uid: user.uid,
                 email: user.email || '',
@@ -60,7 +57,6 @@
             return { status: 'owner', role: 'owner', member: ownerMember };
         }
 
-        // Team already exists: check if current user is an existing member
         let memberSnap = null;
         try {
             memberSnap = await db.collection('members').doc(user.uid).get();
@@ -72,7 +68,6 @@
             return { status: 'member', role: memberData.role, member: memberData };
         }
 
-        // Check if an invite exists for user's Google email
         let inviteSnap = null;
         if (user.email) {
             try {
@@ -97,20 +92,15 @@
             return { status: 'member', role: inviteData.role, member: newMember };
         }
 
-        // Authenticated user with no invite: blocked from accessing or creating team data
         _currentMember = null;
-        return {
-            status: 'uninvited',
-            message: 'Ask an owner for an invite'
-        };
+        return { status: 'uninvited', message: 'Ask an owner for an invite' };
     }
 
-    function showCollabLockScreen(state = 'signin') {
+    function showCollabLockScreen(state = 'signin', errorMessage = '') {
         const ls = document.getElementById('lock-screen');
         if (!ls) return;
         ls.classList.remove('hidden');
 
-        // Hide legacy master password elements
         const form = ls.querySelector('form[data-onsubmit="unlockVaultFromForm()"]');
         if (form) form.classList.add('hidden');
         document.getElementById('lock-demo-btn')?.classList.add('hidden');
@@ -119,7 +109,6 @@
         document.getElementById('lock-recovery-panel')?.classList.add('hidden');
         document.getElementById('lock-screen-sub')?.classList.add('hidden');
 
-        // Show collab lock panel
         const collabPanel = document.getElementById('collab-lock-panel');
         if (collabPanel) collabPanel.classList.remove('hidden');
 
@@ -130,7 +119,15 @@
         if (state === 'uninvited') {
             if (signinBtn) signinBtn.classList.add('hidden');
             if (uninvitedCard) uninvitedCard.classList.remove('hidden');
+            const uninvitedTitle = document.getElementById('collab-uninvited-title');
+            const uninvitedText = document.getElementById('collab-uninvited-text');
+            if (uninvitedTitle) uninvitedTitle.textContent = 'Access Restricted';
+            if (uninvitedText) uninvitedText.textContent = 'Ask an owner for an invite';
             if (hint) hint.textContent = 'Team collaboration mode';
+        } else if (state === 'error') {
+            if (signinBtn) signinBtn.classList.remove('hidden');
+            if (uninvitedCard) uninvitedCard.classList.add('hidden');
+            if (hint) hint.textContent = errorMessage || 'Failed to connect. Please try again.';
         } else {
             if (signinBtn) signinBtn.classList.remove('hidden');
             if (uninvitedCard) uninvitedCard.classList.add('hidden');
@@ -160,25 +157,21 @@
             }
         } catch (err) {
             console.error('[CollabBootstrap] User initialization failed:', err);
-            showCollabLockScreen('signin');
+            showCollabLockScreen('error', err.message || 'Failed to connect. Please try again.');
         }
     }
 
     function start() {
         showCollabLockScreen('signin');
 
-        // Process any pending redirect auth result
+        // Conclude any pending OAuth redirect flow without triggering handleUserAuth
         if (root.CollabAuth?.getRedirectResult) {
-            root.CollabAuth.getRedirectResult().then(res => {
-                if (res && res.user) {
-                    handleUserAuth(res.user);
-                }
-            }).catch(err => {
+            root.CollabAuth.getRedirectResult().catch(err => {
                 console.error('[CollabBootstrap] Redirect result error:', err);
             });
         }
 
-        // Subscribe to auth state changes
+        // Only onAuthChanged invokes handleUserAuth
         if (root.CollabAuth?.onAuthChanged) {
             if (root._collabAuthUnsub) {
                 root._collabAuthUnsub();

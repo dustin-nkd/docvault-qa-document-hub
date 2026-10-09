@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="icons/icon48.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#070b14">
-    <link rel="apple-touch-icon" href="icons/icon128.png">
+    <link rel="apple-touch-icon" href="icons/icon48.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DocVault">
@@ -15,7 +15,6 @@
 
     <link href="vendor/fonts/space-grotesk/runtime.css" rel="stylesheet">
     <link href="vendor/fonts/dm-sans/runtime.css" rel="stylesheet">
-    <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
     <!-- Sprint 22: pre-built by the "Deploy to GitHub Pages" workflow (tailwind.config.js
          + src/input.css) instead of the CDN JIT compiler, which recompiled Tailwind's
@@ -23,6 +22,7 @@
     <link rel="stylesheet" href="vendor/tailwind/tailwind.generated.css">
 
     <style>
+        @import "vendor/fontawesome/css/all.min.css";
         :root {
             --bg: #070b14;
             --bg2: #0d1424;
@@ -639,6 +639,11 @@
 <script defer src="js/actions-focus.js"></script>
 <script defer src="js/workspaces.js"></script>
 <script defer src="js/search.js"></script>
+<script defer src="js/firebase-config.js"></script>
+<script defer src="js/collab-config.js"></script>
+<script defer src="js/collab-loader.js"></script>
+<script defer src="js/collab-auth.js"></script>
+<script defer src="js/collab-bootstrap.js"></script>
 <script defer src="js/events.js"></script>
 </body>
 </html>

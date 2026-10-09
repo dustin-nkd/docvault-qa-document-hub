@@ -142,7 +142,7 @@ async function startApp() {
     }
     if (window.COLLAB_MODE) {
         documents = [];
-        await init();
+        render();
         handleUrlParams();
         return;
     }

@@ -235,3 +235,64 @@ test('index.html contains static Google sign-in button and "Ask an owner for an 
     assert.match(html, /data-onclick="collabSignOut\(\)"/, 'Sign-out button must use data-onclick');
     assert.doesNotMatch(html, /(?<!data-)onclick="collab/i, 'Must not use native inline onclick');
 });
+
+test('network or other non-permission errors during meta/team get display error state and never show uninvited card', async () => {
+    const firestoreMock = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    if (colName === 'meta' && docId === 'team') {
+                        const err = new Error('14 UNAVAILABLE: network transport failed');
+                        err.code = 'unavailable';
+                        throw err;
+                    }
+                    return { exists: false, data: () => null };
+                }
+            })
+        })
+    };
+
+    const ctx = createBootstrapContext(firestoreMock);
+    const user = { uid: 'user-net-err', email: 'user@example.com' };
+
+    // initTeamUser must propagate non-permission-denied errors
+    await assert.rejects(
+        () => ctx.CollabBootstrap.initTeamUser(user),
+        /unavailable|network transport failed/
+    );
+
+    // When handleUserAuth catches a network failure, it displays error state
+    await ctx.CollabBootstrap.handleUserAuth(user);
+    const uninvitedCard = ctx.elements['collab-uninvited-card'];
+    const signinBtn = ctx.elements['collab-google-signin-btn'];
+    const hint = ctx.elements['lock-screen-hint'];
+
+    assert.equal(uninvitedCard.classList.contains('hidden'), true, 'Uninvited card must remain hidden on network error');
+    assert.equal(signinBtn.classList.contains('hidden'), false, 'Google sign-in button remains available');
+    assert.match(hint.textContent, /network transport failed|failed to connect/i);
+});
+
+test('start() concludes redirect result without triggering handleUserAuth directly', async () => {
+    let redirectResolved = false;
+    let authHandled = false;
+
+    const ctx = createBootstrapContext({});
+    ctx.CollabAuth.getRedirectResult = async () => {
+        redirectResolved = true;
+        return { user: { uid: 'redirect-user', email: 'redirect@example.com' } };
+    };
+
+    // Override handleUserAuth to detect if getRedirectResult directly invokes it
+    const originalHandle = ctx.CollabBootstrap.handleUserAuth;
+    ctx.CollabBootstrap.handleUserAuth = async (user) => {
+        authHandled = true;
+        return originalHandle(user);
+    };
+
+    ctx.CollabBootstrap.start();
+    await new Promise(r => setTimeout(r, 10));
+
+    assert.equal(redirectResolved, true, 'getRedirectResult was called to conclude redirect flow');
+    assert.equal(authHandled, false, 'getRedirectResult must NOT call handleUserAuth directly');
+});
+
