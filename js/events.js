@@ -145,23 +145,23 @@ async function startApp() {
     if (!configured) {
         const d = GitHubSync.DEFAULTS;
         const ok = await GitHubSync.bootstrap(d.owner, d.repo, d.branch);
+        const provisional = sessionStorage.getItem(LocalAuth.PROVISIONAL_KEY) === '1';
         sessionStorage.removeItem(LocalAuth.PROVISIONAL_KEY);
         if (ok) {
             toast('Vault synced from GitHub', 'success');
         } else {
             const hasRemoteData = await _checkRemoteExists(d.owner, d.repo, d.branch);
-            const provisional = sessionStorage.getItem(LocalAuth.PROVISIONAL_KEY) === '1';
             if (hasRemoteData && provisional) {
                 // Wrong provisional password rollback (US-401).
                 localStorage.removeItem(LocalAuth.HASH_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_KEY);
                 sessionStorage.removeItem(LocalAuth.SESSION_PWD);
-                window.Vault?.clearKeyCache?.();
+                if (window.Vault?.clearKeyCache) window.Vault.clearKeyCache();
                 toast('Wrong master password — enter the same password you used on your other device.', 'error');
                 const ls = document.getElementById('lock-screen');
                 if (ls) ls.classList.remove('hidden');
-                window.resetLockFormState?.();
-                window.updateLockSecurityState?.();
+                if (window.resetLockFormState) window.resetLockFormState();
+                if (window.updateLockSecurityState) window.updateLockSecurityState();
                 return;
             }
             if (hasRemoteData) {
