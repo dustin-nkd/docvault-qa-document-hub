@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v60'; // Team collaboration runtime modules cached in app shell
+const SW_VERSION = 'v61'; // Team collaboration runtime modules cached in app shell
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 

@@ -20,6 +20,9 @@
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
+        if (root.CollabStore?.enableOfflinePersistence) {
+            await root.CollabStore.enableOfflinePersistence(db);
+        }
 
         let isTeamInitialized = false;
         try {

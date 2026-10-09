@@ -147,7 +147,8 @@ function createStoreContext(options = {}) {
         },
         renderCallCount: 0,
         _elements: elements,
-        state: options.state || { view: 'dashboard', editingDoc: null, isDirty: false },
+        _captureEditorFormState: options._captureEditorFormState || null,
+        state: options.state || { view: 'dashboard', editingDoc: null },
         documents: options.documents || []
     };
 
@@ -486,13 +487,13 @@ test('persist() does not swallow delete rejection and lets error propagate', asy
     assert.equal(ctx.CollabStore.getKnownDocs().has('doc-to-delete'), true, 'Document retained in _knownDocs on delete failure');
 });
 
-test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v60', () => {
+test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v61', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-store'/);
     assert.ok(events.indexOf("'collab-store'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v60'/);
+    assert.match(sw, /const SW_VERSION = 'v61'/);
     assert.match(sw, /'\.\/js\/collab-store\.js'/);
 });
 
@@ -593,14 +594,16 @@ test('onSnapshot listener starts after loadDocuments and offline persistence is 
 });
 
 test('editor dirty does not get overwritten by snapshot and shows conflict banner with reload button', async () => {
+    let formState = 'form-state-dirty';
     const ctx = createStoreContext({
         initialDocs: {
             'doc-edit': { id: 'doc-edit', title: 'Server Title', version: 1, updatedAt: 1000 }
         },
+        _captureEditorFormState: () => formState,
         state: {
             view: 'editor',
             editingDoc: { id: 'doc-edit', title: 'Local Dirty Title', version: 1, updatedAt: 1000 },
-            isDirty: true
+            _editorSnapshot: 'form-state-clean'
         },
         documents: [
             { id: 'doc-edit', title: 'Local Dirty Title', version: 1, updatedAt: 1000 }
@@ -692,10 +695,11 @@ test('editor clean (not dirty) updates state.editingDoc and renders', async () =
         initialDocs: {
             'doc-clean': { id: 'doc-clean', title: 'Clean Original', version: 1, updatedAt: 1000 }
         },
+        _captureEditorFormState: () => 'snapshot-clean',
         state: {
             view: 'editor',
             editingDoc: { id: 'doc-clean', title: 'Clean Original', version: 1, updatedAt: 1000 },
-            isDirty: false
+            _editorSnapshot: 'snapshot-clean'
         },
         documents: [
             { id: 'doc-clean', title: 'Clean Original', version: 1, updatedAt: 1000 }
@@ -778,5 +782,56 @@ test('signOut stops onSnapshot listener in CollabStore', async () => {
 
     await ctx.collabSignOut();
     assert.equal(stopCalled, true, 'collabSignOut must invoke CollabStore.stopListening');
+});
+
+test('loadDocuments() calls normalizeDocTags on loaded documents when available', async () => {
+    let normalizedDocs = null;
+    const ctx = createStoreContext({
+        initialDocs: {
+            'doc-tags': { id: 'doc-tags', title: 'Tag Doc', tags: ['a', 'b'], version: 1, updatedAt: 1000 }
+        }
+    });
+    ctx.normalizeDocTags = (docs) => {
+        normalizedDocs = docs;
+    };
+
+    const loaded = await ctx.CollabStore.loadDocuments();
+    assert.equal(normalizedDocs, loaded);
+    assert.equal(loaded[0].id, 'doc-tags');
+});
+
+test('enableOfflinePersistence logs warning and rejects on failed-precondition, ignores unimplemented', async () => {
+    const warned = [];
+    const origWarn = console.warn;
+    console.warn = (...args) => { warned.push(args.join(' ')); };
+
+    try {
+        const ctx1 = createStoreContext();
+        const dbUnimplemented = {
+            enablePersistence: async () => {
+                const err = new Error('Not implemented');
+                err.code = 'unimplemented';
+                throw err;
+            }
+        };
+        await ctx1.CollabStore.enableOfflinePersistence(dbUnimplemented);
+        assert.equal(warned.length, 0, 'unimplemented must be ignored without warning');
+
+        const ctx2 = createStoreContext();
+        const dbPrecondition = {
+            enablePersistence: async () => {
+                const err = new Error('Already initialized');
+                err.code = 'failed-precondition';
+                throw err;
+            }
+        };
+        await assert.rejects(
+            () => ctx2.CollabStore.enableOfflinePersistence(dbPrecondition),
+            /Already initialized/
+        );
+        assert.ok(warned.some(w => w.includes('enablePersistence failed-precondition')), 'Must console.warn on failed-precondition');
+    } finally {
+        console.warn = origWarn;
+    }
 });
 

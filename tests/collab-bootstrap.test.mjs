@@ -46,6 +46,10 @@ function createBootstrapContext(firestoreMock = {}) {
                 return () => { ctx._authUnsubscribed = true; };
             }
         },
+        CollabStore: {
+            enableOfflinePersistence: async () => {},
+            stopListening: () => {}
+        },
         location: { hostname: 'docvault-qa-team.firebaseapp.com', search: '' }
     };
     ctx.window = ctx;
@@ -367,6 +371,43 @@ test('index.html layout and dynamic script loading contract in events.js', () =>
     assert.match(events, /js\/collab-config\.js/);
     assert.match(events, /window\.COLLAB_MODE/);
     assert.match(events, /CollabBootstrap\?\.start/);
+});
+
+test('promise of enablePersistence resolves before meta/team is retrieved via get()', async () => {
+    let persistenceResolved = false;
+    let getCalledAfterPersistence = false;
+    let persistenceDbPassed = null;
+
+    const firestoreMock = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    if (colName === 'meta' && docId === 'team') {
+                        getCalledAfterPersistence = persistenceResolved;
+                    }
+                    return { exists: true, data: () => ({ initialized: true, ownerUid: 'someone' }) };
+                },
+                set: async () => {}
+            })
+        })
+    };
+
+    const ctx = createBootstrapContext(firestoreMock);
+    ctx.CollabStore = {
+        enableOfflinePersistence: async (db) => {
+            persistenceDbPassed = db;
+            await new Promise(r => setTimeout(r, 10));
+            persistenceResolved = true;
+        }
+    };
+
+    const user = { uid: 'user-1', email: 'u1@example.com' };
+    try {
+        await ctx.CollabBootstrap.initTeamUser(user);
+    } catch (_) {}
+
+    assert.equal(persistenceDbPassed, firestoreMock, 'db must be passed to enableOfflinePersistence');
+    assert.equal(getCalledAfterPersistence, true, 'meta/team get() must be called strictly after enableOfflinePersistence resolves');
 });
 
 

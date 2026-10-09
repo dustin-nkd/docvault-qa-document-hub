@@ -140,7 +140,7 @@ async function startApp() {
         handleUrlParams();
         return;
     }
-    if (window.COLLAB_MODE) { documents = []; render(); handleUrlParams(); return; }
+    if (window.COLLAB_MODE) { documents = await window.CollabStore.loadDocuments(); render(); handleUrlParams(); return; }
     const configured = await GitHubSync.isConfigured();
     if (!configured) {
         const d = GitHubSync.DEFAULTS;

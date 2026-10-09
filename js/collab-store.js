@@ -80,14 +80,16 @@
     async function enableOfflinePersistence(db) {
         if (!db || typeof db.enablePersistence !== 'function') return;
         if (_persistencePromise) return _persistencePromise;
-        try {
-            _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-                if (err?.code !== 'failed-precondition' && err?.code !== 'unimplemented') {
-                    console.warn('[CollabStore] enablePersistence warning:', err);
-                }
-            });
-            return _persistencePromise;
-        } catch (_) {}
+        _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+            if (err?.code === 'unimplemented') return;
+            if (err?.code === 'failed-precondition') {
+                console.warn('[CollabStore] enablePersistence failed-precondition:', err);
+                return Promise.reject(err);
+            }
+            console.warn('[CollabStore] enablePersistence warning:', err);
+            return Promise.reject(err);
+        });
+        return _persistencePromise;
     }
 
     function getDocuments() {
@@ -105,8 +107,6 @@
     function isEditorDirty() {
         const s = getState();
         if (!s || s.view !== 'editor') return false;
-        if (typeof s.isDirty === 'boolean') return s.isDirty;
-        if (typeof s._isDirty === 'boolean') return s._isDirty;
         const captureFn = (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null) ||
                           (typeof root._captureEditorFormState === 'function' ? root._captureEditorFormState : null);
         if (captureFn && s._editorSnapshot !== undefined) {
@@ -138,8 +138,6 @@
             s.editingDoc = { ...doc };
             s.editorTags = Array.isArray(doc.tags) ? [...doc.tags] : [];
             s.editorMode = 'edit';
-            s.isDirty = false;
-            delete s._isDirty;
             if (typeof root.render === 'function') root.render();
             const captureFn = (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null) ||
                               (typeof root._captureEditorFormState === 'function' ? root._captureEditorFormState : null);
@@ -260,6 +258,9 @@
                 _knownDocs.set(doc.id, { ...doc });
             }
         });
+
+        const normTags = typeof root.normalizeDocTags === 'function' ? root.normalizeDocTags : (typeof normalizeDocTags === 'function' ? normalizeDocTags : null);
+        if (normTags) normTags(loaded);
 
         startListening();
         return loaded;
