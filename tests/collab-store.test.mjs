@@ -16,46 +16,68 @@ function createStoreContext(options = {}) {
         deleteDocs: []
     };
     const toasts = [];
+    const persistenceCalls = [];
+    let snapshotListener = null;
+
+    const elements = new Map();
+    const contentEl = {
+        id: 'content',
+        className: '',
+        children: [],
+        prepend: (el) => {
+            if (el?.id) elements.set(el.id, el);
+        }
+    };
+    elements.set('content', contentEl);
+
+    const docCollection = {
+        get: async () => {
+            calls.getDocs++;
+            const docSnaps = [];
+            for (const [id, data] of store.entries()) {
+                docSnaps.push({
+                    id,
+                    data: () => JSON.parse(JSON.stringify(data))
+                });
+            }
+            return {
+                docs: docSnaps,
+                forEach: (fn) => docSnaps.forEach(fn)
+            };
+        },
+        onSnapshot: (callback) => {
+            snapshotListener = callback;
+            return () => { snapshotListener = null; };
+        },
+        doc: (docId) => ({
+            get: async () => {
+                const exists = store.has(docId);
+                const data = exists ? JSON.parse(JSON.stringify(store.get(docId))) : null;
+                return { exists, data: () => data };
+            },
+            set: async (data) => {
+                if (options.onSet) {
+                    await options.onSet(docId, data, store);
+                }
+                calls.setDocs.push({ id: docId, data: JSON.parse(JSON.stringify(data)) });
+                store.set(docId, JSON.parse(JSON.stringify(data)));
+            },
+            delete: async () => {
+                calls.deleteDocs.push(docId);
+                store.delete(docId);
+            }
+        })
+    };
 
     const firestoreMock = {
+        enablePersistence: async (opts) => {
+            persistenceCalls.push(opts);
+        },
         collection: (colName) => {
             if (colName !== 'documents') {
                 throw new Error(`Unexpected collection query: ${colName}`);
             }
-            return {
-                get: async () => {
-                    calls.getDocs++;
-                    const docSnaps = [];
-                    for (const [id, data] of store.entries()) {
-                        docSnaps.push({
-                            id,
-                            data: () => JSON.parse(JSON.stringify(data))
-                        });
-                    }
-                    return {
-                        docs: docSnaps,
-                        forEach: (fn) => docSnaps.forEach(fn)
-                    };
-                },
-                doc: (docId) => ({
-                    get: async () => {
-                        const exists = store.has(docId);
-                        const data = exists ? JSON.parse(JSON.stringify(store.get(docId))) : null;
-                        return { exists, data: () => data };
-                    },
-                    set: async (data) => {
-                        if (options.onSet) {
-                            await options.onSet(docId, data, store);
-                        }
-                        calls.setDocs.push({ id: docId, data: JSON.parse(JSON.stringify(data)) });
-                        store.set(docId, JSON.parse(JSON.stringify(data)));
-                    },
-                    delete: async () => {
-                        calls.deleteDocs.push(docId);
-                        store.delete(docId);
-                    }
-                })
-            };
+            return docCollection;
         }
     };
 
@@ -82,7 +104,51 @@ function createStoreContext(options = {}) {
         },
         store,
         calls,
-        toasts
+        toasts,
+        persistenceCalls,
+        getSnapshotListener: () => snapshotListener,
+        triggerSnapshot: (changes) => {
+            if (snapshotListener) {
+                snapshotListener({
+                    docChanges: () => changes.map(c => ({
+                        type: c.type || 'modified',
+                        doc: {
+                            id: c.doc?.id || c.id,
+                            data: () => c.doc?.data ? c.doc.data : c.doc || c,
+                            metadata: { hasPendingWrites: Boolean(c.hasPendingWrites) }
+                        }
+                    }))
+                });
+            }
+        },
+        document: {
+            getElementById: (id) => elements.get(id) || null,
+            querySelector: (sel) => elements.get(sel) || null,
+            createElement: (tag) => {
+                const el = {
+                    tagName: tag.toUpperCase(),
+                    id: '',
+                    className: '',
+                    style: { cssText: '' },
+                    setAttribute: (k, v) => { el[k] = v; },
+                    remove: () => {
+                        if (el.id) elements.delete(el.id);
+                    },
+                    innerHTML: '',
+                    prepend: (child) => {
+                        if (child?.id) elements.set(child.id, child);
+                    }
+                };
+                return el;
+            }
+        },
+        render: () => {
+            ctx.renderCallCount = (ctx.renderCallCount || 0) + 1;
+        },
+        renderCallCount: 0,
+        _elements: elements,
+        state: options.state || { view: 'dashboard', editingDoc: null, isDirty: false },
+        documents: options.documents || []
     };
 
     vm.createContext(ctx);
@@ -504,5 +570,213 @@ test('state.js hydrate() and persist() dynamically invoke CollabStore when COLLA
     await ctx.persist();
     assert.equal(collabPersistCalled, false);
     assert.ok(localSaved);
+});
+
+test('onSnapshot listener starts after loadDocuments and offline persistence is enabled before read/write', async () => {
+    const ctx = createStoreContext({
+        initialDocs: {
+            'doc-1': { id: 'doc-1', title: 'Doc 1', version: 1, updatedAt: 1000 }
+        }
+    });
+
+    assert.equal(ctx.persistenceCalls.length, 0);
+    assert.equal(ctx.CollabStore.isListening(), false);
+
+    await ctx.CollabStore.loadDocuments();
+
+    assert.equal(ctx.persistenceCalls.length, 1);
+    assert.equal(ctx.persistenceCalls[0].synchronizeTabs, true);
+    assert.equal(ctx.CollabStore.isListening(), true);
+
+    ctx.CollabStore.stopListening();
+    assert.equal(ctx.CollabStore.isListening(), false);
+});
+
+test('editor dirty does not get overwritten by snapshot and shows conflict banner with reload button', async () => {
+    const ctx = createStoreContext({
+        initialDocs: {
+            'doc-edit': { id: 'doc-edit', title: 'Server Title', version: 1, updatedAt: 1000 }
+        },
+        state: {
+            view: 'editor',
+            editingDoc: { id: 'doc-edit', title: 'Local Dirty Title', version: 1, updatedAt: 1000 },
+            isDirty: true
+        },
+        documents: [
+            { id: 'doc-edit', title: 'Local Dirty Title', version: 1, updatedAt: 1000 }
+        ]
+    });
+
+    await ctx.CollabStore.loadDocuments();
+
+    // Another client saves version 2
+    ctx.triggerSnapshot([
+        {
+            type: 'modified',
+            id: 'doc-edit',
+            doc: {
+                id: 'doc-edit',
+                title: 'Remote Updated Title',
+                version: 2,
+                updatedAt: 2000
+            }
+        }
+    ]);
+
+    // 1. Array in memory gets the remote document
+    assert.equal(ctx.documents[0].title, 'Remote Updated Title');
+    assert.equal(ctx.documents[0].version, 2);
+
+    // 2. state.editingDoc is NOT overwritten because form is dirty
+    assert.equal(ctx.state.editingDoc.title, 'Local Dirty Title');
+    assert.equal(ctx.state.editingDoc.version, 1);
+
+    // 3. Conflict banner is shown with exact text "Updated by someone else" and reload button
+    const banner = ctx.document.getElementById('collab-editor-banner');
+    assert.ok(banner, 'Banner must exist in DOM');
+    assert.match(banner.innerHTML, /Updated by someone else/);
+    assert.match(banner.innerHTML, /reloadCollabDoc\('doc-edit'\)/);
+
+    // 4. Reloading the document loads the remote version and removes the banner
+    ctx.reloadCollabDoc('doc-edit');
+    assert.equal(ctx.state.editingDoc.title, 'Remote Updated Title');
+    assert.equal(ctx.state.editingDoc.version, 2);
+    assert.equal(ctx.document.getElementById('collab-editor-banner'), null);
+});
+
+test('other view (viewer) replaces document and calls render when document is currently open', async () => {
+    const ctx = createStoreContext({
+        initialDocs: {
+            'doc-view': { id: 'doc-view', title: 'Viewer Original', version: 1, updatedAt: 1000 }
+        },
+        state: {
+            view: 'viewer',
+            editingDoc: { id: 'doc-view', title: 'Viewer Original', version: 1, updatedAt: 1000 }
+        },
+        documents: [
+            { id: 'doc-view', title: 'Viewer Original', version: 1, updatedAt: 1000 }
+        ]
+    });
+
+    await ctx.CollabStore.loadDocuments();
+    assert.equal(ctx.renderCallCount, 0);
+
+    // Remote snapshot arrives
+    ctx.triggerSnapshot([
+        {
+            type: 'modified',
+            id: 'doc-view',
+            doc: {
+                id: 'doc-view',
+                title: 'Viewer Remote Updated',
+                version: 2,
+                updatedAt: 2000
+            }
+        }
+    ]);
+
+    // 1. Document in array is replaced
+    assert.equal(ctx.documents[0].title, 'Viewer Remote Updated');
+    assert.equal(ctx.documents[0].version, 2);
+
+    // 2. Currently viewed document is replaced
+    assert.equal(ctx.state.editingDoc.title, 'Viewer Remote Updated');
+    assert.equal(ctx.state.editingDoc.version, 2);
+
+    // 3. render() was called
+    assert.ok(ctx.renderCallCount > 0, 'render() must be called for open document in viewer');
+});
+
+test('editor clean (not dirty) updates state.editingDoc and renders', async () => {
+    const ctx = createStoreContext({
+        initialDocs: {
+            'doc-clean': { id: 'doc-clean', title: 'Clean Original', version: 1, updatedAt: 1000 }
+        },
+        state: {
+            view: 'editor',
+            editingDoc: { id: 'doc-clean', title: 'Clean Original', version: 1, updatedAt: 1000 },
+            isDirty: false
+        },
+        documents: [
+            { id: 'doc-clean', title: 'Clean Original', version: 1, updatedAt: 1000 }
+        ]
+    });
+
+    await ctx.CollabStore.loadDocuments();
+    assert.equal(ctx.renderCallCount, 0);
+
+    ctx.triggerSnapshot([
+        {
+            type: 'modified',
+            id: 'doc-clean',
+            doc: {
+                id: 'doc-clean',
+                title: 'Clean Remote Updated',
+                version: 2,
+                updatedAt: 2000
+            }
+        }
+    ]);
+
+    assert.equal(ctx.documents[0].title, 'Clean Remote Updated');
+    assert.equal(ctx.state.editingDoc.title, 'Clean Remote Updated');
+    assert.ok(ctx.renderCallCount > 0);
+    assert.equal(ctx.document.getElementById('collab-editor-banner'), null);
+});
+
+test('persist() shows toast and re-throws write error when offline/network failure occurs', async () => {
+    const ctx = createStoreContext({
+        initialDocs: {},
+        user: { uid: 'user-writer' }
+    });
+
+    const origCol = ctx.firebase.firestore().collection;
+    ctx.firebase.firestore().collection = (col) => {
+        const c = origCol(col);
+        return {
+            ...c,
+            doc: (docId) => ({
+                ...c.doc(docId),
+                set: async () => {
+                    const err = new Error('Client is offline: IndexedDB transaction failed');
+                    err.code = 'unavailable';
+                    throw err;
+                }
+            })
+        };
+    };
+
+    const newDoc = { id: 'doc-fail', title: 'Failed Doc', category: 'general', status: 'active', tags: [] };
+
+    await assert.rejects(
+        () => ctx.CollabStore.persist([newDoc]),
+        /Client is offline/
+    );
+
+    assert.ok(ctx.toasts.length > 0, 'Toast must be triggered on write error');
+    assert.equal(ctx.toasts[0].type, 'error');
+    assert.match(ctx.toasts[0].msg, /Client is offline/);
+});
+
+test('signOut stops onSnapshot listener in CollabStore', async () => {
+    let stopCalled = false;
+    const ctx = {
+        console,
+        CollabStore: {
+            stopListening: () => { stopCalled = true; }
+        },
+        CollabAuth: {
+            signOutUser: async () => {}
+        },
+        document: {
+            getElementById: () => null
+        }
+    };
+
+    vm.createContext(ctx);
+    vm.runInContext(read('js/collab-bootstrap.js'), ctx);
+
+    await ctx.collabSignOut();
+    assert.equal(stopCalled, true, 'collabSignOut must invoke CollabStore.stopListening');
 });
 

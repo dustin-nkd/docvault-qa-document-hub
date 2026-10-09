@@ -184,6 +184,9 @@
             root._collabAuthUnsub = null;
         }
         _currentMember = null;
+        if (root.CollabStore?.stopListening) {
+            root.CollabStore.stopListening();
+        }
         if (root.CollabAuth?.signOutUser) {
             await root.CollabAuth.signOutUser().catch(() => {});
         }
