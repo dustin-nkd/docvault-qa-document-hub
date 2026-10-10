@@ -490,10 +490,11 @@ window.handleDragOver = function(event) {
     event.dataTransfer.dropEffect = 'move';
 };
 
-// The single path a card takes to another column, dragged or moved from its
-// menu. Dragging was once the only way, leaving the board's core action
-// unreachable without a mouse; both routes run this so they cannot drift.
 window.moveDocStatus = async function(id, newStatus) {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return false;
+    }
     const idx = documents.findIndex(d => d.id === id);
     if (idx === -1 || documents[idx].status === 'deleted') return false;
     const field = documents[idx].category === 'bug' ? 'bugStatus' : 'kanbanStatus';
@@ -673,7 +674,7 @@ if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         try { await _s('js/collab-config.js'); } catch (_) {}
         if (window.COLLAB_MODE) {
             try {
-                for (const u of ['firebase-config', 'collab-loader', 'collab-auth', 'collab-bootstrap', 'collab-store']) await _s('js/' + u + '.js');
+                for (const u of ['firebase-config', 'collab-loader', 'collab-auth', 'collab-store', 'collab-members', 'collab-bootstrap']) await _s('js/' + u + '.js');
                 window.CollabBootstrap?.start();
             } catch (err) { console.error(err); }
             return;

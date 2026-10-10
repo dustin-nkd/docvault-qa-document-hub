@@ -1,13 +1,6 @@
 // ========================
 // DOCUMENT CRUD
 // ========================
-// Captures every editable field currently in the editor DOM as one comparable
-// string (Sprint 15 unsaved-changes guard). Scoped to #content — the only
-// thing rendered there in the editor view — so it can't pick up sidebar or
-// header inputs. Deliberately generic (scrapes every input/textarea/select by
-// DOM order) rather than hand-listing fields per category, so a future field
-// or category can't silently slip past the guard the way a hand-maintained
-// list could.
 function _captureEditorFormState() {
     const root = document.getElementById('content');
     if (!root) return '';
@@ -429,6 +422,10 @@ function _nextBugNumber() {
 }
 
 async function saveDoc() {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const title = document.getElementById('ed-title')?.value.trim();
     const subfolder = document.getElementById('ed-subfolder')?.value.trim() || '';
     const cat = document.getElementById('ed-cat')?.value;

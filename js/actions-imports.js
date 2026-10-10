@@ -327,12 +327,11 @@ async function compressImage(blob, maxPx, quality) {
 }
 
 // Image storage strategy (A1, opt-in / PA B):
-// - Default: inline base64, which stays INSIDE the encrypted document.
-// - Opt-in (docvault_img_cdn flag) + a GitHub token: upload the compressed image
-//   to the public repo's images/ folder and reference it by URL, so large images
-//   don't bloat the encrypted vault. Note this makes those images public.
-// - Any failure (no token, upload error) falls back to inline so nothing is lost.
 async function uploadImageToCloud(blob, callback) {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     let dataUrl;
     try {
         dataUrl = await compressImage(blob, 1200, 0.80);
