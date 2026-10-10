@@ -29,17 +29,9 @@
         return isCollabMode() ? null : 'owner';
     }
 
-    function isOwner() {
-        return getCurrentRole() === 'owner';
-    }
-
-    function isEditor() {
-        return getCurrentRole() === 'editor';
-    }
-
-    function isViewer() {
-        return getCurrentRole() === 'viewer';
-    }
+    function isOwner() { return getCurrentRole() === 'owner'; }
+    function isEditor() { return getCurrentRole() === 'editor'; }
+    function isViewer() { return getCurrentRole() === 'viewer'; }
 
     function canWrite() {
         if (!isCollabMode()) return true;
@@ -215,9 +207,9 @@
                 <div class="text-xs font-bold mb-2 flex items-center gap-1.5" style="color:var(--tx);">
                     <i class="fa-solid fa-user-plus text-[var(--acc)]"></i> Invite Team Member
                 </div>
-                <div class="flex gap-2">
-                    <input type="email" id="team-invite-email" class="form-input flex-1 py-1.5 px-3 text-xs" placeholder="colleague@example.com">
-                    <select id="team-invite-role" class="form-input py-1.5 px-2.5 text-xs">
+                <input type="email" id="team-invite-email" class="form-input w-full py-1.5 px-3 text-xs mb-2" placeholder="colleague@example.com">
+                <div class="flex items-center gap-2">
+                    <select id="team-invite-role" class="form-input py-1.5 px-2.5 text-xs" style="width:auto">
                         <option value="editor">Editor</option>
                         <option value="viewer">Viewer</option>
                     </select>
