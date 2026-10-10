@@ -272,17 +272,21 @@
         }
     }
 
+    const _pendingScripts = {};
     function _loadScript(srcUrl) {
+        if (_pendingScripts[srcUrl]) return _pendingScripts[srcUrl];
         if (typeof document === 'undefined' || typeof document.createElement !== 'function') return Promise.resolve();
-        return new Promise(resolve => {
+        const p = new Promise(resolve => {
             const s = document.createElement('script');
-            s.onload = () => resolve();
-            s.onerror = () => resolve();
+            s.onload = () => { delete _pendingScripts[srcUrl]; resolve(); };
+            s.onerror = () => { delete _pendingScripts[srcUrl]; resolve(); };
             s.src = srcUrl;
             const parent = document.head || document.body || document.documentElement || document;
             if (parent && typeof parent.appendChild === 'function') parent.appendChild(s);
-            else resolve();
+            else { delete _pendingScripts[srcUrl]; resolve(); }
         });
+        _pendingScripts[srcUrl] = p;
+        return p;
     }
 
     function loadCollabViewer() {

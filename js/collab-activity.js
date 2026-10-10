@@ -1,11 +1,13 @@
 // DocVault team collaboration activity module
 // Synchronizes remote activity audit trail, decorates timeline entries with actor accounts, and controls owner activity clear.
 (function(root) {
-    let _remoteActivities = [];
-    const _membersMap = new Map();
-    let _unsubActivity = null;
-    let _unsubMembers = null;
-    let _customDb = null;
+    const _store = root._collabActivityStore || (root._collabActivityStore = {
+        remoteActivities: [],
+        membersMap: new Map(),
+        unsubActivity: null,
+        unsubMembers: null,
+        customDb: null
+    });
 
     function esc(str) {
         if (str == null) return '';
@@ -26,7 +28,7 @@
     }
 
     function getFirestoreDb() {
-        if (_customDb) return _customDb;
+        if (_store.customDb) return _store.customDb;
         if (!root.firebase?.firestore) return null;
         const db = root.firebase.firestore();
         const host = root.location?.hostname || '';
@@ -46,8 +48,8 @@
         if (!entry) return 'by Unknown account';
         let email = '';
         let name = '';
-        if (entry.actorUid && _membersMap.has(entry.actorUid)) {
-            const m = _membersMap.get(entry.actorUid);
+        if (entry.actorUid && _store.membersMap.has(entry.actorUid)) {
+            const m = _store.membersMap.get(entry.actorUid);
             email = m?.email || '';
             name = m?.displayName || '';
         }
@@ -67,19 +69,19 @@
     }
 
     function startListening() {
-        if (isGuestMode() || !isCollabMode() || _unsubActivity) return;
+        if (isGuestMode() || !isCollabMode()) return;
         const db = getFirestoreDb();
         if (!db) return;
 
         // 1. Members listener for resolving actorUid to latest displayName and email
-        if (!_unsubMembers && typeof db.collection('members')?.onSnapshot === 'function') {
+        if (!_store.unsubMembers && typeof db.collection('members')?.onSnapshot === 'function') {
             try {
-                _unsubMembers = db.collection('members').onSnapshot(snapshot => {
+                _store.unsubMembers = db.collection('members').onSnapshot(snapshot => {
                     if (!snapshot) return;
-                    _membersMap.clear();
+                    _store.membersMap.clear();
                     snapshot.forEach(docSnap => {
                         const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap;
-                        if (docSnap.id) _membersMap.set(docSnap.id, data);
+                        if (docSnap.id) _store.membersMap.set(docSnap.id, data);
                     });
                     if (root.state?.view === 'activity' && typeof root.renderContent === 'function') {
                         root.renderContent();
@@ -91,9 +93,9 @@
         }
 
         // 2. Activity collection listener (replaces entire list, client-side sort, deduplicated by id)
-        if (typeof db.collection('activity')?.onSnapshot === 'function') {
+        if (!_store.unsubActivity && typeof db.collection('activity')?.onSnapshot === 'function') {
             try {
-                _unsubActivity = db.collection('activity').onSnapshot(snapshot => {
+                _store.unsubActivity = db.collection('activity').onSnapshot(snapshot => {
                     if (!snapshot) return;
                     const byId = new Map();
                     snapshot.forEach(docSnap => {
@@ -102,8 +104,8 @@
                         if (!id) return;
                         byId.set(id, { ...data, id });
                     });
-                    const max = root.ActivityLog?.MAX || 200;
-                    _remoteActivities = Array.from(byId.values())
+                    const max = (typeof ActivityLog !== 'undefined' ? ActivityLog.MAX : (root.ActivityLog?.MAX || 200));
+                    _store.remoteActivities = Array.from(byId.values())
                         .sort((a, b) => (b.ts || 0) - (a.ts || 0))
                         .slice(0, max);
                     if (root.state?.view === 'activity' && typeof root.renderContent === 'function') {
@@ -117,29 +119,30 @@
     }
 
     function stopListening() {
-        if (_unsubActivity) {
-            try { _unsubActivity(); } catch (_) {}
-            _unsubActivity = null;
+        if (_store.unsubActivity) {
+            try { _store.unsubActivity(); } catch (_) {}
+            _store.unsubActivity = null;
         }
-        if (_unsubMembers) {
-            try { _unsubMembers(); } catch (_) {}
-            _unsubMembers = null;
+        if (_store.unsubMembers) {
+            try { _store.unsubMembers(); } catch (_) {}
+            _store.unsubMembers = null;
         }
-        _remoteActivities = [];
-        _membersMap.clear();
+        _store.remoteActivities = [];
+        _store.membersMap.clear();
     }
 
     function wrapRenderers() {
-        // Wrap ActivityLog.getAll
-        if (root.ActivityLog && !root.ActivityLog.getAll?._collabWrapped) {
-            const origGetAll = root.ActivityLog.getAll;
-            root.ActivityLog.getAll = function() {
+        // Wrap ActivityLog.getAll directly on the lexical ActivityLog object
+        const targetLog = typeof ActivityLog !== 'undefined' ? ActivityLog : (typeof root !== 'undefined' && root.ActivityLog ? root.ActivityLog : null);
+        if (targetLog && !targetLog.getAll?._collabWrapped) {
+            const origGetAll = targetLog.getAll;
+            targetLog.getAll = function() {
                 if (isCollabMode()) {
-                    return [..._remoteActivities];
+                    return [..._store.remoteActivities];
                 }
                 return origGetAll ? origGetAll.call(this) : [];
             };
-            root.ActivityLog.getAll._collabWrapped = true;
+            targetLog.getAll._collabWrapped = true;
         }
 
         // Wrap _renderActivityRow
@@ -160,7 +163,7 @@
             root.renderActivityLog = function() {
                 let html = origLog();
                 if (!isCollabMode()) return html;
-                const max = root.ActivityLog?.MAX || 200;
+                const max = (typeof ActivityLog !== 'undefined' ? ActivityLog.MAX : (root.ActivityLog?.MAX || 200));
                 html = html.replace(
                     /A personal timeline of changes across this vault — last \d+ actions, synced across your devices\./,
                     `Changes in this team vault — last ${max} actions, with the account that made each one.`
@@ -201,7 +204,7 @@
                         if (batch) await batch.commit();
                         else await Promise.all(deletes);
                     }
-                    _remoteActivities = [];
+                    _store.remoteActivities = [];
                     if (root.state) root.state.activityFilter = 'all';
                     if (typeof root.renderContent === 'function') root.renderContent();
                     if (typeof root.toast === 'function') root.toast('Activity log cleared.', 'info');
@@ -219,10 +222,10 @@
     root.CollabActivity = {
         startListening: () => { wrapRenderers(); startListening(); },
         stopListening,
-        getRemoteActivities: () => [..._remoteActivities],
-        setRemoteActivities: (list) => { _remoteActivities = [...list]; },
-        getMembersMap: () => _membersMap,
-        setDb: (db) => { _customDb = db; },
+        getRemoteActivities: () => [..._store.remoteActivities],
+        setRemoteActivities: (list) => { _store.remoteActivities = [...list]; },
+        getMembersMap: () => _store.membersMap,
+        setDb: (db) => { _store.customDb = db; },
         formatAccountText,
         wrapRenderers
     };

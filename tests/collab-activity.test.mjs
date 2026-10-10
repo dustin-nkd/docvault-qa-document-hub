@@ -47,7 +47,6 @@ function createActivityContext(options = {}) {
                     },
                     onSnapshot: (cb) => {
                         activityListeners.push(cb);
-                        // Trigger immediate initial snapshot
                         const docs = [];
                         for (const [id, data] of activityStore.entries()) {
                             docs.push({ id, data: () => JSON.parse(JSON.stringify(data)) });
@@ -174,11 +173,13 @@ function createActivityContext(options = {}) {
     vm.createContext(ctx);
     vm.runInContext(read('js/constants.js'), ctx);
     vm.runInContext(read('js/utils.js'), ctx);
-    vm.runInContext(read('js/state.js') + '\n;globalThis.ActivityLog = ActivityLog;', ctx);
     ctx.state.view = 'activity';
     ctx._renderTrends = () => '';
     vm.runInContext(read('js/render-core.js'), ctx);
-    vm.runInContext(read('js/collab-activity.js'), ctx);
+
+    // Load state.js and collab-activity.js together in ONE script VM execution:
+    // ActivityLog is a lexical const from state.js without placing it on globalThis or window.
+    vm.runInContext(read('js/state.js') + '\n;' + read('js/collab-activity.js'), ctx);
     vm.runInContext(read('js/collab-store.js'), ctx);
     ctx.CollabStore.setDb(firestoreMock);
     ctx.CollabStore.setUser({ uid, email, displayName });
@@ -198,7 +199,39 @@ function createActivityContext(options = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Activity payload in CollabStore.recordActivity
+// 1. ActivityLog lexical binding and remote list resolution
+// ---------------------------------------------------------------------------
+test('Tab team reads lexical ActivityLog from state.js without globalThis.ActivityLog property', () => {
+    const { ctx, activityStore, fireActivitySnap } = createActivityContext({ role: 'editor' });
+
+    // Prove ActivityLog is NOT on globalThis or window
+    assert.equal(ctx.ActivityLog, undefined, 'ActivityLog must not be on globalThis');
+    assert.equal(ctx.window.ActivityLog, undefined, 'ActivityLog must not be on window');
+
+    ctx.CollabActivity.startListening();
+    activityStore.set('act-lexical-1', {
+        id: 'act-lexical-1',
+        ts: Date.now(),
+        type: 'created',
+        title: 'Lexical Audit',
+        actorEmail: 'lexical@example.com'
+    });
+    fireActivitySnap();
+
+    // In the VM where state.js and collab-activity.js were evaluated together:
+    const fromGetAll = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(fromGetAll.length, 1);
+    assert.equal(fromGetAll[0].id, 'act-lexical-1');
+    assert.equal(fromGetAll[0].title, 'Lexical Audit');
+
+    // Rendered team activity HTML displays the item
+    const html = ctx.renderActivityLog();
+    assert.match(html, /Lexical Audit/);
+    assert.match(html, /by lexical@example\.com/);
+});
+
+// ---------------------------------------------------------------------------
+// 2. Activity payload in CollabStore.recordActivity
 // ---------------------------------------------------------------------------
 test('CollabStore.recordActivity: editor payload has actorEmail preserving exact case, actorName as display name, and note', async () => {
     const { ctx, activityStore } = createActivityContext({
@@ -209,7 +242,7 @@ test('CollabStore.recordActivity: editor payload has actorEmail preserving exact
     });
 
     const doc = { id: 'doc-note', title: 'Test Document', category: 'general' };
-    await ctx.ActivityLog.record('updated', doc, { note: 'Sprint 25 review' });
+    await vm.runInContext("ActivityLog.record('updated', doc, { note: 'Sprint 25 review' })", Object.assign(ctx, { doc }));
 
     assert.equal(activityStore.size, 1);
     const entry = Array.from(activityStore.values())[0];
@@ -223,7 +256,7 @@ test('CollabStore.recordActivity: editor payload has actorEmail preserving exact
 });
 
 // ---------------------------------------------------------------------------
-// 2. Timeline formatting with actor display in .act-sub
+// 3. Timeline formatting with actor display in .act-sub
 // ---------------------------------------------------------------------------
 test('Timeline rows: two accounts with same displayName but different emails render both emails in HTML', () => {
     const { ctx } = createActivityContext({ role: 'editor' });
@@ -354,7 +387,7 @@ test('Timeline rows: hostile characters in name and email are HTML-escaped', () 
 });
 
 // ---------------------------------------------------------------------------
-// 3. Snapshot deduplication, client sorting, and replacement
+// 4. Snapshot deduplication, client sorting, and replacement
 // ---------------------------------------------------------------------------
 test('Snapshot deduplication: repeated entries with the same id result in exactly one row', () => {
     const { ctx, activityStore, fireActivitySnap } = createActivityContext({ role: 'editor' });
@@ -394,7 +427,7 @@ test('Snapshot behavior: newest first, capped at ActivityLog.MAX (200), does not
     }
     fireActivitySnap();
 
-    const activities = ctx.ActivityLog.getAll();
+    const activities = vm.runInContext('ActivityLog.getAll()', ctx);
     assert.equal(activities.length, 200, 'Must be capped at ActivityLog.MAX (200)');
     assert.equal(activities[0].id, 'act-250', 'Newest item must be first');
     assert.equal(activities[199].id, 'act-51');
@@ -402,13 +435,103 @@ test('Snapshot behavior: newest first, capped at ActivityLog.MAX (200), does not
 
     // Personal mode reads localStorage
     ctx.COLLAB_MODE = false;
-    const personalAll = ctx.ActivityLog.getAll();
+    const personalAll = vm.runInContext('ActivityLog.getAll()', ctx);
     assert.equal(personalAll.length, 1);
     assert.equal(personalAll[0].id, 'local-only');
 });
 
 // ---------------------------------------------------------------------------
-// 4. Subtitle and Clear button permissions
+// 5. Repeated execution idempotence & loadCollabActivity concurrent deduplication
+// ---------------------------------------------------------------------------
+test('collab-activity.js running twice does not detach store from listener or duplicate state', () => {
+    const { ctx, activityStore, fireActivitySnap } = createActivityContext({ role: 'editor' });
+
+    // Run collab-activity.js a second time in the same context
+    vm.runInContext(read('js/collab-activity.js'), ctx);
+    ctx.CollabActivity.startListening();
+
+    activityStore.set('act-twice', {
+        id: 'act-twice',
+        ts: Date.now(),
+        type: 'updated',
+        title: 'Twice Tested',
+        actorEmail: 'twice@example.com'
+    });
+    fireActivitySnap();
+
+    const fromGetAll = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(fromGetAll.length, 1);
+    assert.equal(fromGetAll[0].id, 'act-twice');
+    assert.equal(ctx.CollabActivity.getRemoteActivities().length, 1);
+});
+
+test('loadCollabActivity() called twice concurrently does not insert a second script tag, and snapshot delivers to getAll()', async () => {
+    const appendedScripts = [];
+    const domMock = {
+        createElement: (tag) => ({
+            tagName: tag.toUpperCase(),
+            onload: null,
+            onerror: null,
+            _src: '',
+            get src() { return this._src; },
+            set src(v) { this._src = v; }
+        }),
+        head: {
+            appendChild: (el) => {
+                appendedScripts.push(el);
+                return el;
+            }
+        }
+    };
+
+    const testCtx = {
+        console,
+        document: domMock,
+        URLSearchParams
+    };
+    testCtx.window = testCtx;
+    testCtx.globalThis = testCtx;
+    vm.createContext(testCtx);
+    vm.runInContext(read('js/collab-bootstrap.js'), testCtx);
+
+    // Call loadCollabActivity() twice in rapid succession before script loads
+    const p1 = testCtx.CollabBootstrap.loadCollabActivity();
+    const p2 = testCtx.CollabBootstrap.loadCollabActivity();
+
+    const actScripts = appendedScripts.filter(s => s.src === 'js/collab-activity.js');
+    assert.equal(actScripts.length, 1, 'Must insert only ONE script tag for collab-activity even when called multiple times');
+    assert.equal(p1, p2, 'Both calls must return the same in-flight Promise');
+
+    // Simulate script loading by evaluating state.js + collab-activity.js in testCtx
+    vm.runInContext(read('js/state.js') + '\n;' + read('js/collab-activity.js'), testCtx);
+    actScripts[0].onload();
+    await Promise.all([p1, p2]);
+
+    // Set up collab mode and Firestore mock
+    testCtx.COLLAB_MODE = true;
+    const actStore = new Map([
+        ['act-after-load', { id: 'act-after-load', ts: 12345, type: 'created', title: 'After Load Doc', actorEmail: 'after@load.com' }]
+    ]);
+    const mockDb = {
+        collection: (col) => ({
+            onSnapshot: (cb) => {
+                const docs = [];
+                for (const [id, data] of actStore.entries()) docs.push({ id, data: () => data });
+                cb({ forEach: (fn) => docs.forEach(fn), docs });
+                return () => {};
+            }
+        })
+    };
+    testCtx.CollabActivity.setDb(mockDb);
+    testCtx.CollabActivity.startListening();
+
+    const all = vm.runInContext('ActivityLog.getAll()', testCtx);
+    assert.equal(all.length, 1);
+    assert.equal(all[0].id, 'act-after-load');
+});
+
+// ---------------------------------------------------------------------------
+// 6. Subtitle and Clear button permissions
 // ---------------------------------------------------------------------------
 test('Header subtitle: team edition renders team copy, personal edition renders personal copy', () => {
     const { ctx, activityStore, fireActivitySnap } = createActivityContext({ role: 'editor' });
@@ -470,7 +593,7 @@ test('Clear button permissions: editor and viewer do NOT see Clear button, owner
 });
 
 // ---------------------------------------------------------------------------
-// 5. Lifecycle and maintainability contracts
+// 7. Lifecycle and maintainability contracts
 // ---------------------------------------------------------------------------
 test('Lifecycle: CollabBootstrap.signOut calls CollabActivity.stopListening', async () => {
     let stopped = false;
