@@ -75,13 +75,13 @@ function createCollabSharesContext(customGlobals = {}) {
     return sandbox;
 }
 
-test('Shell contracts: events.js loads collab-shares, sw.js caches it in v67, and budgets hold', () => {
+test('Shell contracts: events.js loads collab-shares, sw.js caches it in v68, and budgets hold', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-shares'/);
     assert.ok(events.indexOf("'collab-shares'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v67'/);
+    assert.match(sw, /const SW_VERSION = 'v68'/);
     assert.match(sw, /'\.\/js\/collab-shares\.js'/);
 
     const sharesLines = read('js/collab-shares.js').split('\n').length;
@@ -468,3 +468,60 @@ test('Legacy mode (COLLAB_MODE = false): uses GitHub path for shareDoc and loadS
     await ctx.shareDoc('doc-legacy');
     assert.equal(githubPutCalled, true, 'Legacy mode calls GitHub PUT');
 });
+
+test('COLLAB_MODE: state.js persist() invokes CollabStore.persist first, then syncActiveShares fire-and-forget; aborts sync if persist throws', async () => {
+    const callOrder = [];
+
+    const ctx = {
+        console,
+        window: {
+            COLLAB_MODE: true,
+            CollabStore: {
+                persist: async (docs) => {
+                    callOrder.push('CollabStore.persist');
+                    if (docs[0]?.id === 'error-doc') {
+                        throw new Error('Firestore write simulated failure');
+                    }
+                }
+            }
+        },
+        DocStorage: {
+            save: async () => { callOrder.push('DocStorage.save'); }
+        },
+        syncActiveShares: async () => {
+            callOrder.push('syncActiveShares');
+            if (ctx.documents[0]?.id === 'sync-error-doc') {
+                throw new Error('Sync share failure');
+            }
+        },
+        documents: [{ id: 'doc-ok', title: 'Doc OK' }],
+        GUEST_MODE: false
+    };
+    ctx.window.window = ctx.window;
+
+    vm.createContext(ctx);
+    vm.runInContext(read('js/state.js'), ctx);
+
+    vm.runInContext("documents = [{ id: 'doc-ok', title: 'Doc OK' }];", ctx);
+
+    // 1. Success case: CollabStore.persist runs first, then syncActiveShares fire-and-forget
+    await ctx.persist();
+    assert.deepEqual(callOrder, ['CollabStore.persist', 'syncActiveShares'], 'Calls CollabStore.persist first, then syncActiveShares');
+
+    // 2. Failure case: CollabStore.persist throws -> error bubbles up and syncActiveShares is NOT called
+    callOrder.length = 0;
+    vm.runInContext("documents = [{ id: 'error-doc', title: 'Error Doc' }];", ctx);
+    await assert.rejects(async () => {
+        await ctx.persist();
+    }, /Firestore write simulated failure/);
+    assert.deepEqual(callOrder, ['CollabStore.persist'], 'syncActiveShares must not be called when CollabStore.persist fails');
+
+    // 3. Fire-and-forget case: syncActiveShares error does NOT fail persist()
+    callOrder.length = 0;
+    vm.runInContext("documents = [{ id: 'sync-error-doc', title: 'Sync Error Doc' }];", ctx);
+    await assert.doesNotReject(async () => {
+        await ctx.persist();
+    });
+    assert.deepEqual(callOrder, ['CollabStore.persist', 'syncActiveShares'], 'syncActiveShares failure does not break persist()');
+});
+

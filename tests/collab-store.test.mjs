@@ -487,13 +487,13 @@ test('persist() does not swallow delete rejection and lets error propagate', asy
     assert.equal(ctx.CollabStore.getKnownDocs().has('doc-to-delete'), true, 'Document retained in _knownDocs on delete failure');
 });
 
-test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v67', () => {
+test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v68', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-store'/);
     assert.ok(events.indexOf("'collab-store'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v67'/);
+    assert.match(sw, /const SW_VERSION = 'v68'/);
     assert.match(sw, /'\.\/js\/collab-store\.js'/);
 });
 

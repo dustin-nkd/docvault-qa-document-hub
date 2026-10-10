@@ -518,7 +518,9 @@ async function persist() {
     // Guest edits simply live for the session and vanish on reload.
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
     if (typeof window !== 'undefined' && window.COLLAB_MODE) {
-        return window.CollabStore?.persist?.(documents);
+        await window.CollabStore?.persist?.(documents);
+        if (typeof syncActiveShares === 'function') syncActiveShares().catch(() => {});
+        return;
     }
     await DocStorage.save(documents);
     // Best-effort, non-blocking: push fresh snapshots for any shared documents
