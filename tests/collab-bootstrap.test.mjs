@@ -520,6 +520,28 @@ function createDOMBootstrapContext(firestoreMock = {}) {
                 .trim();
         }
 
+        get innerText() { return this.textContent; }
+        set innerText(v) { this.textContent = v; }
+
+        get disabled() { return this.hasAttribute('disabled') || Boolean(this._disabled); }
+        set disabled(v) {
+            this._disabled = Boolean(v);
+            if (v) this.setAttribute('disabled', '');
+            else this.removeAttribute('disabled');
+        }
+
+        get draggable() { return this.getAttribute('draggable') === 'true'; }
+        set draggable(v) { this.setAttribute('draggable', String(v)); }
+
+        closest(sel) {
+            let curr = this;
+            while (curr) {
+                if (matchSel(curr, sel)) return curr;
+                curr = curr.parentNode;
+            }
+            return null;
+        }
+
         querySelector(sel) {
             for (const child of this.children) {
                 if (matchSel(child, sel)) return child;
@@ -542,6 +564,7 @@ function createDOMBootstrapContext(firestoreMock = {}) {
     function matchSel(el, sel) {
         if (!el || !sel) return false;
         sel = sel.trim();
+        if (sel.includes(',')) return sel.split(',').some(s => matchSel(el, s));
         if (sel.startsWith('#')) return el.id === sel.slice(1);
         if (sel.startsWith('.')) return el.classList.contains(sel.slice(1));
         if (sel.startsWith('[') && sel.endsWith(']')) {
@@ -557,6 +580,49 @@ function createDOMBootstrapContext(firestoreMock = {}) {
         }
         return el.tagName === sel.toUpperCase();
     }
+
+    const docListeners = [];
+    const windowListeners = [];
+
+    function dispatchDOMEvent(e) {
+        let stopped = false;
+        let immediateStopped = false;
+        e.preventDefault = () => { e.defaultPrevented = true; };
+        e.stopPropagation = () => { stopped = true; };
+        e.stopImmediatePropagation = () => { stopped = true; immediateStopped = true; };
+
+        // 1. Window capture
+        for (const l of [...windowListeners]) {
+            if (l.type === e.type && l.capture && !immediateStopped) l.fn(e);
+        }
+        if (stopped) return;
+
+        // 2. Document capture
+        for (const l of [...docListeners]) {
+            if (l.type === e.type && l.capture && !immediateStopped) l.fn(e);
+        }
+        if (stopped) return;
+
+        // 3. Document bubble
+        for (const l of [...docListeners]) {
+            if (l.type === e.type && !l.capture && !immediateStopped) l.fn(e);
+        }
+        if (stopped) return;
+
+        // 4. Window bubble
+        for (const l of [...windowListeners]) {
+            if (l.type === e.type && !l.capture && !immediateStopped) l.fn(e);
+        }
+    }
+
+    FakeElement.prototype.dispatchEvent = function(e) {
+        e.target = this;
+        dispatchDOMEvent(e);
+        return !e.defaultPrevented;
+    };
+    FakeElement.prototype.click = function() {
+        this.dispatchEvent({ type: 'click' });
+    };
 
     const footer = new FakeElement('div', 'sidebar-footer');
     const grid = new FakeElement('div');
@@ -579,11 +645,15 @@ function createDOMBootstrapContext(firestoreMock = {}) {
     lockScreen.appendChild(signinBtn);
     lockScreen.appendChild(uninvitedCard);
 
+    const debugErr = new FakeElement('div', 'debug-err');
+    debugErr.style.display = 'none';
+
     const ctx = {
         console,
         setTimeout,
         clearTimeout,
         URLSearchParams,
+        COLLAB_MODE: true,
         document: {
             getElementById: (id) => elementsById.get(id) || null,
             querySelector: (sel) => {
@@ -592,13 +662,43 @@ function createDOMBootstrapContext(firestoreMock = {}) {
                 if (sel === '#collab-me') return elementsById.get('collab-me') || null;
                 return null;
             },
-            createElement: (tag) => new FakeElement(tag)
+            querySelectorAll: (sel) => {
+                const res = [];
+                for (const el of elementsById.values()) {
+                    if (matchSel(el, sel)) res.push(el);
+                    res.push(...el.querySelectorAll(sel));
+                }
+                return [...new Set(res)];
+            },
+            createElement: (tag) => new FakeElement(tag),
+            addEventListener: (type, fn, opts) => {
+                const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
+                docListeners.push({ type, fn, capture });
+            },
+            dispatchEvent: (e) => {
+                if (!e.target) e.target = ctx.document;
+                dispatchDOMEvent(e);
+                return !e.defaultPrevented;
+            }
         },
         elementsById,
         lockBtn,
         lockIcon,
         lockSpan,
         footer,
+        _toasts: [],
+        toast: (msg, type = 'info') => {
+            ctx._toasts.push({ msg, type });
+        },
+        addEventListener: (type, fn, opts) => {
+            const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
+            windowListeners.push({ type, fn, capture });
+        },
+        dispatchEvent: (e) => {
+            if (!e.target) e.target = ctx;
+            dispatchDOMEvent(e);
+            return !e.defaultPrevented;
+        },
         firebase: {
             firestore: () => firestoreMock
         },
@@ -622,8 +722,29 @@ function createDOMBootstrapContext(firestoreMock = {}) {
     ctx.window = ctx;
     ctx.globalThis = ctx;
 
+    // Simulate events.js bubbling unhandledrejection
+    ctx.addEventListener('unhandledrejection', function(e) {
+        const el = ctx.document.getElementById('debug-err');
+        if (el) { el.style.display = 'block'; el.innerText += '\nPromise Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason); }
+    });
+
+    // Simulate events.js bubbling click listener with executeAction
+    ctx.document.addEventListener('click', function(e) {
+        let target = (e.target && typeof e.target.closest === 'function') ? e.target.closest('[data-onclick]') : null;
+        if (target) {
+            const code = target.getAttribute('data-onclick');
+            const m = code.match(/^([a-zA-Z0-9_]+)\((.*)\)$/);
+            if (m && typeof ctx[m[1]] === 'function') {
+                ctx[m[1]]();
+            }
+        }
+    });
+
+    vm.createContext(ctx);
     const source = read('js/collab-bootstrap.js');
-    vm.runInNewContext(source, ctx);
+    vm.runInContext(source, ctx);
+    const viewerSource = read('js/collab-viewer.js');
+    vm.runInContext(viewerSource, ctx);
     return ctx;
 }
 
@@ -812,6 +933,267 @@ test('hostile characters in displayName and email are escaped in #collab-me', as
     assert.doesNotMatch(collabMe.innerHTML, /<img src=x/i);
     assert.match(collabMe.innerHTML, /&lt;script&gt;/);
     assert.match(collabMe.innerHTML, /&lt;img src=x/);
+});
+
+test('Phase 15: viewer role disables writing buttons and blocks actions at capture phase before executeAction', async () => {
+    const store = new Map([
+        ['meta/team', { ownerUid: 'owner-1', initialized: true }],
+        ['members/viewer-1', { uid: 'viewer-1', email: 'viewer@example.com', displayName: 'Viewer One', role: 'viewer' }]
+    ]);
+    const firestoreMock = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    const key = `${colName}/${docId}`;
+                    return { exists: store.has(key), data: () => store.get(key) || null };
+                }
+            })
+        })
+    };
+
+    const ctx = createDOMBootstrapContext(firestoreMock);
+
+    const actionsToBlock = [
+        'showTemplateModal()',
+        'editDoc("doc-1")',
+        'duplicateDoc("doc-1")',
+        'showDeleteModal("doc-1")',
+        'showEmptyTrashModal()',
+        'emptyTrash()',
+        'confirmDelete("doc-1")',
+        'hardDeleteDoc("doc-1")',
+        'restoreDoc("doc-1")',
+        'saveDoc()',
+        'shareDoc("doc-1")',
+        'confirmBatchDelete()',
+        'confirmBatchAddTag()',
+        'confirmBatchMoveFolder()',
+        'confirmBatchBugEdit()',
+        'saveFocusWorkflow()',
+        'completeFocusItem("doc-1")',
+        'unsnoozeFocusItem("doc-1")',
+        'reopenFocusItem("doc-1")'
+    ];
+
+    const blockedBtns = [];
+    for (let i = 0; i < actionsToBlock.length; i++) {
+        const btn = ctx.document.createElement('button');
+        btn.id = `btn-blocked-${i}`;
+        btn.setAttribute('data-onclick', actionsToBlock[i]);
+        ctx.elementsById.set(btn.id, btn);
+        blockedBtns.push(btn);
+    }
+
+    const kanbanCard = ctx.document.createElement('div');
+    kanbanCard.id = 'kanban-card-1';
+    kanbanCard.setAttribute('draggable', 'true');
+    ctx.elementsById.set(kanbanCard.id, kanbanCard);
+
+    const allowedActions = [
+        'viewDoc("doc-1")',
+        'switchWorkspace("default")',
+        'showGitHubSettingsModal()',
+        'collabSignOut()',
+        'closeModal()'
+    ];
+    const allowedBtns = [];
+    for (let i = 0; i < allowedActions.length; i++) {
+        const btn = ctx.document.createElement('button');
+        btn.id = `btn-allowed-${i}`;
+        btn.setAttribute('data-onclick', allowedActions[i]);
+        ctx.elementsById.set(btn.id, btn);
+        allowedBtns.push(btn);
+    }
+
+    let showTemplateModalCalled = false;
+    let editDocCalled = false;
+    let showDeleteModalCalled = false;
+    let viewDocCalled = false;
+    let switchWorkspaceCalled = false;
+    let showGitHubSettingsModalCalled = false;
+    let closeModalCalled = false;
+
+    ctx.showTemplateModal = () => { showTemplateModalCalled = true; };
+    ctx.editDoc = () => { editDocCalled = true; };
+    ctx.showDeleteModal = () => { showDeleteModalCalled = true; };
+    ctx.viewDoc = () => { viewDocCalled = true; };
+    ctx.switchWorkspace = () => { switchWorkspaceCalled = true; };
+    ctx.showGitHubSettingsModal = () => { showGitHubSettingsModalCalled = true; };
+    ctx.closeModal = () => { closeModalCalled = true; };
+
+    await ctx.CollabBootstrap.handleUserAuth({ uid: 'viewer-1', email: 'viewer@example.com' });
+
+    for (const btn of blockedBtns) {
+        assert.equal(btn.disabled, true, `${btn.getAttribute('data-onclick')} must be disabled`);
+        assert.equal(btn.getAttribute('aria-disabled'), 'true', `${btn.getAttribute('data-onclick')} must have aria-disabled="true"`);
+        assert.equal(btn.getAttribute('title'), 'You have view access', `${btn.getAttribute('data-onclick')} must have title="You have view access"`);
+        assert.equal(btn.title, 'You have view access');
+    }
+
+    assert.equal(kanbanCard.getAttribute('draggable'), 'false', 'Kanban card must have draggable="false"');
+    assert.equal(kanbanCard.draggable, false);
+
+    for (const btn of allowedBtns) {
+        assert.equal(btn.disabled, false, `${btn.getAttribute('data-onclick')} must not be disabled`);
+        assert.equal(btn.hasAttribute('aria-disabled'), false, `${btn.getAttribute('data-onclick')} must not have aria-disabled`);
+    }
+
+    ctx._toasts = [];
+    const templateBtn = blockedBtns.find(b => b.getAttribute('data-onclick') === 'showTemplateModal()');
+    templateBtn.click();
+    assert.equal(showTemplateModalCalled, false, 'showTemplateModal must NOT be called by viewer click');
+    assert.ok(ctx._toasts.some(t => t.msg === 'You have view access' && t.type === 'error'), 'Must toast "You have view access"');
+
+    ctx._toasts = [];
+    const editBtn = blockedBtns.find(b => b.getAttribute('data-onclick') === 'editDoc("doc-1")');
+    editBtn.click();
+    assert.equal(editDocCalled, false, 'editDoc must NOT be called by viewer click');
+    assert.ok(ctx._toasts.some(t => t.msg === 'You have view access' && t.type === 'error'));
+
+    ctx._toasts = [];
+    const deleteBtn = blockedBtns.find(b => b.getAttribute('data-onclick') === 'showDeleteModal("doc-1")');
+    deleteBtn.click();
+    assert.equal(showDeleteModalCalled, false, 'showDeleteModal must NOT be called by viewer click');
+    assert.ok(ctx._toasts.some(t => t.msg === 'You have view access' && t.type === 'error'));
+
+    ctx._toasts = [];
+    allowedBtns[0].click();
+    assert.equal(viewDocCalled, true, 'viewDoc MUST be called');
+    assert.equal(ctx._toasts.length, 0);
+
+    allowedBtns[1].click();
+    assert.equal(switchWorkspaceCalled, true, 'switchWorkspace MUST be called');
+
+    allowedBtns[2].click();
+    assert.equal(showGitHubSettingsModalCalled, true, 'showGitHubSettingsModal MUST be called');
+
+    allowedBtns[4].click();
+    assert.equal(closeModalCalled, true, 'closeModal MUST be called');
+
+    let renderCount = 0;
+    ctx.render = () => { renderCount++; };
+    ctx.CollabViewer.patchRender();
+
+    const lateBtn = ctx.document.createElement('button');
+    lateBtn.id = 'late-btn-1';
+    lateBtn.setAttribute('data-onclick', 'showTemplateModal()');
+    ctx.elementsById.set(lateBtn.id, lateBtn);
+
+    ctx.render();
+    assert.equal(renderCount, 1);
+    assert.equal(lateBtn.disabled, true, 'Dynamically rendered button must be disabled after render()');
+    assert.equal(lateBtn.getAttribute('aria-disabled'), 'true');
+    assert.equal(lateBtn.getAttribute('title'), 'You have view access');
+});
+
+test('Phase 15: editor and owner roles and personal edition are NOT disabled and can call actions', async () => {
+    const store = new Map([
+        ['meta/team', { ownerUid: 'owner-1', initialized: true }],
+        ['members/editor-1', { uid: 'editor-1', email: 'editor@example.com', displayName: 'Editor One', role: 'editor' }]
+    ]);
+    const firestoreMock = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    const key = `${colName}/${docId}`;
+                    return { exists: store.has(key), data: () => store.get(key) || null };
+                }
+            })
+        })
+    };
+
+    const ctx = createDOMBootstrapContext(firestoreMock);
+
+    const templateBtn = ctx.document.createElement('button');
+    templateBtn.id = 'btn-template';
+    templateBtn.setAttribute('data-onclick', 'showTemplateModal()');
+    ctx.elementsById.set(templateBtn.id, templateBtn);
+
+    const editBtn = ctx.document.createElement('button');
+    editBtn.id = 'btn-edit';
+    editBtn.setAttribute('data-onclick', 'editDoc("doc-1")');
+    ctx.elementsById.set(editBtn.id, editBtn);
+
+    const deleteBtn = ctx.document.createElement('button');
+    deleteBtn.id = 'btn-delete';
+    deleteBtn.setAttribute('data-onclick', 'showDeleteModal("doc-1")');
+    ctx.elementsById.set(deleteBtn.id, deleteBtn);
+
+    const kanbanCard = ctx.document.createElement('div');
+    kanbanCard.id = 'card-edit';
+    kanbanCard.setAttribute('draggable', 'true');
+    ctx.elementsById.set(kanbanCard.id, kanbanCard);
+
+    let templateCalled = false;
+    let editCalled = false;
+    let deleteCalled = false;
+    ctx.showTemplateModal = () => { templateCalled = true; };
+    ctx.editDoc = () => { editCalled = true; };
+    ctx.showDeleteModal = () => { deleteCalled = true; };
+
+    await ctx.CollabBootstrap.handleUserAuth({ uid: 'editor-1', email: 'editor@example.com' });
+
+    assert.equal(templateBtn.disabled, false);
+    assert.equal(templateBtn.hasAttribute('aria-disabled'), false);
+    assert.equal(editBtn.disabled, false);
+    assert.equal(deleteBtn.disabled, false);
+    assert.equal(kanbanCard.getAttribute('draggable'), 'true');
+
+    templateBtn.click();
+    assert.equal(templateCalled, true, 'Editor can call showTemplateModal()');
+
+    editBtn.click();
+    assert.equal(editCalled, true, 'Editor can call editDoc()');
+
+    deleteBtn.click();
+    assert.equal(deleteCalled, true, 'Editor can call showDeleteModal()');
+
+    assert.equal(ctx._toasts.length, 0, 'No view access toast for editor');
+
+    ctx.COLLAB_MODE = false;
+    ctx.CollabViewer.applyViewerRestrictions();
+    assert.equal(templateBtn.disabled, false);
+    assert.equal(kanbanCard.getAttribute('draggable'), 'true');
+});
+
+test('Phase 15: banner #debug-err does not receive permission-denied error or turn on display', async () => {
+    const ctx = createDOMBootstrapContext({});
+    const debugErr = ctx.document.getElementById('debug-err');
+    assert.ok(debugErr);
+    assert.equal(debugErr.style.display, 'none');
+    assert.equal(debugErr.innerText, '');
+
+    // 1. Permission-denied error code and message
+    const permDeniedEvent = {
+        type: 'unhandledrejection',
+        reason: {
+            code: 'permission-denied',
+            message: 'Missing or insufficient permissions.'
+        }
+    };
+    ctx.dispatchEvent(permDeniedEvent);
+
+    assert.equal(debugErr.style.display, 'none', '#debug-err must NOT have display: block on permission-denied');
+    assert.doesNotMatch(debugErr.innerText, /Missing or insufficient permissions/, '#debug-err must not contain permission error text');
+    assert.doesNotMatch(debugErr.innerText, /permission-denied/);
+
+    // 2. Code 7 / PERMISSION_DENIED message
+    const permDeniedEvent2 = {
+        type: 'unhandledrejection',
+        reason: new Error('7 PERMISSION_DENIED: false for \'delete\' @ L45')
+    };
+    ctx.dispatchEvent(permDeniedEvent2);
+    assert.equal(debugErr.style.display, 'none');
+    assert.doesNotMatch(debugErr.innerText, /PERMISSION_DENIED/);
+
+    // 3. Unrelated error -> should be shown
+    const networkErrorEvent = {
+        type: 'unhandledrejection',
+        reason: new Error('Network transport failed')
+    };
+    ctx.dispatchEvent(networkErrorEvent);
+    assert.equal(debugErr.style.display, 'block', '#debug-err MUST show unrelated errors');
+    assert.match(debugErr.innerText, /Network transport failed/);
 });
 
 
