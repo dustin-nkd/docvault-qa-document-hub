@@ -1,5 +1,5 @@
 // DocVault team collaboration store module
-// Handles document loading (getDocs), change detection, versioned persistence, conflict detection, and live onSnapshot sync.
+// Handles document loading (getDocs), versioned persistence, conflict detection, onSnapshot sync, audit activity, history subcollection, and monotonic bug counter transactions.
 (function(root) {
     const _knownDocs = new Map();
     let _lastConflict = null, _customDb = null, _customUser = null;
@@ -9,17 +9,13 @@
         if (typeof root.GUEST_MODE !== 'undefined' && root.GUEST_MODE) return true;
         try { return /(?:^|[?&])guest=1(?:&|$)/.test(root.location?.search || ''); } catch (_) { return false; }
     }
-
-    function isCollabMode() {
-        return !isGuestMode() && Boolean(root.COLLAB_MODE);
-    }
+    function isCollabMode() { return !isGuestMode() && Boolean(root.COLLAB_MODE); }
 
     function getFirestoreDb() {
         if (_customDb) return _customDb;
         if (!root.firebase?.firestore) return null;
         const db = root.firebase.firestore(), host = root.location?.hostname || '';
-        const emulatorHost = root.FIRESTORE_EMULATOR_HOST ||
-            (typeof process !== 'undefined' && process.env?.FIRESTORE_EMULATOR_HOST) ||
+        const emulatorHost = root.FIRESTORE_EMULATOR_HOST || (typeof process !== 'undefined' && process.env?.FIRESTORE_EMULATOR_HOST) ||
             (host === 'localhost' || host === '127.0.0.1' ? '127.0.0.1:8080' : null);
         if (emulatorHost && !db._emulatorConnected) {
             try { const [h, p] = emulatorHost.split(':'); db.useEmulator(h, parseInt(p || '8080', 10)); db._emulatorConnected = true; } catch (_) {}
@@ -29,10 +25,7 @@
 
     function getCurrentUser() {
         if (_customUser) return _customUser;
-        if (root.CollabAuth?.getCurrentUser) {
-            const u = root.CollabAuth.getCurrentUser();
-            if (u) return u;
-        }
+        if (root.CollabAuth?.getCurrentUser) { const u = root.CollabAuth.getCurrentUser(); if (u) return u; }
         return root.firebase?.auth ? root.firebase.auth().currentUser || null : null;
     }
 
@@ -82,33 +75,27 @@
         if (_persistencePromise) return _persistencePromise;
         _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
             if (err?.code === 'unimplemented') return;
-            if (err?.code === 'failed-precondition') {
-                console.warn('[CollabStore] enablePersistence failed-precondition:', err);
-                return Promise.reject(err);
-            }
-            console.warn('[CollabStore] enablePersistence warning:', err);
+            if (err?.code === 'failed-precondition') console.warn('[CollabStore] enablePersistence failed-precondition:', err);
+            else console.warn('[CollabStore] enablePersistence warning:', err);
             return Promise.reject(err);
         });
         return _persistencePromise;
     }
 
     function getDocuments() {
-        if (typeof documents !== 'undefined' && Array.isArray(documents)) return documents;
         if (Array.isArray(root.documents)) return root.documents;
+        if (typeof documents !== 'undefined' && Array.isArray(documents)) return documents;
         return [];
     }
-
     function getState() {
         if (typeof state !== 'undefined' && state) return state;
-        if (root.state) return root.state;
-        return null;
+        return root.state || null;
     }
 
     function isEditorDirty() {
         const s = getState();
         if (!s || s.view !== 'editor') return false;
-        const captureFn = (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null) ||
-                          (typeof root._captureEditorFormState === 'function' ? root._captureEditorFormState : null);
+        const captureFn = root._captureEditorFormState || (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null);
         if (captureFn && s._editorSnapshot !== undefined) {
             try { return captureFn() !== s._editorSnapshot; } catch (_) {}
         }
@@ -135,12 +122,9 @@
         if (typeof root.editDoc === 'function') return root.editDoc(docId);
         const doc = getDocuments().find(d => d.id === docId), s = getState();
         if (doc && s) {
-            s.editingDoc = { ...doc };
-            s.editorTags = Array.isArray(doc.tags) ? [...doc.tags] : [];
-            s.editorMode = 'edit';
+            s.editingDoc = { ...doc }; s.editorTags = Array.isArray(doc.tags) ? [...doc.tags] : []; s.editorMode = 'edit';
             if (typeof root.render === 'function') root.render();
-            const captureFn = (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null) ||
-                              (typeof root._captureEditorFormState === 'function' ? root._captureEditorFormState : null);
+            const captureFn = root._captureEditorFormState || (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null);
             if (captureFn) try { s._editorSnapshot = captureFn(); } catch (_) {}
         }
     };
@@ -153,15 +137,8 @@
             const idx = docs.findIndex(d => d.id === docId);
             if (idx !== -1) docs.splice(idx, 1);
             _knownDocs.delete(docId);
-
-            if (s?.view === 'editor' && s.editingDoc?.id === docId) {
-                if (isEditorDirty()) showEditorConflictBanner(docId);
-                else if (typeof root.render === 'function') root.render();
-            } else if (s?.view === 'viewer' && s.editingDoc?.id === docId) {
-                if (typeof root.render === 'function') root.render();
-            } else if (s?.view !== 'editor') {
-                if (typeof root.render === 'function') root.render();
-            }
+            if (s?.view === 'editor' && s.editingDoc?.id === docId && isEditorDirty()) showEditorConflictBanner(docId);
+            else if (typeof root.render === 'function') root.render();
             return;
         }
 
@@ -172,22 +149,15 @@
         _knownDocs.set(docId, { ...remoteDoc });
 
         if (s?.view === 'editor' && s.editingDoc?.id === docId) {
-            if (isEditorDirty()) {
-                showEditorConflictBanner(docId);
-            } else {
-                s.editingDoc = { ...remoteDoc };
-                s.editorTags = Array.isArray(remoteDoc.tags) ? [...remoteDoc.tags] : [];
+            if (isEditorDirty()) showEditorConflictBanner(docId);
+            else {
+                s.editingDoc = { ...remoteDoc }; s.editorTags = Array.isArray(remoteDoc.tags) ? [...remoteDoc.tags] : [];
                 if (typeof root.render === 'function') root.render();
-                const captureFn = (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null) ||
-                                  (typeof root._captureEditorFormState === 'function' ? root._captureEditorFormState : null);
-                if (captureFn && s._editorSnapshot !== undefined) {
-                    try { s._editorSnapshot = captureFn(); } catch (_) {}
-                }
+                const captureFn = root._captureEditorFormState || (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null);
+                if (captureFn && s._editorSnapshot !== undefined) try { s._editorSnapshot = captureFn(); } catch (_) {}
             }
-        } else if (s?.view === 'viewer' && s.editingDoc?.id === docId) {
-            s.editingDoc = { ...remoteDoc };
-            if (typeof root.render === 'function') root.render();
-        } else if (s?.view !== 'editor') {
+        } else {
+            if (s?.view === 'viewer' && s.editingDoc?.id === docId) s.editingDoc = { ...remoteDoc };
             if (typeof root.render === 'function') root.render();
         }
     }
@@ -195,12 +165,10 @@
     function startListening() {
         if (isGuestMode() || !isCollabMode() || _unsubscribeSnapshot) return;
         const db = getFirestoreDb();
-        if (!db) return;
-        const col = db.collection('documents');
-        if (typeof col?.onSnapshot !== 'function') return;
+        if (!db || typeof db.collection('documents')?.onSnapshot !== 'function') return;
 
         try {
-            _unsubscribeSnapshot = col.onSnapshot(snapshot => {
+            _unsubscribeSnapshot = db.collection('documents').onSnapshot(snapshot => {
                 if (!snapshot) return;
                 const changes = typeof snapshot.docChanges === 'function' ? snapshot.docChanges() : [];
                 if (changes.length > 0) {
@@ -209,8 +177,7 @@
                         const docId = change.doc?.id;
                         if (!docId) continue;
                         if (change.type === 'removed') { applyRemoteDoc({ id: docId }, 'removed'); continue; }
-                        const rawData = typeof change.doc.data === 'function' ? change.doc.data() : change.doc;
-                        const remoteDoc = fromFirestoreDoc(rawData, docId);
+                        const remoteDoc = fromFirestoreDoc(typeof change.doc.data === 'function' ? change.doc.data() : change.doc, docId);
                         if (remoteDoc) {
                             const known = _knownDocs.get(docId);
                             if (known && known.version === remoteDoc.version && known.updatedAt === remoteDoc.updatedAt) continue;
@@ -246,22 +213,15 @@
         if (!db) throw new Error('Firestore is not available');
         await enableOfflinePersistence(db);
 
-        const snapshot = await db.collection('documents').get();
-        const loaded = [];
+        const snapshot = await db.collection('documents').get(), loaded = [];
         _knownDocs.clear();
-
         snapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            const doc = fromFirestoreDoc(data, docSnap.id);
-            if (doc) {
-                loaded.push(doc);
-                _knownDocs.set(doc.id, { ...doc });
-            }
+            const data = docSnap.data(), doc = fromFirestoreDoc(data, docSnap.id);
+            if (doc) { loaded.push(doc); _knownDocs.set(doc.id, { ...doc }); }
         });
 
-        const normTags = typeof root.normalizeDocTags === 'function' ? root.normalizeDocTags : (typeof normalizeDocTags === 'function' ? normalizeDocTags : null);
+        const normTags = root.normalizeDocTags || (typeof normalizeDocTags === 'function' ? normalizeDocTags : null);
         if (normTags) normTags(loaded);
-
         startListening();
         return loaded;
     }
@@ -274,16 +234,13 @@
         await enableOfflinePersistence(db);
         const user = getCurrentUser();
         if (!user?.uid) throw new Error('Cannot persist in collab mode: unauthenticated');
-
         const uid = user.uid;
 
         // 1. New documents (CREATE)
         for (const doc of currentDocuments) {
             if (!doc?.id || _knownDocs.has(doc.id)) continue;
-            const now = Date.now(), createdAt = typeof doc.createdAt === 'number' ? doc.createdAt : now;
-            const updatedAt = typeof doc.updatedAt === 'number' ? doc.updatedAt : now;
+            const now = Date.now(), createdAt = typeof doc.createdAt === 'number' ? doc.createdAt : now, updatedAt = typeof doc.updatedAt === 'number' ? doc.updatedAt : now;
             const data = toFirestoreDoc(doc, { version: 1, createdBy: uid, updatedBy: uid, createdAt, updatedAt });
-
             try {
                 await db.collection('documents').doc(doc.id).set(data);
                 doc.version = 1; doc.createdBy = uid; doc.updatedBy = uid; doc.createdAt = createdAt; doc.updatedAt = updatedAt;
@@ -303,8 +260,7 @@
             if (!isUpdated && !isFocusUpdated) continue;
 
             const nextVersion = (typeof known.version === 'number' ? known.version : 1) + 1;
-            const createdBy = known.createdBy || doc.createdBy || uid;
-            const createdAt = typeof known.createdAt === 'number' ? known.createdAt : (doc.createdAt || Date.now());
+            const createdBy = known.createdBy || doc.createdBy || uid, createdAt = typeof known.createdAt === 'number' ? known.createdAt : (doc.createdAt || Date.now());
             const data = toFirestoreDoc(doc, { version: nextVersion, createdBy, updatedBy: uid, createdAt, updatedAt: doc.updatedAt });
 
             try {
@@ -314,18 +270,13 @@
             } catch (err) {
                 const isPermDenied = err?.code === 'permission-denied' || err?.code === 7 ||
                     String(err?.message || '').includes('PERMISSION_DENIED') || String(err?.message || '').includes('permission-denied');
-
                 if (isPermDenied) {
                     let isVersionMismatch = true;
                     try {
                         const remoteSnap = await db.collection('documents').doc(doc.id).get();
                         if (remoteSnap.exists) isVersionMismatch = (remoteSnap.data().version !== known.version);
                     } catch (_) {}
-
-                    if (isVersionMismatch) {
-                        notifyConflict('Someone else saved this document. Reload to see their version.');
-                        continue;
-                    }
+                    if (isVersionMismatch) { notifyConflict('Someone else saved this document. Reload to see their version.'); continue; }
                 }
                 if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error');
                 throw err;
@@ -347,25 +298,96 @@
         }
     }
 
+    async function recordActivity(entry, doc) {
+        if (isGuestMode() || !isCollabMode() || !entry) return;
+        const member = root.CollabBootstrap?.getCurrentMember?.();
+        const role = member?.role;
+        if (role !== 'editor' && role !== 'owner') return;
+        const user = getCurrentUser();
+        if (!user?.uid) return;
+        if (root.ensureFirebase) await root.ensureFirebase();
+        const db = getFirestoreDb();
+        if (!db) return;
+        const actId = String(entry.id || ('act_' + Date.now())), actorName = member.displayName || member.name || member.email || '';
+        const payload = {
+            id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated',
+            docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '',
+            actorUid: user.uid, actorName
+        };
+        try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
+    }
+
+    async function saveHistory(doc) {
+        if (isGuestMode() || !isCollabMode() || !doc?.id || doc.category === 'credential') return;
+        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role;
+        if (role !== 'editor' && role !== 'owner') return;
+        const user = getCurrentUser();
+        if (!user?.uid) return;
+        if (root.ensureFirebase) await root.ensureFirebase();
+        const db = getFirestoreDb();
+        if (!db) return;
+
+        const histCol = db.collection('documents').doc(doc.id).collection('history');
+        try {
+            const snap = await histCol.get(), existing = [];
+            snap.forEach(d => { const data = (typeof d.data === 'function') ? d.data() : (d.data || d); existing.push({ id: d.id, ...data }); });
+            existing.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+            if (existing.length && existing[0].content === (doc.content || '') && existing[0].title === doc.title) return;
+            if (role === 'editor' && existing.length >= 10) return;
+
+            const snapId = 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+            const payload = {
+                id: snapId, ts: Date.now(), title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '',
+                tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '', savedBy: user.uid
+            };
+            await histCol.doc(snapId).set(payload);
+
+            if (role === 'owner' && existing.length >= 10) {
+                for (const oldSnap of existing.slice(9)) {
+                    try { await histCol.doc(oldSnap.id).delete(); } catch (_) {}
+                }
+            }
+        } catch (err) { console.warn('[CollabStore] saveHistory error:', err); }
+    }
+
+    async function allocateBugNumber() {
+        if (isGuestMode() || !isCollabMode()) {
+            let max = 0;
+            getDocuments().forEach(d => { if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber; });
+            return (typeof root.DocStorage !== 'undefined' && root.DocStorage.allocateBugNumber) ? root.DocStorage.allocateBugNumber(max) : max + 1;
+        }
+        if (root.ensureFirebase) await root.ensureFirebase();
+        const db = getFirestoreDb();
+        if (!db) throw new Error('Firestore not available');
+        const user = getCurrentUser();
+        if (!user?.uid) throw new Error('Unauthenticated');
+        const counterRef = db.collection('counters').doc('bugs');
+
+        return await db.runTransaction(async tx => {
+            const snap = await tx.get(counterRef);
+            let allocated;
+            if (!snap.exists) {
+                allocated = 1; tx.set(counterRef, { next: 1 });
+            } else {
+                const data = (typeof snap.data === 'function') ? snap.data() : snap.data;
+                allocated = ((typeof data?.next === 'number') ? data.next : 0) + 1;
+                tx.update(counterRef, { next: allocated });
+            }
+            return allocated;
+        });
+    }
+
     root.applyRemoteDoc = applyRemoteDoc;
 
     root.CollabStore = {
-        loadDocuments,
-        persist,
-        toFirestoreDoc,
-        fromFirestoreDoc,
-        getKnownDocs: () => _knownDocs,
-        clearKnownDocs: () => _knownDocs.clear(),
-        getLastConflict: () => _lastConflict,
-        clearLastConflict: () => { _lastConflict = null; },
-        setDb: (db) => { _customDb = db; },
-        setUser: (user) => { _customUser = user; },
-        startListening,
-        stopListening,
-        applyRemoteDoc,
-        isEditorDirty,
-        showEditorConflictBanner,
-        enableOfflinePersistence,
-        isListening: () => Boolean(_unsubscribeSnapshot)
+        loadDocuments, persist, toFirestoreDoc, fromFirestoreDoc,
+        getKnownDocs: () => _knownDocs, clearKnownDocs: () => _knownDocs.clear(),
+        getLastConflict: () => _lastConflict, clearLastConflict: () => { _lastConflict = null; },
+        setDb: (db) => { _customDb = db; }, setUser: (user) => { _customUser = user; },
+        startListening, stopListening, applyRemoteDoc,
+        isEditorDirty, showEditorConflictBanner, enableOfflinePersistence,
+        isListening: () => Boolean(_unsubscribeSnapshot),
+        recordActivity, saveHistory, allocateBugNumber
     };
 })(typeof window !== 'undefined' ? window : globalThis);

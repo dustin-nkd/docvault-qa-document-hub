@@ -428,10 +428,14 @@ const DocHistory = {
         if (!doc?.id || doc.category === 'credential') return;
         let snaps;
         try { snaps = JSON.parse(localStorage.getItem(this._key(doc.id)) || '[]'); } catch { snaps = []; }
-        if (snaps.length && snaps[0].content === (doc.content || '') && snaps[0].title === doc.title) return;
-        snaps.unshift({ ts: Date.now(), title: doc.title, content: doc.content || '', tags: doc.tags || [], status: doc.status, subfolder: doc.subfolder || '' });
-        try { localStorage.setItem(this._key(doc.id), JSON.stringify(snaps.slice(0, this.MAX))); }
-        catch (e) { console.warn('Could not save document history:', e); }
+        if (!snaps.length || snaps[0].content !== (doc.content || '') || snaps[0].title !== doc.title) {
+            snaps.unshift({ ts: Date.now(), title: doc.title, content: doc.content || '', tags: doc.tags || [], status: doc.status, subfolder: doc.subfolder || '' });
+            try { localStorage.setItem(this._key(doc.id), JSON.stringify(snaps.slice(0, this.MAX))); }
+            catch (e) { console.warn('Could not save document history:', e); }
+        }
+        if (typeof window !== 'undefined' && window.COLLAB_MODE && window.CollabStore?.saveHistory) {
+            return window.CollabStore.saveHistory(doc);
+        }
     },
     get(id) {
         try { return JSON.parse(localStorage.getItem(this._key(id)) || '[]'); } catch { return []; }
@@ -441,15 +445,7 @@ const DocHistory = {
 // ========================
 // ACTIVITY LOG (Sprint 24, synced Sprint 25)
 // ========================
-// A lightweight personal "what did I do lately" timeline across the whole
-// vault — NOT a real audit trail (no tamper-evidence, no access control) —
-// see the BA/PO discussion that led here: this app has one user, so "who
-// did what" has one answer, but a cross-device "what changed recently" is
-// still useful. Synced piggybacking on the sharded-sync meta file
-// (GitHubSync.pushSharded/pullSharded, storage.js) — each entry carries a
-// stable `id` specifically so entries from different devices can be merged
-// (union + dedup by id, newest MAX kept) instead of one device's history
-// clobbering another's.
+// Activity timeline across the whole vault, synced via sharded-sync meta file.
 const ActivityLog = {
     get KEY() { return _wsKey('docvault_activity_log'); },
     MAX: 200,
@@ -463,7 +459,7 @@ const ActivityLog = {
         if (!doc) return;
         let entries;
         try { entries = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { entries = []; }
-        entries.unshift({
+        const entry = {
             id: this._genId(),
             ts: Date.now(),
             type, // 'created' | 'updated' | 'trashed' | 'restored' | 'deleted' | 'tagged' | 'moved'
@@ -471,9 +467,13 @@ const ActivityLog = {
             title: doc.title,
             category: doc.category,
             ...meta
-        });
+        };
+        entries.unshift(entry);
         try { localStorage.setItem(this.KEY, JSON.stringify(entries.slice(0, this.MAX))); }
         catch (e) { console.warn('Could not save activity log:', e); }
+        if (typeof window !== 'undefined' && window.COLLAB_MODE && window.CollabStore?.recordActivity) {
+            return window.CollabStore.recordActivity(entry, doc);
+        }
     },
 
     getAll() {
