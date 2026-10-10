@@ -6,7 +6,8 @@
         membersMap: new Map(),
         unsubActivity: null,
         unsubMembers: null,
-        customDb: null
+        customDb: null,
+        stylesInjected: false
     });
 
     function esc(str) {
@@ -68,8 +69,33 @@
         return 'by Unknown account';
     }
 
+    function ensureActivityStyles() {
+        if (_store.stylesInjected) return;
+        if (typeof document === 'undefined') return;
+        if (document.getElementById && document.getElementById('collab-activity-styles')) {
+            _store.stylesInjected = true;
+            return;
+        }
+        if (typeof document.createElement !== 'function') return;
+        const style = document.createElement('style');
+        style.id = 'collab-activity-styles';
+        style.textContent = `
+.act-when { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex-shrink: 0; max-width: 50%; min-width: 0; gap: 2px; }
+.act-when .act-time { display: block; white-space: nowrap; }
+.act-when .act-actor { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--tx-d); line-height: 1.3; }
+[data-ui-style="bauhaus"] .act-when .act-actor { color: #555555; font-weight: 600; }
+@media (max-width: 767px) { .act-when .act-actor { font-size: 10.5px; } }
+`;
+        const target = document.head || document.documentElement || document.body || (typeof document.appendChild === 'function' ? document : null);
+        if (target && typeof target.appendChild === 'function') {
+            try { target.appendChild(style); } catch (_) {}
+        }
+        _store.stylesInjected = true;
+    }
+
     function startListening() {
         if (isGuestMode() || !isCollabMode()) return;
+        ensureActivityStyles();
         const db = getFirestoreDb();
         if (!db) return;
 
@@ -151,8 +177,11 @@
             root._renderActivityRow = function(entry) {
                 let html = origRow(entry);
                 if (!isCollabMode() || !entry) return html;
+                ensureActivityStyles();
                 const accountText = formatAccountText(entry);
-                return html.replace(/(<\/span>)(\s*<\/span>\s*<time\b)/, (m, c1, c2) => ' <span class="act-actor">' + accountText + '</span>' + c1 + c2);
+                return html.replace(/(<time\b[^>]*>[\s\S]*?<\/time>)/, (m, timeHtml) => {
+                    return `<span class="act-when">${timeHtml}<span class="act-actor" title="${accountText}">${accountText}</span></span>`;
+                });
             };
             root._renderActivityRow._collabWrapped = true;
         }
@@ -227,6 +256,7 @@
         getMembersMap: () => _store.membersMap,
         setDb: (db) => { _store.customDb = db; },
         formatAccountText,
+        ensureStyles: ensureActivityStyles,
         wrapRenderers
     };
 })(typeof window !== 'undefined' ? window : globalThis);

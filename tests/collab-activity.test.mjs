@@ -162,6 +162,7 @@ function createActivityContext(options = {}) {
             removeItem: (k) => localStore.delete(k)
         },
         document: {
+            head: { appendChild: () => {} },
             createElement: () => ({ setAttribute: () => {}, appendChild: () => {}, remove: () => {} }),
             getElementById: (id) => (id === 'content' ? contentEl : null),
             querySelector: () => null
@@ -256,9 +257,9 @@ test('CollabStore.recordActivity: editor payload has actorEmail preserving exact
 });
 
 // ---------------------------------------------------------------------------
-// 3. Timeline formatting with actor display in .act-sub
+// 3. Timeline formatting with actor display in .act-when (Phase 20)
 // ---------------------------------------------------------------------------
-test('Timeline rows: two accounts with same displayName but different emails render both emails in HTML', () => {
+test('Timeline rows: two accounts with same displayName but different emails render both emails in HTML inside .act-when, not in .act-sub', () => {
     const { ctx } = createActivityContext({ role: 'editor' });
 
     const row1 = ctx._renderActivityRow({
@@ -281,10 +282,98 @@ test('Timeline rows: two accounts with same displayName but different emails ren
         actorEmail: 'nguyenkhanhduy.contact@gmail.com'
     });
 
+    // Both emails rendered
     assert.match(row1, /by Khanh Duy Nguyen \(nguyenkhanhduy\.sgd@gmail\.com\)/);
     assert.match(row2, /by Khanh Duy Nguyen \(nguyenkhanhduy\.contact@gmail\.com\)/);
-    assert.match(row1, /class="act-sub"[^>]*>[\s\S]*?nguyenkhanhduy\.sgd@gmail\.com[\s\S]*?<\/span>/, 'Account must be inside .act-sub');
-    assert.match(row2, /class="act-sub"[^>]*>[\s\S]*?nguyenkhanhduy\.contact@gmail\.com[\s\S]*?<\/span>/, 'Account must be inside .act-sub');
+
+    // .act-when wraps time and actor; time is first, actor is second; title has exact account text
+    assert.match(
+        row1,
+        /<span class="act-when"><time\b[^>]*>[\s\S]*?<\/time><span class="act-actor" title="by Khanh Duy Nguyen \(nguyenkhanhduy\.sgd@gmail\.com\)">by Khanh Duy Nguyen \(nguyenkhanhduy\.sgd@gmail\.com\)<\/span><\/span>/,
+        'row1: time must come first, actor second inside .act-when with matching title'
+    );
+    assert.match(
+        row2,
+        /<span class="act-when"><time\b[^>]*>[\s\S]*?<\/time><span class="act-actor" title="by Khanh Duy Nguyen \(nguyenkhanhduy\.contact@gmail\.com\)">by Khanh Duy Nguyen \(nguyenkhanhduy\.contact@gmail\.com\)<\/span><\/span>/,
+        'row2: time must come first, actor second inside .act-when with matching title'
+    );
+
+    // .act-sub must NOT contain email or actor name
+    const sub1Match = row1.match(/<span class="act-sub">([\s\S]*?)<\/span>/);
+    assert.ok(sub1Match, 'row1 must have .act-sub');
+    assert.doesNotMatch(sub1Match[1], /nguyenkhanhduy\.sgd@gmail\.com/, '.act-sub must not contain email');
+    assert.doesNotMatch(sub1Match[1], /Khanh Duy Nguyen/, '.act-sub must not contain actor name');
+
+    const sub2Match = row2.match(/<span class="act-sub">([\s\S]*?)<\/span>/);
+    assert.ok(sub2Match, 'row2 must have .act-sub');
+    assert.doesNotMatch(sub2Match[1], /nguyenkhanhduy\.contact@gmail\.com/, '.act-sub must not contain email');
+    assert.doesNotMatch(sub2Match[1], /Khanh Duy Nguyen/, '.act-sub must not contain actor name');
+});
+
+test('Timeline rows: personal edition does NOT contain .act-when or .act-actor', () => {
+    const { ctx } = createActivityContext({ role: 'editor', collab: false });
+
+    const row = ctx._renderActivityRow({
+        id: 'act-p',
+        ts: Date.now(),
+        type: 'updated',
+        title: 'Personal Doc',
+        actorEmail: 'nguyenkhanhduy.sgd@gmail.com',
+        actorName: 'Khanh Duy Nguyen'
+    });
+
+    assert.doesNotMatch(row, /act-when/, 'Personal edition must not contain .act-when');
+    assert.doesNotMatch(row, /act-actor/, 'Personal edition must not contain .act-actor');
+    assert.doesNotMatch(row, /nguyenkhanhduy\.sgd@gmail\.com/, 'Personal edition must not render account email');
+});
+
+test('CSS injection: js/collab-activity.js injects .act-when styles once with column alignment and ellipsis', () => {
+    const headAppended = [];
+    const elements = new Map();
+    const testDoc = {
+        head: {
+            appendChild: (el) => {
+                headAppended.push(el);
+                if (el.id) elements.set(el.id, el);
+                return el;
+            }
+        },
+        createElement: (tag) => ({
+            tagName: tag.toUpperCase(),
+            id: '',
+            textContent: '',
+            setAttribute: () => {},
+            appendChild: () => {}
+        }),
+        getElementById: (id) => elements.get(id) || null
+    };
+
+    const ctx = {
+        console,
+        document: testDoc,
+        COLLAB_MODE: true,
+        GUEST_MODE: false,
+        location: { search: '', hostname: 'localhost' }
+    };
+    ctx.window = ctx;
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(read('js/collab-activity.js'), ctx);
+
+    ctx.CollabActivity.ensureStyles();
+    ctx.CollabActivity.ensureStyles(); // second call should no-op
+
+    const styleEls = headAppended.filter(el => el.id === 'collab-activity-styles');
+    assert.equal(styleEls.length, 1, 'Must inject style element exactly once');
+
+    const css = styleEls[0].textContent;
+    assert.match(css, /\.act-when/, 'Must define .act-when');
+    assert.match(css, /text-align:\s*right/, 'Must right-align column');
+    assert.match(css, /align-items:\s*flex-end/, 'Must align items to right edge');
+    assert.match(css, /max-width:\s*50%/, 'Must limit column to at most half row width');
+    assert.match(css, /\.act-actor/, 'Must style .act-actor');
+    assert.match(css, /text-overflow:\s*ellipsis/, 'Must ellipsis long account text');
+    assert.match(css, /white-space:\s*nowrap/, 'Must keep account and time on single line');
 });
 
 test('Timeline rows: old document without actorEmail resolves email from members/{uid}', () => {
