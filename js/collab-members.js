@@ -286,6 +286,14 @@
 
         return `
         <div class="text-left">
+            <style>
+                [data-ui-style="bauhaus"] #collab-team-tab-container .rounded-lg { background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important; box-shadow: 2px 2px 0 0 #121212 !important; }
+                [data-ui-style="bauhaus"] #collab-team-tab-container :is([style*="color:var(--tx)"],.font-medium,.text-xs.font-bold) { color: #121212 !important; }
+                [data-ui-style="bauhaus"] #collab-team-tab-container :is([style*="color:var(--tx-m)"],[style*="color:var(--tx-d)"]) { color: #555555 !important; font-weight: 600 !important; }
+                [data-ui-style="bauhaus"] #collab-team-tab-container .w-7.h-7 { border: 1.5px solid #121212 !important; border-radius: 0 !important; background: #EBF3FF !important; color: #1040C0 !important; }
+                [data-ui-style="bauhaus"] #collab-team-tab-container span.rounded[style*="uppercase"] { border: 1.5px solid #121212 !important; border-radius: 0 !important; box-shadow: 1px 1px 0 0 #121212 !important; }
+                [data-ui-style="bauhaus"] #collab-team-tab-container div[style*="border-top"] { border-top: 2px solid #121212 !important; }
+            </style>
             ${inviteSectionHtml}
             ${pendingInvitesHtml}
             <div>
@@ -343,21 +351,10 @@
         if (ok && emailInput) emailInput.value = '';
     };
 
-    root.collabChangeMemberRole = async function(uid, newRole) {
-        return updateMemberRole(uid, newRole);
-    };
-
-    root.collabRemoveMember = async function(uid) {
-        return removeMember(uid);
-    };
-
-    root.collabRevokeInvite = async function(email) {
-        return revokeInvite(email);
-    };
-
-    root.collabStartImport = async function() {
-        return root.CollabImport?.startImport?.();
-    };
+    root.collabChangeMemberRole = (uid, newRole) => updateMemberRole(uid, newRole);
+    root.collabRemoveMember = (uid) => removeMember(uid);
+    root.collabRevokeInvite = (email) => revokeInvite(email);
+    root.collabStartImport = () => root.CollabImport?.startImport?.();
 
     // Public API
     const CollabMembers = {
