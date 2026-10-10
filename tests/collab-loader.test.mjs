@@ -58,8 +58,13 @@ test('js/firebase-config.js defines valid public config and contains no secrets'
     assert.ok(config, 'FIREBASE_CONFIG must be defined on window');
     assert.equal(config.projectId, 'docvault-qa-team');
     assert.ok(config.apiKey && config.apiKey.startsWith('AIzaSy'), 'Must contain a valid Google API key');
-    assert.equal(config.authDomain, 'docvault-qa-team.firebaseapp.com');
+    assert.equal(config.authDomain, 'docvault-qa-team.web.app');
     assert.ok(config.appId, 'Must contain appId');
+
+    const hosted = { window: { location: { hostname: 'docvault-qa-team.web.app' } } };
+    hosted.globalThis = hosted.window;
+    vm.runInNewContext(source, hosted);
+    assert.equal(hosted.window.FIREBASE_CONFIG.authDomain, 'docvault-qa-team.web.app');
 });
 
 test('js/collab-config.js evaluates edition flags, guest mode, and hostname dynamically', () => {

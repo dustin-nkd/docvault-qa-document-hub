@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v70'; // Team collaboration runtime modules cached in app shell
+const SW_VERSION = 'v71'; // Team collaboration runtime modules cached in app shell
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -91,6 +91,11 @@ self.addEventListener('fetch', (event) => {
     // hit the live network — caching or blocking them here would silently break
     // cross-device sync or serve stale vault data.
     if (url.origin !== self.location.origin || req.method !== 'GET') return;
+
+    // Firebase Auth serves /__/auth/handler from this host during
+    // signInWithRedirect. Falling back to index.html here drops the
+    // Google result and returns the user to the sign-in screen.
+    if (url.pathname.startsWith('/__/')) return;
 
     // Network-first for same-origin app-shell files: an online visitor always
     // gets the latest deployed code, and the cache is refreshed on every
