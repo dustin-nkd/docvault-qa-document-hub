@@ -111,6 +111,8 @@ service cloud.firestore {
         request.resource.data.createdBy == resource.data.createdBy &&
         (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
         (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+        ((!('workspaceId' in resource.data) && !('workspaceId' in request.resource.data)) ||
+         (request.resource.data.workspaceId == resource.data.workspaceId)) &&
         request.resource.data.updatedBy == request.auth.uid;
 
       allow delete: if isTeamOwner();
@@ -167,6 +169,35 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isEditorOrOwner() &&
         (resource.data.createdBy == request.auth.uid || isTeamOwner());
+    }
+
+    // 9. workspaces/{id}: Shared team vault workspaces
+    match /workspaces/{id} {
+      allow read: if isMember();
+      allow create: if isEditorOrOwner() && (
+        (id != 'default' &&
+         id.matches('^[a-z0-9][a-z0-9-]{0,31}$') &&
+         request.resource.data.name is string &&
+         request.resource.data.name.size() > 0 &&
+         request.resource.data.createdBy == request.auth.uid &&
+         (request.resource.data.createdAt is string || request.resource.data.createdAt is int)) ||
+        (id == 'default' &&
+         request.resource.data.name is string &&
+         request.resource.data.name.size() > 0 &&
+         !('createdBy' in request.resource.data))
+      );
+      allow update: if isEditorOrOwner() &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+        (!('createdBy' in resource.data) || request.resource.data.createdBy == resource.data.createdBy) &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+      allow delete: if isTeamOwner() &&
+        id != 'default' &&
+        (!('docCount' in resource.data) || resource.data.docCount == 0) &&
+        (!('hasDocs' in resource.data) || !resource.data.hasDocs) &&
+        (!('hasDocuments' in resource.data) || !resource.data.hasDocuments) &&
+        !exists(/databases/$(database)/documents/documents/$(id));
     }
   }
 }

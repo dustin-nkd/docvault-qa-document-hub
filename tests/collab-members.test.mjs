@@ -439,6 +439,7 @@ test('CLIENT VERIFICATION: viewer cannot write — local documents remain unchan
     vm.runInContext(read('js/actions-batch-history.js'), ctx);
     vm.runInContext(read('js/actions-imports.js'), ctx);
     vm.runInContext(read('js/workspaces.js'), ctx);
+    vm.runInContext(read('js/collab-workspaces.js'), ctx);
 
     // 1. saveDoc() with viewer role
     toasts.length = 0;
@@ -499,12 +500,18 @@ test('CLIENT VERIFICATION: viewer cannot write — local documents remain unchan
     assert.equal(ctx.documents[0].kanbanStatus, 'todo');
     assert.equal(ctx.documents[1].status, 'deleted');
 
-    // 10. Workspaces creation, rename, and delete disabled in COLLAB_MODE
-    const origRegistry = ctx.localStorage.getItem('docvault_workspace_registry');
+    // 10. Workspaces creation, rename, and delete disabled for viewer in COLLAB_MODE
+    toasts.length = 0;
     await ctx.createWorkspace();
+    assert.ok(toasts.some(t => t.msg === 'You have view access'), 'createWorkspace: viewer must show exact toast');
+
+    toasts.length = 0;
     ctx.renameWorkspace('default');
+    assert.ok(toasts.some(t => t.msg === 'You have view access'), 'renameWorkspace: viewer must show exact toast');
+
+    toasts.length = 0;
     await ctx.deleteWorkspace('some-ws');
-    assert.equal(ctx.localStorage.getItem('docvault_workspace_registry'), origRegistry);
+    assert.ok(toasts.some(t => t.msg === 'You have view access'), 'deleteWorkspace: viewer must show exact toast');
 });
 
 test('Phase 14: Settings modal hides Account/Security tabs and defaults to Team on team edition, while personal edition keeps all tabs', async () => {

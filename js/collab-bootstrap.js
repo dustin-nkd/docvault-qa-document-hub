@@ -254,7 +254,7 @@
             if (res.status === 'owner' || res.status === 'member') {
                 renderCollabMe(user, res.member);
                 updateSidebarLockToSignOut();
-                await loadCollabViewer();
+                await Promise.all([loadCollabViewer(), loadCollabWorkspaces()]);
                 root.CollabViewer?.applyViewerRestrictions?.();
                 const ls = document.getElementById('lock-screen');
                 if (ls) ls.classList.add('hidden');
@@ -290,8 +290,23 @@
         });
     }
 
+    function loadCollabWorkspaces() {
+        if (root.CollabWorkspaces) return Promise.resolve();
+        if (typeof document === 'undefined' || typeof document.createElement !== 'function') return Promise.resolve();
+        return new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = 'js/collab-workspaces.js';
+            s.onload = () => resolve();
+            s.onerror = () => resolve();
+            const parent = document.head || document.body || document.documentElement || document;
+            if (parent && typeof parent.appendChild === 'function') parent.appendChild(s);
+            else resolve();
+        });
+    }
+
     function start() {
         loadCollabViewer();
+        loadCollabWorkspaces();
         showCollabLockScreen('signin');
         updateSidebarLockToSignOut();
 
@@ -340,6 +355,7 @@
         renderCollabMe,
         removeCollabMe,
         loadCollabViewer,
+        loadCollabWorkspaces,
         applyViewerRestrictions: () => root.CollabViewer?.applyViewerRestrictions?.(),
         getCurrentMember: () => _currentMember
     };
@@ -355,4 +371,5 @@
     };
 
     loadCollabViewer();
+    loadCollabWorkspaces();
 })(typeof window !== 'undefined' ? window : globalThis);

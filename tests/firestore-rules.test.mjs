@@ -464,6 +464,39 @@ test('Branch 7 (update document): denies viewer, version mismatch, or tampering 
         id: 'tampered-id',
         updatedBy: 'ed-uid'
     }));
+    // Cannot tamper by adding workspaceId to legacy doc
+    await assertFails(editor.collection('documents').doc('doc-1').update({
+        version: 2,
+        workspaceId: 'new-ws',
+        updatedBy: 'ed-uid'
+    }));
+
+    // Seed doc with workspaceId
+    await seed(async (context) => {
+        await context.firestore().collection('documents').doc('doc-ws').set({
+            id: 'doc-ws',
+            title: 'Doc WS',
+            version: 1,
+            workspaceId: 'mobile-qa',
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid',
+            createdAt: '2026-10-08T00:00:00Z'
+        });
+    });
+
+    // Cannot tamper with existing workspaceId
+    await assertFails(editor.collection('documents').doc('doc-ws').update({
+        version: 2,
+        workspaceId: 'other-ws',
+        updatedBy: 'ed-uid'
+    }));
+
+    // Preserving workspaceId succeeds
+    await assertSucceeds(editor.collection('documents').doc('doc-ws').update({
+        version: 2,
+        workspaceId: 'mobile-qa',
+        updatedBy: 'ed-uid'
+    }));
 });
 
 // ---------------------------------------------------------------------------
@@ -772,3 +805,151 @@ test('Branch 12 (counters/bugs): denies editor create next: 100, editor create o
     const viewer = testEnv.authenticatedContext('vw-uid').firestore();
     await assertFails(viewer.collection('counters').doc('bugs').update({ next: 101 }));
 });
+
+// ---------------------------------------------------------------------------
+// 13. workspaces/{id}
+// ---------------------------------------------------------------------------
+test('Branch 13 (workspaces): allows member read, denies anonymous and stranger read', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
+        await db.collection('members').doc('vw-uid').set({ uid: 'vw-uid', role: 'viewer' });
+        await db.collection('workspaces').doc('mobile-qa').set({
+            name: 'Mobile QA',
+            createdAt: '2026-10-10T00:00:00Z',
+            createdBy: 'owner-uid'
+        });
+    });
+
+    const anon = testEnv.unauthenticatedContext().firestore();
+    await assertFails(anon.collection('workspaces').doc('mobile-qa').get());
+
+    const stranger = testEnv.authenticatedContext('stranger-uid').firestore();
+    await assertFails(stranger.collection('workspaces').doc('mobile-qa').get());
+
+    const viewer = testEnv.authenticatedContext('vw-uid').firestore();
+    await assertSucceeds(viewer.collection('workspaces').doc('mobile-qa').get());
+    await assertSucceeds(viewer.collection('workspaces').get());
+});
+
+test('Branch 13 (workspaces): allows editor and owner to create workspace; denies viewer create', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
+        await db.collection('members').doc('vw-uid').set({ uid: 'vw-uid', role: 'viewer' });
+    });
+
+    const viewer = testEnv.authenticatedContext('vw-uid').firestore();
+    // Denies viewer creating workspace
+    await assertFails(viewer.collection('workspaces').doc('perf-hub').set({
+        name: 'Perf Hub',
+        createdAt: '2026-10-10T00:00:00Z',
+        createdBy: 'vw-uid'
+    }));
+
+    const editor = testEnv.authenticatedContext('ed-uid').firestore();
+    // Allows editor creating workspace
+    await assertSucceeds(editor.collection('workspaces').doc('perf-hub').set({
+        name: 'Perf Hub',
+        createdAt: '2026-10-10T00:00:00Z',
+        createdBy: 'ed-uid'
+    }));
+
+    // Denies creating custom workspace with id 'default' via custom schema
+    await assertFails(editor.collection('workspaces').doc('default').set({
+        name: 'Default',
+        createdAt: '2026-10-10T00:00:00Z',
+        createdBy: 'ed-uid'
+    }));
+
+    // Denies invalid id regex (e.g. uppercase, invalid characters)
+    await assertFails(editor.collection('workspaces').doc('Invalid_Id').set({
+        name: 'Invalid',
+        createdAt: '2026-10-10T00:00:00Z',
+        createdBy: 'ed-uid'
+    }));
+
+    // Denies mismatched createdBy
+    await assertFails(editor.collection('workspaces').doc('another-ws').set({
+        name: 'Another',
+        createdAt: '2026-10-10T00:00:00Z',
+        createdBy: 'spoofed-uid'
+    }));
+});
+
+test('Branch 13 (workspaces): allows editor and owner rename, allows default rename; denies viewer rename', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
+        await db.collection('members').doc('vw-uid').set({ uid: 'vw-uid', role: 'viewer' });
+        await db.collection('workspaces').doc('mobile-qa').set({
+            name: 'Mobile QA',
+            createdAt: '2026-10-10T00:00:00Z',
+            createdBy: 'owner-uid'
+        });
+    });
+
+    const viewer = testEnv.authenticatedContext('vw-uid').firestore();
+    await assertFails(viewer.collection('workspaces').doc('mobile-qa').update({ name: 'Renamed by Viewer' }));
+
+    const editor = testEnv.authenticatedContext('ed-uid').firestore();
+    await assertSucceeds(editor.collection('workspaces').doc('mobile-qa').update({ name: 'Mobile QA Renamed' }));
+
+    // Allows default rename by setting/updating workspaces/default
+    await assertSucceeds(editor.collection('workspaces').doc('default').set({ name: 'Custom Default Name' }));
+});
+
+test('Branch 13 (workspaces): denies delete of default workspace, denies delete by editor/viewer, denies owner delete when workspace contains documents, and allows owner delete when empty', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
+        await db.collection('members').doc('vw-uid').set({ uid: 'vw-uid', role: 'viewer' });
+        await db.collection('workspaces').doc('default').set({ name: 'Personal' });
+        await db.collection('workspaces').doc('ws-with-docs').set({
+            name: 'WS With Docs',
+            createdAt: '2026-10-10T00:00:00Z',
+            createdBy: 'owner-uid',
+            docCount: 1
+        });
+        await db.collection('workspaces').doc('empty-ws').set({
+            name: 'Empty WS',
+            createdAt: '2026-10-10T00:00:00Z',
+            createdBy: 'owner-uid',
+            docCount: 0
+        });
+        await db.collection('documents').doc('doc-1').set({
+            id: 'doc-1',
+            title: 'Doc in WS',
+            workspaceId: 'ws-with-docs',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+    });
+
+    const editor = testEnv.authenticatedContext('ed-uid').firestore();
+    const viewer = testEnv.authenticatedContext('vw-uid').firestore();
+    const owner = testEnv.authenticatedContext('owner-uid').firestore();
+
+    // Editor and viewer cannot delete any workspace
+    await assertFails(editor.collection('workspaces').doc('empty-ws').delete());
+    await assertFails(viewer.collection('workspaces').doc('empty-ws').delete());
+
+    // Owner cannot delete default workspace
+    await assertFails(owner.collection('workspaces').doc('default').delete());
+
+    // Owner cannot delete workspace that still contains documents
+    await assertFails(owner.collection('workspaces').doc('ws-with-docs').delete());
+
+    // Owner can delete empty workspace
+    await assertSucceeds(owner.collection('workspaces').doc('empty-ws').delete());
+});
+
