@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v65'; // Team collaboration runtime modules cached in app shell
+const SW_VERSION = 'v66'; // Team collaboration runtime modules cached in app shell
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -41,6 +41,7 @@ const APP_SHELL = [
     './js/collab-store.js',
     './js/collab-members.js',
     './js/collab-images.js',
+    './js/collab-import.js',
     './js/events.js',
     './vendor/tailwind/tailwind.generated.css',
     './vendor/toastui/toastui-editor.min.css',

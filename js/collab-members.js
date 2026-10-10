@@ -46,6 +46,13 @@
         return isOwner() || isEditor();
     }
 
+    function hasUnimportedLocalVault() {
+        if (typeof localStorage === 'undefined') return false;
+        if (localStorage.getItem('docvault_collab_imported_at')) return false;
+        const raw = localStorage.getItem('docvault_docs');
+        return Boolean(raw && raw !== '[]' && raw !== '{}');
+    }
+
     function esc(s) {
         if (typeof root.escHtml === 'function') return root.escHtml(s || '');
         return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -271,6 +278,20 @@
             </div>`;
         }).join('');
 
+        let importSectionHtml = '';
+        if (currentIsOwner && hasUnimportedLocalVault()) {
+            importSectionHtml = `
+            <div class="mt-4 pt-3" style="border-top:1px solid var(--brd);">
+                <div class="text-xs font-bold mb-1 flex items-center gap-1.5" style="color:var(--tx);">
+                    <i class="fa-solid fa-file-import text-[var(--acc)]"></i> Local Vault Migration
+                </div>
+                <p class="text-[11px] mb-2" style="color:var(--tx-m);">Import this browser's local default workspace vault into the team Firestore database.</p>
+                <button type="button" class="btn-s py-1.5 px-3 text-xs flex items-center gap-1.5" data-onclick="collabStartImport()">
+                    <i class="fa-solid fa-upload text-[10px]"></i> Import this browser's vault
+                </button>
+            </div>`;
+        }
+
         return `
         <div class="text-left">
             ${inviteSectionHtml}
@@ -281,6 +302,7 @@
                     ${memberRowsHtml || '<p class="text-xs text-center py-4" style="color:var(--tx-d);">No members found.</p>'}
                 </div>
             </div>
+            ${importSectionHtml}
         </div>`;
     }
 
@@ -341,6 +363,10 @@
         return revokeInvite(email);
     };
 
+    root.collabStartImport = async function() {
+        return root.CollabImport?.startImport?.();
+    };
+
     // Public API
     const CollabMembers = {
         getCurrentMember,
@@ -357,7 +383,8 @@
         revokeInvite,
         renderTeamTab,
         loadAndRenderTeam,
-        getTeamTab
+        getTeamTab,
+        hasUnimportedLocalVault
     };
 
     root.CollabMembers = CollabMembers;
