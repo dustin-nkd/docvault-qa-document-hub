@@ -109,13 +109,24 @@ function createMembersContext(options = {}) {
         calls,
         toasts,
         document: {
-            getElementById: (id) => null
+            getElementById: (id) => {
+                return {
+                    id,
+                    value: '',
+                    classList: { add() {}, remove() {}, contains() { return false; } },
+                    setAttribute() {},
+                    removeAttribute() {},
+                    querySelectorAll() { return []; }
+                };
+            }
         }
     };
     ctx.window = ctx;
     ctx.globalThis = ctx;
 
     vm.createContext(ctx);
+    vm.runInContext(read('js/utils.js'), ctx);
+    vm.runInContext(read('js/render-editor.js'), ctx);
     vm.runInContext(read('js/collab-members.js'), ctx);
     return ctx;
 }
@@ -195,6 +206,7 @@ test('Team tab markup: owner sees invite form & role select, editor does not', a
 
     // Render team tab markup
     let containerHtml = '';
+    const domNodes = new Map();
     ctxOwner.document.getElementById = (id) => {
         if (id === 'collab-team-tab-container') {
             return {
@@ -202,7 +214,17 @@ test('Team tab markup: owner sees invite form & role select, editor does not', a
                 get innerHTML() { return containerHtml; }
             };
         }
-        return null;
+        if (!domNodes.has(id)) {
+            domNodes.set(id, {
+                id,
+                value: '',
+                classList: { add() {}, remove() {}, contains() { return false; } },
+                setAttribute() {},
+                removeAttribute() {},
+                querySelectorAll() { return []; }
+            });
+        }
+        return domNodes.get(id);
     };
 
     await ctxOwner.CollabMembers.loadAndRenderTeam();
@@ -212,11 +234,26 @@ test('Team tab markup: owner sees invite form & role select, editor does not', a
     assert.match(containerHtml, /data-onclick="collabInviteMember\(\)"/);
     assert.match(containerHtml, /Pending Invitations/);
     assert.match(containerHtml, /pending@example\.com/);
-    assert.match(containerHtml, /data-onchange="collabChangeMemberRole\('member-2'/);
+    assert.match(containerHtml, /custom-select-wrapper/);
+    assert.match(containerHtml, /role="combobox"/);
+    assert.doesNotMatch(containerHtml, /<select\b/i, 'Team tab HTML must not contain <select> tags');
+    assert.match(containerHtml, /team-member-role-member-2/);
+    assert.match(containerHtml, /collabChangeMemberRole/);
     // You assertion for owner fixture (owner-1 is current user)
     assert.equal((containerHtml.match(/\bYou\b/g) || []).length, 1, 'Owner markup must contain You for exactly one person');
     assert.match(containerHtml, /owner@example\.com\s*<span[^>]*>\(You\)/, 'owner-1 must have You');
     assert.doesNotMatch(containerHtml, /editor@example\.com\s*<span[^>]*>\(You\)/, 'member-2 must not have You in owner session');
+
+    // Test selecting Viewer for member-2 calls collabChangeMemberRole with that uid and viewer
+    ctxOwner.selectCustomOption(
+        'team-member-role-member-2',
+        'viewer',
+        'Viewer',
+        "collabChangeMemberRole('member-2', this.value)"
+    );
+    await new Promise(r => setTimeout(r, 20));
+    assert.equal(ctxOwner.memberStore.get('member-2').role, 'viewer');
+    assert.ok(ctxOwner.calls.memberUpdates.some(u => u.id === 'member-2' && u.data.role === 'viewer'));
 
     // 2. Editor
     const ctxEditor = createMembersContext({
@@ -235,14 +272,23 @@ test('Team tab markup: owner sees invite form & role select, editor does not', a
                 get innerHTML() { return editorContainerHtml; }
             };
         }
-        return null;
+        return {
+            id,
+            value: '',
+            classList: { add() {}, remove() {}, contains() { return false; } },
+            setAttribute() {},
+            removeAttribute() {},
+            querySelectorAll() { return []; }
+        };
     };
 
     await ctxEditor.CollabMembers.loadAndRenderTeam();
     assert.doesNotMatch(editorContainerHtml, /id="team-invite-email"/);
     assert.doesNotMatch(editorContainerHtml, /id="team-invite-btn"/);
     assert.doesNotMatch(editorContainerHtml, /Pending Invitations/);
-    assert.doesNotMatch(editorContainerHtml, /data-onchange="collabChangeMemberRole/);
+    assert.doesNotMatch(editorContainerHtml, /team-member-role-/);
+    assert.doesNotMatch(editorContainerHtml, /collabChangeMemberRole/);
+    assert.doesNotMatch(editorContainerHtml, /<select\b/i, 'Editor markup must not contain <select> tags');
     // You assertion for editor fixture (member-2 is current user)
     assert.equal((editorContainerHtml.match(/\bYou\b/g) || []).length, 1, 'Editor markup must contain You for exactly one person');
     assert.match(editorContainerHtml, /editor@example\.com\s*<span[^>]*>\(You\)/, 'member-2 must have You');
@@ -538,6 +584,8 @@ test('Phase 14: Settings modal hides Account/Security tabs and defaults to Team 
     teamCtx.window = teamCtx;
     teamCtx.globalThis = teamCtx;
     vm.createContext(teamCtx);
+    vm.runInContext(read('js/utils.js'), teamCtx);
+    vm.runInContext(read('js/render-editor.js'), teamCtx);
     vm.runInContext(read('js/actions-settings.js'), teamCtx);
     vm.runInContext(read('js/collab-members.js'), teamCtx);
 

@@ -200,6 +200,7 @@
     }
 
     function buildTeamMarkup(members, invites, currentIsOwner) {
+        const renderSelect = root.renderSelect || (typeof window !== 'undefined' ? window.renderSelect : null);
         let inviteSectionHtml = '';
         if (currentIsOwner) {
             inviteSectionHtml = `
@@ -209,10 +210,7 @@
                 </div>
                 <input type="email" id="team-invite-email" class="form-input w-full py-1.5 px-3 text-xs mb-2" placeholder="colleague@example.com">
                 <div class="flex items-center gap-2">
-                    <select id="team-invite-role" class="form-input py-1.5 px-2.5 text-xs" style="width:auto">
-                        <option value="editor">Editor</option>
-                        <option value="viewer">Viewer</option>
-                    </select>
+                    ${renderSelect ? renderSelect('team-invite-role', [{ value: 'editor', label: 'Editor' }, { value: 'viewer', label: 'Viewer' }], 'editor', 'w-28 py-1.5 px-2.5 text-xs', '', 'Role') : ''}
                     <button type="button" id="team-invite-btn" class="btn-p py-1.5 px-4 text-xs shrink-0 flex items-center gap-1" data-onclick="collabInviteMember()">
                         <i class="fa-solid fa-paper-plane text-[10px]"></i> Invite
                     </button>
@@ -262,10 +260,9 @@
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     ${showControls ? `
-                        <select class="form-input py-1 px-2 text-[11px]" data-onchange="collabChangeMemberRole('${esc(m.uid)}', this.value)">
-                            <option value="editor" ${m.role === 'editor' ? 'selected' : ''}>Editor</option>
-                            <option value="viewer" ${m.role === 'viewer' ? 'selected' : ''}>Viewer</option>
-                        </select>
+                        <div class="member-role-select">
+                            ${renderSelect ? renderSelect('team-member-role-' + m.uid, [{ value: 'editor', label: 'Editor' }, { value: 'viewer', label: 'Viewer' }], m.role, 'w-24 py-1 px-2 text-[11px]', `collabChangeMemberRole('${m.uid}', this.value)`, 'Role') : ''}
+                        </div>
                         <button type="button" class="btn-d text-[10px] py-1 px-2" data-onclick="collabRemoveMember('${esc(m.uid)}')" title="Remove member">
                             <i class="fa-solid fa-trash"></i>
                         </button>
@@ -297,12 +294,13 @@
                 [data-ui-style="bauhaus"] #collab-team-tab-container .w-7.h-7 { border: 1.5px solid #121212 !important; border-radius: 0 !important; background: #EBF3FF !important; color: #1040C0 !important; }
                 [data-ui-style="bauhaus"] #collab-team-tab-container span.rounded[style*="uppercase"] { border: 1.5px solid #121212 !important; border-radius: 0 !important; box-shadow: 1px 1px 0 0 #121212 !important; }
                 [data-ui-style="bauhaus"] #collab-team-tab-container div[style*="border-top"] { border-top: 2px solid #121212 !important; }
+                #collab-team-tab-container .member-role-select .custom-select-list { top: auto !important; bottom: 100% !important; margin-top: 0 !important; margin-bottom: 4px !important; }
             </style>
             ${inviteSectionHtml}
             ${pendingInvitesHtml}
             <div>
                 <div class="text-[11px] font-bold mb-2" style="color:var(--tx-m);">Team Members (${members.length})</div>
-                <div class="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
+                <div class="flex flex-col gap-1.5 pr-1">
                     ${memberRowsHtml || '<p class="text-xs text-center py-4" style="color:var(--tx-d);">No members found.</p>'}
                 </div>
             </div>
