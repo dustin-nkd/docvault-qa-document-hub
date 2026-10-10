@@ -213,6 +213,10 @@ test('Team tab markup: owner sees invite form & role select, editor does not', a
     assert.match(containerHtml, /Pending Invitations/);
     assert.match(containerHtml, /pending@example\.com/);
     assert.match(containerHtml, /data-onchange="collabChangeMemberRole\('member-2'/);
+    // You assertion for owner fixture (owner-1 is current user)
+    assert.equal((containerHtml.match(/\bYou\b/g) || []).length, 1, 'Owner markup must contain You for exactly one person');
+    assert.match(containerHtml, /owner@example\.com\s*<span[^>]*>\(You\)/, 'owner-1 must have You');
+    assert.doesNotMatch(containerHtml, /editor@example\.com\s*<span[^>]*>\(You\)/, 'member-2 must not have You in owner session');
 
     // 2. Editor
     const ctxEditor = createMembersContext({
@@ -239,6 +243,10 @@ test('Team tab markup: owner sees invite form & role select, editor does not', a
     assert.doesNotMatch(editorContainerHtml, /id="team-invite-btn"/);
     assert.doesNotMatch(editorContainerHtml, /Pending Invitations/);
     assert.doesNotMatch(editorContainerHtml, /data-onchange="collabChangeMemberRole/);
+    // You assertion for editor fixture (member-2 is current user)
+    assert.equal((editorContainerHtml.match(/\bYou\b/g) || []).length, 1, 'Editor markup must contain You for exactly one person');
+    assert.match(editorContainerHtml, /editor@example\.com\s*<span[^>]*>\(You\)/, 'member-2 must have You');
+    assert.doesNotMatch(editorContainerHtml, /owner@example\.com\s*<span[^>]*>\(You\)/, 'owner-1 must not have You in editor session');
 });
 
 test('inviteMember creates invites/{email} with exact email (no toLowerCase) and role editor/viewer', async () => {
@@ -498,3 +506,86 @@ test('CLIENT VERIFICATION: viewer cannot write — local documents remain unchan
     await ctx.deleteWorkspace('some-ws');
     assert.equal(ctx.localStorage.getItem('docvault_workspace_registry'), origRegistry);
 });
+
+test('Phase 14: Settings modal hides Account/Security tabs and defaults to Team on team edition, while personal edition keeps all tabs', async () => {
+    // 1. Team edition (COLLAB_MODE: true)
+    let teamModalHtml = '';
+    const teamCtx = {
+        console,
+        setTimeout,
+        clearTimeout,
+        window: {},
+        COLLAB_MODE: true,
+        GUEST_MODE: false,
+        GitHubSync: { getSettings: async () => ({ token: 'abc' }) },
+        showModal: (html) => { teamModalHtml = html; },
+        toast: () => {},
+        document: {
+            getElementById: (id) => null,
+            querySelectorAll: () => []
+        },
+        CollabBootstrap: {
+            getCurrentMember: () => ({ uid: 'owner-1', role: 'owner' })
+        }
+    };
+    teamCtx.window = teamCtx;
+    teamCtx.globalThis = teamCtx;
+    vm.createContext(teamCtx);
+    vm.runInContext(read('js/actions-settings.js'), teamCtx);
+    vm.runInContext(read('js/collab-members.js'), teamCtx);
+
+    await teamCtx.showGitHubSettingsModal();
+
+    // Verify team edition HTML: no account tab, no security tab, no Current Password, has team tab, has Loading team members
+    assert.doesNotMatch(teamModalHtml, /_switchSettingsTab\('account'\)/, 'Team edition must not contain Account tab button');
+    assert.doesNotMatch(teamModalHtml, /_switchSettingsTab\('security'\)/, 'Team edition must not contain Security tab button');
+    assert.doesNotMatch(teamModalHtml, /Current Password/, 'Team edition must not contain Current Password form');
+    assert.match(teamModalHtml, /_switchSettingsTab\('team'\)/, 'Team edition must contain Team tab button');
+    assert.match(teamModalHtml, /Loading team members/, 'Team edition must default to Team tab and show Loading team members');
+
+    // Test that switching to account or security does nothing on team edition
+    const bodyElem = { innerHTML: teamModalHtml };
+    teamCtx.document.getElementById = (id) => (id === 'settings-modal-body' ? bodyElem : null);
+    teamCtx._switchSettingsTab('account');
+    assert.doesNotMatch(bodyElem.innerHTML, /Current Password/, '_switchSettingsTab("account") must do nothing on team edition');
+    teamCtx._switchSettingsTab('security');
+    assert.doesNotMatch(bodyElem.innerHTML, /Password Hint/, '_switchSettingsTab("security") must do nothing on team edition');
+
+    // Test that if _settingsTab was remembering account or security, opening settings resets to team
+    teamCtx._settingsTab = 'account';
+    await teamCtx.showGitHubSettingsModal();
+    assert.equal(teamCtx._settingsTab, 'team', '_settingsTab remembering account must reset to team');
+    assert.match(teamModalHtml, /Loading team members/);
+
+    teamCtx._settingsTab = 'security';
+    await teamCtx.showGitHubSettingsModal();
+    assert.equal(teamCtx._settingsTab, 'team', '_settingsTab remembering security must reset to team');
+
+    // 2. Personal edition (COLLAB_MODE: false)
+    let personalModalHtml = '';
+    const personalCtx = {
+        console,
+        window: {},
+        COLLAB_MODE: false,
+        GUEST_MODE: false,
+        GitHubSync: { getSettings: async () => ({ token: '' }) },
+        showModal: (html) => { personalModalHtml = html; },
+        toast: () => {},
+        document: {
+            getElementById: (id) => null,
+            querySelectorAll: () => []
+        }
+    };
+    personalCtx.window = personalCtx;
+    personalCtx.globalThis = personalCtx;
+    vm.createContext(personalCtx);
+    vm.runInContext(read('js/actions-settings.js'), personalCtx);
+
+    await personalCtx.showGitHubSettingsModal();
+
+    // Verify personal edition HTML: has account, security, and Current Password
+    assert.match(personalModalHtml, /_switchSettingsTab\('account'\)/, 'Personal edition must have Account tab');
+    assert.match(personalModalHtml, /_switchSettingsTab\('security'\)/, 'Personal edition must have Security tab');
+    assert.match(personalModalHtml, /Current Password/, 'Personal edition must default to Account and show Current Password');
+});
+
