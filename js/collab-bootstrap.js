@@ -254,10 +254,14 @@
             if (res.status === 'owner' || res.status === 'member') {
                 renderCollabMe(user, res.member);
                 updateSidebarLockToSignOut();
+                await Promise.all([loadCollabViewer(), loadCollabWorkspaces()]);
+                await root.CollabWorkspaces?.loadWorkspaces?.();
+                root.CollabViewer?.applyViewerRestrictions?.();
                 const ls = document.getElementById('lock-screen');
                 if (ls) ls.classList.add('hidden');
                 if (typeof root.startApp === 'function') {
                     await root.startApp();
+                    root.CollabViewer?.applyViewerRestrictions?.();
                 }
             }
         } catch (err) {
@@ -267,7 +271,43 @@
         }
     }
 
+    function loadCollabViewer() {
+        if (root.CollabViewer) {
+            root.CollabViewer.applyViewerRestrictions();
+            return Promise.resolve();
+        }
+        if (typeof document === 'undefined' || typeof document.createElement !== 'function') return Promise.resolve();
+        return new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = 'js/collab-viewer.js';
+            s.onload = () => {
+                root.CollabViewer?.applyViewerRestrictions?.();
+                resolve();
+            };
+            s.onerror = () => resolve();
+            const parent = document.head || document.body || document.documentElement || document;
+            if (parent && typeof parent.appendChild === 'function') parent.appendChild(s);
+            else resolve();
+        });
+    }
+
+    function loadCollabWorkspaces() {
+        if (root.CollabWorkspaces) return Promise.resolve();
+        if (typeof document === 'undefined' || typeof document.createElement !== 'function') return Promise.resolve();
+        return new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = 'js/collab-workspaces.js';
+            s.onload = () => resolve();
+            s.onerror = () => resolve();
+            const parent = document.head || document.body || document.documentElement || document;
+            if (parent && typeof parent.appendChild === 'function') parent.appendChild(s);
+            else resolve();
+        });
+    }
+
     function start() {
+        loadCollabViewer();
+        loadCollabWorkspaces();
         showCollabLockScreen('signin');
         updateSidebarLockToSignOut();
 
@@ -295,8 +335,12 @@
             root._collabAuthUnsub = null;
         }
         _currentMember = null;
+        root.CollabViewer?.applyViewerRestrictions?.();
         if (root.CollabStore?.stopListening) {
             root.CollabStore.stopListening();
+        }
+        if (root.CollabWorkspaces?.stopListening) {
+            root.CollabWorkspaces.stopListening();
         }
         if (root.CollabAuth?.signOutUser) {
             await root.CollabAuth.signOutUser().catch(() => {});
@@ -314,6 +358,9 @@
         updateSidebarLockToSignOut,
         renderCollabMe,
         removeCollabMe,
+        loadCollabViewer,
+        loadCollabWorkspaces,
+        applyViewerRestrictions: () => root.CollabViewer?.applyViewerRestrictions?.(),
         getCurrentMember: () => _currentMember
     };
 
@@ -326,4 +373,7 @@
     root.collabSignOut = async function() {
         return signOut();
     };
+
+    loadCollabViewer();
+    loadCollabWorkspaces();
 })(typeof window !== 'undefined' ? window : globalThis);
