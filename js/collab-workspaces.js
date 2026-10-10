@@ -20,10 +20,18 @@
 
     function getWorkspaces() {
         if (!isCollabMode()) return (typeof _origGetWorkspaces === 'function') ? _origGetWorkspaces() : [{ id: WS_DEFAULT, name: WS_DEFAULT_NAME, createdAt: 0 }];
-        return [
-            { id: WS_DEFAULT, name: _defaultWorkspaceName || WS_DEFAULT_NAME, createdAt: 0 },
-            ..._remoteWorkspaces.map(w => ({ id: w.id, name: String(w.name || w.id).slice(0, WS_NAME_MAX), createdAt: typeof w.createdAt === 'number' ? w.createdAt : (Date.parse(w.createdAt) || 0) }))
-        ];
+        const seen = new Set([WS_DEFAULT]);
+        const list = [{ id: WS_DEFAULT, name: _defaultWorkspaceName || WS_DEFAULT_NAME, createdAt: 0 }];
+        for (const w of _remoteWorkspaces) {
+            if (!w || !w.id || seen.has(w.id)) continue;
+            seen.add(w.id);
+            list.push({
+                id: w.id,
+                name: String(w.name || w.id).slice(0, WS_NAME_MAX),
+                createdAt: typeof w.createdAt === 'number' ? w.createdAt : (Date.parse(w.createdAt) || 0)
+            });
+        }
+        return list;
     }
 
     function getActiveWorkspace() {
@@ -39,10 +47,42 @@
         label.textContent = getActiveWorkspace().name;
     }
 
-    function parseWorkspaceSnap(docSnap) {
+    function _upsertWorkspace(target, ws) {
+        if (!ws || !ws.id || ws.id === WS_DEFAULT || !WS_ID_RE.test(ws.id)) return;
+        const idx = target.findIndex(w => w.id === ws.id);
+        if (idx >= 0) target[idx] = { ...target[idx], ...ws };
+        else target.push(ws);
+    }
+
+    function parseWorkspaceSnap(docSnap, target = _remoteWorkspaces) {
         const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap.data || {}, id = docSnap.id;
-        if (id === WS_DEFAULT) { if (data.name) _defaultWorkspaceName = data.name; }
-        else if (WS_ID_RE.test(id)) { _remoteWorkspaces.push({ id, ...data, docCount: typeof data.docCount === 'number' ? data.docCount : 0 }); }
+        if (id === WS_DEFAULT) {
+            if (data.name) _defaultWorkspaceName = data.name;
+        } else if (WS_ID_RE.test(id)) {
+            const list = Array.isArray(target) ? target : _remoteWorkspaces;
+            _upsertWorkspace(list, { id, ...data, docCount: typeof data.docCount === 'number' ? data.docCount : 0 });
+        }
+    }
+
+    function _isModalOpen() {
+        if (typeof document === 'undefined') return false;
+        const modal = document.getElementById?.('modal') || document.querySelector?.('#modal');
+        if (!modal) return false;
+        if (modal.classList?.contains?.('hidden')) return false;
+        if (typeof modal.className === 'string' && /\bhidden\b/.test(modal.className)) return false;
+        return true;
+    }
+
+    function _applyWorkspaceSnapshot(snapshot) {
+        if (!snapshot) return;
+        const next = [];
+        snapshot.forEach(docSnap => parseWorkspaceSnap(docSnap, next));
+        _remoteWorkspaces = next;
+        renderWorkspaceSwitcher();
+        if (_isModalOpen()) {
+            const title = document.querySelector?.('#modal h3');
+            if (title && title.textContent?.includes('Workspaces')) showWorkspaceManager();
+        }
     }
 
     async function loadWorkspaces() {
@@ -53,8 +93,9 @@
 
         try {
             const snap = await db.collection('workspaces').get();
-            _remoteWorkspaces = [];
-            snap.forEach(parseWorkspaceSnap);
+            const next = [];
+            snap.forEach(docSnap => parseWorkspaceSnap(docSnap, next));
+            _remoteWorkspaces = next;
             renderWorkspaceSwitcher();
         } catch (err) { console.warn('[CollabWorkspaces] loadWorkspaces failed:', err); }
 
@@ -62,14 +103,7 @@
 
         if (typeof db.collection('workspaces')?.onSnapshot === 'function') {
             try {
-                _unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
-                    if (!snapshot) return;
-                    _remoteWorkspaces = [];
-                    snapshot.forEach(parseWorkspaceSnap);
-                    renderWorkspaceSwitcher();
-                    const title = document.querySelector?.('#modal h3');
-                    if (title && title.textContent.includes('Workspaces')) showWorkspaceManager();
-                }, () => {});
+                _unsubWorkspaces = db.collection('workspaces').onSnapshot(_applyWorkspaceSnapshot, () => {});
             } catch (_) {}
         }
     }
@@ -127,7 +161,7 @@
 
         try {
             await db.collection('workspaces').doc(id).set({ id, name, createdAt: new Date().toISOString(), createdBy: user.uid, docCount: 0 });
-            _remoteWorkspaces.push({ id, name, createdAt: Date.now(), createdBy: user.uid, docCount: 0 });
+            _upsertWorkspace(_remoteWorkspaces, { id, name, createdAt: Date.now(), createdBy: user.uid, docCount: 0 });
             renderWorkspaceSwitcher();
             await switchWorkspace(id);
             root.toast?.('Workspace created.', 'success');
@@ -154,7 +188,8 @@
                 const entry = _remoteWorkspaces.find(w => w.id === id);
                 if (!entry) { root.toast?.('That workspace no longer exists.', 'error'); return; }
                 await db.collection('workspaces').doc(id).update({ name });
-                entry.name = name;
+                const cur = _remoteWorkspaces.find(w => w.id === id);
+                if (cur) cur.name = name;
             }
             renderWorkspaceSwitcher();
             showWorkspaceManager();
@@ -302,7 +337,11 @@
         batchCreateDoc,
         batchDeleteDoc,
         stopListening,
-        setRemoteWorkspaces: (ws) => { _remoteWorkspaces = ws; },
+        setRemoteWorkspaces: (ws) => {
+            const next = [];
+            (ws || []).forEach(w => _upsertWorkspace(next, w));
+            _remoteWorkspaces = next;
+        },
         setDefaultWorkspaceName: (name) => { _defaultWorkspaceName = name; }
     };
 })(typeof window !== 'undefined' ? window : globalThis);

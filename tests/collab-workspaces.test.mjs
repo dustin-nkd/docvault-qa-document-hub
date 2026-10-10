@@ -24,6 +24,39 @@ function createTestContext(options = {}) {
     const toasts = [];
     let modalHtml = '';
 
+    const workspaceListeners = new Set();
+    function createWorkspaceSnapshot() {
+        const docs = [];
+        for (const [id, data] of firestoreWorkspaces.entries()) {
+            docs.push({ id, data: () => ({ ...data }) });
+        }
+        return { docs, forEach: (fn) => docs.forEach(fn), size: docs.length };
+    }
+    function notifyWorkspaceListeners() {
+        const snap = createWorkspaceSnapshot();
+        for (const cb of Array.from(workspaceListeners)) {
+            try { cb(snap); } catch (e) { console.error('Listener callback error:', e); }
+        }
+    }
+
+    const modalEl = {
+        id: 'modal',
+        className: 'fixed inset-0 z-[90] hidden',
+        innerHTML: '',
+        get classList() {
+            return {
+                contains: (cls) => (modalEl.className || '').split(/\s+/).includes(cls)
+            };
+        },
+        querySelector(sel) {
+            if (sel === 'h3' || sel === '#modal h3') {
+                const match = (modalEl.innerHTML || '').match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+                if (match) return { textContent: match[1].replace(/<[^>]*>/g, '').trim() };
+            }
+            return null;
+        }
+    };
+
     const localDb = {
         collection(name) {
             if (name === 'workspaces') {
@@ -43,18 +76,24 @@ function createTestContext(options = {}) {
                             },
                             async set(data) {
                                 firestoreWorkspaces.set(id, { ...data, id });
+                                notifyWorkspaceListeners();
                             },
                             async update(data) {
                                 const prev = firestoreWorkspaces.get(id) || {};
                                 firestoreWorkspaces.set(id, { ...prev, ...data });
+                                notifyWorkspaceListeners();
                             },
                             async delete() {
                                 firestoreWorkspaces.delete(id);
+                                notifyWorkspaceListeners();
                             }
                         };
                     },
                     onSnapshot(cb) {
-                        return () => {};
+                        workspaceListeners.add(cb);
+                        return () => {
+                            workspaceListeners.delete(cb);
+                        };
                     }
                 };
             }
@@ -123,20 +162,31 @@ function createTestContext(options = {}) {
         },
         document: {
             getElementById(id) {
+                if (id === 'modal') return modalEl;
                 if (id === 'ws-new-name') return ctx._wsNewNameInput || { value: '' };
                 if (id === 'ws-rename-input') return ctx._wsRenameInput || { value: '' };
                 if (id === 'workspace-switcher-name') return ctx._switcherLabel || { textContent: '' };
                 return null;
             },
-            querySelector(sel) { return null; },
+            querySelector(sel) {
+                if (sel === '#modal' || sel === 'div#modal') return modalEl;
+                if (sel === '#modal h3') return modalEl.querySelector('h3');
+                return null;
+            },
             createElement(tag) { return { setAttribute() {}, style: {}, appendChild() {} }; }
         },
         _wsNewNameInput: { value: '' },
         _wsRenameInput: { value: '' },
         _switcherLabel: { textContent: '' },
         toast(msg, type) { toasts.push({ msg, type }); },
-        showModal(html) { modalHtml = html; },
-        closeModal() {},
+        showModal(html) {
+            modalHtml = html;
+            modalEl.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
+            modalEl.innerHTML = html;
+        },
+        closeModal() {
+            modalEl.className = 'fixed inset-0 z-[90] hidden';
+        },
         render() { renderCalled = true; },
         updateSyncIndicator() {},
         ensureFirebase: async () => {},
@@ -173,6 +223,8 @@ function createTestContext(options = {}) {
         ctx,
         toasts,
         getModalHtml: () => modalHtml,
+        modalEl,
+        notifyWorkspaceListeners,
         firestoreWorkspaces,
         firestoreDocs,
         wasGitHubCalled: () => gitHubCalled,
@@ -405,4 +457,116 @@ test('Phase 16: workspace listener lifecycle replaces listener on loadWorkspaces
     ctx.CollabWorkspaces.stopListening();
     assert.equal(unsubsCount, 2, 'Active listener must be unsubscribed on stopListening');
 });
+
+test('Phase 17: createWorkspace with synchronous set() snapshot does not duplicate rows in getWorkspaces or modal, and closed modal remains closed', async () => {
+    const { ctx, modalEl, notifyWorkspaceListeners } = createTestContext({
+        role: 'editor',
+        initialWorkspaces: [{ id: 'alpha', name: 'Alpha', createdAt: 1000 }]
+    });
+
+    // 1. Initialize and attach listener
+    await ctx.CollabWorkspaces.loadWorkspaces();
+    assert.equal(ctx.getWorkspaces().length, 2); // default + alpha
+
+    // 2. Open workspace manager modal
+    ctx.showWorkspaceManager();
+    assert.equal(modalEl.classList.contains('hidden'), false);
+    assert.ok(modalEl.querySelector('h3')?.textContent.includes('Workspaces'));
+
+    // 3. User types "new" and creates workspace
+    ctx._wsNewNameInput.value = 'new';
+    await ctx.createWorkspace();
+
+    // 4. After createWorkspace(), modal must be closed by switchWorkspace
+    assert.equal(modalEl.classList.contains('hidden'), true, 'Modal must remain closed after creation');
+    assert.ok(modalEl.querySelector('h3')?.textContent.includes('Workspaces'), 'Modal HTML still has residual h3 as after closeModal');
+
+    // 5. getWorkspaces() must contain exactly ONE element with id "new"
+    const newWsList = ctx.getWorkspaces().filter(w => w.id === 'new');
+    assert.equal(newWsList.length, 1, 'getWorkspaces() must have only 1 element for "new"');
+    assert.equal(newWsList[0].name, 'new');
+
+    // 6. When opening modal, HTML must contain only one row for "new", marked "Current workspace"
+    ctx.showWorkspaceManager();
+    const modalHtml = modalEl.innerHTML;
+    const newCount = (modalHtml.match(/class="text-sm font-medium truncate"[^>]*>new<\/div>/g) || []).length;
+    assert.equal(newCount, 1, 'Modal HTML must contain "new" workspace name exactly once in the list');
+    assert.match(modalHtml, /Current workspace/, 'Active workspace must be marked Current workspace');
+    const currentCount = (modalHtml.match(/Current workspace/g) || []).length;
+    assert.equal(currentCount, 1, 'Only one workspace must be marked Current workspace');
+
+    // 7. Fire snapshot a second time (e.g. server ack or external update)
+    notifyWorkspaceListeners();
+
+    // Verify still only 1 element and modal does not duplicate
+    const newWsListAfterSecondSnap = ctx.getWorkspaces().filter(w => w.id === 'new');
+    assert.equal(newWsListAfterSecondSnap.length, 1, 'Second snapshot must not duplicate workspace');
+    const modalHtmlAfterSecond = modalEl.innerHTML;
+    const newCountAfterSecond = (modalHtmlAfterSecond.match(/class="text-sm font-medium truncate"[^>]*>new<\/div>/g) || []).length;
+    assert.equal(newCountAfterSecond, 1, 'Modal HTML after second snapshot must still have "new" exactly once');
+    const currentCountAfterSecond = (modalHtmlAfterSecond.match(/Current workspace/g) || []).length;
+    assert.equal(currentCountAfterSecond, 1, 'Second snapshot must still have only one Current workspace');
+});
+
+test('Phase 17: onSnapshot does not re-open modal when #modal has class hidden despite residual h3 in DOM', async () => {
+    const { ctx, modalEl, notifyWorkspaceListeners } = createTestContext({ role: 'editor' });
+    await ctx.CollabWorkspaces.loadWorkspaces();
+
+    // Open and then close modal
+    ctx.showWorkspaceManager();
+    assert.equal(modalEl.classList.contains('hidden'), false);
+    ctx.closeModal();
+    assert.equal(modalEl.classList.contains('hidden'), true);
+    assert.ok(modalEl.querySelector('h3')?.textContent.includes('Workspaces'), 'h3 remains in DOM after closeModal');
+
+    // Snapshot arrives while modal is hidden
+    notifyWorkspaceListeners();
+
+    assert.equal(modalEl.classList.contains('hidden'), true, 'Modal must NOT be re-opened by snapshot');
+});
+
+test('Phase 17: other team members receive new workspace via snapshot with exactly one row per id', async () => {
+    const { ctx, firestoreWorkspaces, notifyWorkspaceListeners, modalEl } = createTestContext({ role: 'editor' });
+    await ctx.CollabWorkspaces.loadWorkspaces();
+
+    // Another member created "mobile-tests" in Firestore
+    firestoreWorkspaces.set('mobile-tests', { id: 'mobile-tests', name: 'Mobile Tests', createdAt: Date.now(), createdBy: 'other-user', docCount: 0 });
+    notifyWorkspaceListeners();
+
+    const wsList = ctx.getWorkspaces().filter(w => w.id === 'mobile-tests');
+    assert.equal(wsList.length, 1, 'Teammate must see new workspace exactly once');
+
+    // Open modal and check only 1 row
+    ctx.showWorkspaceManager();
+    const modalHtml = modalEl.innerHTML;
+    const count = (modalHtml.match(/class="text-sm font-medium truncate"[^>]*>Mobile Tests<\/div>/g) || []).length;
+    assert.equal(count, 1, 'Modal must render teammate workspace exactly once');
+});
+
+test('Phase 17: rename and delete do not duplicate rows in getWorkspaces or modal', async () => {
+    const { ctx, modalEl } = createTestContext({
+        role: 'owner',
+        initialWorkspaces: [{ id: 'ws-test', name: 'Old Name', createdAt: Date.now() }]
+    });
+    await ctx.CollabWorkspaces.loadWorkspaces();
+
+    // 1. Rename
+    ctx._wsRenameInput.value = 'New Name';
+    await ctx.renameWorkspace('ws-test');
+
+    const renamedList = ctx.getWorkspaces().filter(w => w.id === 'ws-test');
+    assert.equal(renamedList.length, 1, 'Renamed workspace must have only 1 entry');
+    assert.equal(renamedList[0].name, 'New Name');
+
+    ctx.showWorkspaceManager();
+    const renameModalHtml = modalEl.innerHTML;
+    const nameCount = (renameModalHtml.match(/class="text-sm font-medium truncate"[^>]*>New Name<\/div>/g) || []).length;
+    assert.equal(nameCount, 1, 'Renamed workspace must appear exactly once in modal');
+
+    // 2. Delete
+    await ctx.deleteWorkspace('ws-test');
+    assert.equal(ctx.getWorkspaces().some(w => w.id === 'ws-test'), false, 'Deleted workspace must be removed');
+    assert.equal(modalEl.classList.contains('hidden'), true, 'Modal must be closed after deletion');
+});
+
 
