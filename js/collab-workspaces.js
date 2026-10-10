@@ -42,7 +42,7 @@
     function parseWorkspaceSnap(docSnap) {
         const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap.data || {}, id = docSnap.id;
         if (id === WS_DEFAULT) { if (data.name) _defaultWorkspaceName = data.name; }
-        else if (WS_ID_RE.test(id)) { _remoteWorkspaces.push({ id, ...data }); }
+        else if (WS_ID_RE.test(id)) { _remoteWorkspaces.push({ id, ...data, docCount: typeof data.docCount === 'number' ? data.docCount : 0 }); }
     }
 
     async function loadWorkspaces() {
@@ -58,7 +58,9 @@
             renderWorkspaceSwitcher();
         } catch (err) { console.warn('[CollabWorkspaces] loadWorkspaces failed:', err); }
 
-        if (!_unsubWorkspaces && typeof db.collection('workspaces')?.onSnapshot === 'function') {
+        if (_unsubWorkspaces) { try { _unsubWorkspaces(); } catch (_) {} _unsubWorkspaces = null; }
+
+        if (typeof db.collection('workspaces')?.onSnapshot === 'function') {
             try {
                 _unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
                     if (!snapshot) return;
@@ -89,7 +91,7 @@
 
         root.localStorage?.setItem('docvault_active_workspace', id);
         const allKnown = root.CollabStore?.getKnownDocs ? Array.from(root.CollabStore.getKnownDocs().values()) : [];
-        const activeDocs = allKnown.filter(d => (d.workspaceId || WS_DEFAULT) === id);
+        const activeDocs = allKnown.filter(d => (d.workspaceId || WS_DEFAULT) === id).map(d => ({ ...d, tags: Array.isArray(d.tags) ? [...d.tags] : [] }));
 
         if (Array.isArray(root.documents)) { root.documents.length = 0; root.documents.push(...activeDocs); }
         else if (typeof documents !== 'undefined' && Array.isArray(documents)) { documents.length = 0; documents.push(...activeDocs); }
@@ -124,8 +126,8 @@
         if (!user?.uid) { root.toast?.('Unauthenticated.', 'error'); return; }
 
         try {
-            await db.collection('workspaces').doc(id).set({ id, name, createdAt: new Date().toISOString(), createdBy: user.uid });
-            _remoteWorkspaces.push({ id, name, createdAt: Date.now(), createdBy: user.uid });
+            await db.collection('workspaces').doc(id).set({ id, name, createdAt: new Date().toISOString(), createdBy: user.uid, docCount: 0 });
+            _remoteWorkspaces.push({ id, name, createdAt: Date.now(), createdBy: user.uid, docCount: 0 });
             renderWorkspaceSwitcher();
             await switchWorkspace(id);
             root.toast?.('Workspace created.', 'success');
@@ -220,7 +222,49 @@
         }).join('');
 
         const createDisabled = viewer ? 'disabled aria-disabled="true" title="You have view access"' : 'data-onclick="createWorkspace()"';
-        root.showModal?.(`<div><h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);"><i class="fa-solid fa-layer-group text-[var(--acc)] mr-2"></i>Workspaces</h3><p class="text-sm mb-4" style="color:var(--tx-m);">Each workspace is a separate section in the team vault — documents, trash, activity and share links stay within their workspace. All workspaces share one team vault.</p><div style="max-height:340px;overflow-y:auto;">${rows}</div><div class="mt-4 pt-4" style="border-top:1px solid var(--brd);"><label class="block text-xs font-semibold tracking-wider uppercase mb-2" style="color:var(--tx-d);">New workspace</label><div class="flex gap-2"><input id="ws-new-name" type="text" class="form-input flex-1" maxlength="${WS_NAME_MAX}" placeholder="e.g. Mobile QA Hub" ${viewer ? 'disabled aria-disabled="true"' : ''}><button class="btn-p shrink-0" ${createDisabled}><i class="fa-solid fa-plus mr-1.5"></i>Create</button></div></div><div class="flex justify-end mt-4"><button class="btn-s" data-onclick="closeModal()">Close</button></div></div>`);
+        root.showModal?.(`<div><h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);"><i class="fa-solid fa-layer-group text-[var(--acc)] mr-2"></i>Workspaces</h3><p class="text-sm mb-4" style="color:var(--tx-m);">All workspaces share one team vault.</p><div style="max-height:340px;overflow-y:auto;">${rows}</div><div class="mt-4 pt-4" style="border-top:1px solid var(--brd);"><label class="block text-xs font-semibold tracking-wider uppercase mb-2" style="color:var(--tx-d);">New workspace</label><div class="flex gap-2"><input id="ws-new-name" type="text" class="form-input flex-1" maxlength="${WS_NAME_MAX}" placeholder="e.g. Mobile QA Hub" ${viewer ? 'disabled aria-disabled="true"' : ''}><button class="btn-p shrink-0" ${createDisabled}><i class="fa-solid fa-plus mr-1.5"></i>Create</button></div></div><div class="flex justify-end mt-4"><button class="btn-s" data-onclick="closeModal()">Close</button></div></div>`);
+    }
+
+    async function batchCreateDoc(db, docRef, data, wsId) {
+        const wsRef = db.collection('workspaces').doc(wsId);
+        let ws = _remoteWorkspaces.find(w => w.id === wsId);
+        let cur = (typeof ws?.docCount === 'number') ? ws.docCount : null;
+        if (cur === null) {
+            try {
+                const s = await wsRef.get();
+                cur = (s.exists && typeof s.data()?.docCount === 'number') ? s.data().docCount : 0;
+            } catch (_) { cur = 0; }
+        }
+        const next = cur + 1;
+        const batch = db.batch();
+        batch.set(docRef, data);
+        batch.update(wsRef, { docCount: next, lastDocId: data.id });
+        await batch.commit();
+        if (ws) ws.docCount = next;
+    }
+
+    async function batchDeleteDoc(db, docId, wsId) {
+        const wsRef = db.collection('workspaces').doc(wsId);
+        let ws = _remoteWorkspaces.find(w => w.id === wsId);
+        let cur = (typeof ws?.docCount === 'number') ? ws.docCount : null;
+        if (cur === null) {
+            try {
+                const s = await wsRef.get();
+                cur = (s.exists && typeof s.data()?.docCount === 'number') ? s.data().docCount : 1;
+            } catch (_) { cur = 1; }
+        }
+        const next = Math.max(0, cur - 1);
+        const batch = db.batch();
+        batch.delete(db.collection('documents').doc(docId));
+        batch.update(wsRef, { docCount: next, lastDeletedDocId: docId });
+        await batch.commit();
+        if (ws) ws.docCount = next;
+    }
+
+    function stopListening() {
+        if (_unsubWorkspaces) { try { _unsubWorkspaces(); } catch (_) {} _unsubWorkspaces = null; }
+        _remoteWorkspaces = [];
+        _defaultWorkspaceName = WS_DEFAULT_NAME;
     }
 
     const _origGetWorkspaces = root.getWorkspaces;
@@ -255,9 +299,10 @@
         deleteWorkspace,
         showWorkspaceManager,
         renderWorkspaceSwitcher,
+        batchCreateDoc,
+        batchDeleteDoc,
+        stopListening,
         setRemoteWorkspaces: (ws) => { _remoteWorkspaces = ws; },
         setDefaultWorkspaceName: (name) => { _defaultWorkspaceName = name; }
     };
-
-    if (isCollabMode()) loadWorkspaces();
 })(typeof window !== 'undefined' ? window : globalThis);

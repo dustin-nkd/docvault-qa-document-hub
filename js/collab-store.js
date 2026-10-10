@@ -2,8 +2,7 @@
 // Handles document loading (getDocs), versioned persistence, conflict detection, onSnapshot sync, audit activity, history subcollection, and monotonic bug counter transactions.
 (function(root) {
     const _knownDocs = new Map();
-    let _lastConflict = null, _customDb = null, _customUser = null;
-    let _unsubscribeSnapshot = null, _persistencePromise = null;
+    let _lastConflict = null, _customDb = null, _customUser = null, _unsubscribeSnapshot = null, _persistencePromise = null;
 
     function isGuestMode() { return Boolean(root.GUEST_MODE || /(?:^|[?&])guest=1(?:&|$)/.test(root.location?.search || '')); }
     function isCollabMode() { return !isGuestMode() && Boolean(root.COLLAB_MODE); }
@@ -218,7 +217,7 @@
             if (doc) { loaded.push(doc); _knownDocs.set(doc.id, { ...doc }); }
         });
 
-        const activeDocs = loaded.filter(d => (d.workspaceId || 'default') === getActiveWs());
+        const activeDocs = loaded.filter(d => (d.workspaceId || 'default') === getActiveWs()).map(d => ({ ...d }));
         const normTags = root.normalizeDocTags || (typeof normalizeDocTags === 'function' ? normalizeDocTags : null);
         if (normTags) normTags(activeDocs);
         startListening();
@@ -249,7 +248,9 @@
             const data = toFirestoreDoc(doc, { version: 1, createdBy: uid, updatedBy: uid, createdAt, updatedAt });
             if (isDocOversize(data)) continue;
             try {
-                await db.collection('documents').doc(doc.id).set(data);
+                if (doc.workspaceId && doc.workspaceId !== 'default' && root.CollabWorkspaces?.batchCreateDoc) {
+                    await root.CollabWorkspaces.batchCreateDoc(db, db.collection('documents').doc(doc.id), data, doc.workspaceId);
+                } else { await db.collection('documents').doc(doc.id).set(data); }
                 doc.version = 1; doc.createdBy = uid; doc.updatedBy = uid; doc.createdAt = createdAt; doc.updatedAt = updatedAt;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) { if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error'); throw err; }
@@ -294,7 +295,9 @@
             if ((known?.workspaceId || 'default') !== activeWs) continue;
             if (!currentIds.has(id)) {
                 try {
-                    await db.collection('documents').doc(id).delete();
+                    if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) {
+                        await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
+                    } else { await db.collection('documents').doc(id).delete(); }
                     _knownDocs.delete(id);
                 } catch (err) {
                     if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to delete offline', 'error');
@@ -309,8 +312,7 @@
         const member = root.CollabBootstrap?.getCurrentMember?.();
         const role = member?.role;
         if (role !== 'editor' && role !== 'owner') return;
-        const user = getCurrentUser();
-        if (!user?.uid) return;
+        const user = getCurrentUser(); if (!user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) return;
@@ -364,9 +366,8 @@
             return (typeof root.DocStorage !== 'undefined' && root.DocStorage.allocateBugNumber) ? root.DocStorage.allocateBugNumber(max) : max + 1;
         }
         if (root.ensureFirebase) await root.ensureFirebase();
-        const db = getFirestoreDb();
+        const db = getFirestoreDb(), user = getCurrentUser();
         if (!db) throw new Error('Firestore not available');
-        const user = getCurrentUser();
         if (!user?.uid) throw new Error('Unauthenticated');
         const counterRef = db.collection('counters').doc('bugs');
 

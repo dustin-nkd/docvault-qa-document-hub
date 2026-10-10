@@ -104,7 +104,16 @@ service cloud.firestore {
       allow create: if isEditorOrOwner() &&
         request.resource.data.version == 1 &&
         request.resource.data.createdBy == request.auth.uid &&
-        request.resource.data.updatedBy == request.auth.uid;
+        request.resource.data.updatedBy == request.auth.uid &&
+        (!('workspaceId' in request.resource.data) ||
+         request.resource.data.workspaceId == 'default' ||
+         (request.resource.data.workspaceId is string &&
+          request.resource.data.workspaceId.matches('^[a-z0-9][a-z0-9-]{0,31}$') &&
+          exists(/databases/$(database)/documents/workspaces/$(request.resource.data.workspaceId)) &&
+          getAfter(/databases/$(database)/documents/workspaces/$(request.resource.data.workspaceId)).data.docCount ==
+            (('docCount' in get(/databases/$(database)/documents/workspaces/$(request.resource.data.workspaceId)).data) ?
+              get(/databases/$(database)/documents/workspaces/$(request.resource.data.workspaceId)).data.docCount : 0) + 1 &&
+          getAfter(/databases/$(database)/documents/workspaces/$(request.resource.data.workspaceId)).data.lastDocId == id));
 
       allow update: if isEditorOrOwner() &&
         request.resource.data.version == resource.data.version + 1 &&
@@ -115,7 +124,13 @@ service cloud.firestore {
          (request.resource.data.workspaceId == resource.data.workspaceId)) &&
         request.resource.data.updatedBy == request.auth.uid;
 
-      allow delete: if isTeamOwner();
+      allow delete: if isTeamOwner() &&
+        (!('workspaceId' in resource.data) ||
+         resource.data.workspaceId == 'default' ||
+         (exists(/databases/$(database)/documents/workspaces/$(resource.data.workspaceId)) &&
+          getAfter(/databases/$(database)/documents/workspaces/$(resource.data.workspaceId)).data.docCount ==
+            get(/databases/$(database)/documents/workspaces/$(resource.data.workspaceId)).data.docCount - 1 &&
+          getAfter(/databases/$(database)/documents/workspaces/$(resource.data.workspaceId)).data.lastDeletedDocId == id));
 
       // 4b. documents/{id}/history/{snapId}: Document revision history
       match /history/{snapId} {
@@ -180,7 +195,8 @@ service cloud.firestore {
          request.resource.data.name is string &&
          request.resource.data.name.size() > 0 &&
          request.resource.data.createdBy == request.auth.uid &&
-         (request.resource.data.createdAt is string || request.resource.data.createdAt is int)) ||
+         (request.resource.data.createdAt is string || request.resource.data.createdAt is int) &&
+         (!('docCount' in request.resource.data) || request.resource.data.docCount == 0)) ||
         (id == 'default' &&
          request.resource.data.name is string &&
          request.resource.data.name.size() > 0 &&
@@ -191,13 +207,26 @@ service cloud.firestore {
         request.resource.data.name.size() > 0 &&
         (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
         (!('createdBy' in resource.data) || request.resource.data.createdBy == resource.data.createdBy) &&
-        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+        (
+          ((!('docCount' in request.resource.data) && !('docCount' in resource.data)) ||
+           (request.resource.data.docCount == resource.data.docCount)) ||
+          (request.resource.data.docCount == (('docCount' in resource.data) ? resource.data.docCount : 0) + 1 &&
+           'lastDocId' in request.resource.data &&
+           !exists(/databases/$(database)/documents/documents/$(request.resource.data.lastDocId)) &&
+           existsAfter(/databases/$(database)/documents/documents/$(request.resource.data.lastDocId)) &&
+           getAfter(/databases/$(database)/documents/documents/$(request.resource.data.lastDocId)).data.workspaceId == id) ||
+          (resource.data.docCount is int &&
+           request.resource.data.docCount == resource.data.docCount - 1 &&
+           'lastDeletedDocId' in request.resource.data &&
+           exists(/databases/$(database)/documents/documents/$(request.resource.data.lastDeletedDocId)) &&
+           !existsAfter(/databases/$(database)/documents/documents/$(request.resource.data.lastDeletedDocId)) &&
+           get(/databases/$(database)/documents/documents/$(request.resource.data.lastDeletedDocId)).data.workspaceId == id)
+        );
       allow delete: if isTeamOwner() &&
         id != 'default' &&
-        (!('docCount' in resource.data) || resource.data.docCount == 0) &&
-        (!('hasDocs' in resource.data) || !resource.data.hasDocs) &&
-        (!('hasDocuments' in resource.data) || !resource.data.hasDocuments) &&
-        !exists(/databases/$(database)/documents/documents/$(id));
+        resource.data.docCount is int &&
+        resource.data.docCount == 0;
     }
   }
 }

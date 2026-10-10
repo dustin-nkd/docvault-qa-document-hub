@@ -905,7 +905,7 @@ test('Branch 13 (workspaces): allows editor and owner rename, allows default ren
     await assertSucceeds(editor.collection('workspaces').doc('default').set({ name: 'Custom Default Name' }));
 });
 
-test('Branch 13 (workspaces): denies delete of default workspace, denies delete by editor/viewer, denies owner delete when workspace contains documents, and allows owner delete when empty', async () => {
+test('Branch 13 (workspaces): denies delete of default, denies delete by editor/viewer, denies owner delete when workspace contains documents, requires atomic docCount updates, and allows owner delete when empty', async () => {
     await seed(async (context) => {
         const db = context.firestore();
         await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
@@ -913,43 +913,85 @@ test('Branch 13 (workspaces): denies delete of default workspace, denies delete 
         await db.collection('members').doc('ed-uid').set({ uid: 'ed-uid', role: 'editor' });
         await db.collection('members').doc('vw-uid').set({ uid: 'vw-uid', role: 'viewer' });
         await db.collection('workspaces').doc('default').set({ name: 'Personal' });
-        await db.collection('workspaces').doc('ws-with-docs').set({
-            name: 'WS With Docs',
-            createdAt: '2026-10-10T00:00:00Z',
-            createdBy: 'owner-uid',
-            docCount: 1
-        });
-        await db.collection('workspaces').doc('empty-ws').set({
-            name: 'Empty WS',
-            createdAt: '2026-10-10T00:00:00Z',
-            createdBy: 'owner-uid',
-            docCount: 0
-        });
-        await db.collection('documents').doc('doc-1').set({
-            id: 'doc-1',
-            title: 'Doc in WS',
-            workspaceId: 'ws-with-docs',
-            version: 1,
-            createdBy: 'owner-uid',
-            updatedBy: 'owner-uid'
-        });
     });
 
     const editor = testEnv.authenticatedContext('ed-uid').firestore();
     const viewer = testEnv.authenticatedContext('vw-uid').firestore();
     const owner = testEnv.authenticatedContext('owner-uid').firestore();
 
-    // Editor and viewer cannot delete any workspace
+    // 1. Workspace created with exact payload of createWorkspace() without docCount/hasDocs/hasDocuments
+    const wsPayload = {
+        name: 'Mobile QA',
+        createdAt: '2026-10-10T00:00:00Z',
+        createdBy: 'ed-uid'
+    };
+    await assertSucceeds(editor.collection('workspaces').doc('mobile-qa').set(wsPayload));
+
+    // Absent counter is NOT treated as 0: owner deleting workspace created without docCount is denied
+    await assertFails(owner.collection('workspaces').doc('mobile-qa').delete());
+
+    // 2. Rules reject creating doc with workspaceId without accompanying docCount increment
+    await assertFails(editor.collection('documents').doc('doc-isolated').set({
+        id: 'doc-isolated',
+        title: 'Doc without counter',
+        version: 1,
+        createdBy: 'ed-uid',
+        updatedBy: 'ed-uid',
+        workspaceId: 'mobile-qa'
+    }));
+
+    // 3. Rules reject modifying docCount without doc create/delete in same commit
+    await assertFails(editor.collection('workspaces').doc('mobile-qa').update({ docCount: 1 }));
+    await assertFails(editor.collection('workspaces').doc('mobile-qa').update({ docCount: 0 }));
+
+    // 4. Create document with different ID and matching workspaceId with atomic batch counter increment (+1)
+    const createBatch = editor.batch();
+    createBatch.set(editor.collection('documents').doc('doc-xyz-99'), {
+        id: 'doc-xyz-99',
+        title: 'Real Doc In Workspace',
+        version: 1,
+        createdBy: 'ed-uid',
+        updatedBy: 'ed-uid',
+        workspaceId: 'mobile-qa'
+    });
+    createBatch.update(editor.collection('workspaces').doc('mobile-qa'), {
+        docCount: 1,
+        lastDocId: 'doc-xyz-99'
+    });
+    await assertSucceeds(createBatch.commit());
+
+    // 5. Deleting workspace while document exists is rejected
+    await assertFails(editor.collection('workspaces').doc('mobile-qa').delete());
+    await assertFails(viewer.collection('workspaces').doc('mobile-qa').delete());
+    await assertFails(owner.collection('workspaces').doc('mobile-qa').delete());
+
+    // 6. Rules reject deleting document without accompanying docCount decrement
+    await assertFails(owner.collection('documents').doc('doc-xyz-99').delete());
+
+    // 7. Delete document with atomic batch counter decrement (-1)
+    const deleteBatch = owner.batch();
+    deleteBatch.delete(owner.collection('documents').doc('doc-xyz-99'));
+    deleteBatch.update(owner.collection('workspaces').doc('mobile-qa'), {
+        docCount: 0,
+        lastDeletedDocId: 'doc-xyz-99'
+    });
+    await assertSucceeds(deleteBatch.commit());
+
+    // 8. Now that docCount is 0 (no documents remain), owner deleting this workspace succeeds
+    await assertSucceeds(owner.collection('workspaces').doc('mobile-qa').delete());
+
+    // 9. Another workspace of same kind created with docCount: 0 and no documents can be deleted by owner
+    await assertSucceeds(editor.collection('workspaces').doc('empty-ws').set({
+        name: 'Empty Workspace',
+        createdAt: '2026-10-10T00:00:00Z',
+        createdBy: 'ed-uid',
+        docCount: 0
+    }));
     await assertFails(editor.collection('workspaces').doc('empty-ws').delete());
     await assertFails(viewer.collection('workspaces').doc('empty-ws').delete());
-
-    // Owner cannot delete default workspace
-    await assertFails(owner.collection('workspaces').doc('default').delete());
-
-    // Owner cannot delete workspace that still contains documents
-    await assertFails(owner.collection('workspaces').doc('ws-with-docs').delete());
-
-    // Owner can delete empty workspace
     await assertSucceeds(owner.collection('workspaces').doc('empty-ws').delete());
+
+    // 10. Default workspace cannot be deleted
+    await assertFails(owner.collection('workspaces').doc('default').delete());
 });
 

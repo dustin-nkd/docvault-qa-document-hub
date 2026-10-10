@@ -255,6 +255,7 @@
                 renderCollabMe(user, res.member);
                 updateSidebarLockToSignOut();
                 await Promise.all([loadCollabViewer(), loadCollabWorkspaces()]);
+                await root.CollabWorkspaces?.loadWorkspaces?.();
                 root.CollabViewer?.applyViewerRestrictions?.();
                 const ls = document.getElementById('lock-screen');
                 if (ls) ls.classList.add('hidden');
@@ -337,6 +338,9 @@
         root.CollabViewer?.applyViewerRestrictions?.();
         if (root.CollabStore?.stopListening) {
             root.CollabStore.stopListening();
+        }
+        if (root.CollabWorkspaces?.stopListening) {
+            root.CollabWorkspaces.stopListening();
         }
         if (root.CollabAuth?.signOutUser) {
             await root.CollabAuth.signOutUser().catch(() => {});

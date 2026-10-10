@@ -93,6 +93,15 @@ function createTestContext(options = {}) {
             return {
                 doc: () => ({ get: async () => ({ exists: false }), set: async () => {}, update: async () => {}, delete: async () => {} })
             };
+        },
+        batch() {
+            const ops = [];
+            return {
+                set(docRef, data) { ops.push(() => docRef.set(data)); },
+                update(docRef, data) { ops.push(() => docRef.update(data)); },
+                delete(docRef) { ops.push(() => docRef.delete()); },
+                async commit() { for (const op of ops) await op(); }
+            };
         }
     };
 
@@ -330,3 +339,70 @@ test('Phase 16: duplicate workspace id reports already exists and renaming defau
     assert.equal(firestoreWorkspaces.get('default').name, 'General Vault');
     assert.equal(ctx.getActiveWorkspace().name, 'General Vault');
 });
+
+test('Phase 16: switchWorkspace pushes copies so modifying displayed doc and calling persist() saves new title to Firestore', async () => {
+    const docA = { id: 'doc-a', title: 'Original Title', workspaceId: 'ws-a', version: 1, createdAt: 1000, updatedAt: 1000 };
+    const { ctx, firestoreDocs } = createTestContext({
+        initialWorkspaces: [{ id: 'ws-a', name: 'WS A' }],
+        initialDocs: [docA]
+    });
+
+    await ctx.CollabStore.loadDocuments();
+    await ctx.CollabWorkspaces.loadWorkspaces();
+
+    // Switch to ws-a
+    await ctx.switchWorkspace('ws-a');
+
+    assert.equal(ctx.documents.length, 1);
+    assert.equal(ctx.documents[0].id, 'doc-a');
+
+    // Mutate the displayed document in ctx.documents
+    ctx.documents[0].title = 'Mutated Title After Switch';
+    ctx.documents[0].updatedAt = 2000;
+
+    // Call persist()
+    await ctx.CollabStore.persist(ctx.documents);
+
+    // Verify Firestore received the updated title and incremented version
+    const saved = firestoreDocs.get('doc-a');
+    assert.ok(saved, 'Document must exist in Firestore');
+    assert.equal(saved.title, 'Mutated Title After Switch', 'Firestore must receive updated title');
+    assert.equal(saved.version, 2, 'Version must be incremented to 2');
+    assert.equal(saved.updatedAt, 2000);
+});
+
+test('Phase 16: workspace listener lifecycle replaces listener on loadWorkspaces and unsubs on stopListening', async () => {
+    let unsubsCount = 0;
+    let onSnapshotListeners = 0;
+    const { ctx } = createTestContext();
+
+    const origCollection = ctx.firebase.firestore().collection;
+    ctx.firebase.firestore().collection = (col) => {
+        const res = origCollection(col);
+        if (col === 'workspaces') {
+            return {
+                ...res,
+                onSnapshot(cb) {
+                    onSnapshotListeners++;
+                    return () => { unsubsCount++; };
+                }
+            };
+        }
+        return res;
+    };
+
+    // First loadWorkspaces attaches listener
+    await ctx.CollabWorkspaces.loadWorkspaces();
+    assert.equal(onSnapshotListeners, 1);
+    assert.equal(unsubsCount, 0);
+
+    // Second loadWorkspaces (e.g. after member auth) replaces existing listener
+    await ctx.CollabWorkspaces.loadWorkspaces();
+    assert.equal(onSnapshotListeners, 2);
+    assert.equal(unsubsCount, 1, 'Previous listener must be unsubscribed');
+
+    // stopListening unsubs
+    ctx.CollabWorkspaces.stopListening();
+    assert.equal(unsubsCount, 2, 'Active listener must be unsubscribed on stopListening');
+});
+
