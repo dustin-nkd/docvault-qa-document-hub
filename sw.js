@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v57'; // API test method menu is no longer clipped by the request bar
+const SW_VERSION = 'v69'; // Team collaboration runtime modules cached in app shell
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -33,6 +33,16 @@ const APP_SHELL = [
     './js/actions-focus.js',
     './js/workspaces.js',
     './js/search.js',
+    './js/firebase-config.js',
+    './js/collab-config.js',
+    './js/collab-loader.js',
+    './js/collab-auth.js',
+    './js/collab-bootstrap.js',
+    './js/collab-store.js',
+    './js/collab-members.js',
+    './js/collab-images.js',
+    './js/collab-import.js',
+    './js/collab-shares.js',
     './js/events.js',
     './vendor/tailwind/tailwind.generated.css',
     './vendor/toastui/toastui-editor.min.css',

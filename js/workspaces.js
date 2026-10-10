@@ -188,6 +188,7 @@ async function _flushActiveWorkspaceSync() {
 // CREATE / RENAME / DELETE
 // ========================
 window.createWorkspace = async function() {
+    if (window.COLLAB_MODE) return;
     const input = document.getElementById('ws-new-name');
     const name = (input?.value || '').trim().slice(0, WS_NAME_MAX);
     if (!name) { toast('Enter a workspace name.', 'error'); return; }
@@ -197,18 +198,15 @@ window.createWorkspace = async function() {
 
     const now = Date.now();
     _saveWsRegistry([..._wsRegistry(), { id, name, createdAt: now, updatedAt: now }]);
-    // Publish before switching so the workspace reaches the user's other
-    // devices even if the switch (and its first vault push) is slow.
     _refreshWorkspaceRegistry();
     await switchWorkspace(id);
 };
 
 window.renameWorkspace = function(id) {
+    if (window.COLLAB_MODE) return;
     const input = document.getElementById('ws-rename-input');
     const name = (input?.value || '').trim().slice(0, WS_NAME_MAX);
     if (!name) { toast('Enter a workspace name.', 'error'); return; }
-    // Renames merge across devices by recency, so every one carries the moment
-    // it happened — without it the two sides cannot be ordered.
     if (id === WS_DEFAULT) {
         // The default workspace has no registry entry to rename — only a label.
         localStorage.setItem('docvault_workspace_default_name', name);
@@ -306,6 +304,7 @@ async function _purgeWorkspaceRemoteData(id) {
 }
 
 window.deleteWorkspace = async function(id) {
+    if (window.COLLAB_MODE) return;
     if (window._isDeletingWorkspace) return;
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
     if (id === WS_DEFAULT || !WS_ID_RE.test(id)) return;

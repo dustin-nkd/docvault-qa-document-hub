@@ -1,13 +1,6 @@
 // ========================
 // DOCUMENT CRUD
 // ========================
-// Captures every editable field currently in the editor DOM as one comparable
-// string (Sprint 15 unsaved-changes guard). Scoped to #content — the only
-// thing rendered there in the editor view — so it can't pick up sidebar or
-// header inputs. Deliberately generic (scrapes every input/textarea/select by
-// DOM order) rather than hand-listing fields per category, so a future field
-// or category can't silently slip past the guard the way a hand-maintained
-// list could.
 function _captureEditorFormState() {
     const root = document.getElementById('content');
     if (!root) return '';
@@ -419,16 +412,18 @@ window._doGenerateReleaseNotes = function() {
     toast('Release notes generated — review before saving.', 'success');
 };
 
-// Next sequential bug number for a human-readable BUG-### reference (US-202).
-function _nextBugNumber() {
+async function _nextBugNumber() {
+    if (window.COLLAB_MODE && window.CollabStore?.allocateBugNumber) return await window.CollabStore.allocateBugNumber();
     let max = 0;
-    documents.forEach(d => {
-        if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber;
-    });
+    documents.forEach(d => { if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber; });
     return (typeof DocStorage !== 'undefined' && DocStorage.allocateBugNumber) ? DocStorage.allocateBugNumber(max) : max + 1;
 }
 
 async function saveDoc() {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const title = document.getElementById('ed-title')?.value.trim();
     const subfolder = document.getElementById('ed-subfolder')?.value.trim() || '';
     const cat = document.getElementById('ed-cat')?.value;
@@ -664,7 +659,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         // documents[-1] (which previously produced a broken "?view=undefined" viewer).
         const revivedAt = Date.now();
         const revivedBugStatus = cat === 'bug' ? normalizeBugStatusValue(state.editingDoc.bugStatus) : undefined;
-        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || _nextBugNumber()) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
+        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || (await _nextBugNumber())) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
         documents.unshift(revived);
         toast('Original document was removed elsewhere — saved as a new copy.', 'info');
         state.editingDoc = { ...revived };
@@ -672,7 +667,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
         state.category = cat;
     } else {
         const createdAt = Date.now();
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? _nextBugNumber() : undefined, favorite: false, createdAt, updatedAt: createdAt };
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? (await _nextBugNumber()) : undefined, favorite: false, createdAt, updatedAt: createdAt };
         documents.unshift(newDoc);
         ActivityLog.record('created', newDoc);
         toast(t('docCreated'), 'success');
@@ -730,7 +725,7 @@ async function duplicateDoc(id) {
     // A duplicated bug is a distinct report — give it its own BUG-### (US-202),
     // otherwise the copy would collide with the original's number.
     if (dup.category === 'bug') {
-        dup.bugNumber = _nextBugNumber();
+        dup.bugNumber = await _nextBugNumber();
         // Copying a closed bug produced a report born closed, carrying the
         // original's resolution and a history whose only entry was "closed" —
         // never open, so every lifecycle metric on it was meaningless.

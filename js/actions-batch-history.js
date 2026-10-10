@@ -1,11 +1,6 @@
 // ========================
 // NAVIGATION HISTORY
 // ========================
-// Builds the address-bar query string, preserving guest=1 in demo mode. Without
-// this, any navigation (viewDoc/saveDoc/navigate/navigateBack) calls
-// history.replaceState with a URL that drops guest=1, so a guest who opens any
-// document and then reloads would fall out of the demo into the real (locked)
-// vault. Route every history.replaceState in this file through this helper.
 function _appUrl(viewId) {
     const guest = (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) ? 'guest=1' : '';
     if (viewId) return '?view=' + viewId + (guest ? '&' + guest : '');
@@ -151,6 +146,10 @@ window.batchDelete = function() {
 };
 
 window.confirmBatchDelete = async function() {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const ids = [...state.selectedIds];
     let firstDoc = null;
     ids.forEach(id => {

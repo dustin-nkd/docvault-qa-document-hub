@@ -1,12 +1,6 @@
 // ========================
 // GITHUB SETTINGS MODAL
 // ========================
-// Settings tab content builders (Sprint 14). Presentation-only split of what
-// used to be four stacked sections in one long scrolling modal — every
-// form id and data-onclick handler below is unchanged from before, so none
-// of changeMasterPassword/savePasswordHint/generateRecoveryKey/
-// saveGitHubSettings/toggleImageCdn/compactImages/cleanupUnusedImages/
-// exportBackup/triggerImportBackup needed to change.
 function _settingsTabAccount() {
     return `
         <form data-onsubmit="changeMasterPassword()" class="flex flex-col gap-3 text-left">
@@ -60,6 +54,16 @@ function _settingsTabSecurity() {
 }
 
 function _settingsTabSync() {
+    if (window.COLLAB_MODE) {
+        return `
+        <div class="text-left">
+            <div class="settings-sync-banner bg-[var(--bg)] border border-[var(--brd)] rounded-lg px-3 py-2 mb-3 text-[11px]" style="color:var(--tx-d)">
+                <i class="fa-solid fa-cloud mr-1 text-[var(--acc)]"></i>
+                Team data is synchronized in real time via Cloud Firestore. GitHub Sync is disabled in team mode.
+            </div>
+            <button type="button" class="btn-s py-1.5 px-3 text-xs w-full mb-3 flex items-center justify-center gap-1.5" data-onclick="closeModal();showShareManager()"><i class="fa-solid fa-share-nodes text-[10px]"></i> Manage Shared Links (${_getShares().length})</button>
+        </div>`;
+    }
     const ghSettings = (window._settingsModalData && window._settingsModalData.ghSettings) || { token: '' };
     const imgCdnOn = localStorage.getItem('docvault_img_cdn') === '1';
     const authConfigured = !!(window.LocalAuth && window.LocalAuth.isConfigured && window.LocalAuth.isConfigured());
@@ -199,6 +203,14 @@ const SETTINGS_TABS = [
     { id: 'tags', label: 'Tags', icon: 'fa-tags', render: _settingsTabTags },
     { id: 'backup', label: 'Backup', icon: 'fa-box-archive', render: _settingsTabBackup }
 ];
+
+window.registerSettingsTab = function(tabDef) {
+    if (tabDef && !SETTINGS_TABS.some(tb => tb.id === tabDef.id)) {
+        const syncIdx = SETTINGS_TABS.findIndex(tb => tb.id === 'sync');
+        if (syncIdx !== -1) SETTINGS_TABS.splice(syncIdx + 1, 0, tabDef);
+        else SETTINGS_TABS.push(tabDef);
+    }
+};
 
 function _renderSettingsModal() {
     const activeTab = window._settingsTab || 'account';

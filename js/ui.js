@@ -293,7 +293,6 @@ function showDeleteModal(id, isPermanent = false) {
     const titleStr = isPermanent ? (t('delTitleForever') || 'Delete Permanently') : t('delTitle');
     const warningStr = isPermanent ? (t('delConfirmForever') || 'Are you sure you want to permanently delete this? It cannot be recovered.') : t('delConfirm');
     const btnStr = isPermanent ? (t('delConfirmBtnForever') || 'Permanently Delete') : t('delConfirmBtn');
-    // Say up front that deleting kills the link, so revocation is never a surprise.
     const sharedCount = typeof countSharesForDocs === 'function' ? countSharesForDocs([id]) : 0;
 
     showModal(`
@@ -312,10 +311,6 @@ function showDeleteModal(id, isPermanent = false) {
     `);
 }
 
-// Deleting a document also revokes any share link publishing it. Without this the
-// link keeps serving the deleted content to anyone who has it, and the entry sits
-// in Shared Links waiting to be revoked by hand. Guarded + awaited-but-never-fatal
-// so a missing/stale sharing script or a GitHub outage cannot block the delete.
 async function _revokeSharesForDeleted(ids) {
     if (typeof revokeSharesForDocs !== 'function') return;
     try {
@@ -327,6 +322,10 @@ async function _revokeSharesForDeleted(ids) {
 }
 
 async function confirmDelete(id) {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const doc = documents.find(d => d.id === id);
     if (doc) {
         doc.status = 'deleted';
@@ -343,6 +342,10 @@ async function confirmDelete(id) {
 }
 
 async function restoreDoc(id) {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const doc = documents.find(d => d.id === id);
     if (doc) {
         doc.status = 'draft';
@@ -360,6 +363,10 @@ async function restoreDoc(id) {
 }
 
 async function hardDeleteDoc(id) {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const doc = documents.find(d => d.id === id);
     if (doc) ActivityLog.record('deleted', doc);
     await DocStorage.addDeletedIds([id]);
@@ -391,10 +398,12 @@ function showEmptyTrashModal() {
 }
 
 async function emptyTrash() {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const trashed = documents.filter(d => d.status === 'deleted');
     if (trashed.length > 0) {
-        // One summary entry rather than one per doc — emptying trash can be
-        // dozens of docs at once, which would flood a 200-entry log.
         ActivityLog.record('deleted', trashed[0], { note: `emptied trash (${trashed.length} document${trashed.length > 1 ? 's' : ''})`, batchCount: trashed.length });
     }
     const trashedIds = trashed.map(d => d.id);
