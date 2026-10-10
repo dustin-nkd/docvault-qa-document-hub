@@ -61,9 +61,11 @@ test('production headers enforce a strict script policy and browser hardening ac
     for (const [sourceName, headerMap] of [['_headers', headersFile], ['firebase.json', firebaseJson]]) {
         const csp = headerMap['Content-Security-Policy'];
         assert.match(csp, /default-src 'self'/, `${sourceName}: CSP must include default-src 'self'`);
-        assert.match(csp, /script-src 'self'/, `${sourceName}: CSP must include script-src 'self'`);
+        assert.match(csp, /script-src 'self' https:\/\/apis\.google\.com https:\/\/www\.gstatic\.com/, `${sourceName}: CSP must allow the Firebase auth script hosts`);
+        assert.match(csp, /script-src-elem 'self' https:\/\/apis\.google\.com https:\/\/www\.gstatic\.com/, `${sourceName}: CSP must allow those hosts on script elements`);
         assert.match(csp, /script-src-attr 'none'/, `${sourceName}: CSP must include script-src-attr 'none'`);
-        assert.match(csp, /frame-src 'none'/, `${sourceName}: CSP must include frame-src 'none'`);
+        assert.match(csp, /frame-src 'self'/, `${sourceName}: CSP must allow the same-origin Firebase auth iframe`);
+        assert.doesNotMatch(csp, /frame-src[^;]*\*/, `${sourceName}: CSP must not allow every frame host`);
         assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/, `${sourceName}: CSP script-src must not allow 'unsafe-inline'`);
 
         assert.equal(headerMap['Cross-Origin-Opener-Policy'], 'same-origin', `${sourceName}: COOP must be same-origin`);
