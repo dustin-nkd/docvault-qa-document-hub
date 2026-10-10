@@ -428,6 +428,7 @@ test('CLIENT VERIFICATION: viewer cannot write — local documents remain unchan
     vm.runInContext(read('js/events.js'), ctx);
     vm.runInContext(read('js/ui.js'), ctx);
     ctx.toast = (msg, type) => { toasts.push({ msg, type }); };
+    vm.runInContext(read('js/actions-batch-history.js'), ctx);
     vm.runInContext(read('js/actions-imports.js'), ctx);
     vm.runInContext(read('js/workspaces.js'), ctx);
 
@@ -470,13 +471,27 @@ test('CLIENT VERIFICATION: viewer cannot write — local documents remain unchan
     assert.equal(callbackCalled, false, 'uploadImageToCloud: callback must not be invoked');
     assert.ok(toasts.some(t => t.msg === 'You have view access'), 'uploadImageToCloud: must show exact toast');
 
-    // 7. Verification: Local array strictly equals initial data state
+    // 7. confirmDelete() with viewer role
+    toasts.length = 0;
+    await ctx.confirmDelete('doc-1');
+    assert.equal(ctx.documents[0].status, 'draft', 'confirmDelete: local document status must remain draft');
+    assert.ok(toasts.some(t => t.msg === 'You have view access'), 'confirmDelete: must show exact toast');
+
+    // 8. confirmBatchDelete() with viewer role
+    toasts.length = 0;
+    ctx.state.selectedIds = new Set(['doc-1']);
+    await ctx.confirmBatchDelete();
+    assert.equal(ctx.documents[0].status, 'draft', 'confirmBatchDelete: local document status must remain draft');
+    assert.ok(toasts.some(t => t.msg === 'You have view access'), 'confirmBatchDelete: must show exact toast');
+
+    // 9. Verification: Local array strictly equals initial data state
     assert.equal(ctx.documents.length, 2);
     assert.equal(ctx.documents[0].title, 'Original Doc');
+    assert.equal(ctx.documents[0].status, 'draft');
     assert.equal(ctx.documents[0].kanbanStatus, 'todo');
     assert.equal(ctx.documents[1].status, 'deleted');
 
-    // 8. Workspaces creation, rename, and delete disabled in COLLAB_MODE
+    // 10. Workspaces creation, rename, and delete disabled in COLLAB_MODE
     const origRegistry = ctx.localStorage.getItem('docvault_workspace_registry');
     await ctx.createWorkspace();
     ctx.renameWorkspace('default');

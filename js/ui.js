@@ -293,7 +293,6 @@ function showDeleteModal(id, isPermanent = false) {
     const titleStr = isPermanent ? (t('delTitleForever') || 'Delete Permanently') : t('delTitle');
     const warningStr = isPermanent ? (t('delConfirmForever') || 'Are you sure you want to permanently delete this? It cannot be recovered.') : t('delConfirm');
     const btnStr = isPermanent ? (t('delConfirmBtnForever') || 'Permanently Delete') : t('delConfirmBtn');
-    // Say up front that deleting kills the link, so revocation is never a surprise.
     const sharedCount = typeof countSharesForDocs === 'function' ? countSharesForDocs([id]) : 0;
 
     showModal(`
@@ -323,6 +322,10 @@ async function _revokeSharesForDeleted(ids) {
 }
 
 async function confirmDelete(id) {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return;
+    }
     const doc = documents.find(d => d.id === id);
     if (doc) {
         doc.status = 'deleted';
