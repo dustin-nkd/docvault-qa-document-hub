@@ -36,13 +36,13 @@ function createCollabImagesContext(customGlobals = {}) {
     return sandbox;
 }
 
-test('Shell contracts: events.js loads collab-images, sw.js caches it in v66, and line budget is <= 400', () => {
+test('Shell contracts: events.js loads collab-images, sw.js caches it in v67, and line budget is <= 400', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-images'/);
     assert.ok(events.indexOf("'collab-images'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v66'/);
+    assert.match(sw, /const SW_VERSION = 'v67'/);
     assert.match(sw, /'\.\/js\/collab-images\.js'/);
 
     const imagesLines = read('js/collab-images.js').split('\n').length;

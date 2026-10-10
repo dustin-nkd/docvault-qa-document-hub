@@ -667,14 +667,23 @@ if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
     document.getElementById('lock-screen')?.classList.add('hidden');
     startApp();
 } else if (_shareIdOnLoad) {
-    loadSharedDoc(_shareIdOnLoad, decodeURIComponent(location.hash.replace('#key=', '')));
+    (async () => {
+        const _s = u => new Promise((r, j) => { const el = document.createElement('script'); el.src = u; el.onload = r; el.onerror = j; document.head.appendChild(el); });
+        try { await _s('js/collab-config.js'); } catch (_) {}
+        if (window.COLLAB_MODE) {
+            try {
+                for (const u of ['firebase-config', 'collab-loader', 'collab-shares']) await _s('js/' + u + '.js');
+            } catch (err) { console.error(err); }
+        }
+        loadSharedDoc(_shareIdOnLoad, decodeURIComponent(location.hash.replace('#key=', '')));
+    })();
 } else {
     (async () => {
         const _s = u => new Promise((r, j) => { const el = document.createElement('script'); el.src = u; el.onload = r; el.onerror = j; document.head.appendChild(el); });
         try { await _s('js/collab-config.js'); } catch (_) {}
         if (window.COLLAB_MODE) {
             try {
-                for (const u of ['firebase-config', 'collab-loader', 'collab-auth', 'collab-store', 'collab-members', 'collab-images', 'collab-import', 'collab-bootstrap']) await _s('js/' + u + '.js');
+                for (const u of ['firebase-config', 'collab-loader', 'collab-auth', 'collab-store', 'collab-members', 'collab-images', 'collab-import', 'collab-shares', 'collab-bootstrap']) await _s('js/' + u + '.js');
                 window.CollabBootstrap?.start();
             } catch (err) { console.error(err); }
             return;

@@ -12,9 +12,6 @@ function _wsKey(key) {
     return 'ws_' + id + '__' + key;
 }
 
-// The registry is per-workspace: a share published from one workspace must not
-// appear in — or be revoked from — another. The share BLOBS on GitHub stay in
-// one global shared/ folder, since share ids are random and never collide.
 function _shareRegistryKey() { return _wsKey('docvault_shares'); }
 function _getShares() {
     try { return JSON.parse(localStorage.getItem(_shareRegistryKey()) || '[]'); } catch(e) { return []; }
@@ -26,18 +23,18 @@ function _recordShare(entry) {
     _saveShares(list);
 }
 function _removeShare(shareId) { _saveShares(_getShares().filter(s => s.shareId !== shareId)); }
-
-// A share is "orphaned" once its source document is gone (trashed or permanently
-// deleted). Before shares were revoked on delete, these piled up in the manager
-// and — worse — kept the deleted document readable to anyone holding the link.
 function _isShareOrphaned(entry) {
     return !documents.some(d => d.id === entry.docId && d.status !== 'deleted');
 }
 
-// Single place that removes the published blob, so revoke-one, revoke-on-delete,
-// and orphan cleanup can never drift apart. Throws if GitHub refuses; a 404 is
-// treated as success because the goal (nothing published) is already true.
+async function _ensureCollabShares() {
+    if (window.CollabShares) return window.CollabShares;
+    await new Promise((r, j) => { const s = document.createElement('script'); s.src = 'js/collab-shares.js'; s.onload = r; s.onerror = j; document.head.appendChild(s); });
+    return window.CollabShares;
+}
+
 async function _deleteShareBlob(entry, settings) {
+    if (window.COLLAB_MODE) return;
     const base = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${entry.shareId}.enc`;
     const auth = { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json' };
     let sha = entry.sha;
@@ -47,19 +44,16 @@ async function _deleteShareBlob(entry, settings) {
         if (g.ok) sha = (await g.json()).sha;
     }
     if (!sha) return;
-    const del = await fetch(base, {
-        method: 'DELETE',
-        headers: { ...auth, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `Revoke share ${entry.shareId}`, sha, branch: settings.branch || 'main' })
-    });
+    const del = await fetch(base, { method: 'DELETE', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: `Revoke share ${entry.shareId}`, sha, branch: settings.branch || 'main' }) });
     if (!del.ok && del.status !== 404) throw new Error(`GitHub error ${del.status}`);
 }
 
-// Revokes every share publishing any of `docIds`. Entries are dropped only once
-// their blob is actually gone — a failed delete stays listed so the user can
-// retry, rather than silently leaving the content published with no way back to
-// it. Never throws: deleting a document must succeed even if GitHub is down.
 window.revokeSharesForDocs = async function(docIds) {
+    if (window.COLLAB_MODE) {
+        if (window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') { toast('You have view access', 'error'); return { revoked: 0, failed: 0 }; }
+        await _ensureCollabShares();
+        return window.CollabShares.revokeSharesForDocs(docIds);
+    }
     const ids = new Set(docIds || []);
     if (!ids.size) return { revoked: 0, failed: 0 };
     const shares = _getShares();
@@ -79,11 +73,11 @@ window.revokeSharesForDocs = async function(docIds) {
     return { revoked: revoked.size, failed };
 };
 
-// Deleting a workspace must not leave its published links readable. That
-// workspace is not the active one by then, so its registry is read from its own
-// key directly instead of through _getShares(), which always sees the active
-// one. Entries whose blob could not be deleted are kept so nothing is forgotten.
 window.revokeSharesInWorkspace = async function(workspaceId) {
+    if (window.COLLAB_MODE) {
+        await _ensureCollabShares();
+        return window.CollabShares.revokeSharesInWorkspace(workspaceId);
+    }
     const key = workspaceId === 'default' ? 'docvault_shares' : 'ws_' + workspaceId + '__docvault_shares';
     let entries;
     try { entries = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { entries = []; }
@@ -103,8 +97,6 @@ window.revokeSharesInWorkspace = async function(workspaceId) {
     return { revoked, failed: remaining.length };
 };
 
-// Reports how many links a delete is about to kill, so the confirmation dialog
-// can say so instead of revoking silently.
 window.countSharesForDocs = function(docIds) {
     const ids = new Set(docIds || []);
     return _getShares().filter(s => ids.has(s.docId)).length;
@@ -115,7 +107,7 @@ window.revokeOrphanedShares = async function() {
     if (!orphans.length) return;
     const { revoked, failed } = await revokeSharesForDocs(orphans.map(s => s.docId));
     if (revoked) toast(`Revoked ${revoked} link${revoked > 1 ? 's' : ''} for deleted documents.`, 'success');
-    if (failed) toast(`${failed} link${failed > 1 ? 's' : ''} could not be revoked — check GitHub settings.`, 'error');
+    if (failed) toast(`${failed} link${failed > 1 ? 's' : ''} could not be revoked.` + (window.COLLAB_MODE ? '' : ' — check GitHub settings.'), 'error');
     showShareManager();
 };
 
@@ -137,7 +129,7 @@ window.showShareManager = function() {
     showModal(`
         <div>
             <h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);"><i class="fa-solid fa-share-nodes text-[var(--acc)] mr-2"></i>Shared Links</h3>
-            <p class="text-sm mb-4" style="color:var(--tx-m);">Revoking deletes the encrypted file from GitHub, so the link stops working for everyone.</p>
+            <p class="text-sm mb-4" style="color:var(--tx-m);">${window.COLLAB_MODE ? 'Revoking deletes the shared snapshot from the team server.' : 'Revoking deletes the encrypted file from GitHub, so the link stops working for everyone.'}</p>
             ${orphanCount ? `
             <div class="flex items-center gap-3 p-3 rounded-lg mb-3" style="background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.3);">
                 <i class="fa-solid fa-triangle-exclamation shrink-0" style="color:#f43f5e;"></i>
@@ -151,6 +143,11 @@ window.showShareManager = function() {
 };
 
 window.revokeShare = async function(shareId) {
+    if (window.COLLAB_MODE) {
+        if (window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') { toast('You have view access', 'error'); return; }
+        await _ensureCollabShares();
+        return window.CollabShares.revokeShare(shareId);
+    }
     const settings = await GitHubSync.getSettings();
     const entry = _getShares().find(s => s.shareId === shareId);
     if (settings && settings.token && entry) {
@@ -196,31 +193,22 @@ function _stripEnvSecrets(ed) {
 function _buildSharePayload(doc) {
     const allLinkedIds = doc.category === 'release'
         ? [...(doc.releaseData?.linkedRuns || []), ...(doc.releaseData?.linkedBugs || []), ...(doc.releaseData?.linkedEnvs || [])]
-        : doc.category === 'testplan'
-        ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])]
-        : [];
+        : doc.category === 'testplan' ? [...(doc.tcPlanData?.linkedTCs || []), ...(doc.tcPlanData?.linkedRuns || [])] : [];
     const linkedDocs = doc.category === 'testrun' && doc.runData?.targetIds?.length
-        ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted')
-              .map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, apiTcData: d.apiTcData, content: d.content, tags: d.tags || [] }))
+        ? documents.filter(d => doc.runData.targetIds.includes(d.id) && d.status !== 'deleted').map(d => ({ id: d.id, title: d.title, category: d.category, tcData: d.tcData, apiTcData: d.apiTcData, content: d.content, tags: d.tags || [] }))
         : doc.category === 'apitest' && doc.apiTcData?.linkedApiId
-        ? documents.filter(d => d.id === doc.apiTcData.linkedApiId && d.category === 'api' && d.status !== 'deleted')
-            .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, apiData: d.apiData, content: d.content, tags: d.tags || [] }))
+        ? documents.filter(d => d.id === doc.apiTcData.linkedApiId && d.category === 'api' && d.status !== 'deleted').map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, apiData: d.apiData, content: d.content, tags: d.tags || [] }))
         : doc.category === 'environment' && doc.envData?.linkedCreds?.length
-        ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted')
-              .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
+        ? documents.filter(d => doc.envData.linkedCreds.includes(d.id) && d.status !== 'deleted').map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false }))
         : (doc.category === 'release' || doc.category === 'testplan') && allLinkedIds.length
-        ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted')
-              .map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: _stripEnvSecrets(d.envData), tcData: d.tcData, apiTcData: d.apiTcData }))
+        ? documents.filter(d => allLinkedIds.includes(d.id) && d.status !== 'deleted').map(d => ({ id: d.id, title: d.title, category: d.category, status: d.status, tags: d.tags || [], createdAt: d.createdAt, updatedAt: d.updatedAt, favorite: false, runData: d.runData, bugData: d.bugData, envData: _stripEnvSecrets(d.envData), tcData: d.tcData, apiTcData: d.apiTcData }))
         : [];
     return {
         title: doc.title, category: doc.category, content: doc.content,
         tags: doc.tags, createdAt: doc.createdAt, status: doc.status, subfolder: doc.subfolder,
-        envData: _stripEnvSecrets(doc.envData),
-        runData: doc.runData,
-        releaseData: doc.releaseData,
+        envData: _stripEnvSecrets(doc.envData), runData: doc.runData, releaseData: doc.releaseData,
         tcData: doc.tcData, bugData: doc.bugData, apiData: doc.apiData, apiTcData: doc.apiTcData,
-        tcPlanData: doc.tcPlanData,
-        _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
+        tcPlanData: doc.tcPlanData, _linkedDocs: linkedDocs.length ? linkedDocs : undefined,
     };
 }
 
@@ -235,18 +223,11 @@ async function _encryptSharePayload(doc, keyBytes) {
     return uint8ToBase64(packed);
 }
 
-// ========================
-// KEEP SHARED LINKS UP TO DATE
-// ========================
-// A share link publishes a snapshot at share-time. So an edit made after
-// sharing is visible to viewers on their next reload (not just to the next
-// person who opens a fresh link), re-push the encrypted snapshot to the same
-// shared/{shareId}.enc path whenever the source document's updatedAt moves
-// past what was last pushed. Runs after every persist() (best-effort,
-// fire-and-forget — see persist() in state.js) so it covers every edit path
-// (editor saves, bug status changes, kanban moves, etc.) without each one
-// needing to know about sharing.
 async function _pushShareSnapshot(entry, doc, settings) {
+    if (window.COLLAB_MODE) {
+        await _ensureCollabShares();
+        return window.CollabShares.pushShareSnapshot(entry, doc);
+    }
     const encContent = await _encryptSharePayload(doc, Uint8Array.from(atob(entry.keyBase64), c => c.charCodeAt(0)));
     const base = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${entry.shareId}.enc`;
     const headers = { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
@@ -255,8 +236,6 @@ async function _pushShareSnapshot(entry, doc, settings) {
 
     let res = await fetch(base, { method: 'PUT', headers, body: JSON.stringify(body) });
     if (!res.ok && (res.status === 409 || res.status === 422)) {
-        // Our cached sha is stale (e.g. this browser missed a prior push) —
-        // fetch the current one and retry once before giving up.
         const g = await fetch(`${base}?ref=${settings.branch || 'main'}`, { headers: { 'Authorization': `token ${settings.token}`, 'Accept': 'application/vnd.github+json' } });
         if (g.ok) {
             body.sha = (await g.json()).sha;
@@ -272,6 +251,10 @@ async function _pushShareSnapshot(entry, doc, settings) {
 
 async function syncActiveShares() {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
+    if (window.COLLAB_MODE) {
+        await _ensureCollabShares();
+        return window.CollabShares.syncActiveShares();
+    }
     const shares = _getShares();
     if (!shares.length) return;
 
@@ -281,12 +264,11 @@ async function syncActiveShares() {
     if (!stale.length) return;
 
     const settings = await GitHubSync.getSettings();
-    if (!settings || !settings.token) return; // sharing needs a token anyway; retry silently on the next persist
+    if (!settings || !settings.token) return;
 
     let changed = false;
     for (const entry of stale) {
         const doc = documents.find(d => d.id === entry.docId && d.status !== 'deleted');
-        // A doc that turned into a credential after being shared must never sync plaintext secrets.
         if (!doc || doc.category === 'credential') continue;
         try {
             await _pushShareSnapshot(entry, doc, settings);
@@ -298,21 +280,16 @@ async function syncActiveShares() {
     if (changed) _saveShares(shares);
 }
 
-// ========================
-// SHARE DOCUMENT
-// ========================
 window.shareDoc = async function(id) {
-    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
-        toast('Sharing is disabled in demo mode.', 'info');
-        return;
+    if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) { toast('Sharing is disabled in demo mode.', 'info'); return; }
+    if (window.COLLAB_MODE) {
+        if (window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') { toast('You have view access', 'error'); return; }
+        await _ensureCollabShares();
+        return window.CollabShares.shareDoc(id);
     }
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
 
-    // Security: a share link publishes AES-GCM ciphertext with the decryption
-    // key in the URL fragment (#key=), so anyone holding the link can decrypt
-    // the payload. Credential documents hold plaintext username/password and
-    // must never be shared this way.
     if (doc.category === 'credential') {
         toast('Sharing is disabled for credential documents for security.', 'info');
         return;
@@ -347,9 +324,6 @@ window.shareDoc = async function(id) {
         );
         if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
 
-        // Record the share so it can be listed and revoked later (US-304), and so
-        // it can be kept in sync (with its own key + last-pushed updatedAt) whenever
-        // the source document changes — see syncActiveShares() above.
         const putData = await res.json().catch(() => ({}));
         _recordShare({ shareId, docId: doc.id, title: doc.title, category: doc.category, createdAt: Date.now(), sha: (putData.content && putData.content.sha) || null, keyBase64, docUpdatedAt: doc.updatedAt });
 
@@ -379,12 +353,12 @@ window.shareDoc = async function(id) {
 };
 
 async function loadSharedDoc(shareId, keyBase64) {
+    if (window.COLLAB_MODE) {
+        await _ensureCollabShares();
+        return window.CollabShares.loadSharedDoc(shareId, keyBase64);
+    }
     try {
         const d = GitHubSync.DEFAULTS;
-        // Fetch via the GitHub Contents API, NOT raw.githubusercontent.com. The raw
-        // CDN caches files for ~5 minutes, so a revoked (deleted) share would keep
-        // resolving from cache and stay viewable. The API reflects deletions
-        // immediately (404), which is what makes revocation actually take effect.
         const apiUrl = `https://api.github.com/repos/${d.owner}/${d.repo}/contents/shared/${shareId}.enc?ref=${d.branch || 'main'}`;
         const res = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store' });
         if (!res.ok) throw new Error('Document not found or link has expired.');
@@ -417,3 +391,12 @@ async function loadSharedDoc(shareId, keyBase64) {
         document.body.innerHTML = `<div class="flex items-center justify-center h-screen" style="background:var(--bg)"><div class="p-10 text-center max-w-sm"><div class="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style="background:rgba(244,63,94,0.1);"><i class="fa-solid fa-link-slash text-rose-400 text-2xl"></i></div><h1 class="font-heading text-xl font-bold mb-3" style="color:var(--tx)">Link Invalid or Expired</h1><p class="text-sm mb-6" style="color:var(--tx-m)">${escHtml(e.message)}</p><button class="btn-p" data-onclick="openAppHome()">Go to DocVault</button></div></div>`;
     }
 }
+
+window._getShares = _getShares;
+window._saveShares = _saveShares;
+window._recordShare = _recordShare;
+window._removeShare = _removeShare;
+window.loadSharedDoc = loadSharedDoc;
+window._stripEnvSecrets = _stripEnvSecrets;
+window._buildSharePayload = _buildSharePayload;
+window._encryptSharePayload = _encryptSharePayload;
