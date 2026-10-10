@@ -2,6 +2,108 @@
 (function(root) {
     let _currentMember = null;
 
+    function esc(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderRoleBadge(role) {
+        if (role === 'owner') {
+            return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(59,130,246,0.15);color:var(--acc);border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-crown text-[8px] mr-1"></i>Owner</span>';
+        }
+        if (role === 'editor') {
+            return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-pen text-[8px] mr-1"></i>Editor</span>';
+        }
+        return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(107,114,128,0.15);color:var(--tx-d);border:1px solid rgba(107,114,128,0.3);"><i class="fa-solid fa-eye text-[8px] mr-1"></i>Viewer</span>';
+    }
+
+    function updateSidebarLockToSignOut() {
+        if (typeof document === 'undefined') return;
+        const footer = typeof document.getElementById === 'function' ? document.getElementById('sidebar-footer') : null;
+        const btn = footer && typeof footer.querySelector === 'function'
+            ? (footer.querySelector('[data-onclick="lockVault()"]') || footer.querySelector('[data-onclick="collabSignOut()"]'))
+            : (typeof document.querySelector === 'function'
+                ? (document.querySelector('#sidebar-footer [data-onclick="lockVault()"]') || document.querySelector('#sidebar-footer [data-onclick="collabSignOut()"]'))
+                : null);
+        if (!btn) return;
+        if (typeof btn.setAttribute === 'function') {
+            btn.setAttribute('data-onclick', 'collabSignOut()');
+            btn.setAttribute('title', 'Sign out');
+        }
+        btn.dataset = btn.dataset || {};
+        btn.dataset.onclick = 'collabSignOut()';
+        btn.title = 'Sign out';
+
+        const icon = btn.querySelector ? btn.querySelector('i') : null;
+        if (icon) icon.className = 'fa-solid fa-right-from-bracket';
+
+        const span = btn.querySelector ? btn.querySelector('span') : null;
+        if (span) span.textContent = 'Sign out';
+    }
+
+    function removeCollabMe() {
+        if (typeof document === 'undefined') return;
+        const el = (typeof document.getElementById === 'function' ? document.getElementById('collab-me') : null) ||
+                   (typeof document.querySelector === 'function' ? document.querySelector('#collab-me') : null);
+        if (!el) return;
+        if (typeof el.remove === 'function') {
+            el.remove();
+        } else if (el.parentNode && typeof el.parentNode.removeChild === 'function') {
+            el.parentNode.removeChild(el);
+        }
+    }
+
+    function renderCollabMe(user, member) {
+        if (typeof document === 'undefined') return;
+        const footer = typeof document.getElementById === 'function' ? document.getElementById('sidebar-footer') : null;
+        if (!footer) return;
+        removeCollabMe();
+        if (typeof document.createElement !== 'function') return;
+
+        const displayName = member?.displayName || user?.displayName || member?.email || user?.email || 'Team Member';
+        const email = member?.email || user?.email || '';
+        const roleBadge = renderRoleBadge(member?.role);
+        const photoUrl = (typeof user?.photoURL === 'string' && user.photoURL.startsWith('https://')) ? user.photoURL : '';
+        const avatarHtml = photoUrl
+            ? `<img src="${esc(photoUrl)}" alt="${esc(displayName)}" class="collab-me-avatar w-8 h-8 rounded-full object-cover shrink-0" style="border:1px solid var(--brd);">`
+            : `<div class="collab-me-avatar w-8 h-8 rounded-full shrink-0 flex items-center justify-center font-bold text-xs" style="background:rgba(59,130,246,0.15);color:var(--acc);border:1px solid var(--brd);">${esc((displayName.trim().charAt(0) || 'U').toUpperCase())}</div>`;
+
+        const meEl = document.createElement('div');
+        meEl.id = 'collab-me';
+        meEl.className = 'px-3 py-2.5 border-b flex items-center gap-2.5';
+        meEl.style.borderColor = 'var(--brd)';
+        meEl.innerHTML = `
+            <style>
+                [data-ui-style="bauhaus"] #collab-me { border-bottom: 2px solid #121212 !important; }
+                [data-ui-style="bauhaus"] #collab-me .collab-me-name { color: #121212 !important; }
+                [data-ui-style="bauhaus"] #collab-me .collab-me-email { color: #555555 !important; font-weight: 600 !important; }
+                [data-ui-style="bauhaus"] #collab-me .collab-me-badge { border: 1.5px solid #121212 !important; border-radius: 0 !important; box-shadow: 1px 1px 0 0 #121212 !important; }
+                [data-ui-style="bauhaus"] #collab-me .collab-me-avatar { border: 1.5px solid #121212 !important; border-radius: 0 !important; }
+            </style>
+            ${avatarHtml}
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="collab-me-name font-medium text-xs truncate" style="color:var(--tx);">${esc(displayName)}</span>
+                    ${roleBadge}
+                </div>
+                ${email ? `<div class="collab-me-email text-[10px] truncate" style="color:var(--tx-d);">${esc(email)}</div>` : ''}
+            </div>
+        `.trim();
+
+        if (typeof footer.insertBefore === 'function' && footer.firstChild) {
+            footer.insertBefore(meEl, footer.firstChild);
+        } else if (typeof footer.prepend === 'function') {
+            footer.prepend(meEl);
+        } else if (typeof footer.appendChild === 'function') {
+            footer.appendChild(meEl);
+        }
+    }
+
     function getFirestoreDb() {
         if (!root.firebase || !root.firebase.firestore) return null;
         const db = root.firebase.firestore();
@@ -136,6 +238,7 @@
 
     async function handleUserAuth(user) {
         if (!user) {
+            removeCollabMe();
             showCollabLockScreen('signin');
             return;
         }
@@ -143,11 +246,14 @@
         try {
             const res = await initTeamUser(user);
             if (res.status === 'uninvited') {
+                removeCollabMe();
                 showCollabLockScreen('uninvited');
                 return;
             }
 
             if (res.status === 'owner' || res.status === 'member') {
+                renderCollabMe(user, res.member);
+                updateSidebarLockToSignOut();
                 const ls = document.getElementById('lock-screen');
                 if (ls) ls.classList.add('hidden');
                 if (typeof root.startApp === 'function') {
@@ -156,12 +262,14 @@
             }
         } catch (err) {
             console.error('[CollabBootstrap] User initialization failed:', err);
+            removeCollabMe();
             showCollabLockScreen('error', err.message || 'Failed to connect. Please try again.');
         }
     }
 
     function start() {
         showCollabLockScreen('signin');
+        updateSidebarLockToSignOut();
 
         // Conclude any pending OAuth redirect flow without triggering handleUserAuth
         if (root.CollabAuth?.getRedirectResult) {
@@ -193,6 +301,7 @@
         if (root.CollabAuth?.signOutUser) {
             await root.CollabAuth.signOutUser().catch(() => {});
         }
+        removeCollabMe();
         showCollabLockScreen('signin');
     }
 
@@ -202,6 +311,9 @@
         start,
         signOut,
         showCollabLockScreen,
+        updateSidebarLockToSignOut,
+        renderCollabMe,
+        removeCollabMe,
         getCurrentMember: () => _currentMember
     };
 
