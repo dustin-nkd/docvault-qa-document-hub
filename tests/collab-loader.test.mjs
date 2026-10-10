@@ -15,6 +15,15 @@ test('index.html contains no references to vendor/firebase or static Firebase sc
     assert.doesNotMatch(html, /firebase-auth/, 'index.html must not contain static firebase-auth reference');
     assert.doesNotMatch(html, /firebase-firestore/, 'index.html must not contain static firebase-firestore reference');
     assert.doesNotMatch(html, /firebase\.js/, 'index.html must not contain static firebase bundle reference');
+
+    const shell = read('sw.js');
+    for (const asset of [
+        './vendor/firebase/firebase-app-compat.js',
+        './vendor/firebase/firebase-auth-compat.js',
+        './vendor/firebase/firebase-firestore-compat.js'
+    ]) {
+        assert.ok(shell.includes(asset), 'APP_SHELL must ship ' + asset + ' or the team build omits it');
+    }
 });
 
 test('vendor/firebase contains only app, auth, and firestore compat scripts without Storage', () => {

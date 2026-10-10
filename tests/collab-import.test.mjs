@@ -64,13 +64,13 @@ function createCollabImportContext(customGlobals = {}) {
     return sandbox;
 }
 
-test('Shell contracts: events.js loads collab-import, sw.js caches it in v69, and line budgets hold', () => {
+test('Shell contracts: events.js loads collab-import, sw.js caches it in v70, and line budgets hold', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-import'/);
     assert.ok(events.indexOf("'collab-import'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v69'/);
+    assert.match(sw, /const SW_VERSION = 'v70'/);
     assert.match(sw, /'\.\/js\/collab-import\.js'/);
 
     const importLines = read('js/collab-import.js').split('\n').length;
