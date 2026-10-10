@@ -236,19 +236,23 @@
         if (!user?.uid) throw new Error('Cannot persist in collab mode: unauthenticated');
         const uid = user.uid;
 
+        const isDocOversize = (d) => {
+            const sz = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(JSON.stringify(d)).length : JSON.stringify(d).length;
+            if (sz > 900000) { if (typeof root.toast === 'function') root.toast('Document exceeds 900,000 bytes limit.', 'error'); return true; }
+            return false;
+        };
+
         // 1. New documents (CREATE)
         for (const doc of currentDocuments) {
             if (!doc?.id || _knownDocs.has(doc.id)) continue;
             const now = Date.now(), createdAt = typeof doc.createdAt === 'number' ? doc.createdAt : now, updatedAt = typeof doc.updatedAt === 'number' ? doc.updatedAt : now;
             const data = toFirestoreDoc(doc, { version: 1, createdBy: uid, updatedBy: uid, createdAt, updatedAt });
+            if (isDocOversize(data)) continue;
             try {
                 await db.collection('documents').doc(doc.id).set(data);
                 doc.version = 1; doc.createdBy = uid; doc.updatedBy = uid; doc.createdAt = createdAt; doc.updatedAt = updatedAt;
                 _knownDocs.set(doc.id, { ...doc });
-            } catch (err) {
-                if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error');
-                throw err;
-            }
+            } catch (err) { if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error'); throw err; }
         }
 
         // 2. Modified documents (UPDATE)
@@ -262,6 +266,7 @@
             const nextVersion = (typeof known.version === 'number' ? known.version : 1) + 1;
             const createdBy = known.createdBy || doc.createdBy || uid, createdAt = typeof known.createdAt === 'number' ? known.createdAt : (doc.createdAt || Date.now());
             const data = toFirestoreDoc(doc, { version: nextVersion, createdBy, updatedBy: uid, createdAt, updatedAt: doc.updatedAt });
+            if (isDocOversize(data)) continue;
 
             try {
                 await db.collection('documents').doc(doc.id).set(data);
@@ -366,10 +371,8 @@
 
         return await db.runTransaction(async tx => {
             const snap = await tx.get(counterRef);
-            let allocated;
-            if (!snap.exists) {
-                allocated = 1; tx.set(counterRef, { next: 1 });
-            } else {
+            if (!snap.exists) { allocated = 1; tx.set(counterRef, { next: 1 }); }
+            else {
                 const data = (typeof snap.data === 'function') ? snap.data() : snap.data;
                 allocated = ((typeof data?.next === 'number') ? data.next : 0) + 1;
                 tx.update(counterRef, { next: allocated });

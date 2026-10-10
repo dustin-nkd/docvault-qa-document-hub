@@ -325,11 +325,19 @@ async function compressImage(blob, maxPx, quality) {
     bitmap.close();
     return canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', keepPng ? undefined : quality);
 }
+window.compressImage = compressImage;
 
 // Image storage strategy (A1, opt-in / PA B):
 async function uploadImageToCloud(blob, callback) {
     if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
         toast('You have view access', 'error');
+        return;
+    }
+    if (window.COLLAB_MODE) {
+        if (window.CollabImages?.uploadImage) {
+            return window.CollabImages.uploadImage(blob, callback);
+        }
+        toast('Team image service not ready', 'error');
         return;
     }
     let dataUrl;
@@ -375,6 +383,13 @@ async function _putImageToCdn(dataUrl, settings) {
 
 // Migrate all inline base64 images in active documents to the public CDN (S6-2).
 window.compactImages = async function() {
+    if (window.COLLAB_MODE) {
+        if (window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+            toast('You have view access', 'error');
+            return;
+        }
+        return window.CollabImages?.compactImages ? window.CollabImages.compactImages() : null;
+    }
     const settings = await GitHubSync.getSettings();
     if (!settings || !settings.token) { toast('Add a GitHub token in Settings first.', 'warning'); return; }
     const DATA_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g;
@@ -399,6 +414,13 @@ window.compactImages = async function() {
 
 window._doCompactImages = async function() {
     closeModal();
+    if (window.COLLAB_MODE) {
+        if (window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+            toast('You have view access', 'error');
+            return;
+        }
+        return window.CollabImages?.doCompactImages ? window.CollabImages.doCompactImages() : null;
+    }
     const settings = await GitHubSync.getSettings();
     if (!settings || !settings.token) return;
     toast('Compacting images…', 'info');

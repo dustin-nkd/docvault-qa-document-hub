@@ -674,7 +674,7 @@ if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         try { await _s('js/collab-config.js'); } catch (_) {}
         if (window.COLLAB_MODE) {
             try {
-                for (const u of ['firebase-config', 'collab-loader', 'collab-auth', 'collab-store', 'collab-members', 'collab-bootstrap']) await _s('js/' + u + '.js');
+                for (const u of ['firebase-config', 'collab-loader', 'collab-auth', 'collab-store', 'collab-members', 'collab-images', 'collab-bootstrap']) await _s('js/' + u + '.js');
                 window.CollabBootstrap?.start();
             } catch (err) { console.error(err); }
             return;
