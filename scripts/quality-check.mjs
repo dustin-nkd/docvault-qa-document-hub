@@ -139,6 +139,18 @@ const missingShellRefs = shellRefs.filter((value) => {
     return !fs.existsSync(path.join(root, value.slice(2)));
 });
 assert(missingShellRefs.length === 0, 'Missing service-worker app-shell assets: ' + missingShellRefs.join(', '));
+const dynamicJsLoads = [];
+for (const name of fs.readdirSync(path.join(root, 'js'))) {
+    if (!name.endsWith('.js')) continue;
+    for (const match of read('js/' + name).matchAll(/\bsrc\s*=\s*['"](js\/[^'"]+)['"]/g)) dynamicJsLoads.push(match[1]);
+}
+assert(dynamicJsLoads.includes('js/collab-viewer.js') && dynamicJsLoads.includes('js/collab-workspaces.js'), 'collab-bootstrap must keep its dynamic viewer and workspace script loads');
+for (const buildName of ['scripts/build-pages.mjs', 'scripts/build-team.mjs']) {
+    assert(read(buildName).includes("relativePath.startsWith('js/')"), buildName + ' must copy dynamically loaded js/ scripts into the hosting artifact');
+}
+for (const load of dynamicJsLoads) {
+    assert(fs.existsSync(path.join(root, load)), 'Dynamic script is missing from the repo: ' + load);
+}
 assert(shellRefs.includes('./vendor/fonts/space-grotesk/runtime.css'), 'APP_SHELL must cache the runtime Space Grotesk stylesheet');
 assert(shellRefs.includes('./vendor/fonts/dm-sans/runtime.css'), 'APP_SHELL must cache the runtime DM Sans stylesheet');
 assert(!shellRefs.some((value) => /vendor\/fonts\/[^/]+\/(?:index|latin)\.css$/.test(value)), 'APP_SHELL still references a full font stylesheet');

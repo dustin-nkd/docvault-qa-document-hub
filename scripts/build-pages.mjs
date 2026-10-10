@@ -45,11 +45,19 @@ for (const icon of manifest.icons || []) include(icon.src);
 
 while (queue.length > 0) {
     const relativePath = queue.shift();
-    if (!relativePath.endsWith('.css')) continue;
-    const css = fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
-    for (const match of css.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)) {
-        const dependency = normalizeLocal(match[2], relativePath);
-        if (dependency) include(dependency);
+    const isCss = relativePath.endsWith('.css');
+    const isAppJs = relativePath.startsWith('js/') && relativePath.endsWith('.js');
+    if (!isCss && !isAppJs) continue;
+    const text = fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
+    if (isCss) {
+        for (const match of text.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)) {
+            const dependency = normalizeLocal(match[2], relativePath);
+            if (dependency) include(dependency);
+        }
+    }
+    // script.src = 'js/...' is not listed in APP_SHELL. Copy it or hosting returns 404.
+    if (isAppJs) {
+        for (const match of text.matchAll(/\bsrc\s*=\s*['"](js\/[^'"]+)['"]/g)) include(match[1]);
     }
 }
 
