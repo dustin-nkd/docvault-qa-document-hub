@@ -112,10 +112,7 @@ function _settingsTabBackup() {
         </div>`;
 }
 
-// Tags tab (Sprint 18, 18-1). Tag identity is addressed by INDEX into a
-// stashed window array rather than embedded raw text in data-onclick, since
-// tag names are free user text and could contain quotes/commas that the
-// CSP action-string dispatcher isn't meant to round-trip reliably.
+// Tags tab: addressed by INDEX into window array for safe action serialization.
 function _settingsTabTags() {
     const counts = {};
     documents.forEach(d => {
@@ -204,6 +201,10 @@ const SETTINGS_TABS = [
     { id: 'backup', label: 'Backup', icon: 'fa-box-archive', render: _settingsTabBackup }
 ];
 
+function _getActiveSettingsTabs() {
+    return window.COLLAB_MODE ? SETTINGS_TABS.filter(tb => tb.id !== 'account' && tb.id !== 'security') : SETTINGS_TABS;
+}
+
 window.registerSettingsTab = function(tabDef) {
     if (tabDef && !SETTINGS_TABS.some(tb => tb.id === tabDef.id)) {
         const syncIdx = SETTINGS_TABS.findIndex(tb => tb.id === 'sync');
@@ -213,7 +214,16 @@ window.registerSettingsTab = function(tabDef) {
 };
 
 function _renderSettingsModal() {
-    const activeTab = window._settingsTab || 'account';
+    const tabs = _getActiveSettingsTabs();
+    let activeTab = window._settingsTab;
+    if (window.COLLAB_MODE && (!activeTab || activeTab === 'account' || activeTab === 'security')) {
+        activeTab = 'team';
+    }
+    if (!activeTab || !tabs.some(tb => tb.id === activeTab)) {
+        activeTab = (window.COLLAB_MODE && tabs.some(tb => tb.id === 'team')) ? 'team' : (tabs[0]?.id || 'account');
+    }
+    window._settingsTab = activeTab;
+    const currentTabDef = tabs.find(tb => tb.id === activeTab) || tabs[0];
     return `
         <div>
             <div class="flex items-center justify-between mb-4">
@@ -221,21 +231,23 @@ function _renderSettingsModal() {
                 <button type="button" class="text-base leading-none" style="color:var(--tx-d);" data-onclick="closeModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="flex gap-1 mb-5 p-1 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
-                ${SETTINGS_TABS.map(tb => `
+                ${tabs.map(tb => `
                     <button type="button" class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors" style="${activeTab === tb.id ? 'background:var(--acc);color:#fff;' : 'color:var(--tx-m);'}" data-onclick="_switchSettingsTab('${tb.id}')">
                         <i class="fa-solid ${tb.icon}" style="font-size:10px;"></i> ${tb.label}
                     </button>
                 `).join('')}
             </div>
-            <div id="settings-modal-body">${(SETTINGS_TABS.find(tb => tb.id === activeTab) || SETTINGS_TABS[0]).render()}</div>
+            <div id="settings-modal-body">${currentTabDef ? currentTabDef.render() : ''}</div>
         </div>`;
 }
 
 window._switchSettingsTab = function(tab) {
-    window._settingsTab = tab;
+    if (window.COLLAB_MODE && (tab === 'account' || tab === 'security')) return;
+    const tabs = _getActiveSettingsTabs();
+    const tabDef = tabs.find(tb => tb.id === tab);
     const body = document.getElementById('settings-modal-body');
-    const tabDef = SETTINGS_TABS.find(tb => tb.id === tab);
     if (!body || !tabDef) return;
+    window._settingsTab = tab;
     body.innerHTML = tabDef.render();
     // Update tab pill active styles in place (avoids re-animating the whole modal).
     document.querySelectorAll('#modal [data-onclick^="_switchSettingsTab"]').forEach(btn => {
@@ -256,7 +268,13 @@ window.showGitHubSettingsModal = async function() {
         ghSettings = { ...ghSettings, ...storedGh };
     }
     window._settingsModalData = { ghSettings };
-    window._settingsTab = window._settingsTab || 'account';
+    if (window.COLLAB_MODE) {
+        if (!window._settingsTab || window._settingsTab === 'account' || window._settingsTab === 'security') {
+            window._settingsTab = 'team';
+        }
+    } else {
+        window._settingsTab = window._settingsTab || 'account';
+    }
     showModal(_renderSettingsModal());
 };
 
@@ -267,13 +285,7 @@ window.toggleImageCdn = function(el) {
     toast(on ? 'New images will be stored on the public GitHub CDN.' : 'New images will be stored inline (encrypted).', 'info');
 };
 
-// Manual test trigger for the sharded-sync migration (Sprint 23). NOT wired
-// into any UI button — call from the console/preview_eval only. Additive:
-// writes new shard files + a meta file to the configured GitHub repo, never
-// touches or deletes the existing single-file vault. Safe to call multiple
-// times (idempotent). Prints a byte-level comparison report so migration
-// correctness can be confirmed against real data before anything switches
-// over to reading/writing shards by default.
+// Manual test trigger for sharded-sync migration (Sprint 23). Call from console only.
 window.testShardedSync = async function() {
     if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) {
         console.warn('[testShardedSync] Not available in guest demo mode (no real GitHub vault to test against).');
@@ -339,9 +351,7 @@ window.changeMasterPassword = async function() {
 
     try {
         await window.LocalAuth.changePassword(current, newPwd);
-        // Sync the re-encrypted vault (and the now-revoked recovery blob, rb:null) to
-        // GitHub immediately. Otherwise other devices still need the OLD password until
-        // the next document save, and the stale recovery blob lingers remotely.
+        // Sync re-encrypted vault and revoked recovery blob to GitHub immediately.
         if (await window.GitHubSync.isConfigured()) {
             try {
                 await window.DocStorage.queueSync(documents, { securityMeta: window.GitHubSync._getLocalSecurityMeta() }, { failurePrefix: 'Password changed locally, but GitHub sync failed' });
@@ -369,8 +379,7 @@ window.savePasswordHint = async function() {
     window.LocalAuth.setHint(text);
     window.LocalAuth.setHintSync(syncOn);
     if (window.updateLockSecurityState) window.updateLockSecurityState();
-    // Push either way: when sync is off this clears the public copy from GitHub
-    // (the meta builder sends an empty hint), when on it publishes the new hint.
+    // Push hint state to GitHub immediately.
     if (await window.GitHubSync.isConfigured()) {
         window.DocStorage.queueSync(
             documents,
@@ -423,9 +432,7 @@ window.recoverVault = async function() {
     setButtonBusy(btn, true, 'Recovering vault…');
     try {
         const password = await window.LocalAuth.recoverWithCode(code);
-        // Guard against a stale recovery blob (e.g. one generated before the master
-        // password was changed): the recovered password must match the CURRENT vault
-        // hash, otherwise unlocking would decrypt nothing and look like data loss.
+        // Guard against stale recovery blob after password change.
         const storedHash = localStorage.getItem(window.LocalAuth.HASH_KEY);
         if (storedHash) {
             if (!(await window.LocalAuth.verifyPassword(password, storedHash))) {

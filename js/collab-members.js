@@ -242,9 +242,13 @@
             </div>`;
         }
 
+        const currentMember = getCurrentMember();
+        const currentUid = currentMember ? currentMember.uid : null;
+
         const memberRowsHtml = members.map(m => {
             const isTargetOwner = m.role === 'owner';
             const showControls = currentIsOwner && !isTargetOwner;
+            const isYou = Boolean(currentUid && m.uid === currentUid);
             return `
             <div class="flex items-center justify-between p-2.5 rounded-lg text-xs" style="background:var(--card);border:1px solid var(--brd);">
                 <div class="flex items-center gap-2.5 min-w-0">
@@ -252,7 +256,7 @@
                         ${esc((m.displayName || m.email || 'U')[0].toUpperCase())}
                     </div>
                     <div class="min-w-0">
-                        <div class="font-medium truncate" style="color:var(--tx);">${esc(m.displayName || m.email)}</div>
+                        <div class="font-medium truncate" style="color:var(--tx);">${esc(m.displayName || m.email)}${isYou ? ' <span class="text-[10px] font-normal" style="color:var(--tx-d);">(You)</span>' : ''}</div>
                         <div class="text-[10px] truncate" style="color:var(--tx-d);">${esc(m.email)}</div>
                     </div>
                 </div>
