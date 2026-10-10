@@ -7,21 +7,72 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-test('production headers enforce a strict script policy and browser hardening', () => {
-    const headers = read('_headers');
-    assert.match(headers, /^\/\*$/m);
-    assert.match(headers, /Content-Security-Policy: .*default-src 'self'/);
-    assert.match(headers, /script-src 'self'/);
-    assert.match(headers, /script-src-attr 'none'/);
-    assert.doesNotMatch(headers.match(/Content-Security-Policy: ([^\r\n]+)/)?.[1] || '', /script-src[^;]*'unsafe-inline'/);
-    for (const header of [
+function parseHeadersFile(content) {
+    const map = {};
+    for (const line of content.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        const colonIdx = trimmed.indexOf(':');
+        if (colonIdx > 0 && !trimmed.startsWith('/*')) {
+            const key = trimmed.slice(0, colonIdx).trim();
+            const val = trimmed.slice(colonIdx + 1).trim();
+            map[key] = val;
+        }
+    }
+    return map;
+}
+
+function parseFirebaseJsonHeaders(content) {
+    const parsed = JSON.parse(content);
+    const headersList = parsed?.hosting?.headers?.[0]?.headers || [];
+    const map = {};
+    for (const item of headersList) {
+        map[item.key] = item.value;
+    }
+    return map;
+}
+
+test('production headers enforce a strict script policy and browser hardening across _headers and firebase.json', () => {
+    const headersRaw = read('_headers');
+    assert.match(headersRaw, /^\/\*$/m);
+
+    const headersFile = parseHeadersFile(headersRaw);
+    const firebaseJson = parseFirebaseJsonHeaders(read('firebase.json'));
+
+    const requiredHeaders = [
+        'Content-Security-Policy',
         'Strict-Transport-Security',
-        'X-Content-Type-Options: nosniff',
-        'X-Frame-Options: DENY',
-        'Referrer-Policy: strict-origin-when-cross-origin',
-        'Permissions-Policy:',
-        'Cross-Origin-Opener-Policy: same-origin'
-    ]) assert.ok(headers.includes(header), `Missing required security header: ${header}`);
+        'X-Content-Type-Options',
+        'X-Frame-Options',
+        'Referrer-Policy',
+        'Permissions-Policy',
+        'Cross-Origin-Opener-Policy'
+    ];
+
+    for (const headerKey of requiredHeaders) {
+        assert.ok(headersFile[headerKey], `_headers missing required header: ${headerKey}`);
+        assert.ok(firebaseJson[headerKey], `firebase.json missing required header: ${headerKey}`);
+        assert.equal(
+            firebaseJson[headerKey],
+            headersFile[headerKey],
+            `Header mismatch between _headers and firebase.json for ${headerKey}`
+        );
+    }
+
+    for (const [sourceName, headerMap] of [['_headers', headersFile], ['firebase.json', firebaseJson]]) {
+        const csp = headerMap['Content-Security-Policy'];
+        assert.match(csp, /default-src 'self'/, `${sourceName}: CSP must include default-src 'self'`);
+        assert.match(csp, /script-src 'self'/, `${sourceName}: CSP must include script-src 'self'`);
+        assert.match(csp, /script-src-attr 'none'/, `${sourceName}: CSP must include script-src-attr 'none'`);
+        assert.match(csp, /frame-src 'none'/, `${sourceName}: CSP must include frame-src 'none'`);
+        assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/, `${sourceName}: CSP script-src must not allow 'unsafe-inline'`);
+
+        assert.equal(headerMap['Cross-Origin-Opener-Policy'], 'same-origin', `${sourceName}: COOP must be same-origin`);
+        assert.match(headerMap['Strict-Transport-Security'], /max-age=\d+; includeSubDomains/, `${sourceName}: HSTS must include max-age and includeSubDomains`);
+        assert.equal(headerMap['X-Content-Type-Options'], 'nosniff', `${sourceName}: X-Content-Type-Options must be nosniff`);
+        assert.equal(headerMap['X-Frame-Options'], 'DENY', `${sourceName}: X-Frame-Options must be DENY`);
+        assert.equal(headerMap['Referrer-Policy'], 'strict-origin-when-cross-origin', `${sourceName}: Referrer-Policy must be strict-origin-when-cross-origin`);
+        assert.match(headerMap['Permissions-Policy'], /camera=\(\)/, `${sourceName}: Permissions-Policy must disable camera`);
+    }
 });
 
 test('runtime contains no CSP-blocked inline scripts or native event attributes', () => {

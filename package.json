@@ -13,6 +13,7 @@
     "build": "vite build",
     "build:css": "tailwindcss -i ./src/input.css -o ./vendor/tailwind/tailwind.generated.css --minify",
     "build:pages": "node scripts/build-pages.mjs",
+    "build:team": "node scripts/build-team.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {

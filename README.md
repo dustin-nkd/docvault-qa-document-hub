@@ -18,9 +18,20 @@
 
 **DocVault — QA Document Hub** is a powerful, offline-first web application built for QA Engineers, Testers, and Developers. It provides a unified workspace to draft bug reports, manage test credentials, execute test runs, organize API specs, track tasks on a Kanban board, and much more — all running locally in your browser without any backend server.
 
-Originally a Chrome Extension, DocVault has been migrated to a standalone **Web App** deployed via **GitHub Pages**, making it accessible from any modern browser.
+Originally a Chrome Extension, DocVault has evolved into a full-featured web hub with two distinct editions sharing a single codebase:
 
-> **Live Demo:** [https://dustin-nkd.github.io/docvault-qa-document-hub/](https://dustin-nkd.github.io/docvault-qa-document-hub/)
+### 🌐 Two Editions & Access Models
+
+| Dimension | Personal Edition | Team Collaboration Edition |
+|---|---|---|
+| **URL** | [https://dustin-nkd.github.io/docvault-qa-document-hub/](https://dustin-nkd.github.io/docvault-qa-document-hub/) | [https://docvault-qa-team.web.app/](https://docvault-qa-team.web.app/) |
+| **Authentication & Gate** | **Master Password** (local AES-256-GCM vault) | **Google Sign-In** (`signInWithRedirect` via Firebase Auth) |
+| **Data Storage** | Browser `localStorage` + GitHub repo (`docvault-assets`) | **Cloud Firestore** (`asia-southeast1`) with offline cache |
+| **Sync Model** | GitHub Contents API via Personal Access Token (PAT) | Real-time `onSnapshot` listeners + multi-user sync |
+| **Collaboration Roles** | Single-user personal vault | Role-based permissions (**Owner**, **Editor**, **Viewer**) |
+| **Image Hosting** | Pasted inline base64 or GitHub CDN | Firestore `images` collection (max 700 KB per image) |
+| **Shared Links** | E2E encrypted GitHub blobs (`#key=...`) | E2E encrypted Firestore share docs (`#key=...`) |
+| **Deployment** | GitHub Pages via `_site` artifact | Firebase Hosting via `_site-team` artifact |
 
 ---
 
@@ -252,7 +263,20 @@ docvault-qa-document-hub/
 
 ## 🚢 Deployment
 
-The app is auto-deployed to **GitHub Pages** on every push to `main` via the [deploy.yml](.github/workflows/deploy.yml) workflow using `peaceiris/actions-gh-pages@v4`.
+DocVault uses two dedicated, independent deployment workflows triggered on `push` to `main`:
+
+1. **GitHub Pages (Personal Edition)**:
+   - Workflow: [.github/workflows/deploy.yml](.github/workflows/deploy.yml)
+   - Builds CSS with Tailwind and packages the production artifact into `_site` via `npm run build:pages`.
+   - Runs Playwright browser regression tests.
+   - Deploys `_site` to the `gh-pages` branch using `peaceiris/actions-gh-pages@v4`.
+   - Accessible at [https://dustin-nkd.github.io/docvault-qa-document-hub/](https://dustin-nkd.github.io/docvault-qa-document-hub/).
+
+2. **Firebase Hosting (Team Edition)**:
+   - Workflow: [.github/workflows/deploy-team.yml](.github/workflows/deploy-team.yml)
+   - Packages the team artifact into `_site-team` via `npm run build:team`, which writes `js/edition.js` (`DOCVAULT_EDITION = "team"`).
+   - Deploys hosting and Firestore rules using `npx firebase-tools deploy --only hosting,firestore:rules` authenticated with `FIREBASE_TOKEN`.
+   - Accessible at [https://docvault-qa-team.web.app/](https://docvault-qa-team.web.app/).
 
 ---
 

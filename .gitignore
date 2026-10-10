@@ -2,6 +2,7 @@ node_modules/
 .github-test-token
 dist/
 _site/
+_site-team/
 
 # Sensitive service account, environment, and token files
 *service-account*.json

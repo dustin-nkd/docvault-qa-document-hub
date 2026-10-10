@@ -101,9 +101,25 @@ assert(fs.existsSync(path.join(root, mainImport[1])), 'main.js imports a missing
 const workflow = read('.github/workflows/deploy.yml');
 assert(/publish_dir:\s*\.\/_site/.test(workflow), 'Production deploy must publish only the generated _site artifact');
 assert(!/publish_dir:\s*\.\/\s*$/m.test(workflow), 'Production deploy must not publish the repository root');
+assert(/publish_branch:\s*gh-pages/.test(workflow), 'Pages deploy must publish to gh-pages branch');
 assert(/run:\s*npm ci/.test(workflow), 'Production must install the committed lockfile with npm ci');
 assert(/run:\s*npm run build:css/.test(workflow), 'Production must use the local Tailwind build script');
 assert(!/npx\s+tailwind/i.test(workflow), 'Production must not download Tailwind through npx');
+
+const teamWorkflow = read('.github/workflows/deploy-team.yml');
+assert(/branches:\s*[\r\n\s]*- main/.test(teamWorkflow), 'Team deploy workflow must only trigger on main branch');
+assert(/run:\s*npm ci/.test(teamWorkflow), 'Team deploy must install dependencies with npm ci');
+assert(/run:\s*npm run check/.test(teamWorkflow), 'Team deploy must run quality check');
+assert(/run:\s*npm run build:css/.test(teamWorkflow), 'Team deploy must build css');
+assert(/run:\s*npm run build:pages/.test(teamWorkflow), 'Team deploy must build pages artifact');
+assert(/run:\s*npm run build:team/.test(teamWorkflow), 'Team deploy must build team artifact');
+assert(/firebase-tools deploy --only hosting,firestore:rules --project docvault-qa-team --non-interactive/.test(teamWorkflow), 'Team deploy must deploy hosting and firestore:rules');
+assert(/FIREBASE_TOKEN:\s*\${{\s*secrets\.FIREBASE_TOKEN\s*}}/.test(teamWorkflow), 'Team deploy must use secrets.FIREBASE_TOKEN');
+
+const firebaseConfig = JSON.parse(read('firebase.json'));
+assert(firebaseConfig.hosting && firebaseConfig.hosting.public === '_site-team', 'Firebase hosting must publish _site-team directory');
+assert(!fs.existsSync(path.join(root, 'js/edition.js')), 'js/edition.js must not be committed to source');
+assert(!read('scripts/build-pages.mjs').includes('edition.js'), 'build-pages.mjs must not produce or reference edition.js');
 
 const html = read('index.html');
 assert(/<html\s+lang=["']en["']/.test(html), 'index.html must declare lang="en"');

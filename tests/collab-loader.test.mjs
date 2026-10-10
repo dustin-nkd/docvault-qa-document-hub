@@ -108,6 +108,57 @@ test('js/collab-config.js evaluates edition flags, guest mode, and hostname dyna
     assert.equal(ctx.window.CollabConfig.isCollabMode(), true);
 });
 
+test('Phase 12 two-edition activation contract: COLLAB_MODE activates strictly on team hosting with edition and turns off on github.io, guest mode, or localhost without edition', () => {
+    const source = read('js/collab-config.js');
+
+    function createCollabEnv(opts = {}) {
+        const ctx = {
+            URLSearchParams,
+            window: {
+                DOCVAULT_EDITION: opts.edition,
+                location: {
+                    hostname: opts.hostname || 'localhost',
+                    search: opts.search || ''
+                }
+            }
+        };
+        ctx.globalThis = ctx.window;
+        vm.runInNewContext(source, ctx);
+        return ctx.window;
+    }
+
+    // 1. Turns on for docvault-qa-team.web.app with DOCVAULT_EDITION = "team"
+    const teamWebApp = createCollabEnv({ hostname: 'docvault-qa-team.web.app', edition: 'team' });
+    assert.equal(teamWebApp.COLLAB_MODE, true, 'docvault-qa-team.web.app with edition team must be true');
+    assert.equal(teamWebApp.CollabConfig.isCollabMode(), true);
+
+    // 2. Turns on for docvault-qa-team.firebaseapp.com with DOCVAULT_EDITION = "team"
+    const teamFirebaseApp = createCollabEnv({ hostname: 'docvault-qa-team.firebaseapp.com', edition: 'team' });
+    assert.equal(teamFirebaseApp.COLLAB_MODE, true, 'docvault-qa-team.firebaseapp.com with edition team must be true');
+    assert.equal(teamFirebaseApp.CollabConfig.isCollabMode(), true);
+
+    // 3. Turns off on dustin-nkd.github.io even if edition is "team"
+    const githubPages = createCollabEnv({ hostname: 'dustin-nkd.github.io', edition: 'team' });
+    assert.equal(githubPages.COLLAB_MODE, false, 'dustin-nkd.github.io must always have COLLAB_MODE = false');
+    assert.equal(githubPages.CollabConfig.isCollabMode(), false);
+
+    // 4. Turns off with ?guest=1 query even on team hostname and edition
+    const guestTeam = createCollabEnv({ hostname: 'docvault-qa-team.web.app', edition: 'team', search: '?guest=1' });
+    assert.equal(guestTeam.COLLAB_MODE, false, 'team hostname with ?guest=1 must have COLLAB_MODE = false');
+    assert.equal(guestTeam.CollabConfig.isCollabMode(), false);
+    assert.equal(guestTeam.CollabConfig.isGuestMode(), true);
+
+    // 5. Turns off on localhost without DOCVAULT_EDITION
+    const localhostNoEdition = createCollabEnv({ hostname: 'localhost' });
+    assert.equal(localhostNoEdition.COLLAB_MODE, false, 'localhost without DOCVAULT_EDITION must be false');
+    assert.equal(localhostNoEdition.CollabConfig.isCollabMode(), false);
+
+    // 6. Turns off on localhost even with DOCVAULT_EDITION = "team"
+    const localhostWithEdition = createCollabEnv({ hostname: 'localhost', edition: 'team' });
+    assert.equal(localhostWithEdition.COLLAB_MODE, false, 'localhost with edition team must be false (not on team hosting)');
+    assert.equal(localhostWithEdition.CollabConfig.isCollabMode(), false);
+});
+
 test('ensureFirebase() creates same-origin script tags, memoizes shared promise, and rejects in guest mode', async () => {
     const loaderSource = read('js/collab-loader.js');
 
