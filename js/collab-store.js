@@ -309,18 +309,18 @@
 
     async function recordActivity(entry, doc) {
         if (isGuestMode() || !isCollabMode() || !entry) return;
-        const member = root.CollabBootstrap?.getCurrentMember?.();
-        const role = member?.role;
+        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role;
         if (role !== 'editor' && role !== 'owner') return;
         const user = getCurrentUser(); if (!user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) return;
-        const actId = String(entry.id || ('act_' + Date.now())), actorName = member.displayName || member.name || member.email || '';
+        const actId = String(entry.id || ('act_' + Date.now())), actorEmail = member?.email || user.email || '';
+        const actorName = member?.displayName || user?.displayName || member?.name || member?.email || '';
         const payload = {
             id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated',
             docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '',
-            actorUid: user.uid, actorName
+            actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {})
         };
         try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
     }

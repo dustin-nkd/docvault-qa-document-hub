@@ -144,7 +144,7 @@ for (const name of fs.readdirSync(path.join(root, 'js'))) {
     if (!name.endsWith('.js')) continue;
     for (const match of read('js/' + name).matchAll(/\bsrc\s*=\s*['"](js\/[^'"]+)['"]/g)) dynamicJsLoads.push(match[1]);
 }
-assert(dynamicJsLoads.includes('js/collab-viewer.js') && dynamicJsLoads.includes('js/collab-workspaces.js'), 'collab-bootstrap must keep its dynamic viewer and workspace script loads');
+assert(dynamicJsLoads.includes('js/collab-viewer.js') && dynamicJsLoads.includes('js/collab-workspaces.js') && dynamicJsLoads.includes('js/collab-activity.js'), 'collab-bootstrap must keep its dynamic viewer, workspace, and activity script loads');
 for (const buildName of ['scripts/build-pages.mjs', 'scripts/build-team.mjs']) {
     assert(read(buildName).includes("relativePath.startsWith('js/')"), buildName + ' must copy dynamically loaded js/ scripts into the hosting artifact');
 }

@@ -212,6 +212,8 @@ test('ActivityLog.record: editor/owner records to activity/{id} with auth.uid, n
     assert.equal(entry.id, actId);
     assert.equal(entry.actorUid, 'ed-uid-456', 'actorUid must strictly match auth.uid');
     assert.equal(entry.actorName, 'Alice Editor', 'actorName must match member displayName');
+    assert.equal(entry.actorEmail, 'user@example.com', 'actorEmail must match member email');
+    assert.equal(entry.note, 'initial', 'note must be preserved in payload');
     assert.equal(entry.action, 'created');
     assert.equal(entry.docId, 'doc-1');
     assert.equal(entry.title, 'Test Document');
