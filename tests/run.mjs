@@ -13,3 +13,4 @@ import './markup-helpers.test.mjs';
 import './interaction-contract.test.mjs';
 import './api-test-case.test.mjs';
 import './runtime-performance.test.mjs';
+import './testplan-view.test.mjs';
