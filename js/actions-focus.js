@@ -114,7 +114,7 @@ window.showFocusWorkflowModal = function(docId, signalKey) {
                 <div><p>${t('focusWorkflow')}</p><h3>${escHtml(doc.title)}</h3></div>
             </div>
             <label>${t('focusOwner')}</label>
-            <input id="focus-owner" class="form-input w-full" maxlength="80" value="${escHtml(workflow.owner)}" placeholder="${escHtml(t('focusOwnerPlaceholder'))}">
+            ${window.CollabAssign?.renderFocusOwnerField ? window.CollabAssign.renderFocusOwnerField(workflow) : `<input id="focus-owner" class="form-input w-full" maxlength="80" value="${escHtml(workflow.owner)}" placeholder="${escHtml(t('focusOwnerPlaceholder'))}">`}
             <div class="focus-workflow-date-grid">
                 <div>
                     <label>${t('focusDueDate')}</label>
@@ -136,7 +136,11 @@ window.showFocusWorkflowModal = function(docId, signalKey) {
 window.saveFocusWorkflow = async function(docId, signalKey) {
     const target = _focusWorkflowTarget(docId, signalKey);
     if (!target) return;
-    const owner = (document.getElementById('focus-owner')?.value || '').trim().slice(0, 80);
+    const oldUid = target.workflow?.ownerUid || '';
+    const rawOwner = (document.getElementById('focus-owner')?.value || '').trim();
+    const res = window.CollabAssign?.resolveMember ? window.CollabAssign.resolveMember(rawOwner) : { label: rawOwner, uid: '' };
+    const owner = (res.label || '').slice(0, 80);
+    const ownerUid = res.uid || '';
     const dueDate = document.getElementById('focus-due-date')?.value || '';
     const snoozedUntil = document.getElementById('focus-snooze-until')?.value || '';
     if (snoozedUntil) {
@@ -145,8 +149,9 @@ window.saveFocusWorkflow = async function(docId, signalKey) {
             return;
         }
     }
-    setFocusWorkflow(target.doc, signalKey, { owner, dueDate, snoozedUntil });
+    setFocusWorkflow(target.doc, signalKey, { owner, ownerUid, dueDate, snoozedUntil });
     await persist();
+    window.CollabAssign?.notifyAssignment?.({ doc: target.doc, kind: 'focus', signalKey, oldUid, newUid: ownerUid });
     closeModal();
     renderContent();
     toast(t('focusWorkflowSaved'), 'success');

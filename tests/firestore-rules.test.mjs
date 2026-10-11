@@ -995,3 +995,244 @@ test('Branch 13 (workspaces): denies delete of default, denies delete by editor/
     await assertFails(owner.collection('workspaces').doc('default').delete());
 });
 
+// ---------------------------------------------------------------------------
+// 14. notifications/{notifId}
+// ---------------------------------------------------------------------------
+test('Branch 14 (notifications): allows recipient member read/list, denies list without recipient filter and stranger read', async () => {
+    // Seed members and a notification
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('recipient-uid').set({ uid: 'recipient-uid', role: 'viewer', email: 'recip@example.com' });
+        await db.collection('members').doc('other-uid').set({ uid: 'other-uid', role: 'editor', email: 'other@example.com' });
+        await db.collection('notifications').doc('notif-1').set({
+            recipientUid: 'recipient-uid',
+            actorUid: 'owner-uid',
+            actorName: 'Team Owner',
+            actorEmail: 'owner@example.com',
+            docId: 'doc-1',
+            docTitle: 'Bug title',
+            kind: 'bug',
+            signalKey: '',
+            createdAt: 1000,
+            readAt: null
+        });
+    });
+
+    const recipient = testEnv.authenticatedContext('recipient-uid', { email: 'recip@example.com' }).firestore();
+    const other = testEnv.authenticatedContext('other-uid', { email: 'other@example.com' }).firestore();
+    const stranger = testEnv.authenticatedContext('stranger-uid', { email: 'stranger@example.com' }).firestore();
+    const unauthed = testEnv.unauthenticatedContext().firestore();
+
+    // 1. Recipient can get their notification
+    const snap = await assertSucceeds(recipient.collection('notifications').doc('notif-1').get());
+    assert.equal(snap.exists, true);
+
+    // 2. Recipient can query their notifications with where recipientUid == auth.uid
+    const listSnap = await assertSucceeds(recipient.collection('notifications').where('recipientUid', '==', 'recipient-uid').get());
+    assert.equal(listSnap.docs.length, 1);
+
+    // 3. Querying without filtering recipientUid is DENIED
+    await assertFails(recipient.collection('notifications').get());
+
+    // 4. Other member cannot read recipient's notification
+    await assertFails(other.collection('notifications').doc('notif-1').get());
+    await assertFails(other.collection('notifications').where('recipientUid', '==', 'recipient-uid').get());
+
+    // 5. Stranger and unauthed cannot read
+    await assertFails(stranger.collection('notifications').doc('notif-1').get());
+    await assertFails(stranger.collection('notifications').where('recipientUid', '==', 'recipient-uid').get());
+    await assertFails(unauthed.collection('notifications').doc('notif-1').get());
+});
+
+test('Branch 14 (notifications): allows editor/owner create matching saved doc, denies self-assignment, viewer create, and doc mismatch', async () => {
+    // Seed members and documents
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('editor-uid').set({ uid: 'editor-uid', role: 'editor', email: 'ed@example.com' });
+        await db.collection('members').doc('viewer-uid').set({ uid: 'viewer-uid', role: 'viewer', email: 'vw@example.com' });
+        await db.collection('documents').doc('bug-doc').set({
+            id: 'bug-doc',
+            title: 'Bug Document',
+            category: 'bug',
+            bugData: { assignee: 'Viewer (vw@example.com)', assigneeUid: 'viewer-uid' }
+        });
+        await db.collection('documents').doc('focus-doc').set({
+            id: 'focus-doc',
+            title: 'Focus Document',
+            category: 'task',
+            focusWorkflow: {
+                critical: { owner: 'Viewer (vw@example.com)', ownerUid: 'viewer-uid' }
+            }
+        });
+    });
+
+    const editor = testEnv.authenticatedContext('editor-uid', { email: 'ed@example.com' }).firestore();
+    const owner = testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' }).firestore();
+    const viewer = testEnv.authenticatedContext('viewer-uid', { email: 'vw@example.com' }).firestore();
+
+    // 1. Editor creates valid bug notification for viewer
+    await assertSucceeds(editor.collection('notifications').doc('notif-bug-1').set({
+        recipientUid: 'viewer-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'bug-doc',
+        docTitle: 'Bug Document',
+        kind: 'bug',
+        signalKey: '',
+        createdAt: 2000,
+        readAt: null
+    }));
+
+    // 2. Owner creates valid focus notification for viewer
+    await assertSucceeds(owner.collection('notifications').doc('notif-focus-1').set({
+        recipientUid: 'viewer-uid',
+        actorUid: 'owner-uid',
+        actorName: 'Team Owner',
+        actorEmail: 'owner@example.com',
+        docId: 'focus-doc',
+        docTitle: 'Focus Document',
+        kind: 'focus',
+        signalKey: 'critical',
+        createdAt: 2001,
+        readAt: null
+    }));
+
+    // 3. Self-assignment (recipientUid == actorUid) is DENIED
+    await assertFails(editor.collection('notifications').doc('notif-self').set({
+        recipientUid: 'editor-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'bug-doc',
+        docTitle: 'Bug Document',
+        kind: 'bug',
+        signalKey: '',
+        createdAt: 2002,
+        readAt: null
+    }));
+
+    // 4. Viewer cannot create notifications
+    await assertFails(viewer.collection('notifications').doc('notif-vw').set({
+        recipientUid: 'editor-uid',
+        actorUid: 'viewer-uid',
+        actorName: 'Viewer',
+        actorEmail: 'vw@example.com',
+        docId: 'bug-doc',
+        docTitle: 'Bug Document',
+        kind: 'bug',
+        signalKey: '',
+        createdAt: 2003,
+        readAt: null
+    }));
+
+    // 5. Recipient who is NOT a member in members collection is DENIED
+    await assertFails(editor.collection('notifications').doc('notif-nonmember').set({
+        recipientUid: 'ghost-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'bug-doc',
+        docTitle: 'Bug Document',
+        kind: 'bug',
+        signalKey: '',
+        createdAt: 2004,
+        readAt: null
+    }));
+
+    // 6. Bug notification with recipient that does not match saved doc assigneeUid is DENIED
+    await assertFails(editor.collection('notifications').doc('notif-mismatch').set({
+        recipientUid: 'owner-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'bug-doc',
+        docTitle: 'Bug Document',
+        kind: 'bug',
+        signalKey: '',
+        createdAt: 2005,
+        readAt: null
+    }));
+
+    // 7. readAt must be null on creation
+    await assertFails(editor.collection('notifications').doc('notif-read-initial').set({
+        recipientUid: 'viewer-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'bug-doc',
+        docTitle: 'Bug Document',
+        kind: 'bug',
+        signalKey: '',
+        createdAt: 2006,
+        readAt: 2006
+    }));
+});
+
+test('Branch 14 (notifications): allows recipient to transition readAt null to int, denies repeated update, field tampering, and delete', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('recipient-uid').set({ uid: 'recipient-uid', role: 'viewer', email: 'recip@example.com' });
+        await db.collection('members').doc('other-uid').set({ uid: 'other-uid', role: 'editor', email: 'other@example.com' });
+        await db.collection('notifications').doc('notif-unread').set({
+            recipientUid: 'recipient-uid',
+            actorUid: 'owner-uid',
+            actorName: 'Team Owner',
+            actorEmail: 'owner@example.com',
+            docId: 'doc-1',
+            docTitle: 'Title',
+            kind: 'bug',
+            signalKey: '',
+            createdAt: 1000,
+            readAt: null
+        });
+        await db.collection('notifications').doc('notif-already-read').set({
+            recipientUid: 'recipient-uid',
+            actorUid: 'owner-uid',
+            actorName: 'Team Owner',
+            actorEmail: 'owner@example.com',
+            docId: 'doc-2',
+            docTitle: 'Title 2',
+            kind: 'bug',
+            signalKey: '',
+            createdAt: 1000,
+            readAt: 1500
+        });
+    });
+
+    const recipient = testEnv.authenticatedContext('recipient-uid', { email: 'recip@example.com' }).firestore();
+    const other = testEnv.authenticatedContext('other-uid', { email: 'other@example.com' }).firestore();
+    const owner = testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' }).firestore();
+
+    // 1. Recipient updates readAt from null to int: SUCCEEDS
+    await assertSucceeds(recipient.collection('notifications').doc('notif-unread').update({
+        readAt: 2500
+    }));
+
+    // 2. Recipient updating readAt when it is already set is DENIED
+    await assertFails(recipient.collection('notifications').doc('notif-already-read').update({
+        readAt: 3000
+    }));
+
+    // 3. Recipient modifying other fields (e.g. docTitle) is DENIED
+    await assertFails(recipient.collection('notifications').doc('notif-unread').update({
+        docTitle: 'Hacked title'
+    }));
+
+    // 4. Other member cannot update recipient's notification
+    await assertFails(other.collection('notifications').doc('notif-already-read').update({
+        readAt: 4000
+    }));
+
+    // 5. Delete is DENIED for all roles (recipient, other, even team owner)
+    await assertFails(recipient.collection('notifications').doc('notif-unread').delete());
+    await assertFails(other.collection('notifications').doc('notif-unread').delete());
+    await assertFails(owner.collection('notifications').doc('notif-unread').delete());
+});
+

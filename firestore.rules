@@ -228,5 +228,35 @@ service cloud.firestore {
         resource.data.docCount is int &&
         resource.data.docCount == 0;
     }
+
+    // 10. notifications/{notifId}: Task assignment notifications
+    match /notifications/{notifId} {
+      allow read: if isMember() && resource.data.recipientUid == request.auth.uid;
+      allow create: if isEditorOrOwner() &&
+        request.resource.data.actorUid == request.auth.uid &&
+        request.resource.data.recipientUid != request.auth.uid &&
+        exists(/databases/$(database)/documents/members/$(request.resource.data.recipientUid)) &&
+        request.resource.data.readAt == null &&
+        request.resource.data.createdAt is int &&
+        (
+          (request.resource.data.kind == 'bug' &&
+           request.resource.data.signalKey == '' &&
+           exists(/databases/$(database)/documents/documents/$(request.resource.data.docId)) &&
+           'bugData' in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data &&
+           get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.bugData.assigneeUid == request.resource.data.recipientUid) ||
+          (request.resource.data.kind == 'focus' &&
+           request.resource.data.signalKey in ['critical', 'retest', 'release', 'task', 'stale'] &&
+           exists(/databases/$(database)/documents/documents/$(request.resource.data.docId)) &&
+           'focusWorkflow' in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data &&
+           request.resource.data.signalKey in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.focusWorkflow &&
+           get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.focusWorkflow[request.resource.data.signalKey].ownerUid == request.resource.data.recipientUid)
+        );
+      allow update: if isMember() &&
+        resource.data.recipientUid == request.auth.uid &&
+        resource.data.readAt == null &&
+        request.resource.data.readAt is int &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
+      allow delete: if false;
+    }
   }
 }

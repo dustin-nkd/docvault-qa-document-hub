@@ -254,9 +254,10 @@
             if (res.status === 'owner' || res.status === 'member') {
                 renderCollabMe(user, res.member);
                 updateSidebarLockToSignOut();
-                await Promise.all([loadCollabViewer(), loadCollabWorkspaces(), loadCollabActivity()]);
+                await Promise.all([loadCollabViewer(), loadCollabWorkspaces(), loadCollabActivity(), loadCollabAssign()]);
                 await root.CollabWorkspaces?.loadWorkspaces?.();
                 root.CollabActivity?.startListening?.();
+                root.CollabAssign?.startListening?.();
                 root.CollabViewer?.applyViewerRestrictions?.();
                 const ls = document.getElementById('lock-screen');
                 if (ls) ls.classList.add('hidden');
@@ -307,10 +308,17 @@
         return _loadScript(s.src);
     }
 
+    function loadCollabAssign() {
+        if (root.CollabAssign) return Promise.resolve();
+        let s = {}; s.src = 'js/collab-assign.js';
+        return _loadScript(s.src);
+    }
+
     function start() {
         loadCollabViewer();
         loadCollabWorkspaces();
         loadCollabActivity();
+        loadCollabAssign();
         showCollabLockScreen('signin');
         updateSidebarLockToSignOut();
 
@@ -339,15 +347,10 @@
         }
         _currentMember = null;
         root.CollabViewer?.applyViewerRestrictions?.();
-        if (root.CollabStore?.stopListening) {
-            root.CollabStore.stopListening();
-        }
-        if (root.CollabWorkspaces?.stopListening) {
-            root.CollabWorkspaces.stopListening();
-        }
-        if (root.CollabActivity?.stopListening) {
-            root.CollabActivity.stopListening();
-        }
+        if (root.CollabStore?.stopListening) root.CollabStore.stopListening();
+        if (root.CollabWorkspaces?.stopListening) root.CollabWorkspaces.stopListening();
+        if (root.CollabActivity?.stopListening) root.CollabActivity.stopListening();
+        if (root.CollabAssign?.stopListening) root.CollabAssign.stopListening();
         if (root.CollabAuth?.signOutUser) {
             await root.CollabAuth.signOutUser().catch(() => {});
         }
@@ -367,6 +370,7 @@
         loadCollabViewer,
         loadCollabWorkspaces,
         loadCollabActivity,
+        loadCollabAssign,
         applyViewerRestrictions: () => root.CollabViewer?.applyViewerRestrictions?.(),
         getCurrentMember: () => _currentMember
     };
@@ -384,4 +388,5 @@
     loadCollabViewer();
     loadCollabWorkspaces();
     loadCollabActivity();
+    loadCollabAssign();
 })(typeof window !== 'undefined' ? window : globalThis);
