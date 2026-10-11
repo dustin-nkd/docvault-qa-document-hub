@@ -348,6 +348,7 @@ const STRINGS = {
     dbPassRate: 'Pass rate', dbOpenBugs: 'Open bugs', dbActiveWork: 'Active work', dbCoverage: 'Test coverage',
     dbAcrossRuns: 'Across {n} runs', dbNoRuns: 'No completed runs yet', dbCritical: '{n} critical',
     dbInProgressReview: 'In progress + review', dbCasesCovered: '{covered} of {total} cases covered',
+    dbNotInRun: '{n} not in a run', dbAllCasesInRun: 'All cases are in a run.',
     dbSnapshot: 'Release snapshot', dbSnapshotSub: 'One current-state card for each QA decision area.',
     dbDefectRisk: 'Defect risk', dbDeliveryFlow: 'Delivery flow', dbActiveBugs: 'Active',
     dbQualityHealth: 'Execution health', dbQualityHealthSub: 'Current delivery signals, without document-management noise.',

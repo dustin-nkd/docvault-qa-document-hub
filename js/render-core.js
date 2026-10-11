@@ -450,9 +450,16 @@ function _getDashboardMetrics(docs) {
         if (coveredIds.has(tc.id)) modMap[m].covered++;
     });
     const coverage = Object.entries(modMap)
-        .map(([name, { total, covered }]) => ({ name, total, covered, pct: Math.round(covered / total * 100) }))
-        .sort((a, b) => b.pct - a.pct)
-        .slice(0, 4);
+        .map(([name, { total, covered }]) => ({
+            name,
+            total,
+            covered,
+            uncovered: total - covered,
+            pct: Math.round(covered / total * 100)
+        }))
+        .filter(m => m.pct < 100)
+        .sort((a, b) => (b.uncovered - a.uncovered) || (a.pct - b.pct) || a.name.localeCompare(b.name))
+        .slice(0, 3);
 
     return { bugs, openBugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage, criticalAging };
 }
@@ -535,11 +542,14 @@ function _renderInsightCards(m) {
                 <strong style="color:${coverageColor};">${coverageRate !== null ? coverageRate + '%' : '—'}</strong>
                 <small>${t('dbCasesCovered', { covered: coveredCases, total: m.tcs.length })}</small>
                 <span class="insight-modules">
-                    ${m.coverage.length === 0 ? `<span class="insight-empty">${t('trDocEmpty', { range: t('trAllRange') })}</span>` : m.coverage.slice(0, 3).map(module => `
-                        <span class="insight-module-row">
-                            <em title="${escHtml(module.name)}">${escHtml(module.name)}</em>
-                            <i><b style="width:${module.pct}%;background:${module.pct >= 80 ? '#34d399' : module.pct >= 50 ? '#fb923c' : '#f87171'};"></b></i>
-                            <strong>${module.pct}%</strong>
+                    ${m.tcs.length === 0
+                        ? `<span class="insight-empty">${t('trDocEmpty', { range: t('trAllRange') })}</span>`
+                        : m.coverage.length === 0
+                            ? `<span class="insight-empty">${t('dbAllCasesInRun')}</span>`
+                            : m.coverage.slice(0, 3).map(module => `
+                        <span class="insight-module-row" style="display:flex;justify-content:space-between;align-items:center;">
+                            <em title="${escHtml(module.name)}" style="min-width:0;">${escHtml(module.name)}</em>
+                            <strong style="flex-shrink:0;margin-left:8px;">${t('dbNotInRun', { n: module.uncovered })}</strong>
                         </span>`).join('')}
                 </span>
             </button>
