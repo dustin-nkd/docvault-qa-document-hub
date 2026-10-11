@@ -124,11 +124,7 @@ window.resolveBug = async function(id, resolution, targetStatus) {
     toast(`${normalizeBugStatusValue(doc.bugStatus) === 'closed' ? 'Bug closed' : 'Bug resolved'}: ${label}`, 'info');
 };
 
-// Bug-duplicate picker (Sprint 15, 15-3): duplicateOf was a free-typed string
-// via prompt() and, as it turned out, never actually rendered anywhere in the
-// UI — so switching it to store a real document id (making it an actual,
-// clickable link) is a safe change with zero backward-compat display to
-// preserve.
+// Bug-duplicate picker: store referenced document id for clickable link.
 window.promptDuplicateBug = function(id) {
     document.getElementById('doc-menu')?.remove();
     const doc = documents.find(d => d.id === id);
@@ -190,10 +186,7 @@ window._selectDuplicateOfBug = async function(originalBugId) {
     toast('Marked as Duplicate', 'info');
 };
 
-// "Duplicate of" had no constraints: self-links, mutual links and unbounded
-// chains were all accepted. Nothing crashed, the links just meant nothing. The
-// picker hides the bug itself, but the rule belongs with the write, not the
-// widget. Returns a refusal message, or '' when the link is fine.
+// Validate duplicateOf reference and check for loops or self-links.
 function _duplicateLinkProblem(bugId, originalId) {
     if (!originalId) return 'Select the original bug first.';
     if (bugId === originalId) return 'A bug cannot be a duplicate of itself.';
@@ -256,10 +249,7 @@ window._forceCancelEdit = function() {
     navigateBack();
 };
 
-// Filters the test-case picker in the Test Run editor (Sprint 15, 15-2) by
-// title/module. Pure DOM show/hide — never re-renders the checkbox list —
-// so in-progress selections that haven't been synced back into state yet
-// are never lost while the user is typing a filter.
+// Filter test-case picker by title/module without resetting checkbox state.
 window._filterTestRunTcList = function(query) {
     const q = (query || '').trim().toLowerCase();
     let visible = 0;
@@ -279,10 +269,7 @@ window._updateTestRunTcCount = function() {
     el.textContent = checked > 0 ? `${checked} selected` : '';
 };
 
-// Freezes the current step definitions of each target test case into a
-// snapshot (US-103), so a run's recorded results stay aligned even if the
-// test case is edited later. Shared by saveDoc's testrun branch and
-// rerunTestRun (B2).
+// Snapshot test case step definitions so recorded results remain aligned.
 function _buildRunSnapshot(targetIds) {
     const snapshot = {};
     targetIds.forEach(id => {
@@ -295,11 +282,7 @@ function _buildRunSnapshot(targetIds) {
     return snapshot;
 }
 
-// Start a fresh execution of the same test cases (B2 "Test Cycle"). Creates a
-// new Test Run document with the current step definitions (US-103 semantics —
-// re-execution snapshots steps as they are NOW), empty results, and the same
-// environment. All runs descending from the same original share a cycleId so
-// the viewer can show a pass-rate trend across executions.
+// Start a fresh cycle execution of test run with latest step snapshots.
 window.rerunTestRun = async function(runId) {
     const orig = documents.find(d => d.id === runId);
     if (!orig || orig.category !== 'testrun') return;
@@ -332,21 +315,14 @@ window.rerunTestRun = async function(runId) {
 // ========================
 // RELEASE NOTES GENERATOR (Sprint 17, 17-2)
 // ========================
-// Builds a Markdown changelog from the release editor's currently-checked
-// linked runs/bugs/environments and writes it into the Toast UI Editor.
-// Reads the live form (not saved releaseData), so it reflects link changes
-// the user hasn't saved yet — consistent with how saveDoc() itself reads
-// these same checkboxes.
+// Generate Markdown changelog from checked runs, bugs, and environments.
 window.generateReleaseNotes = function() {
     const hasLinks = document.querySelectorAll('.ed-rel-run:checked, .ed-rel-bug:checked, .ed-rel-env:checked').length > 0;
     if (!hasLinks) {
         toast('Link some test runs, bugs, or environments first.', 'warning');
         return;
     }
-    // Checked AFTER hasLinks: a brand-new release doc's content is never truly
-    // blank (it starts from the "# New Document..." placeholder), so checking
-    // this first would show "Replace existing notes?" even when nothing has
-    // been linked yet to generate from.
+    // Check after hasLinks so new release docs are not prompted when empty.
     const currentMd = getEditorMarkdown();
     if (currentMd.trim()) {
         showModal(`
@@ -447,7 +423,8 @@ async function saveDoc() {
         const precond = document.getElementById('ed-bug-precond')?.value || '';
         const stepInputs = document.querySelectorAll('.bug-step-input');
         const steps = Array.from(stepInputs).map(inp => inp.value.trim()).filter(v => v);
-        const assignee = document.getElementById('ed-bug-assignee')?.value || '';
+        const rawAssignee = document.getElementById('ed-bug-assignee')?.value || '';
+        const { assignee, assigneeUid } = window.CollabAssign?.resolveMember?.(rawAssignee) || { assignee: rawAssignee, assigneeUid: '' };
         const priority = document.getElementById('ed-bug-priority')?.value || 'P3';
         const classification = document.getElementById('ed-bug-classification')?.value || 'unclassified';
         const slaHours = Number(document.getElementById('ed-bug-sla')?.value) || ({ Critical: 4, Major: 24, Minor: 72, Trivial: 168 }[severity] || 72);
@@ -462,7 +439,7 @@ async function saveDoc() {
             : (classification !== 'unclassified' && assignee.trim()
                 ? (existing.triagedAt || Date.now()) : null);
 
-        bugData = { env, browser, severity, priority, assignee, classification, slaHours, triagedAt, precond, steps, expected, actual, linkedTc,
+        bugData = { env, browser, severity, priority, assignee, assigneeUid, classification, slaHours, triagedAt, precond, steps, expected, actual, linkedTc,
             resolution: existing.resolution || '',
             duplicateOf: existing.duplicateOf || '',
             resolutionHistory: existing.resolutionHistory || [],
@@ -640,11 +617,8 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     const rotatedAt = document.getElementById('ed-cred-rotated')?.value || '';
 
     if (!title) { toast(t('titleRequired'), 'error'); document.getElementById('ed-title')?.focus(); return; }
-
-    const editingIdx = (state.editingDoc && state.editingDoc.id)
-        ? documents.findIndex(d => d.id === state.editingDoc.id)
-        : -1;
-
+    const editingIdx = (state.editingDoc && state.editingDoc.id) ? documents.findIndex(d => d.id === state.editingDoc.id) : -1;
+    const prevBugUid = (editingIdx !== -1 && documents[editingIdx].category === 'bug') ? (documents[editingIdx].bugData?.assigneeUid || '') : '';
     if (editingIdx !== -1) {
         const idx = editingIdx;
         DocHistory.save(documents[idx]);
@@ -682,6 +656,7 @@ ${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\
     state._editorSnapshot = undefined;
     history.replaceState({}, '', _appUrl(state.editingDoc.id));
     await persist();
+    if (cat === 'bug') window.CollabAssign?.notifyAssignment?.({ doc: state.editingDoc, kind: 'bug', signalKey: '', oldUid: prevBugUid, newUid: bugData?.assigneeUid || '' });
     await new Promise(r => setTimeout(() => requestAnimationFrame(r), 60));
     render();
 }
@@ -712,23 +687,17 @@ window.markCredentialRotated = async function(id) {
 async function duplicateDoc(id) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
-    // Deep-clone so nested objects (runData, bugData, tcData, apiData, envData,
-    // releaseData, tcPlanData) are NOT shared by reference with the original.
-    // A shallow spread left them shared, so editing the copy — e.g. recording
-    // test-run results — mutated the source document too (US-402).
+    // Deep-clone so nested objects are not shared by reference (US-402).
     const dup = (typeof structuredClone === 'function') ? structuredClone(doc) : JSON.parse(JSON.stringify(doc));
     dup.id = uid();
     dup.title = doc.title + ' (Copy)';
     dup.favorite = false;
     dup.createdAt = Date.now();
     dup.updatedAt = Date.now();
-    // A duplicated bug is a distinct report — give it its own BUG-### (US-202),
-    // otherwise the copy would collide with the original's number.
+    // A duplicated bug is a distinct report — give it its own BUG-### (US-202).
     if (dup.category === 'bug') {
         dup.bugNumber = await _nextBugNumber();
-        // Copying a closed bug produced a report born closed, carrying the
-        // original's resolution and a history whose only entry was "closed" —
-        // never open, so every lifecycle metric on it was meaningless.
+        // Duplicated bug resets to new status.
         dup.bugStatus = 'new';
         dup.bugStatusEvents = [{
             type: 'status_changed',

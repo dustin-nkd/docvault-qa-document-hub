@@ -364,6 +364,7 @@ function normalizeFocusWorkflowEntry(entry) {
     const date = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
     return {
         owner: String(source.owner || '').trim().slice(0, 80),
+        ownerUid: typeof source.ownerUid === 'string' ? source.ownerUid.trim() : '',
         dueDate: date(source.dueDate),
         snoozedUntil: date(source.snoozedUntil),
         resolvedAt: Number.isFinite(Number(source.resolvedAt)) && Number(source.resolvedAt) > 0 ? Number(source.resolvedAt) : null,

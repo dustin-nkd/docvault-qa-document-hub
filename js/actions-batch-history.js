@@ -278,7 +278,7 @@ window.showBatchBugEditModal = function() {
                 </div>
                 <div>
                     <label for="batch-bug-assignee" class="text-xs font-medium block mb-1" style="color:var(--tx-m);">Assignee</label>
-                    <input type="text" id="batch-bug-assignee" class="form-input w-full" placeholder="Leave blank for no change…">
+                    ${window.CollabAssign?.renderBatchAssigneeField ? window.CollabAssign.renderBatchAssigneeField() : '<input type="text" id="batch-bug-assignee" class="form-input w-full" placeholder="Leave blank for no change…">'}
                 </div>
             </div>
             <div class="flex gap-3 justify-end mt-5">
@@ -292,20 +292,30 @@ window.showBatchBugEditModal = function() {
 window.confirmBatchBugEdit = async function() {
     const severity = document.getElementById('batch-bug-severity')?.value || '';
     const priority = document.getElementById('batch-bug-priority')?.value || '';
-    const assignee = document.getElementById('batch-bug-assignee')?.value.trim() || '';
-    if (!severity && !priority && !assignee) { toast('No changes selected.', 'warning'); return; }
+    const rawAssignee = document.getElementById('batch-bug-assignee')?.value.trim() || '';
+    const res = window.CollabAssign?.resolveMember ? window.CollabAssign.resolveMember(rawAssignee) : { label: rawAssignee, uid: '' };
+    const assignee = res.label;
+    const assigneeUid = res.uid;
+    if (!severity && !priority && !rawAssignee) { toast('No changes selected.', 'warning'); return; }
     let changed = 0;
+    const notifBatch = [];
     state.selectedIds.forEach(id => {
         const doc = documents.find(d => d.id === id && d.category === 'bug');
         if (!doc) return;
         if (!doc.bugData) doc.bugData = {};
         if (severity) doc.bugData.severity = severity;
         if (priority) doc.bugData.priority = priority;
-        if (assignee) doc.bugData.assignee = assignee;
+        if (rawAssignee) {
+            const oldUid = doc.bugData.assigneeUid || '';
+            doc.bugData.assignee = assignee;
+            doc.bugData.assigneeUid = assigneeUid;
+            if (assigneeUid && assigneeUid !== oldUid) notifBatch.push({ doc, oldUid, newUid: assigneeUid });
+        }
         doc.updatedAt = Date.now();
         changed++;
     });
     if (changed > 0) await persist();
+    if (notifBatch.length > 0) window.CollabAssign?.notifyBatchBugAssign?.(notifBatch);
     closeModal();
     toast(`Updated ${changed} bug${changed !== 1 ? 's' : ''}.`, 'success');
     state.batchMode = false;
