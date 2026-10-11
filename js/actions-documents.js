@@ -505,23 +505,28 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${mdCell(s.action)} | ${mdCell(
         })).filter(s => s.key || s.value);
 
         const body = document.getElementById('ed-api-body')?.value || '';
-        const statusCode = document.getElementById('ed-api-status')?.value || '200';
-        const response = document.getElementById('ed-api-response')?.value || '';
+        const rawResponses = Array.from(document.querySelectorAll('.api-response-row')).map(row => ({
+            code: row.querySelector('.api-status-select-wrap input[type="hidden"]')?.value || row.querySelector('input[type="hidden"]')?.value || '200',
+            body: row.querySelector('.api-response-body')?.value || ''
+        }));
+        const responses = (window._normalizeApiResponses || _normalizeApiResponses)({ responses: rawResponses });
+        const primary = (window._primaryApiExample || _primaryApiExample)(responses);
+        const statusCode = primary.code, response = primary.body;
 
         const previousApi = state.editingDoc?.apiData || {};
-        const changeFingerprint = JSON.stringify({ method, endpoint, module, headers, params, body, statusCode, response });
-        const previousFingerprint = previousApi.changeFingerprint || JSON.stringify({
-            method: previousApi.method || 'GET', endpoint: previousApi.endpoint || '', module: previousApi.module || '',
-            headers: previousApi.headers || [], params: previousApi.params || [], body: previousApi.body || '',
-            statusCode: previousApi.statusCode || '200', response: previousApi.response || ''
-        });
+        const fpFn = window._apiChangeFingerprint || _apiChangeFingerprint;
+        const changeFingerprint = fpFn({ method, endpoint, module, headers, params, body, statusCode, response, responses });
+        const previousFingerprint = fpFn(previousApi);
         const markChanged = document.getElementById('ed-api-mark-changed')?.checked || false;
         const tracked = ['low', 'medium', 'high'].includes(changeImpact);
         const changedAt = tracked
             ? (markChanged || !previousApi.changedAt || previousApi.changeImpact !== changeImpact || previousFingerprint !== changeFingerprint ? Date.now() : previousApi.changedAt)
             : null;
 
-        apiData = { method, endpoint, module, changeImpact, changedAt, changeFingerprint, headers, params, body, statusCode, response };
+        apiData = { method, endpoint, module, changeImpact, changedAt, changeFingerprint, headers, params, body, statusCode, response, responses };
+
+        const respMd = [primary, ...responses.filter(r => r !== primary)].filter(r => r && r.body && r.body.trim())
+            .map(r => `## ${t('apiResponse')} (${r.code})\n\`\`\`json\n${r.body}\n\`\`\`\n`).join('\n');
 
         finalContent = `# ${title}
 
@@ -530,7 +535,7 @@ ${steps.length ? steps.map((s, i) => `| ${i+1} | ${mdCell(s.action)} | ${mdCell(
 ${headers.length ? `## ${t('apiHeaders')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${headers.map(h => `| ${mdCell(h.key) || '-'} | ${mdCell(h.value) || '-'} | ${h.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
 ${params.length ? `## ${t('apiParams')}\n| ${t('apiKey')} | ${t('apiValue')} | ${t('apiRequired')} |\n|---|---|---|\n${params.map(p => `| ${mdCell(p.key) || '-'} | ${mdCell(p.value) || '-'} | ${p.req ? 'Yes' : 'No'} |`).join('\n')}\n` : ''}
 ${body ? `## ${t('apiBody')}\n\`\`\`json\n${body}\n\`\`\`\n` : ''}
-${response ? `## ${t('apiResponse')} (${statusCode})\n\`\`\`json\n${response}\n\`\`\`\n` : ''}`;
+${respMd ? respMd : ''}`;
     } else if (cat === 'apitest') {
         apiTcData = readApiTestCaseForm();
         apiTcData.steps = buildApiTestSteps(apiTcData);

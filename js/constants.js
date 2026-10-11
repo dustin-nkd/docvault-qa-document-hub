@@ -8,18 +8,6 @@
 const GUEST_MODE = new URLSearchParams(location.search).get('guest') === '1';
 
 // ========================
-// API TRY-IT MOCK SERVER (demo/testing only)
-// ========================
-// A real fetch() to a made-up base URL would just fail on CORS or DNS, so the
-// "Try it" feature (Sprint 20) would look broken for anyone testing it without
-// a real backend of their own. This sentinel base URL is recognized by
-// tryApiRequest() (js/actions-imports.js) and short-circuited into a fully local,
-// in-browser mock response built from the doc's own saved apiData — no
-// network call happens at all. Works in guest demo AND the real vault, so
-// anyone can see "Try it" actually round-trip without standing up a server.
-const API_TRYIT_MOCK_BASE = 'https://mock.docvault.dev';
-
-// ========================
 // STRINGS & t()
 // ========================
 const STRINGS = {
@@ -885,7 +873,12 @@ const GUEST_DEMO_DOCS = (() => {
             params: [],
             body: `{\n  "items": [{ "sku": "TSHIRT-M-BLK", "qty": 2 }],\n  "paymentMethod": "credit_card"\n}`,
             statusCode: '201',
-            response: `{\n  "orderId": "ord_5521",\n  "status": "confirmed",\n  "total": 458000\n}` },
+            response: `{\n  "orderId": "ord_5521",\n  "status": "confirmed",\n  "total": 458000\n}`,
+            responses: [
+                { code: '201', body: `{\n  "orderId": "ord_5521",\n  "status": "confirmed",\n  "total": 458000\n}` },
+                { code: '400', body: `{\n  "error": "items is required"\n}` },
+                { code: '401', body: `{\n  "error": "missing or invalid token"\n}` }
+            ] },
         content: '', createdAt: days(35), updatedAt: days(6)
     };
 

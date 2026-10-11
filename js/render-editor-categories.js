@@ -2,14 +2,7 @@
 // CATEGORY-SPECIFIC EDITOR RENDERERS AND CONTROLS
 // ========================
 
-// "Module" is a join key, not a caption. Coverage & Impact matches an API spec to
-// its test cases on it, and the release quality scorecard groups by it -- both by
-// case-insensitive string equality. A typo or a rename on one side silently
-// detaches the coverage and reports a gap that does not exist, so both inputs
-// offer the vocabulary already in the vault instead of asking the user to retype
-// it from memory. A <datalist> keeps the field free-text (new modules are still
-// typed in) and needs no script, so it cannot break when a cached shell pairs
-// with a fresh renderer.
+// Module is a join key, free-text without lowercasing saved values.
 function _moduleVocabulary() {
     const names = new Map();
     documents.forEach(d => {
@@ -43,6 +36,7 @@ const API_STATUS_OPTIONS = [
     {value: '502', label: '502 Bad Gateway'},
     {value: '503', label: '503 Service Unavailable'}
 ];
+window.API_STATUS_OPTIONS = API_STATUS_OPTIONS;
 
 function _apiTcKvRows(rows, rowClass, keyPlaceholder) {
     return (rows || []).map(row => `
@@ -373,14 +367,10 @@ function renderEditorCategory(context) {
                     <div class="flex-1" style="height:1px;background:var(--brd);"></div>
                 </div>
 
-                <!-- Status code + Format -->
-                <div class="flex items-center justify-between mb-2">
-                    <div style="width:165px;">
-                        ${renderSelect('ed-api-status', API_STATUS_OPTIONS, apiData?.statusCode || '200', 'w-full font-mono text-xs', '', 'Response status code')}
-                    </div>
-                    <button class="text-[10px] opacity-60 hover:opacity-100 transition-opacity" data-onclick="formatJson('ed-api-response')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button>
+                <div id="api-responses-container">
+                    ${typeof renderApiResponseEditor === 'function' ? renderApiResponseEditor(apiData) : ''}
                 </div>
-                <textarea id="ed-api-response" class="form-input font-mono text-xs w-full" style="height:110px;" placeholder="{\n  &quot;status&quot;: &quot;success&quot;\n}">${escHtml(apiData?.response || '')}</textarea>
+                <button type="button" class="btn-s text-xs mt-1" data-onclick="addApiResponse()"><i class="fa-solid fa-plus mr-1"></i> Add response</button>
             </div>
         </div>
         ` : category === 'apitest' ? `
