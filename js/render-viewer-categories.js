@@ -1,6 +1,4 @@
-// ========================
 // RENDER VIEWER
-// ========================
 function renderBugTriage(doc) {
     const info = bugTriageInfo(doc);
     const data = doc.bugData || {};
@@ -431,16 +429,12 @@ function renderViewerCategory(doc) {
             const results = doc.runData?.results || {};
             const targetIds = doc.runData?.targetIds || [];
             const targets = documents.filter(d => targetIds.includes(d.id) && d.status !== 'deleted');
-            // Render against the step snapshot captured when the run was saved (US-103),
-            // so results stay aligned even if the test case is edited afterwards.
+            // Render against snapshot captured when run was saved (US-103).
             const stepsOf = tc => (doc.runData?.snapshot?.[tc.id] || _liveCaseSteps(tc));
             const isDrifted = tc => !!doc.runData?.snapshot?.[tc.id]
                 && JSON.stringify(doc.runData.snapshot[tc.id]) !== JSON.stringify(_liveCaseSteps(tc));
 
-            let totalSteps = 0;
-            let passCount = 0;
-            let failCount = 0;
-            let blockedCount = 0;
+            let totalSteps = 0, passCount = 0, failCount = 0, blockedCount = 0;
 
             targets.forEach(tc => {
                 const steps = stepsOf(tc);
@@ -454,21 +448,15 @@ function renderViewerCategory(doc) {
             });
 
             const untestedCount = totalSteps - (passCount + failCount + blockedCount);
-            const passPct = totalSteps ? (passCount / totalSteps * 100) : 0;
-            const failPct = totalSteps ? (failCount / totalSteps * 100) : 0;
-            const blockedPct = totalSteps ? (blockedCount / totalSteps * 100) : 0;
-            const untestedPct = totalSteps ? (untestedCount / totalSteps * 100) : 100;
+            const passPct = totalSteps ? (passCount / totalSteps * 100) : 0, failPct = totalSteps ? (failCount / totalSteps * 100) : 0;
+            const blockedPct = totalSteps ? (blockedCount / totalSteps * 100) : 0, untestedPct = totalSteps ? (untestedCount / totalSteps * 100) : 100;
 
-            // Test Cycle & Trend (B2): runs sharing a cycle (this run's own id is the
-            // cycle root the first time it's re-run) sorted chronologically, so a
-            // trend of pass-rate across executions can be shown.
+            // Test Cycle & Trend (B2): runs sharing a cycle sorted chronologically.
             const cycleId = doc.runData?.cycleId || doc.id;
             const cycleRuns = documents.filter(d => d.category === 'testrun' && d.status !== 'deleted' && (d.runData?.cycleId || d.id) === cycleId)
                 .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
-            // Same rule as _buildApiImpacts: the explicit flag wins, the title
-            // heuristic only covers runs saved before the checkbox existed. Kept
-            // local rather than shared so a cached renderer cannot lose it.
+            // Explicit flag wins, title heuristic fallback.
             const runIsRegression = typeof doc.runData?.isRegression === 'boolean'
                 ? doc.runData.isRegression
                 : `${doc.title || ''} ${(doc.tags || []).join(' ')}`.toLocaleLowerCase().includes('regression');
@@ -663,7 +651,7 @@ function renderViewerCategory(doc) {
                 <div class="mb-1">
                     <div class="flex items-center justify-between mb-1.5">
                         <span class="text-[11px] uppercase tracking-wider font-medium" style="color:var(--tx-d);">Coverage Progress</span>
-                        <span class="text-[11px]" style="color:var(--tx-m);">${coveredCount} / ${linkedTCs.length} covered</span>
+                        <span class="text-[11px]" style="color:var(--tx-m);">${coveredCount} / ${linkedTCs.length} in a run</span>
                     </div>
                     <div class="w-full h-1.5 rounded-full overflow-hidden" style="background:var(--card);border:1px solid var(--brd);">
                         <div style="width:${coveragePct || 0}%;height:100%;background:linear-gradient(90deg,#10b981,#34d399);transition:width .4s ease;border-radius:9999px;"></div>
@@ -675,11 +663,16 @@ function renderViewerCategory(doc) {
                 <p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Test Cases (${linkedTCs.length})</p>
                 <div class="space-y-2">
                     ${linkedTCs.map(tc => {
-                        const isCovered = coveredTCIds.has(tc.id);
+                        const runs = linkedRuns.filter(r => (r.runData?.targetIds || []).includes(tc.id));
+                        const latest = runs.length <= 1 ? runs[0] : runs.slice().sort((a, b) => (new Date(b.updatedAt || 0).getTime() || 0) - (new Date(a.updatedAt || 0).getTime() || 0))[0];
+                        const out = latest && typeof _traceRunOutcome === 'function' ? _traceRunOutcome(latest, tc.id) : 'missing';
+                        const badge = out === 'pass' ? { l: 'Passed', c: '#10b981', b: '#10b98120' }
+                            : (out === 'fail' || out === 'blocked') ? { l: 'Needs attention', c: '#ef4444', b: '#ef444420' }
+                            : { l: 'Incomplete', c: 'var(--tx-d)', b: 'rgba(122,139,168,0.1)' };
                         return `<div class="flex items-center gap-3 p-3 rounded-lg border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;${state.sharedView ? '' : 'cursor:pointer;'}" ${state.sharedView ? '' : `data-onclick="viewDoc('${tc.id}')"`}>
                             <i class="fa-solid fa-flask-vial text-xs shrink-0" style="color:var(--c-tc);"></i>
                             <span class="text-sm font-medium flex-1" style="color:var(--tx);">${escHtml(tc.title)}</span>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="background:${isCovered ? '#10b98120' : 'rgba(122,139,168,0.1)'}; color:${isCovered ? '#10b981' : 'var(--tx-d)'};">${isCovered ? 'Covered' : 'Not run'}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="background:${badge.b}; color:${badge.c};">${badge.l}</span>
                         </div>`;
                     }).join('')}
                 </div>
@@ -707,6 +700,11 @@ function renderViewerCategory(doc) {
             </div>` : ''}
             `;
         })()}
+        ${doc.content && doc.content.trim() ? `
+        <div class="mt-6">
+            <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Notes</p>
+            <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
+        </div>` : ''}
         ` : doc.category === 'release' ? `
         ${(() => {
             const readiness = evaluateReleaseReadiness(doc, documents); const linkedRuns = readiness.linkedRuns;
