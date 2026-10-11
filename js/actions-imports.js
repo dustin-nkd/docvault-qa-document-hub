@@ -61,16 +61,18 @@ function _parsePostmanRequest(item, subfolderPath) {
         else if (req.body.mode === 'urlencoded') body = (req.body.urlencoded || []).filter(p => !p.disabled).map(p => `${p.key}=${p.value}`).join('&');
     }
 
-    let statusCode = '200', response = '';
-    if (Array.isArray(item.response) && item.response.length) {
-        statusCode = String(item.response[0].code || 200);
-        response = item.response[0].body || '';
-    }
+    const rawResponses = (Array.isArray(item.response) ? item.response : []).map(r => ({
+        code: String(r.code || ''),
+        body: typeof r.body === 'string' ? r.body : (r.body !== undefined ? JSON.stringify(r.body, null, 2) : '')
+    }));
+    const responses = _normalizeApiResponses({ responses: rawResponses });
+    const primary = _primaryApiExample(responses);
+    const statusCode = primary.code, response = primary.body;
 
     return {
         title: item.name || endpoint || 'Untitled Request',
         subfolder: subfolderPath.join('/'),
-        apiData: { method, endpoint, headers, params, body, statusCode, response }
+        apiData: { method, endpoint, headers, params, body, statusCode, response, responses }
     };
 }
 
@@ -109,22 +111,23 @@ function _parseOpenApi(json) {
                 if (jc) body = JSON.stringify(jc.example !== undefined ? jc.example : jc.schema, null, 2);
             } catch (e) {}
 
-            let statusCode = '200', response = '';
+            let responses = [{ code: '200', body: '' }];
             try {
-                const responses = op.responses || {};
-                const codes = Object.keys(responses);
-                const okCode = codes.find(c => c.startsWith('2')) || codes[0];
-                if (okCode) {
-                    statusCode = okCode;
-                    const jc = responses[okCode].content && responses[okCode].content['application/json'];
-                    if (jc) response = JSON.stringify(jc.example !== undefined ? jc.example : jc.schema, null, 2);
-                }
+                const opResponses = op.responses || {};
+                const rawResponses = Object.keys(opResponses).map(code => {
+                    const jc = opResponses[code]?.content?.['application/json'];
+                    const resBody = jc ? JSON.stringify(jc.example !== undefined ? jc.example : jc.schema, null, 2) : '';
+                    return { code: String(code), body: resBody };
+                });
+                responses = _normalizeApiResponses({ responses: rawResponses });
             } catch (e) {}
+            const primary = _primaryApiExample(responses);
+            const statusCode = primary.code, response = primary.body;
 
             results.push({
                 title: op.summary || `${m.toUpperCase()} ${pathKey}`,
                 subfolder: (op.tags && op.tags[0]) || '',
-                apiData: { method: m.toUpperCase(), endpoint: pathKey, headers, params, body, statusCode, response }
+                apiData: { method: m.toUpperCase(), endpoint: pathKey, headers, params, body, statusCode, response, responses }
             });
         });
     });
@@ -202,110 +205,117 @@ window._doApiImport = async function() {
 };
 
 // ========================
-// API TRY-IT — send a live request from the browser
+// API SPEC RESPONSE EXAMPLES
 // ========================
-window.saveApiTryitBaseUrl = function(v) {
-    localStorage.setItem('docvault_api_tryit_baseurl', v || '');
-};
-
-// Simulates a network round-trip and returns the doc's own saved status/body
-// as the "live" response — no fetch() call happens, so it works with no
-// backend, no CORS, and no internet (see API_TRYIT_MOCK_BASE, constants.js).
-async function _mockApiResponse(api) {
-    await new Promise(r => setTimeout(r, 250 + Math.random() * 350));
-    const statusText = {
-        200: 'OK', 201: 'Created', 204: 'No Content', 400: 'Bad Request',
-        401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found', 500: 'Internal Server Error'
-    };
-    const status = parseInt(api.statusCode || '200') || 200;
-    return {
-        status,
-        statusText: statusText[status] || '',
-        text: async () => (api.response && api.response.trim()) ? api.response : '{}',
-        mocked: true
-    };
+function _normalizeApiResponses(api) {
+    const raw = (Array.isArray(api?.responses) && api.responses.length)
+        ? api.responses
+        : [{ code: String(api?.statusCode || '200'), body: String(api?.response || '') }];
+    const valid = new Set((window.API_STATUS_OPTIONS || []).map(o => String(o.value)));
+    const seen = new Set(), result = [];
+    raw.forEach(r => {
+        const code = String(r?.code || '').trim();
+        if (valid.has(code) && !seen.has(code)) {
+            seen.add(code);
+            result.push({ code, body: typeof r.body === 'string' ? r.body : (r.body != null ? String(r.body) : '') });
+        }
+    });
+    return result.length ? result : [{ code: '200', body: '' }];
 }
 
-window.tryApiRequest = async function(docId) {
-    const doc = documents.find(d => d.id === docId);
-    if (!doc || !doc.apiData) return;
-    const api = doc.apiData;
+function _primaryApiExample(examples) {
+    if (!Array.isArray(examples) || !examples.length) return { code: '200', body: '' };
+    return examples.find(e => String(e.code || '').startsWith('2')) || examples[0];
+}
 
-    const btn = document.getElementById('api-tryit-btn');
-    const resultEl = document.getElementById('api-tryit-result');
-    const baseUrlInput = document.getElementById('api-tryit-baseurl');
-    const baseUrl = (baseUrlInput?.value || '').trim().replace(/\/+$/, '');
-    if (!baseUrl) {
-        toast('Enter a base URL first (e.g. https://api.example.com).', 'error');
-        baseUrlInput?.focus();
-        return;
-    }
+function _apiChangeFingerprint(api) {
+    if (!api) return '';
+    const responses = _normalizeApiResponses(api);
+    const primary = _primaryApiExample(responses);
+    return JSON.stringify({
+        method: api.method || 'GET', endpoint: api.endpoint || '', module: api.module || '',
+        headers: (api.headers || []).map(h => ({ key: h.key || '', value: h.value || '', req: !!h.req })),
+        params: (api.params || []).map(p => ({ key: p.key || '', value: p.value || '', req: !!p.req })),
+        body: api.body || '', statusCode: primary.code, response: primary.body, responses
+    });
+}
 
-    const path = (api.endpoint || '/').trim();
-    const fullPath = path.startsWith('/') ? path : '/' + path;
-    const params = (api.params || []).filter(p => p.key && p.key.trim());
-    const query = params.length
-        ? '?' + params.map(p => `${encodeURIComponent(p.key.trim())}=${encodeURIComponent(p.value || '')}`).join('&')
-        : '';
-    const url = baseUrl + fullPath + query;
+function renderApiResponseExamples(api, docId) {
+    const responses = _normalizeApiResponses(api);
+    const primary = _primaryApiExample(responses);
+    const id = docId || (documents.find(d => d.apiData === api)?.id || '');
+    const chipsHtml = responses.map(ex => {
+        const c = parseInt(ex.code) || 200;
+        const col = c < 300 ? '#10b981' : c < 400 ? '#60a5fa' : c < 500 ? '#f97316' : '#ef4444';
+        const isSel = ex.code === primary.code;
+        return `<button type="button" class="api-example-chip text-xs font-bold px-2 py-0.5 rounded font-mono" style="background:${col}22;color:${col};border:1px solid ${isSel ? col : 'transparent'};cursor:pointer;" data-onclick="showApiResponseExample('${escHtml(id)}','${escHtml(ex.code)}')" data-code="${escHtml(ex.code)}" data-color="${col}">${escHtml(ex.code)}</button>`;
+    }).join('');
+    const bodiesHtml = responses.map(ex => {
+        const isSel = ex.code === primary.code;
+        const hasBody = !!(ex.body && ex.body.trim());
+        if (!hasBody) return `<p class="api-example-empty text-xs py-2" style="${isSel ? '' : 'display:none;'}color:var(--tx-d);" data-code="${escHtml(ex.code)}">No response body defined.</p>`;
+        return `<pre ${isSel ? 'id="viewer-api-response"' : ''} class="api-example-body text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="${isSel ? '' : 'display:none;'}position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;" data-code="${escHtml(ex.code)}"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-response', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(ex.body)}</pre>`;
+    }).join('');
+    return `<div class="api-response-block" data-doc-id="${escHtml(id)}"><div class="api-section-divider flex items-center gap-3 mb-3"><span class="api-section-title text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Response</span><div class="api-section-line flex-1" style="height:1px;background:var(--brd);"></div></div><div class="flex flex-wrap gap-2 mb-3">${chipsHtml}</div>${bodiesHtml}</div>`;
+}
 
-    const headers = {};
-    (api.headers || []).forEach(h => { if (h.key && h.key.trim()) headers[h.key.trim()] = h.value || ''; });
+window.showApiResponseExample = function(docId, code) {
+    const card = (docId ? document.querySelector(`.api-response-block[data-doc-id="${docId}"]`) : null) || document.querySelector('.api-response-block') || document.querySelector('.api-viewer-card');
+    if (!card) return;
+    card.querySelectorAll('.api-example-chip').forEach(ch => {
+        const match = ch.getAttribute('data-code') === String(code);
+        ch.style.borderColor = match ? (ch.getAttribute('data-color') || '#10b981') : 'transparent';
+    });
+    const cur = card.querySelector('#viewer-api-response');
+    if (cur) cur.removeAttribute('id');
+    card.querySelectorAll('.api-example-body').forEach(pre => {
+        const match = pre.getAttribute('data-code') === String(code);
+        pre.style.display = match ? '' : 'none';
+        if (match) pre.id = 'viewer-api-response';
+    });
+    card.querySelectorAll('.api-example-empty').forEach(el => {
+        el.style.display = el.getAttribute('data-code') === String(code) ? '' : 'none';
+    });
+};
 
-    const method = (api.method || 'GET').toUpperCase();
-    const opts = { method, headers };
-    if (!['GET', 'HEAD'].includes(method) && api.body && api.body.trim()) {
-        opts.body = api.body;
-        if (!Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) {
-            headers['Content-Type'] = 'application/json';
-        }
-    }
+function _renderApiResponseRow(code, body, idx, canDel) {
+    const sId = 'ed-api-status-' + idx, bId = 'ed-api-response-' + idx;
+    return `<div class="api-response-row p-3 rounded-lg mb-3" style="background:var(--bg);border:1px solid var(--brd);"><div class="flex items-center justify-between gap-2 mb-2"><div class="api-status-select-wrap" style="width:165px;">${renderSelect(sId, window.API_STATUS_OPTIONS || [], code, 'w-full font-mono text-xs', '', 'Response status code')}</div><div class="flex items-center gap-2"><button type="button" class="btn-s text-[10px] px-2 py-1" data-onclick="formatJson('${bId}')" title="${t('formatJson')}"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format</button><button type="button" class="btn-s px-2 py-1 api-response-del-btn" style="color:var(--tx-m);${canDel ? '' : 'display:none;'}" data-onclick="removeApiResponse(this)" aria-label="Remove response" title="Remove response"><i class="fa-solid fa-trash"></i></button></div></div><textarea id="${bId}" class="form-input font-mono text-xs w-full api-response-body" style="height:90px;" placeholder="{\\n  &quot;status&quot;: &quot;success&quot;\\n}">${escHtml(body || '')}</textarea></div>`;
+}
 
-    setButtonBusy(btn, true, 'Sending request…');
-    if (resultEl) {
-        resultEl.setAttribute('aria-busy', 'true');
-        resultEl.innerHTML = '<div class="ui-state ui-state-compact" role="status"><span class="ui-state-icon"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span><h3>Sending request</h3><p>Waiting for the endpoint to respond…</p></div>';
-    }
+function renderApiResponseEditor(apiData) {
+    const list = _normalizeApiResponses(apiData);
+    return list.map((r, i) => _renderApiResponseRow(r.code, r.body, i, list.length > 1)).join('');
+}
 
-    const isMock = baseUrl.toLowerCase() === API_TRYIT_MOCK_BASE.toLowerCase();
+window.addApiResponse = function() {
+    const cont = document.getElementById('api-responses-container');
+    if (!cont) return;
+    const existing = new Set(Array.from(cont.querySelectorAll('.api-response-row')).map(row => row.querySelector('.api-status-select-wrap input[type="hidden"]')?.value || ''));
+    const next = (window.API_STATUS_OPTIONS || []).find(o => !existing.has(o.value));
+    if (!next) return;
+    const idx = cont.querySelectorAll('.api-response-row').length + '_' + Date.now();
+    const wrap = document.createElement('div');
+    wrap.innerHTML = _renderApiResponseRow(next.value, '', idx, true);
+    cont.appendChild(wrap.firstElementChild);
+    cont.querySelectorAll('.api-response-del-btn').forEach(btn => { btn.style.display = ''; btn.disabled = false; });
+};
 
-    const start = performance.now();
-    try {
-        const res = isMock ? await _mockApiResponse(api) : await fetch(url, opts);
-        const elapsed = Math.round(performance.now() - start);
-        const text = await res.text();
-        let pretty = text;
-        try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(e) { /* not JSON, show raw */ }
-
-        const expected = parseInt(api.statusCode || '200');
-        const matches = res.status === expected;
-        const statusColor = res.status < 300 ? '#10b981' : res.status < 400 ? '#60a5fa' : res.status < 500 ? '#f97316' : '#ef4444';
-
-        if (resultEl) resultEl.innerHTML = `
-            <div class="px-4 pt-4">
-                <div class="flex items-center gap-2 mb-2 flex-wrap">
-                    <span class="text-xs font-bold px-2 py-0.5 rounded font-mono" style="background:${statusColor}22;color:${statusColor};">${res.status} ${escHtml(res.statusText || '')}</span>
-                    <span class="text-xs" style="color:var(--tx-d);">${elapsed}ms</span>
-                    ${matches
-                        ? `<span class="text-xs font-medium" style="color:#10b981;"><i class="fa-solid fa-check mr-1"></i>Matches expected ${expected}</span>`
-                        : `<span class="text-xs font-medium" style="color:#f97316;"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Expected ${expected}</span>`}
-                    ${res.mocked ? `<span class="text-xs font-medium" style="color:#8b5cf6;"><i class="fa-solid fa-flask mr-1"></i>Mocked response — no real network call</span>` : ''}
-                </div>
-                <pre id="viewer-api-tryit-response" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar mb-4" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-tryit-response', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(pretty || '(empty response body)')}</pre>
-            </div>`;
-    } catch(e) {
-        if (resultEl) resultEl.innerHTML = `
-            <div class="ui-state ui-state-error ui-state-compact" role="alert">
-                <span class="ui-state-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
-                <h3>Request failed</h3>
-                <p>The endpoint may be unreachable, blocked by CORS, or using an invalid URL.</p>
-                <div class="ui-state-actions"><button class="btn-s text-xs" data-onclick="tryApiRequest('${docId}')"><i class="fa-solid fa-rotate-right mr-1.5"></i>Retry request</button></div>
-            </div>`;
-    } finally {
-        setButtonBusy(btn, false);
-        if (resultEl) resultEl.removeAttribute('aria-busy');
+window.removeApiResponse = function(btn) {
+    const cont = document.getElementById('api-responses-container');
+    if (!cont || cont.querySelectorAll('.api-response-row').length <= 1) return;
+    btn.closest('.api-response-row')?.remove();
+    const rows = cont.querySelectorAll('.api-response-row');
+    if (rows.length <= 1) {
+        rows.forEach(r => { const del = r.querySelector('.api-response-del-btn'); if (del) { del.style.display = 'none'; del.disabled = true; } });
     }
 };
+
+window._normalizeApiResponses = _normalizeApiResponses;
+window._primaryApiExample = _primaryApiExample;
+window._apiChangeFingerprint = _apiChangeFingerprint;
+window.renderApiResponseExamples = renderApiResponseExamples;
+window.renderApiResponseEditor = renderApiResponseEditor;
 
 // ========================
 // IMAGE COMPRESSION + INLINE BASE64

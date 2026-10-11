@@ -354,14 +354,6 @@ function renderViewerCategory(doc) {
         ${api.changedAt ? `<span><b>${t('impactChanged')}:</b> ${fmtDate(api.changedAt)}</span>` : ''}
         </div>` : ''}
 
-        <!-- Try it: send a live request from the browser -->
-        <div class="api-viewer-tryit flex items-center gap-2 px-4 py-3 flex-wrap" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
-        <input id="api-tryit-baseurl" type="text" class="form-input text-xs font-mono flex-1" style="min-width:200px;" placeholder="https://api.example.com (base URL)" value="${escHtml(localStorage.getItem('docvault_api_tryit_baseurl') || API_TRYIT_MOCK_BASE)}" data-onchange="saveApiTryitBaseUrl(this.value)">
-        <button id="api-tryit-btn" class="btn-p text-xs py-1.5 px-3 shrink-0" data-onclick="tryApiRequest('${doc.id}')" title="Send a request using this base URL + the endpoint/headers/params/body above"><i class="fa-solid fa-play mr-1.5"></i>Try it</button>
-        <p class="text-[11px] w-full" style="color:var(--tx-d);">Prefilled with a built-in mock server (no real network call) so you can try this out. Point it at a real base URL to send an actual request.</p>
-        </div>
-        <div id="api-tryit-result" aria-live="polite" aria-atomic="true"></div>
-
         <div class="api-viewer-body p-5">
         ${(headers.length || params.length) ? `
         <!-- REQUEST section label -->
@@ -407,15 +399,7 @@ function renderViewerCategory(doc) {
         <pre id="viewer-api-body" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-body', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(api.body)}</pre>
         </div>` : ''}
 
-        <!-- RESPONSE section label -->
-        <div class="api-section-divider flex items-center gap-3 mb-3">
-        <span class="api-section-title text-[10px] font-bold uppercase tracking-widest shrink-0" style="color:var(--tx-d);">Response</span>
-        <div class="api-section-line flex-1" style="height:1px;background:var(--brd);"></div>
-        <span class="api-viewer-status text-[10px] font-bold px-2 py-0.5 rounded font-mono shrink-0" style="background:${statusColor}22;color:${statusColor};">${escHtml(statusCode)}</span>
-        </div>
-        ${api.response
-        ? `<pre id="viewer-api-response" class="text-xs p-3 rounded-lg overflow-x-auto custom-scrollbar" style="position:relative;background:var(--card);border:1px solid var(--brd);color:var(--tx);font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:0;"><button class="code-copy-btn" data-onclick="_copyPre('viewer-api-response', this)" title="Copy"><i class="fa-regular fa-copy"></i></button>${escHtml(api.response)}</pre>`
-        : `<p class="api-empty-hint text-xs py-2" style="color:var(--tx-d);">No response body defined.</p>`}
+        ${typeof renderApiResponseExamples === 'function' ? renderApiResponseExamples(api, doc.id) : ''}
         </div>
     </div>`;
         })()}

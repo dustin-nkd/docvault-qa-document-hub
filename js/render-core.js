@@ -152,6 +152,12 @@ window.syncEditorState = function() {
         };
     } else if (cat === 'api') {
         const previousApi = state.editingDoc?.apiData || state._newApiData || {};
+        const rawResponses = Array.from(document.querySelectorAll('.api-response-row')).map(row => ({
+            code: row.querySelector('.api-status-select-wrap input[type="hidden"]')?.value || row.querySelector('input[type="hidden"]')?.value || '200',
+            body: row.querySelector('.api-response-body')?.value || ''
+        }));
+        const responses = (window._normalizeApiResponses || _normalizeApiResponses)({ responses: rawResponses });
+        const primary = (window._primaryApiExample || _primaryApiExample)(responses);
         apiData = {
             method: document.getElementById('ed-api-method')?.value || 'GET',
             endpoint: document.getElementById('ed-api-endpoint')?.value || '',
@@ -170,8 +176,9 @@ window.syncEditorState = function() {
                 req: row.querySelector('.api-req')?.checked || false
             })),
             body: document.getElementById('ed-api-body')?.value || '',
-            statusCode: document.getElementById('ed-api-status')?.value || '200',
-            response: document.getElementById('ed-api-response')?.value || ''
+            statusCode: primary.code || '200',
+            response: primary.body || '',
+            responses
         };
     } else if (cat === 'apitest') {
         if (apiTcAuthoritative) {
