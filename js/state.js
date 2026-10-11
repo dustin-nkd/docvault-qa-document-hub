@@ -39,7 +39,7 @@ let state = {
     selectedIds: new Set(),
     lastSelectedId: null,
     docListPage: 1, // Sprint 22: pagination for the documents grid
-    traceabilityFilter: 'all',
+    traceabilityFilter: 'gaps',
     activityFilter: 'all', // Activity tab: 'all' or an ACTIVITY_META action type
     focusQueueTab: 'active'
 };

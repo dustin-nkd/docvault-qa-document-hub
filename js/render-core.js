@@ -879,9 +879,6 @@ function _traceRunOutcome(run, tcId) {
     if (values.length > 0 && values.every(value => value === 'pass')) return 'pass';
     return 'untested';
 }
-function _normImpactModule(value) {
-    return String(value || '').trim().toLocaleLowerCase();
-}
 function _caseModule(tc) {
     return (tc?.category === 'apitest' ? tc.apiTcData?.module : tc.tcData?.module) || '';
 }
@@ -895,100 +892,6 @@ function _isRegressionRun(run) {
     return haystack.includes('regression');
 }
 
-function _buildApiImpacts(apis, testCases, runs) {
-    const stateRank = { missing: 0, due: 1, risk: 2, covered: 3 };
-    const priorityRank = { P0: 0, P1: 1, P2: 2 };
-
-    return apis.filter(api =>
-        ['low', 'medium', 'high'].includes(api.apiData?.changeImpact) &&
-        Number(api.apiData?.changedAt) > 0
-    ).map(api => {
-        const moduleKey = _normImpactModule(api.apiData?.module);
-        const matchedTests = moduleKey
-            ? testCases.filter(tc => _normImpactModule(_caseModule(tc)) === moduleKey)
-            : [];
-        const executions = matchedTests.map(tc => {
-            const run = runs.find(candidate =>
-                _isRegressionRun(candidate) &&
-                (candidate.runData?.targetIds || []).includes(tc.id) &&
-                Math.max(candidate.createdAt || 0, candidate.updatedAt || 0) >= api.apiData.changedAt
-            ) || null;
-            return { tc, run, outcome: _traceRunOutcome(run, tc.id) };
-        });
-        const notRun = executions.filter(item => !item.run);
-        const risky = executions.filter(item => item.run && item.outcome !== 'pass');
-        const stateName = matchedTests.length === 0 ? 'missing'
-            : notRun.length > 0 ? 'due'
-            : risky.length > 0 ? 'risk'
-            : 'covered';
-        const impact = api.apiData.changeImpact;
-        const priority = stateName === 'covered' ? 'P2'
-            : impact === 'high' ? 'P0'
-            : impact === 'medium' ? 'P1'
-            : 'P2';
-        return { api, matchedTests, executions, notRun, risky, stateName, impact, priority };
-    }).sort((a, b) =>
-        stateRank[a.stateName] - stateRank[b.stateName] ||
-        priorityRank[a.priority] - priorityRank[b.priority] ||
-        b.api.apiData.changedAt - a.api.apiData.changedAt
-    );
-}
-
-function _renderImpactPanel(items, docButton) {
-    const summary = {
-        missing: items.filter(item => item.stateName === 'missing').length,
-        due: items.filter(item => item.stateName === 'due').length,
-        risk: items.filter(item => item.stateName === 'risk').length,
-        covered: items.filter(item => item.stateName === 'covered').length
-    };
-    const statusLabels = {
-        missing: t('impactStatusMissing'), due: t('impactStatusDue'),
-        risk: t('impactStatusRisk'), covered: t('impactStatusCovered')
-    };
-    const actions = {
-        missing: t('impactMissingTestsAction'), due: t('impactRegressionAction'),
-        risk: t('impactRiskAction'), covered: t('impactCoveredAction')
-    };
-
-    return `<section class="impact-section">
-        <div class="impact-head">
-            <div><h3>${t('impactTitle')}</h3><p>${t('impactSub')}</p></div>
-            <span class="impact-total"><b>${items.length}</b>${t('impactTracked')}</span>
-        </div>
-        <div class="impact-summary" aria-label="${t('impactTitle')} summary">
-            <span class="is-missing"><b>${summary.missing}</b>${t('impactMissingTests')}</span>
-            <span class="is-due"><b>${summary.due}</b>${t('impactRegressionDue')}</span>
-            <span class="is-risk"><b>${summary.risk}</b>${t('impactRisk')}</span>
-            <span class="is-covered"><b>${summary.covered}</b>${t('impactCovered')}</span>
-        </div>
-        ${items.length ? `<div class="impact-list">${items.map(item => {
-            const api = item.api;
-            const tests = item.stateName === 'due' ? item.notRun.map(entry => entry.tc)
-                : item.stateName === 'risk' ? item.risky.map(entry => entry.tc)
-                : item.matchedTests;
-            const impactKey = `apiImpact${item.impact[0].toUpperCase()}${item.impact.slice(1)}`;
-            return `<article class="impact-row is-${item.stateName}">
-                <div class="impact-priority">${item.priority}</div>
-                <div class="impact-api">
-                    <div class="impact-api-title"><span class="impact-method">${escHtml(api.apiData?.method || 'API')}</span>${docButton(api)}</div>
-                    <div class="impact-meta">
-                        <span><b>${t('impactModule')}:</b> ${escHtml(api.apiData?.module || t('impactNoModule'))}</span>
-                        <span><b>${t('impactChanged')}:</b> ${fmtDate(api.apiData.changedAt)}</span>
-                        <span class="impact-level is-${item.impact}">${t(impactKey)}</span>
-                    </div>
-                </div>
-                <div class="impact-evidence">
-                    <span class="impact-state is-${item.stateName}">${statusLabels[item.stateName]}</span>
-                    <p>${actions[item.stateName]}</p>
-                    <div class="impact-tests"><b>${t('impactTests')}:</b>${tests.length
-                        ? tests.map(tc => docButton(tc)).join('')
-                        : `<span>${t('impactNoTests')}</span>`}</div>
-                </div>
-            </article>`;
-        }).join('')}</div>` : `<div class="impact-empty"><i class="fa-regular fa-circle-check"></i><span>${t('impactEmpty')}</span></div>`}
-    </section>`;
-}
-
 function renderTraceability() {
     const activeDocs = documents.filter(doc => doc.status !== 'deleted');
     const testCases = activeDocs.filter(doc => doc.category === 'testcases' || doc.category === 'apitest')
@@ -997,8 +900,6 @@ function renderTraceability() {
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     const bugs = activeDocs.filter(doc => doc.category === 'bug');
     const releases = activeDocs.filter(doc => doc.category === 'release');
-    const apis = activeDocs.filter(doc => doc.category === 'api');
-    const trackedImpacts = _buildApiImpacts(apis, testCases, runs);
 
     const rows = testCases.map(tc => {
         const latestRun = runs.find(run => (run.runData?.targetIds || []).includes(tc.id)) || null;
@@ -1022,26 +923,35 @@ function renderTraceability() {
         risk: rows.filter(row => row.stateName === 'risk').length,
         missing: rows.filter(row => row.stateName === 'missing').length
     };
-    const filter = state.traceabilityFilter || 'all';
-    const visibleRows = rows.filter(row => filter === 'all' || row.stateName === filter);
-    const outcomeLabels = {
-        pass: t('traceCovered'), fail: t('traceAtRisk'), blocked: t('traceAtRisk'),
-        untested: t('traceUntested'), missing: t('traceNoRun')
-    };
+    const validFilters = ['gaps', 'risk', 'missing', 'covered', 'all'];
+    const filter = validFilters.includes(state.traceabilityFilter) ? state.traceabilityFilter : 'gaps';
+    const visibleRows = rows.filter(row => {
+        if (filter === 'gaps') return row.stateName === 'risk' || row.stateName === 'missing';
+        if (filter === 'all') return true;
+        return row.stateName === filter;
+    });
+
     const filterButtons = [
-        ['all', t('traceAll'), rows.length],
-        ['risk', t('traceRisk'), summary.risk],
-        ['missing', t('traceMissing'), summary.missing]
+        ['gaps', 'Gaps', summary.risk + summary.missing],
+        ['risk', 'Needs attention', summary.risk],
+        ['missing', 'Incomplete', summary.missing],
+        ['covered', 'Passed', summary.covered],
+        ['all', 'All', rows.length]
     ].map(([id, label, count]) => `
-        <button class="trace-filter ${filter === id ? 'is-active' : ''}" data-onclick="setTraceabilityFilter('${id}')">
+        <button id="trace-filter-${id}" class="trace-filter ${filter === id ? 'is-active' : ''}" data-onclick="setTraceabilityFilter('${id}')">
             ${label}<span>${count}</span>
         </button>`).join('');
 
     const docButton = (doc, cls = '') => doc
         ? `<button class="trace-link ${cls}" data-onclick="viewDoc('${doc.id}')" title="${escHtml(doc.title)}">${escHtml(doc.title)}</button>`
         : '';
-    const outcomeClass = { pass: 'is-pass', fail: 'is-fail', blocked: 'is-blocked', untested: 'is-untested', missing: 'is-missing' };
-    const impactPanel = _renderImpactPanel(trackedImpacts, docButton);
+
+    let emptyMessage = t('traceEmpty');
+    if (rows.length === 0) {
+        emptyMessage = 'No test cases yet.';
+    } else if (filter === 'gaps' && summary.covered === rows.length) {
+        emptyMessage = 'All cases passed.';
+    }
 
     return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto traceability-page">
         <section class="traceability-hero">
@@ -1050,12 +960,11 @@ function renderTraceability() {
                 <p class="dashboard-intro">${t('traceSub')}</p>
             </div>
             <div class="trace-summary" aria-label="${t('traceTitle')} summary">
-                <span class="trace-summary-item is-covered"><b>${summary.covered}</b>${t('traceCovered')}</span>
-                <span class="trace-summary-item is-risk"><b>${summary.risk}</b>${t('traceAtRisk')}</span>
-                <span class="trace-summary-item is-missing"><b>${summary.missing}</b>${t('traceMissingShort')}</span>
+                <span class="trace-summary-item is-covered"><b>${summary.covered}</b>Passed</span>
+                <span class="trace-summary-item is-risk"><b>${summary.risk}</b>Needs attention</span>
+                <span class="trace-summary-item is-missing"><b>${summary.missing}</b>Incomplete</span>
             </div>
         </section>
-        ${impactPanel}
         <div class="trace-filter-bar">${filterButtons}</div>
         <div class="trace-table-wrap">
             <table class="trace-table">
@@ -1067,9 +976,18 @@ function renderTraceability() {
                     <th>${t('traceRelease')}</th>
                 </tr></thead>
                 <tbody>${visibleRows.map(row => {
-                    const execution = row.latestRun
-                        ? `<div class="trace-cell-stack">${docButton(row.latestRun)}<span class="trace-status ${outcomeClass[row.outcome]}">${outcomeLabels[row.outcome]}</span></div>`
-                        : `<span class="trace-muted">${t('traceNoRun')}</span>`;
+                    let execution = '';
+                    if (row.latestRun) {
+                        const badgeClass = row.stateName === 'risk' ? 'is-fail'
+                            : row.stateName === 'missing' ? 'is-untested'
+                            : 'is-pass';
+                        const badgeText = row.stateName === 'risk' ? 'Needs attention'
+                            : row.stateName === 'missing' ? 'Incomplete'
+                            : 'Passed';
+                        execution = `<div class="trace-cell-stack">${docButton(row.latestRun)}<span class="trace-status ${badgeClass}">${badgeText}</span></div>`;
+                    } else {
+                        execution = `<span class="trace-muted">Incomplete</span>`;
+                    }
                     const bugCell = row.linkedBugs.length
                         ? `<div class="trace-cell-stack">${row.linkedBugs.slice(0, 2).map(bug => docButton(bug, !BUG_TERMINAL_STATUSES.has(_normBugStatus(bug.bugStatus)) ? 'is-risk' : '')).join('')}${row.linkedBugs.length > 2 ? `<span class="trace-muted">+${row.linkedBugs.length - 2}</span>` : ''}</div>`
                         : `<span class="trace-muted">${t('traceNoBugs')}</span>`;
@@ -1083,7 +1001,7 @@ function renderTraceability() {
                         <td>${row.latestRun?.runData?.environment ? `<span class="trace-env">${escHtml(row.latestRun.runData.environment)}</span>` : '<span class="trace-muted">—</span>'}</td>
                         <td>${releaseCell}</td>
                     </tr>`;
-                }).join('') || `<tr><td colspan="5" class="trace-empty">${t('traceEmpty')}</td></tr>`}</tbody>
+                }).join('') || `<tr><td colspan="5" class="trace-empty">${emptyMessage}</td></tr>`}</tbody>
             </table>
         </div>
     </div>`;
