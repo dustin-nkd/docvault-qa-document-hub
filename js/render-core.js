@@ -457,7 +457,7 @@ function _getDashboardMetrics(docs) {
             uncovered: total - covered,
             pct: Math.round(covered / total * 100)
         }))
-        .filter(m => m.pct < 100)
+        .filter(m => m.uncovered > 0)
         .sort((a, b) => (b.uncovered - a.uncovered) || (a.pct - b.pct) || a.name.localeCompare(b.name))
         .slice(0, 3);
 

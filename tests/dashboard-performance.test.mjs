@@ -208,3 +208,35 @@ test('Test coverage card sorts uncovered modules by missing count descending and
     const posC = html.indexOf('ModC');
     assert.ok(posA !== -1 && posC !== -1 && posA < posC, 'ModA (3 uncovered) must appear before ModC (2 uncovered)');
 });
+
+test('Test coverage card with 200 cases and 199 in run (rounded pct 100%) still shows "1 not in a run" and not "All cases are in a run."', () => {
+    const targetIds = [];
+    const docs = [];
+    for (let i = 1; i <= 200; i++) {
+        const id = `tc-large-${i}`;
+        docs.push({
+            id,
+            category: 'testcases',
+            status: 'active',
+            subfolder: 'Large Module',
+            title: `Case ${i}`
+        });
+        if (i <= 199) {
+            targetIds.push(id);
+        }
+    }
+    docs.push({
+        id: 'run-large',
+        category: 'testrun',
+        status: 'active',
+        runData: { targetIds }
+    });
+
+    const render = createDashboardRenderer(docs);
+    const html = render();
+
+    // 199/200 = 99.5% which rounds to 100%, but uncovered is 1 > 0
+    assert.match(html, /Large Module/);
+    assert.match(html, /1 not in a run/);
+    assert.doesNotMatch(html, /All cases are in a run\./);
+});
