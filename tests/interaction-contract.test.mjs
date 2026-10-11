@@ -46,7 +46,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v74'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v75'/);
     assert.match(read('sw.js'), /'\.\/js\/workspaces\.js'/, 'the workspace module must be cached in the app shell');
 });
 
@@ -615,25 +615,48 @@ test('deployment blocks on the locked browser regression suite', () => {
 });
 
 test('module is offered as a vocabulary instead of being retyped from memory', () => {
-    // Coverage & Impact joins an API spec to its test cases on this field, and the
-    // release quality scorecard groups by it. Both compare normalized strings, so a
-    // typo on either side silently reports a coverage gap that does not exist.
     const editors = read('js/render-editor-categories.js');
+    const editorJs = read('js/render-editor.js');
+
     for (const id of ['ed-tc-module', 'ed-api-module', 'ed-apitc-module']) {
-        const input = editors.match(new RegExp(`<input id="${id}"[^>]*>`));
-        assert.ok(input, id + ' input not found');
-        assert.match(input[0], /list="module-vocab"/,
-            id + ' must offer the existing module vocabulary');
+        assert.match(editors, new RegExp(`renderModuleInput\\(['"]${id}['"]`),
+            id + ' must be rendered using renderModuleInput');
     }
-    assert.match(editors, /<datalist id="module-vocab">/,
-        'the module datalist must be rendered beside the inputs that reference it');
+    assert.doesNotMatch(editors, /list="module-vocab"/,
+        'list="module-vocab" must no longer be present');
+    assert.doesNotMatch(editors, /<datalist id="module-vocab">/,
+        'datalist module-vocab must no longer be present');
+
     // The vocabulary has to be built in the same file as the markup: a cached
     // renderer paired with a fresh one must not lose the helper.
     assert.match(editors, /function _moduleVocabulary\(\)/,
         '_moduleVocabulary must be co-located with the inputs that use it');
+
     // Free text must survive -- a new module still has to be typeable.
-    assert.doesNotMatch(editors, /<select id="ed-(?:tc|api)-module"/,
+    assert.doesNotMatch(editors, /<select id="ed-(?:tc|api|apitc)-module"/,
         'module must stay a free-text input so new modules can be added');
+
+    const helperMatch = editorJs.match(/window\.renderModuleInput\s*=\s*function\s*\([^)]*\)\s*\{[\s\S]*?\n\};/);
+    assert.ok(helperMatch, 'renderModuleInput must be defined in js/render-editor.js');
+    const escHtml = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const actionAttr = (name, ...args) => `${name}(${args.map(a => JSON.stringify(a)).join(',')})`;
+    const _moduleVocabulary = () => ['Authentication', 'Catalog', 'Checkout'];
+    const renderModuleInput = new Function('escHtml', 'actionAttr', '_moduleVocabulary',
+        `let window = {};\n${helperMatch[0]}\nreturn window.renderModuleInput;`
+    )(escHtml, actionAttr, _moduleVocabulary);
+
+    const outCheckout = renderModuleInput('ed-tc-module', 'Checkout', 'e.g. Login');
+    assert.match(outCheckout, /class="[^"]*custom-select-list[^"]*"/);
+    assert.match(outCheckout, /class="[^"]*form-select[^"]*"/);
+    assert.match(outCheckout, /value="Checkout"/);
+    assert.doesNotMatch(outCheckout, /readonly/i, 'module input must not be readonly');
+
+    const outEmpty = renderModuleInput('ed-tc-module', '', 'e.g. Login');
+    assert.match(outEmpty, /value=""/);
+    assert.doesNotMatch(outEmpty, /value="Authentication"/, 'empty value must not be replaced by first vocabulary option');
+
+    const outBilling = renderModuleInput('ed-tc-module', 'Billing', 'e.g. Login');
+    assert.match(outBilling, /value="Billing"/, 'new module name must be preserved');
 });
 
 test('the module vocabulary collects both sides of the join and drops deleted docs', () => {

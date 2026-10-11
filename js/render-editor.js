@@ -1,27 +1,17 @@
-// ========================
 // RENDER EDITOR
-// ========================
 function renderEditor() {
-    const doc = state.editingDoc;
-    const isEdit = !!doc;
+    const doc = state.editingDoc, isEdit = !!doc;
     const title = isEdit ? doc.title : (state._newTitle || '');
     const category = isEdit ? doc.category : (state._newCat || 'runbook');
     const status = isEdit ? doc.status : (state._newStatus || 'draft');
     const content = isEdit ? doc.content : (state._newContent || '');
-    // state.editorTags is the only tag store the editor writes to, and the one
-    // saveDoc reads. Rendering doc.tags instead froze the chips while editing an
-    // existing document, yet the unseen change still landed on save. Every entry
-    // point seeds state.editorTags first, so it is the single source of truth.
+    // state.editorTags is the single source of truth for editor tags.
     const tags = state.editorTags;
-    const bugData = isEdit ? doc.bugData : state._newBugData;
-    const tcData = isEdit ? doc.tcData : state._newTcData;
-    const apiData = isEdit ? doc.apiData : state._newApiData;
-    const apiTcData = isEdit ? doc.apiTcData : state._newApiTcData;
-    const runData = isEdit ? doc.runData : state._newRunData;
-    const envData = isEdit ? doc.envData : state._newEnvData;
+    const bugData = isEdit ? doc.bugData : state._newBugData, tcData = isEdit ? doc.tcData : state._newTcData;
+    const apiData = isEdit ? doc.apiData : state._newApiData, apiTcData = isEdit ? doc.apiTcData : state._newApiTcData;
+    const runData = isEdit ? doc.runData : state._newRunData, envData = isEdit ? doc.envData : state._newEnvData;
     const releaseData = isEdit ? doc.releaseData : state._newReleaseData;
-    const releasePolicy = normalizeReleasePolicy(releaseData?.readinessPolicy);
-    const tcPlanData = isEdit ? doc.tcPlanData : state._newTcPlanData;
+    const releasePolicy = normalizeReleasePolicy(releaseData?.readinessPolicy), tcPlanData = isEdit ? doc.tcPlanData : state._newTcPlanData;
     const bugDefaultSla = { Critical: 4, Major: 24, Minor: 72, Trivial: 168 }[bugData?.severity || 'Minor'] || 72;
 
     const subfolder = isEdit ? (doc.subfolder || '') : (state._newSubfolder || '');
@@ -81,9 +71,7 @@ function renderEditor() {
     </div>`;
 }
 
-// ========================
 // TAG INPUT
-// ========================
 function handleTagInput(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -108,9 +96,7 @@ function removeTag(i) {
     setTimeout(() => document.getElementById('tag-input')?.focus(), 50);
 }
 
-// ========================
 // CHANGE EDITOR CATEGORY
-// ========================
 window.changeEditorCat = function(cat) {
     if (state.editingDoc) {
         state.editingDoc.category = cat;
@@ -138,13 +124,8 @@ window.changeEditorCat = function(cat) {
     }, 0);
 };
 
-// ========================
 // CUSTOM SELECT (renderSelect)
-// ========================
-// A styled stand-in for <select>, so it carries the combobox role, state and
-// keyboard contract itself. It was a readonly <input> beside a list of <div>s:
-// announced as a text box, and unopenable by keyboard because the delegated
-// keydown handler in events.js skips <input>. Every dropdown comes from here.
+// Combobox stand-in for <select> with role and keyboard support.
 window.renderSelect = function(id, options, selectedValue, customClass, onChangeCode, ariaLabel) {
     customClass = customClass || '';
     onChangeCode = onChangeCode || '';
@@ -169,15 +150,13 @@ window.renderSelect = function(id, options, selectedValue, customClass, onChange
 function _selectParts(id) {
     const list = document.getElementById(id + '-dropdown');
     return {
-        display: document.getElementById(id + '-display'),
+        display: document.getElementById(id + '-display') || document.getElementById(id),
         list,
         options: list ? [...list.querySelectorAll('[role="option"]')] : []
     };
 }
 
-// Keyboard focus stays on the combobox; the highlighted option is pointed at
-// with aria-activedescendant, which is the pattern for a non-editable combobox
-// and avoids fighting the outside-click handler for real DOM focus.
+// Keyboard focus stays on the combobox with aria-activedescendant.
 function _setSelectActive(id, index) {
     const { display, options } = _selectParts(id);
     if (!display || !options.length) return;
@@ -206,9 +185,7 @@ window.closeCustomSelect = function(id, refocus) {
     if (refocus) display.focus();
 };
 
-// Escape has to reach whichever select is open without knowing its id — see the
-// Escape ordering in js/events.js, where the dropdown must close before the
-// editor itself does.
+// Escape closes open custom select before the editor itself closes.
 window.closeOpenCustomSelect = function(refocus) {
     const open = document.querySelector('.custom-select-list:not(.hidden)');
     if (!open) return false;
@@ -266,8 +243,7 @@ window.handleSelectKeydown = function(event, id) {
     if (key === 'End') { event.preventDefault(); _setSelectActive(id, options.length - 1); return; }
     if (key === 'Enter' || key === ' ') { event.preventDefault(); options[_activeSelectIndex(id)].click(); return; }
 
-    // Type-ahead, like a native select: consecutive letters within 800ms build
-    // up a prefix instead of each one starting a new search.
+    // Type-ahead prefix within 800ms window.
     if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
         const now = Date.now();
         const carried = (_selectTypeahead.id === id && now - _selectTypeahead.at < 800) ? _selectTypeahead.text : '';
@@ -286,10 +262,7 @@ window.selectCustomOption = function(id, val, label, onChangeCode) {
     closeCustomSelect(id, false);
 
     if (onChangeCode) {
-        // Safe dispatch instead of eval(): parse "fnName(args)" and invoke it.
-        // `this.value` resolves to the selected value, which is passed as a real
-        // argument (never string-interpolated into code), so a value containing
-        // quotes or commas cannot inject anything (US-403).
+        // Safe dispatch of onChangeCode.
         const m = onChangeCode.match(/^([a-zA-Z0-9_]+)\((.*)\)$/);
         if (m && typeof window[m[1]] === 'function') {
             const args = m[2].trim() === '' ? [] : m[2].split(',').map(s => {
@@ -304,9 +277,7 @@ window.selectCustomOption = function(id, val, label, onChangeCode) {
     }
 };
 
-// ========================
 // SUBFOLDER DROPDOWN HELPERS
-// ========================
 window.toggleSubfolderDropdown = function() {
     const dd = document.getElementById('subfolder-dropdown');
     if (!dd) return;
@@ -351,9 +322,62 @@ window.selectSubfolder = function(value) {
     if (dd) dd.classList.add('hidden');
 };
 
-// ========================
+// MODULE INPUT HELPERS
+window.renderModuleInput = function(id, value, placeholder) {
+    const vocab = typeof _moduleVocabulary === 'function' ? _moduleVocabulary() : (typeof window !== 'undefined' && typeof window._moduleVocabulary === 'function' ? window._moduleVocabulary() : []);
+    const val = value != null ? String(value) : '', pl = placeholder != null ? String(placeholder) : '';
+    const action = typeof actionAttr === 'function' ? actionAttr : (name, ...args) => `${name}(${args.map(a => JSON.stringify(a)).join(',')})`;
+    const optionsHtml = vocab.map(n => `<div class="subfolder-option px-3 py-2 text-sm cursor-pointer ui-hover-card-h" style="color:var(--tx-m);transition:background .15s;" role="option" data-onclick="${action('selectModuleOption', id, n)}">${escHtml(n)}</div>`).join('');
+    return `<div class="custom-select-wrapper" style="position:relative;"><input id="${id}" class="form-input form-select w-full" autocomplete="off" placeholder="${escHtml(pl)}" value="${escHtml(val)}" aria-expanded="false" data-onclick="openModuleDropdown('${id}')" data-onfocus="openModuleDropdown('${id}')" data-oninput="filterModuleOptions('${id}')"><div id="${id}-dropdown" class="hidden custom-select-list" role="listbox" style="position:absolute;top:100%;left:0;right:0;z-index:50;margin-top:4px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4);">${optionsHtml}</div></div>`;
+};
+
+window.openModuleDropdown = function(id) {
+    const list = document.getElementById(id + '-dropdown');
+    if (!list) return;
+    document.querySelectorAll('.custom-select-list').forEach(el => {
+        if (el.id !== id + '-dropdown') closeCustomSelect(el.id.replace(/-dropdown$/, ''), false);
+    });
+    if (!list.classList.contains('hidden')) return;
+    list.classList.remove('hidden');
+    const input = document.getElementById(id);
+    if (input) input.setAttribute('aria-expanded', 'true');
+    list.querySelectorAll('.subfolder-option').forEach(opt => { opt.style.display = ''; });
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (list.classList.contains('hidden') || (!e.target.closest('#' + id) && !e.target.closest('#' + id + '-dropdown'))) {
+                closeCustomSelect(id, false);
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 10);
+};
+
+window.filterModuleOptions = function(id) {
+    const input = document.getElementById(id), list = document.getElementById(id + '-dropdown');
+    if (!input || !list) return;
+    list.classList.remove('hidden');
+    input.setAttribute('aria-expanded', 'true');
+    const filterText = input.value.trim().toLocaleLowerCase();
+    list.querySelectorAll('.subfolder-option').forEach(opt => {
+        opt.style.display = (!filterText || opt.textContent.trim().toLocaleLowerCase().includes(filterText)) ? '' : 'none';
+    });
+};
+
+window.selectModuleOption = function(id, val) {
+    const input = document.getElementById(id);
+    if (input) input.value = val;
+    closeCustomSelect(id, false);
+};
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('focusin', (e) => {
+        const id = e.target?.id;
+        if (id && document.getElementById(id + '-dropdown') && !e.target.readOnly) openModuleDropdown(id);
+    });
+}
+
 // FORMAT JSON
-// ========================
 window.formatJson = function(id) {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) return;
@@ -365,9 +389,7 @@ window.formatJson = function(id) {
     }
 };
 
-// ========================
 // CUSTOM DATE PICKER
-// ========================
 let _dpYear = 0, _dpMonth = 0, _dpSel = null;
 
 const _DP_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -376,18 +398,11 @@ function _dpBuildGrid() {
     const panel = document.getElementById('dp-panel');
     if (!panel) return;
 
-    const firstDay = new Date(_dpYear, _dpMonth, 1).getDay();
-    const daysInMonth = new Date(_dpYear, _dpMonth + 1, 0).getDate();
-    const daysInPrev = new Date(_dpYear, _dpMonth, 0).getDate();
-    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
-
-    const now = new Date();
-    const todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
-
-    const prevY = _dpMonth === 0 ? _dpYear - 1 : _dpYear;
-    const prevM = _dpMonth === 0 ? 11 : _dpMonth - 1;
-    const nextY = _dpMonth === 11 ? _dpYear + 1 : _dpYear;
-    const nextM = _dpMonth === 11 ? 0 : _dpMonth + 1;
+    const firstDay = new Date(_dpYear, _dpMonth, 1).getDay(), daysInMonth = new Date(_dpYear, _dpMonth + 1, 0).getDate();
+    const daysInPrev = new Date(_dpYear, _dpMonth, 0).getDate(), totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+    const now = new Date(), todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
+    const prevY = _dpMonth === 0 ? _dpYear - 1 : _dpYear, prevM = _dpMonth === 0 ? 11 : _dpMonth - 1;
+    const nextY = _dpMonth === 11 ? _dpYear + 1 : _dpYear, nextM = _dpMonth === 11 ? 0 : _dpMonth + 1;
 
     let cells = '';
     for (let i = firstDay - 1; i >= 0; i--) {

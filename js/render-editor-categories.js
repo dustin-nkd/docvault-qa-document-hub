@@ -24,12 +24,7 @@ function _moduleVocabulary() {
     });
     return [...names.values()].sort((a, b) => a.localeCompare(b));
 }
-function _moduleDatalist() {
-    const options = _moduleVocabulary();
-    return options.length
-        ? `<datalist id="module-vocab">${options.map(n => `<option value="${escHtml(n)}"></option>`).join('')}</datalist>`
-        : '';
-}
+window._moduleVocabulary = _moduleVocabulary;
 
 const API_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const API_STATUS_OPTIONS = [
@@ -199,8 +194,7 @@ function renderEditorCategory(context) {
             <div class="grid sm:grid-cols-3 gap-4 mb-4">
                 <div>
                     <label for="ed-tc-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
-                    <input id="ed-tc-module" class="form-input" list="module-vocab" placeholder="${t('tcModulePl')}" value="${escHtml(tcData?.module || '')}">
-                    ${_moduleDatalist()}
+                    ${renderModuleInput('ed-tc-module', tcData?.module || '', t('tcModulePl'))}
                     <p class="text-[10px] mt-1" style="color:var(--tx-d);">${t('moduleVocabHint')}</p>
                 </div>
                 <div class="sm:col-span-2">
@@ -304,8 +298,7 @@ function renderEditorCategory(context) {
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div>
                             <label for="ed-api-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiModule')}</label>
-                            <input id="ed-api-module" class="form-input w-full" list="module-vocab" placeholder="${t('apiModulePlaceholder')}" value="${escHtml(apiData?.module || '')}">
-                            ${_moduleDatalist()}
+                            ${renderModuleInput('ed-api-module', apiData?.module || '', t('apiModulePlaceholder'))}
                         </div>
                         <div>
                             <label for="ed-api-impact-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiChangeImpact')}</label>
@@ -413,8 +406,7 @@ function renderEditorCategory(context) {
                 </div>
                 <div>
                     <label for="ed-apitc-module" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('tcModule')}</label>
-                    <input id="ed-apitc-module" class="form-input" list="module-vocab" placeholder="${t('tcModulePl')}" value="${escHtml(tc.module || '')}">
-                    ${_moduleDatalist()}
+                    ${renderModuleInput('ed-apitc-module', tc.module || '', t('tcModulePl'))}
                 </div>
             </div>
             <div class="grid sm:grid-cols-2 gap-4 mb-4">
