@@ -7,6 +7,7 @@ import './security-headers.test.mjs';
 import './search-index.test.mjs';
 import './service-worker.test.mjs';
 import './dashboard-performance.test.mjs';
+import './traceability.test.mjs';
 import './maintainability-characterization.test.mjs';
 import './markup-helpers.test.mjs';
 import './interaction-contract.test.mjs';
