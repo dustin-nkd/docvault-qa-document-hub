@@ -92,14 +92,14 @@ function renderTestCaseViewer(doc) {
             ${precond ? `<div class="mb-4"><p class="text-[11px] font-medium tracking-wide uppercase mb-1" style="color:var(--tx-m);">${t('tcPrecond')}</p><p class="text-sm" style="color:var(--tx);">${escHtml(precond)}</p></div>` : ''}
             ${testData ? `<div class="mb-4"><p class="text-[11px] font-medium tracking-wide uppercase mb-1" style="color:var(--tx-m);">${t('tcData')}</p><div class="text-sm font-mono p-2.5 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);color:var(--tx);">${escHtml(testData)}</div></div>` : ''}
             <div class="mb-4"><div class="rounded-lg overflow-hidden" style="border:1px solid var(--brd);">
-                <div class="grid grid-cols-12 gap-3 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider" style="background:var(--bg2);border-bottom:1px solid var(--brd);color:var(--tx-m);">
-                    <div class="col-span-1 text-center">#</div><div class="col-span-6">${t('tcAction')}</div><div class="col-span-5">${t('tcExpected')}</div>
+                <div class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider" style="display:grid;grid-template-columns:2rem minmax(0,1.2fr) minmax(0,1fr);gap:12px;background:var(--bg2);border-bottom:1px solid var(--brd);color:var(--tx-m);">
+                    <div class="text-center">#</div><div>${t('tcAction')}</div><div>${t('tcExpected')}</div>
                 </div>
                 ${steps.length === 0 ? `<div class="p-4 text-xs text-center" style="color:var(--tx-m);">No steps yet.</div>` : steps.map((s, idx) => `
-                <div class="grid grid-cols-12 gap-3 px-3 py-2.5 text-xs border-b last:border-b-0 items-start" style="background:${idx % 2 ? 'var(--bg2)' : 'var(--card)'};border-color:var(--brd);color:var(--tx);">
-                    <div class="col-span-1 text-center font-mono font-medium" style="color:var(--tx-m);">${idx + 1}</div>
-                    <div class="col-span-6 leading-relaxed" style="white-space:pre-wrap;word-break:break-word;">${escHtml(s.action || '')}</div>
-                    <div class="col-span-5 leading-relaxed" style="color:var(--tx-m);white-space:pre-wrap;word-break:break-word;">${escHtml(s.expected || '—')}</div>
+                <div class="px-3 py-2.5 text-xs border-b last:border-b-0 items-start" style="display:grid;grid-template-columns:2rem minmax(0,1.2fr) minmax(0,1fr);gap:12px;background:${idx % 2 ? 'var(--bg2)' : 'var(--card)'};border-color:var(--brd);color:var(--tx);">
+                    <div class="text-center font-mono font-medium" style="color:var(--tx-m);">${idx + 1}</div>
+                    <div class="leading-relaxed" style="white-space:pre-wrap;word-break:break-word;">${escHtml(s.action || '')}</div>
+                    <div class="leading-relaxed" style="color:var(--tx-m);white-space:pre-wrap;word-break:break-word;">${escHtml(s.expected || '—')}</div>
                 </div>`).join('')}
             </div></div>
             ${bugs.length ? `<div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">

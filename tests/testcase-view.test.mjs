@@ -99,6 +99,7 @@ test('Test Case view: Checkout renders structured card with module, pre-conditio
     assert.ok(html.includes('card: 4242 4242 4242 4242'), 'Should render test data');
 
     // Steps
+    assert.ok(html.includes('grid-template-columns:2rem'), 'Checkout step HTML should contain grid-template-columns:2rem');
     assert.ok(html.includes('Add a product to the cart and open Checkout'), 'Should render step 1 action');
     assert.ok(html.includes('Enter valid card details and click &quot;Pay Now&quot;'), 'Should render step 2 action');
     assert.ok(html.includes('Attempt payment with declined card'), 'Should render step 3 action');
