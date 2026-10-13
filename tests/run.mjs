@@ -16,3 +16,4 @@ import './runtime-performance.test.mjs';
 import './testplan-view.test.mjs';
 import './testcase-view.test.mjs';
 import './api-spec-view.test.mjs';
+import './bug-view.test.mjs';

@@ -1674,3 +1674,85 @@ function renderKanbanBoard(docs, isMobileSearch) {
         </div>
     </div>`;
 }
+
+function _hasStructuredBug(doc) {
+    if (doc?.category !== 'bug') return false;
+    const b = doc.bugData;
+    if (!b) return false;
+    const hasText = v => typeof v === 'string' && v.trim().length > 0;
+    return Boolean(hasText(b.env) || hasText(b.browser) || hasText(b.precond) || hasText(b.expected) || hasText(b.actual) || (Array.isArray(b.steps) && b.steps.some(s => hasText(s))));
+}
+
+function renderBugReportViewer(doc) {
+    const SEV = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
+    const sev = doc.bugData?.severity, prio = doc.bugData?.priority;
+    const prioColor = (typeof PRIO_COLOR !== 'undefined' && PRIO_COLOR[prio]) || '#94a3b8';
+    const ref = typeof bugRef === 'function' ? bugRef(doc) : '';
+    const S_META = { new: ['bugNew', '#94a3b8'], open: ['bugOpen', '#60a5fa'], 'in-progress': ['bugInProgress', '#a78bfa'], resolved: ['bugResolved', '#38bdf8'], retest: ['bugRetest', '#c084fc'], verified: ['bugVerified', '#4ade80'], closed: ['bugClosed', '#34d399'] };
+    const norm = typeof _normBugStatus === 'function' ? _normBugStatus(doc.bugStatus) : (doc.bugStatus || 'new');
+    const [stKey, stColor] = S_META[norm] || S_META['new'];
+    const statusLabel = t(stKey);
+
+    if (!_hasStructuredBug(doc)) {
+        const run = doc.bugData?.foundInRun ? (typeof documents !== 'undefined' ? documents : []).find(d => d.id === doc.bugData.foundInRun && d.status !== 'deleted') : null;
+        const tc = doc.bugData?.linkedTc ? (typeof documents !== 'undefined' ? documents : []).find(d => d.id === doc.bugData.linkedTc && d.status !== 'deleted') : null;
+        const dup = (doc.bugData?.resolution === 'duplicate' && doc.bugData?.duplicateOf) ? (typeof documents !== 'undefined' ? documents : []).find(d => d.id === doc.bugData.duplicateOf && d.status !== 'deleted') : null;
+        return `<div class="mb-6 flex flex-wrap items-center gap-2">
+            ${ref ? `<span class="bug-ref-chip font-mono text-sm font-bold px-2.5 py-1 rounded" style="background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.4);color:#f87171;">${ref}</span>` : ''}
+            <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold" style="background:${stColor}20;color:${stColor};">${escHtml(statusLabel)}</span>
+            ${sev ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${(SEV[sev] || '#94a3b8')}20;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
+            ${prio ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${prioColor}20;color:${prioColor};" title="Priority">${escHtml(prio)}</span>` : ''}
+            ${doc.bugData?.assignee ? `<span class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:10px;"></i>${escHtml(doc.bugData.assignee)}</span>` : ''}
+            ${run && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')"><i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}</button>` : ''}
+            ${tc && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="viewDoc('${tc.id}')"><i class="fa-solid fa-flask-vial" style="font-size:10px;"></i>Linked TC: ${escHtml(tc.title)}</button>` : ''}
+            ${dup && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(148,163,184,0.15);color:var(--tx-m);" data-onclick="viewDoc('${dup.id}')"><i class="fa-solid fa-copy" style="font-size:10px;"></i>Duplicate of: ${ref ? bugRef(dup) + ' ' : ''}${escHtml(dup.title)}</button>` : (doc.bugData?.resolution === 'duplicate' && doc.bugData?.duplicateOf && !state.sharedView ? `<span class="text-[11px] px-2 py-1 rounded" style="background:rgba(148,163,184,0.1);color:var(--tx-d);"><i class="fa-solid fa-copy mr-1"></i>Duplicate of a removed bug</span>` : '')}
+        </div>`;
+    }
+
+    const b = doc.bugData || {};
+    const env = (b.env || '').trim(), browser = (b.browser || '').trim(), precond = (b.precond || '').trim();
+    const expected = (b.expected || '').trim(), actual = (b.actual || '').trim();
+    const steps = (Array.isArray(b.steps) ? b.steps : []).filter(s => typeof s === 'string' && s.trim());
+    const docs = typeof documents !== 'undefined' ? documents : [];
+    const run = b.foundInRun ? docs.find(d => d.id === b.foundInRun && d.status !== 'deleted') : null;
+    const tcFound = b.foundInTc ? docs.find(d => d.id === b.foundInTc && d.status !== 'deleted') : null;
+    const tcLinked = b.linkedTc ? docs.find(d => d.id === b.linkedTc && d.status !== 'deleted') : null;
+    const hasStep = typeof b.foundInStep === 'number' && Number.isFinite(b.foundInStep) && b.foundInStep >= 0;
+    const stepHtml = hasStep ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded" style="background:rgba(255,255,255,0.06);color:var(--tx-m);">Step ${b.foundInStep + 1}</span>` : '';
+    const isShared = Boolean(typeof state !== 'undefined' && state.sharedView);
+
+    const runChip = run ? (() => {
+        const inH = `<i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}`;
+        const cls = 'text-[11px] flex items-center gap-1.5 px-2 py-1 rounded font-medium';
+        return isShared ? `<span class="${cls}" style="background:rgba(99,102,241,0.1);color:#818cf8;">${inH}</span>` : `<button class="${cls}" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')">${inH}</button>`;
+    })() : '';
+
+    const makeTc = (tc, pfx) => {
+        const inH = `<i class="fa-solid fa-flask-vial" style="font-size:10px;"></i>${(pfx || '') + escHtml(tc.title)}`;
+        const cls = 'text-[11px] flex items-center gap-1.5 px-2 py-1 rounded font-medium';
+        return isShared ? `<span class="${cls}" style="background:rgba(245,158,11,0.1);color:var(--c-tc);">${inH}</span>` : `<button class="${cls}" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="viewDoc('${tc.id}')">${inH}</button>`;
+    };
+    let tcFoundChip = '', tcLinkedChip = '', orphanStep = stepHtml;
+    if (tcFound) { tcFoundChip = `<div class="flex items-center gap-1.5">${makeTc(tcFound, '')}${stepHtml}</div>`; orphanStep = ''; }
+    if (tcLinked && (!tcFound || tcLinked.id !== tcFound.id)) tcLinkedChip = makeTc(tcLinked, 'Linked TC: ');
+    const sec = (lbl, val) => val ? `<div class="mb-4"><p class="text-[11px] font-medium tracking-wide uppercase mb-1" style="color:var(--tx-m);">${lbl}</p><p class="text-sm font-medium leading-relaxed" style="color:var(--tx);white-space:pre-wrap;word-break:break-word;">${escHtml(val)}</p></div>` : '';
+    const envBox = (lbl, val) => val ? `<div><p class="text-[11px] font-medium tracking-wide uppercase mb-1" style="color:var(--tx-m);">${lbl}</p><p class="text-sm font-medium" style="color:var(--tx);">${escHtml(val)}</p></div>` : '';
+    return `<div class="bug-viewer-card mb-6 rounded-xl overflow-hidden" style="background:var(--card);border:1px solid var(--brd);">
+        <div class="px-4 py-3 flex flex-wrap items-center gap-2 text-xs" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
+            ${ref ? `<span class="bug-ref-chip font-mono text-xs font-bold px-2 py-0.5 rounded" style="background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.4);color:#f87171;">${ref}</span>` : ''}
+            <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold" style="background:${stColor}20;color:${stColor};">${escHtml(statusLabel)}</span>
+            ${sev ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded" style="background:${(SEV[sev] || '#94a3b8')}20;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
+            ${prio ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded" style="background:${prioColor}20;color:${prioColor};" title="Priority">${escHtml(prio)}</span>` : ''}
+        </div>
+        <div class="p-5">
+            ${(env || browser) ? `<div class="flex flex-wrap gap-4 mb-4">${envBox(t('bugEnv'), env)}${envBox(t('bugDevice'), browser)}</div>` : ''}
+            ${sec(t('bugPrecond'), precond)}
+            ${steps.length ? `<div class="mb-4"><p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-m);">${t('bugSteps')}</p><div class="flex flex-col gap-2 text-sm" style="color:var(--tx);">${steps.map((s, idx) => `<div class="flex items-start gap-2.5"><span class="font-mono text-xs font-semibold px-1.5 py-0.5 rounded shrink-0" style="background:var(--bg2);color:var(--tx-m);border:1px solid var(--brd);">${idx + 1}</span><div class="leading-relaxed" style="white-space:pre-wrap;word-break:break-word;">${escHtml(s)}</div></div>`).join('')}</div></div>` : ''}
+            ${sec(t('bugExpected'), expected)}
+            ${sec(t('bugActual'), actual)}
+            ${(runChip || tcFoundChip || tcLinkedChip || orphanStep) ? `<div class="mt-4 pt-4 border-t flex flex-wrap items-center gap-2" style="border-color:var(--brd);">${runChip}${tcFoundChip}${tcLinkedChip}${orphanStep}</div>` : ''}
+        </div>
+    </div>`;
+}
+
+if (typeof window !== 'undefined') { window._hasStructuredBug = _hasStructuredBug; window.renderBugReportViewer = renderBugReportViewer; }

@@ -183,39 +183,7 @@ function renderApiTestViewer(doc) {
 
 function renderViewerCategory(doc) {
     return `
-        ${doc.category === 'bug' ? (() => {
-    const SEV = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
-    const sev = doc.bugData?.severity;
-    const prio = doc.bugData?.priority;
-    const prioColor = (typeof PRIO_COLOR !== 'undefined' && PRIO_COLOR[prio]) || '#94a3b8';
-    const ref = bugRef(doc);
-    return `
-        <div class="mb-6 flex flex-wrap items-center gap-2">
-    ${ref ? `<span class="bug-ref-chip font-mono text-sm font-bold px-2.5 py-1 rounded" style="background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.4);color:#f87171;">${ref}</span>` : ''}
-    ${sev ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${(SEV[sev] || '#94a3b8')}20;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
-    ${prio ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${prioColor}20;color:${prioColor};" title="Priority">${escHtml(prio)}</span>` : ''}
-    ${doc.bugData?.assignee ? `<span class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:10px;"></i>${escHtml(doc.bugData.assignee)}</span>` : ''}
-    ${(() => {
-        const runId = doc.bugData?.foundInRun;
-        if (!runId || state.sharedView) return '';
-        const run = documents.find(d => d.id === runId && d.status !== 'deleted');
-        if (!run) return '';
-        return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')" title="Open the test run this bug was found in"><i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}</button>`;
-    })()}
-    ${(() => {
-        if (state.sharedView || !doc.bugData?.linkedTc) return '';
-        const tc = documents.find(d => d.id === doc.bugData.linkedTc && d.status !== 'deleted');
-        if (!tc) return '';
-        return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="viewDoc('${tc.id}')" title="Open the linked test case"><i class="fa-solid fa-flask-vial" style="font-size:10px;"></i>Linked TC: ${escHtml(tc.title)}</button>`;
-    })()}
-    ${(() => {
-        if (state.sharedView || doc.bugData?.resolution !== 'duplicate' || !doc.bugData?.duplicateOf) return '';
-        const original = documents.find(d => d.id === doc.bugData.duplicateOf && d.status !== 'deleted');
-        if (!original) return '<span class="text-[11px] px-2 py-1 rounded" style="background:rgba(148,163,184,0.1);color:var(--tx-d);"><i class="fa-solid fa-copy mr-1"></i>Duplicate of a removed bug</span>';
-        return `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(148,163,184,0.15);color:var(--tx-m);" data-onclick="viewDoc('${original.id}')" title="Open the original bug"><i class="fa-solid fa-copy" style="font-size:10px;"></i>Duplicate of: ${bugRef(original)} ${escHtml(original.title)}</button>`;
-    })()}
-        </div>`;
-        })() : ''}
+        ${doc.category === 'bug' ? renderBugReportViewer(doc) : ''}
 
         ${doc.category === 'bug' ? renderBugTriage(doc) : ''}
 
@@ -841,7 +809,7 @@ function renderViewerCategory(doc) {
     <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
     <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
         </div>` : ''}
-        ` : (doc.category === 'api' || doc.category === 'apitest' || (doc.category === 'testcases' && typeof _hasStructuredTc === 'function' && _hasStructuredTc(doc)) || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
+        ` : (doc.category === 'api' || doc.category === 'apitest' || (doc.category === 'testcases' && typeof _hasStructuredTc === 'function' && _hasStructuredTc(doc)) || (doc.category === 'bug' && typeof _hasStructuredBug === 'function' && _hasStructuredBug(doc)) || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
         </div>
