@@ -181,10 +181,16 @@ function renderApiTestViewer(doc) {
     </div>`;
 }
 
+function renderTaskViewer(doc) {
+    const [label, color] = { todo: [t('todo'), '#64748b'], 'in-progress': [t('inProgress'), '#3b82f6'], review: [t('review'), '#f59e0b'], done: [t('done'), '#10b981'] }[doc?.kanbanStatus] || [t('todo'), '#64748b'];
+    const notes = doc?.content?.trim();
+    return `<div class="task-viewer-card mb-6 p-5 rounded-xl" style="background:var(--card);border:1px solid var(--brd);"><p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${t('status')}</p><div class="flex items-center gap-2"><span class="text-xs px-2.5 py-1 rounded font-semibold" style="background:${color}20;color:${color};">${escHtml(label)}</span></div></div>${notes ? `<div class="mt-6"><p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">${t('notes')}</p><div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div></div>` : ''}`;
+}
+
 function renderViewerCategory(doc) {
     return `
+        ${doc.category === 'task' ? renderTaskViewer(doc) : ''}
         ${doc.category === 'bug' ? renderBugReportViewer(doc) : ''}
-
         ${doc.category === 'bug' ? renderBugTriage(doc) : ''}
 
         ${doc.category === 'credential' ? `
@@ -727,22 +733,12 @@ function renderViewerCategory(doc) {
         }).join('')}
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
-        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Test Runs</div>
-        <div class="text-2xl font-bold" style="color:var(--c-rel);">${linkedRuns.length}</div>
-        </div>
-        <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
-        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Pass Rate</div>
-        <div class="text-2xl font-bold" style="color:${passPct === null ? 'var(--tx-d)' : passPct >= readiness.policy.minPassRate ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'};">${passPct !== null ? passPct + '%' : '—'}</div>
-        </div>
-        <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
-        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Total Bugs</div>
-        <div class="text-2xl font-bold" style="color:${linkedBugs.length === 0 ? '#10b981' : '#ef4444'};">${linkedBugs.length}</div>
-        </div>
-        <div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);">
-        <div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">Critical</div>
-        <div class="text-2xl font-bold" style="color:${criticalBugs === 0 ? '#10b981' : '#ef4444'};">${criticalBugs}</div>
-        </div>
+        ${[
+            ['Test Runs', linkedRuns.length, 'var(--c-rel)'],
+            ['Pass Rate', passPct !== null ? passPct + '%' : '—', passPct === null ? 'var(--tx-d)' : passPct >= readiness.policy.minPassRate ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'],
+            ['Total Bugs', linkedBugs.length, linkedBugs.length === 0 ? '#10b981' : '#ef4444'],
+            ['Critical', criticalBugs, criticalBugs === 0 ? '#10b981' : '#ef4444']
+        ].map(([lbl, val, col]) => `<div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);"><div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">${lbl}</div><div class="text-2xl font-bold" style="color:${col};">${val}</div></div>`).join('')}
         </div>
         ${decisionLog.length ? `<div class="release-decision-log">
         <p>Decision history</p>
@@ -809,7 +805,7 @@ function renderViewerCategory(doc) {
     <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
     <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
         </div>` : ''}
-        ` : (doc.category === 'api' || doc.category === 'apitest' || (doc.category === 'testcases' && typeof _hasStructuredTc === 'function' && _hasStructuredTc(doc)) || (doc.category === 'bug' && typeof _hasStructuredBug === 'function' && _hasStructuredBug(doc)) || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
+        ` : (doc.category === 'api' || doc.category === 'apitest' || (doc.category === 'testcases' && typeof _hasStructuredTc === 'function' && _hasStructuredTc(doc)) || (doc.category === 'bug' && typeof _hasStructuredBug === 'function' && _hasStructuredBug(doc)) || doc.category === 'task' || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
         </div>
