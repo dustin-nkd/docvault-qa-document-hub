@@ -802,9 +802,8 @@ const GUEST_DEMO_DOCS = (() => {
         content: '', createdAt: days(4), updatedAt: days(1)
     };
 
-    // Mirrors the Markdown saveDoc() generates for bugs, for the same reason as
-    // tcContent above — the viewer falls back to doc.content for the bug body
-    // (the dedicated bug block only renders the severity/priority/ref meta strip).
+    // When bugData has content, viewer renders a card from bugData;
+    // content remains exported markdown for legacy/notes-only bugs.
     const bugContent = (title, b) => `# ${title}\n\n## Environment\n- **Environment:** ${b.env || '-'}\n- **Device/Browser:** ${b.browser || '-'}\n- **Severity:** ${b.severity}\n\n${b.precond ? `## Pre-conditions\n${b.precond}\n\n` : ''}## Steps to Reproduce\n${b.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n## Expected Behavior\n${b.expected || '-'}\n\n## Actual Behavior\n${b.actual || '-'}`;
 
     const bug1Data = { env: 'Staging', browser: 'Chrome 120', severity: 'Critical', priority: 'P1', assignee: 'Minh T.',
