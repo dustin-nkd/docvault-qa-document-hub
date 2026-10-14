@@ -74,8 +74,9 @@ function renderReleaseQualityScorecard(release) {
     }).filter(item => Math.abs(item.contribution) >= .5).sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)).slice(0, 2) : [];
     const baselineModules = new Map((baseline?.modules || []).map(item => [_qualityModuleKey(item.name), item]));
 
-    return `<section class="quality-scorecard">
-        <div class="quality-score-head">
+    return `<details class="quality-scorecard">
+        <summary>
+            <div class="quality-score-head">
     <div>
         <h3>${t('scoreTitle')}</h3>
         <p>${t('scoreSub')}</p>
@@ -84,8 +85,8 @@ function renderReleaseQualityScorecard(release) {
         <b>${t('scoreBaseline')}</b>
         ${previousRelease ? escHtml(previousRelease.releaseData?.version || previousRelease.title) : t('scoreFirstRelease')}
     </span>
-        </div>
-        <div class="quality-score-overview">
+            </div>
+            <div class="quality-score-overview">
     <div class="quality-score-value is-${band}">
         <strong>${quality.score}</strong><span>/100</span>
         <em>${bandLabel}</em>
@@ -102,7 +103,8 @@ function renderReleaseQualityScorecard(release) {
         ${item.label} ${item.contribution > 0 ? '+' : ''}${Math.round(item.contribution)}
         </b>`).join('') : `<small>${baseline ? t('scoreStable') : t('scoreNeedsBaseline')}</small>`}
     </div>
-        </div>
+            </div>
+        </summary>
         <div class="quality-dimensions">
     ${dimensions.map(item => {
         const pct = Math.max(0, Math.min(100, item.value / item.max * 100));
@@ -129,7 +131,7 @@ function renderReleaseQualityScorecard(release) {
         </div>`;
     }).join('') : `<div class="quality-empty">${t('scoreNoModules')}</div>`}
         </div>
-    </section>`;
+    </details>`;
 }
 
 function _liveCaseSteps(tc) {
@@ -670,8 +672,6 @@ function renderViewerCategory(doc) {
     const linkedBugs = readiness.linkedBugs;
     const linkedEnvs = readiness.linkedEnvs;
 
-    const passPct = readiness.metrics.passRate;
-    const criticalBugs = readiness.metrics.critical;
     const sevColor = s => s === 'Critical' ? '#ef4444' : s === 'Major' ? '#f97316' : s === 'Minor' ? '#f59e0b' : '#7a8ba8';
 
     const statusStyle = s => ({
@@ -731,14 +731,6 @@ function renderViewerCategory(doc) {
         ${sourceId && !state.sharedView ? `<button data-onclick="viewDoc('${sourceId}')" title="Open source evidence"><i class="fa-solid fa-arrow-up-right-from-square"></i>${check.docIds.length > 1 ? `<em>+${check.docIds.length - 1}</em>` : ''}</button>` : ''}
         </div>`;
         }).join('')}
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        ${[
-            ['Test Runs', linkedRuns.length, 'var(--c-rel)'],
-            ['Pass Rate', passPct !== null ? passPct + '%' : '—', passPct === null ? 'var(--tx-d)' : passPct >= readiness.policy.minPassRate ? '#10b981' : passPct >= 50 ? '#f59e0b' : '#ef4444'],
-            ['Total Bugs', linkedBugs.length, linkedBugs.length === 0 ? '#10b981' : '#ef4444'],
-            ['Critical', criticalBugs, criticalBugs === 0 ? '#10b981' : '#ef4444']
-        ].map(([lbl, val, col]) => `<div class="p-3 rounded-lg text-center" style="background:var(--card);border:1px solid var(--brd);"><div class="text-[11px] uppercase tracking-wider mb-1" style="color:var(--tx-m);">${lbl}</div><div class="text-2xl font-bold" style="color:${col};">${val}</div></div>`).join('')}
         </div>
         ${decisionLog.length ? `<div class="release-decision-log">
         <p>Decision history</p>

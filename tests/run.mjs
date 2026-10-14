@@ -18,3 +18,4 @@ import './testcase-view.test.mjs';
 import './api-spec-view.test.mjs';
 import './bug-view.test.mjs';
 import './task-view.test.mjs';
+import './release-view.test.mjs';
