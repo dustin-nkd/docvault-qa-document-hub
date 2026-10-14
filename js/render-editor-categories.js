@@ -21,20 +21,11 @@ window._moduleVocabulary = _moduleVocabulary;
 
 const API_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const API_STATUS_OPTIONS = [
-    {value: '200', label: '200 OK'},
-    {value: '201', label: '201 Created'},
-    {value: '204', label: '204 No Content'},
-    {value: '301', label: '301 Moved Permanently'},
-    {value: '400', label: '400 Bad Request'},
-    {value: '401', label: '401 Unauthorized'},
-    {value: '403', label: '403 Forbidden'},
-    {value: '404', label: '404 Not Found'},
-    {value: '409', label: '409 Conflict'},
-    {value: '422', label: '422 Unprocessable Entity'},
-    {value: '429', label: '429 Too Many Requests'},
-    {value: '500', label: '500 Internal Server Error'},
-    {value: '502', label: '502 Bad Gateway'},
-    {value: '503', label: '503 Service Unavailable'}
+    {value: '200', label: '200 OK'}, {value: '201', label: '201 Created'}, {value: '204', label: '204 No Content'},
+    {value: '301', label: '301 Moved Permanently'}, {value: '400', label: '400 Bad Request'}, {value: '401', label: '401 Unauthorized'},
+    {value: '403', label: '403 Forbidden'}, {value: '404', label: '404 Not Found'}, {value: '409', label: '409 Conflict'},
+    {value: '422', label: '422 Unprocessable Entity'}, {value: '429', label: '429 Too Many Requests'}, {value: '500', label: '500 Internal Server Error'},
+    {value: '502', label: '502 Bad Gateway'}, {value: '503', label: '503 Service Unavailable'}
 ];
 window.API_STATUS_OPTIONS = API_STATUS_OPTIONS;
 
@@ -442,7 +433,7 @@ function renderEditorCategory(context) {
             <div class="grid sm:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label for="ed-apitc-status-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('apiTcExpectedStatus')}</label>
-                    ${renderSelect('ed-apitc-status', API_STATUS_OPTIONS, tc.expectedStatus || '200', 'w-full font-mono text-xs', '', 'Expected status')}
+                    ${renderSelect('ed-apitc-status', API_STATUS_OPTIONS, tc.expectedStatus || '200', 'w-full font-mono text-xs', 'applyApiTestExample(this.value)', 'Expected status')}
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-1.5">
@@ -865,6 +856,32 @@ window.applyLinkedApiSpec = function(apiId) {
         expectedBody: switching ? (api.response || '') : current.expectedBody
     });
 };
+
+function _linkedApiExampleBody(api, code) {
+    const data = api?.apiData || api;
+    const list = typeof _normalizeApiResponses === 'function'
+        ? _normalizeApiResponses(data?.code ? { responses: [data] } : data)
+        : [];
+    const target = String(code || '').trim();
+    const row = list.find(r => String(r.code) === target);
+    return row ? row.body : null;
+}
+window._linkedApiExampleBody = _linkedApiExampleBody;
+
+function applyApiTestExample(code) {
+    const current = readApiTestCaseForm();
+    const expectedStatus = String(code || '').trim() || '200';
+    let expectedBody = current.expectedBody || '';
+    if (current.linkedApiId) {
+        const spec = documents.find(d => d.id === current.linkedApiId && d.category === 'api' && d.status !== 'deleted');
+        const body = spec ? _linkedApiExampleBody(spec, expectedStatus) : null;
+        if (typeof body === 'string') expectedBody = body;
+    }
+    storeApiTestCase({ ...current, expectedStatus, expectedBody });
+    state._apiTcFormAuthoritative = true;
+    if (typeof render === 'function') render();
+}
+window.applyApiTestExample = applyApiTestExample;
 
 // ========================
 // ENVIRONMENT PROPERTY HELPERS
