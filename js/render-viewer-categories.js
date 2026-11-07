@@ -265,66 +265,66 @@ function renderViewerCategory(doc) {
         </div>
         ` : ''}
 
-        ${doc.category === 'environment' ? `
-        <div class="env-viewer-card mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
-    <div class="flex items-center justify-between mb-5">
-        <h3 class="env-viewer-title font-heading font-semibold text-lg" style="color:var(--tx);">Environment Details</h3>
-        <span class="env-viewer-status px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase" style="background:${doc.envData?.status === 'healthy' ? '#10b98122' : doc.envData?.status === 'down' ? '#ef444422' : '#f59e0b22'}; color:${doc.envData?.status === 'healthy' ? '#10b981' : doc.envData?.status === 'down' ? '#ef4444' : '#f59e0b'}; border:1px solid ${doc.envData?.status === 'healthy' ? '#10b98155' : doc.envData?.status === 'down' ? '#ef444455' : '#f59e0b55'};">
-        <i class="fa-solid fa-circle text-[8px] mr-1.5"></i>${doc.envData?.status || 'Unknown'}
-        </span>
-    </div>
-
-    ${(() => {
+        ${doc.category === 'environment' ? (() => {
+        const envSt = ({
+            healthy: ['Healthy', '#10b981'],
+            maintenance: ['Maintenance', '#f59e0b'],
+            degraded: ['Degraded', '#f59e0b'],
+            down: ['Down', '#ef4444']
+        })[doc.envData?.status] || ['Unknown', 'var(--tx-d)'];
+        const envLabel = envSt[0], envColor = envSt[1];
+        const envBg = envColor.startsWith('#') ? `${envColor}22` : 'rgba(122,139,168,0.1)';
+        const envBorder = envColor.startsWith('#') ? `${envColor}55` : 'var(--brd)';
         const props = doc.envData?.properties || [];
         const legacyProps = [];
         if (!props.length) {
-        if (doc.envData?.frontendUrl) legacyProps.push({label: 'Frontend URL', value: doc.envData.frontendUrl, secret: false});
-        if (doc.envData?.backendUrl) legacyProps.push({label: 'Backend API URL', value: doc.envData.backendUrl, secret: false});
-        if (doc.envData?.dbInfo) legacyProps.push({label: 'Database Connection', value: doc.envData.dbInfo, secret: true});
+            const ed = doc.envData || {};
+            if (ed.frontendUrl) legacyProps.push({label: 'Frontend URL', value: ed.frontendUrl, secret: false});
+            if (ed.backendUrl) legacyProps.push({label: 'Backend API URL', value: ed.backendUrl, secret: false});
+            if (ed.dbInfo) legacyProps.push({label: 'Database Connection', value: ed.dbInfo, secret: true});
         }
         const allProps = props.length ? props : legacyProps;
-        if (!allProps.length) return '';
+        const hasCreds = !!(doc.envData?.linkedCreds?.length);
+        const hasNotes = !!String(doc.envData?.notes || '').trim();
 
-        return `<div class="grid sm:grid-cols-2 gap-4 mb-5">
-        ${allProps.map(prop => `
-        <div class="env-prop-card p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
-        <p class="env-prop-label text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${escHtml(prop.label)}</p>
-        <div class="flex items-center gap-2">
-        ${prop.secret ? `
-        <div class="env-secret-box flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
-        <input type="password" id="view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}" value="${escHtml(prop.value)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
-        <button class="btn-s px-2 py-1 text-xs" aria-label="Show ${escHtml(prop.label)}" title="Show ${escHtml(prop.label)}" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
-        </div>
-        ` : `
-        ${prop.value.startsWith('http') ?
-        `<a href="${escHtml(prop.value)}" target="_blank" class="env-viewer-link text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(prop.value)}</a>` :
-        `<span class="env-viewer-prop-val text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`
-        }
-        `}
-        <button class="btn-s px-2 py-1 text-xs" aria-label="Copy ${escHtml(prop.label)}" title="Copy ${escHtml(prop.label)}" data-copy-value="${escHtml(prop.value)}" data-onclick="_copyProp(this)"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
-        </div>
-        </div>
-        `).join('')}
-        </div>`;
-    })()}
-
-    ${doc.envData?.linkedCreds?.length ? `
-    <div>
-        <p class="env-creds-heading text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Credentials</p>
-        <div class="flex flex-wrap gap-2">
-        ${doc.envData.linkedCreds.map(id => {
-        const cred = documents.find(d => d.id === id && d.status !== 'deleted');
-        if (!cred) return '';
-        return `
-        <div class="env-linked-cred-item flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" data-onclick="viewDoc('${cred.id}')">
-        <i class="fa-solid fa-key text-xs" style="color:var(--c-cred);"></i>
-        <span class="text-xs font-medium" style="color:var(--tx);">${escHtml(cred.title)}</span>
-        </div>`;
-        }).join('')}
-        </div>
-    </div>` : ''}
-        </div>
-        ` : ''}
+        return `<div class="env-viewer-card mb-6 p-5 rounded-xl" style="background:var(--bg2);border:1px solid var(--brd);">
+<div class="flex items-center justify-between mb-5">
+<h3 class="env-viewer-title font-heading font-semibold text-lg" style="color:var(--tx);">Environment Details</h3>
+<span class="env-viewer-status px-3 py-1 rounded-full text-[11px] font-bold tracking-wide" style="background:${envBg}; color:${envColor}; border:1px solid ${envBorder};">
+<i class="fa-solid fa-circle text-[8px] mr-1.5"></i>${envLabel}
+</span>
+</div>
+${allProps.length ? `<div class="grid sm:grid-cols-2 gap-4 mb-5">
+${allProps.map(prop => `<div class="env-prop-card p-4 rounded-lg" style="background:var(--card);border:1px solid var(--brd);">
+<p class="env-prop-label text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${escHtml(prop.label)}</p>
+<div class="flex items-center gap-2">
+${prop.secret ? `<div class="env-secret-box flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd);">
+<input type="password" id="view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}" value="${escHtml(prop.value)}" class="bg-transparent border-none outline-none text-sm w-full font-mono tracking-wider flex-1" style="color:var(--tx);" readonly>
+<button class="btn-s px-2 py-1 text-xs" aria-label="Show ${escHtml(prop.label)}" title="Show ${escHtml(prop.label)}" data-onclick="togglePasswordVisibility('view-env-prop-${escHtml(prop.label).replace(/\s+/g,'-').toLowerCase()}', this)"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+</div>` : `${prop.value.startsWith('http') ? `<a href="${escHtml(prop.value)}" target="_blank" class="env-viewer-link text-sm font-mono text-emerald-400 hover:underline truncate flex-1">${escHtml(prop.value)}</a>` : `<span class="env-viewer-prop-val text-sm font-mono flex-1 truncate" style="color:var(--tx);">${escHtml(prop.value)}</span>`}`}
+<button class="btn-s px-2 py-1 text-xs" aria-label="Copy ${escHtml(prop.label)}" title="Copy ${escHtml(prop.label)}" data-copy-value="${escHtml(prop.value)}" data-onclick="_copyProp(this)"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
+</div>
+</div>`).join('')}
+</div>` : ''}
+${hasCreds ? `<div>
+<p class="env-creds-heading text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">Linked Credentials</p>
+<div class="flex flex-wrap gap-2">
+${doc.envData.linkedCreds.map(id => {
+const cred = documents.find(d => d.id === id && d.status !== 'deleted');
+if (!cred) return '';
+return `<div class="env-linked-cred-item flex items-center gap-2 py-1.5 px-3 rounded-lg ${state.sharedView ? '' : 'cursor-pointer '}border ui-hover-card" style="background:var(--bg);border-color:var(--brd);transition:background .15s;" ${state.sharedView ? '' : `data-onclick="viewDoc('${cred.id}')"`}>
+<i class="fa-solid fa-key text-xs" style="color:var(--c-cred);"></i>
+<span class="text-xs font-medium" style="color:var(--tx);">${escHtml(cred.title)}</span>
+</div>`;
+}).join('')}
+</div>
+</div>` : ''}
+${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
+<p class="text-[11px] font-medium tracking-wide uppercase mb-2" style="color:var(--tx-d);">${t('notes')}</p>
+<div class="text-sm leading-relaxed" style="color:var(--tx);white-space:pre-wrap;">${escHtml(doc.envData.notes)}</div>
+</div>` : ''}
+</div>`;
+        })() : ''}
 
         ${doc.category === 'api' ? `
         ${(() => {
@@ -802,7 +802,7 @@ ${state.sharedView ? `<p class="text-sm" style="color:var(--tx);">${escHtml(tcNo
     <p class="text-[11px] font-medium tracking-wide uppercase mb-3" style="color:var(--tx-d);">Release Notes</p>
     <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:100px;"></div>
         </div>` : ''}
-        ` : (doc.category === 'api' || doc.category === 'apitest' || (doc.category === 'testcases' && typeof _hasStructuredTc === 'function' && _hasStructuredTc(doc)) || (doc.category === 'bug' && typeof _hasStructuredBug === 'function' && _hasStructuredBug(doc)) || doc.category === 'task' || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
+        ` : (doc.category === 'api' || doc.category === 'apitest' || (doc.category === 'testcases' && typeof _hasStructuredTc === 'function' && _hasStructuredTc(doc)) || (doc.category === 'bug' && typeof _hasStructuredBug === 'function' && _hasStructuredBug(doc)) || doc.category === 'task' || doc.category === 'environment' || !doc.content || doc.content.trim() === '' || (doc.category === 'credential' && doc.content.trim() === (TEMPLATES['credential'] || '').trim())) ? '' : `
         <!-- Content -->
         <div id="viewer-container" class="p-6 rounded-xl toastui-editor-dark" style="background:var(--card);border:1px solid var(--brd);min-height:200px;">
         </div>
