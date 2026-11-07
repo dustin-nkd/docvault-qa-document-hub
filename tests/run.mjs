@@ -20,3 +20,4 @@ import './bug-view.test.mjs';
 import './task-view.test.mjs';
 import './release-view.test.mjs';
 import './api-test-example.test.mjs';
+import './testrun-view.test.mjs';
