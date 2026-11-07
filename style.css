@@ -2213,7 +2213,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     color: #121212 !important;
 }
 
-[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden > div:first-child {
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden > summary {
     background: #F0F0F0 !important;
     border-bottom: 2px solid #121212 !important;
     border-radius: 0 !important;
@@ -2221,7 +2221,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     font-weight: 800 !important;
 }
 
-[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden > div:first-child span {
+[data-ui-style="bauhaus"] .space-y-4 > .rounded-xl.overflow-hidden > summary span {
     color: #121212 !important;
     font-weight: 800 !important;
 }

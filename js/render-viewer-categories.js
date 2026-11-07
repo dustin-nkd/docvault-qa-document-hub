@@ -139,6 +139,14 @@ function _liveCaseSteps(tc) {
     return Array.isArray(steps) ? steps : [];
 }
 
+function _runCaseOutcome(steps, row) {
+    const values = (Array.isArray(steps) ? steps : []).map((_, i) => (row && row[i]) || 'untested');
+    if (values.includes('fail')) return 'fail';
+    if (values.includes('blocked')) return 'blocked';
+    if (values.length > 0 && values.every(value => value === 'pass')) return 'pass';
+    return 'untested';
+}
+
 function renderApiTestViewer(doc) {
     const tc = doc.apiTcData || {};
     const method = tc.method || 'GET';
@@ -395,22 +403,19 @@ function renderViewerCategory(doc) {
     const isDrifted = tc => !!doc.runData?.snapshot?.[tc.id]
         && JSON.stringify(doc.runData.snapshot[tc.id]) !== JSON.stringify(_liveCaseSteps(tc));
 
-    let totalSteps = 0, passCount = 0, failCount = 0, blockedCount = 0;
+    let passCount = 0, failCount = 0, blockedCount = 0, untestedCount = 0;
 
     targets.forEach(tc => {
-        const steps = stepsOf(tc);
-        totalSteps += steps.length;
-        steps.forEach((_, i) => {
-        const st = results[tc.id]?.[i];
-        if (st === 'pass') passCount++;
-        if (st === 'fail') failCount++;
-        if (st === 'blocked') blockedCount++;
-        });
+        const outcome = _runCaseOutcome(stepsOf(tc), results[tc.id]);
+        if (outcome === 'pass') passCount++;
+        else if (outcome === 'fail') failCount++;
+        else if (outcome === 'blocked') blockedCount++;
+        else untestedCount++;
     });
 
-    const untestedCount = totalSteps - (passCount + failCount + blockedCount);
-    const passPct = totalSteps ? (passCount / totalSteps * 100) : 0, failPct = totalSteps ? (failCount / totalSteps * 100) : 0;
-    const blockedPct = totalSteps ? (blockedCount / totalSteps * 100) : 0, untestedPct = totalSteps ? (untestedCount / totalSteps * 100) : 100;
+    const totalCases = targets.length;
+    const passPct = totalCases ? (passCount / totalCases * 100) : 0, failPct = totalCases ? (failCount / totalCases * 100) : 0;
+    const blockedPct = totalCases ? (blockedCount / totalCases * 100) : 0, untestedPct = totalCases ? (untestedCount / totalCases * 100) : 100;
 
     // Test Cycle & Trend (B2): runs sharing a cycle sorted chronologically.
     const cycleId = doc.runData?.cycleId || doc.id;
@@ -439,52 +444,37 @@ function renderViewerCategory(doc) {
         <div class="flex items-end gap-2" style="height:64px;">
         ${cycleRuns.map(r => {
         const isCurrent = r.id === doc.id;
-        const rResults = r.runData?.results || {};
-        const rTargets = r.runData?.targetIds || [];
-        let rTotal = 0, rPass = 0;
-        rTargets.forEach(tcId => {
-        const steps = r.runData?.snapshot?.[tcId] || [];
-        rTotal += steps.length;
-        steps.forEach((_, i) => { if (rResults[tcId]?.[i] === 'pass') rPass++; });
-        });
-        const pct = rTotal ? Math.round(rPass / rTotal * 100) : 0;
-        const color = rTotal === 0 ? 'var(--brd-l)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
-        return `<div class="flex-1 flex flex-col items-center justify-end gap-1 cursor-pointer" title="${escHtml(r.title)} — ${rTotal ? pct + '%' : 'no results'}" data-onclick="viewDoc('${r.id}')">
-        <span class="text-[10px] font-bold" style="color:${color};">${rTotal ? pct + '%' : '—'}</span>
+        const rResults = r.runData?.results || {}, rTargets = r.runData?.targetIds || [], rSnapshot = r.runData?.snapshot || {};
+        const rPass = rTargets.filter(id => _runCaseOutcome(Array.isArray(rSnapshot[id]) ? rSnapshot[id] : [], rResults[id]) === 'pass').length;
+        const hasTargets = rTargets.length > 0;
+        const pct = hasTargets ? Math.round(rPass / rTargets.length * 100) : 0;
+        const color = !hasTargets ? 'var(--brd-l)' : pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+        return `<div class="flex-1 flex flex-col items-center justify-end gap-1 cursor-pointer" title="${escHtml(r.title)} — ${hasTargets ? pct + '%' : 'no results'}" data-onclick="viewDoc('${r.id}')">
+        <span class="text-[10px] font-bold" style="color:${color};">${hasTargets ? pct + '%' : '—'}</span>
         <div style="width:100%;max-width:28px;height:${Math.max(4, pct * 0.4)}px;background:${color};border-radius:3px 3px 0 0;${isCurrent ? 'outline:2px solid #fff3;outline-offset:1px;' : ''}"></div>
         </div>`;
         }).join('')}
         </div>
     </div>` : ''}
     <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('pass')}</div>
-        <div class="text-3xl font-bold" style="color:#10b981;">${passCount}</div>
-        </div>
-        <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('fail')}</div>
-        <div class="text-3xl font-bold" style="color:#ef4444;">${failCount}</div>
-        </div>
-        <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('blocked')}</div>
-        <div class="text-3xl font-bold" style="color:#f59e0b;">${blockedCount}</div>
-        </div>
-        <div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${t('untested')}</div>
-        <div class="text-3xl font-bold" style="color:var(--tx-m);">${untestedCount}</div>
-        </div>
+        ${[
+        { l: t('pass'), c: passCount, col: '#10b981' },
+        { l: t('fail'), c: failCount, col: '#ef4444' },
+        { l: t('blocked'), c: blockedCount, col: '#f59e0b' },
+        { l: t('untested'), c: untestedCount, col: 'var(--tx-m)' }
+        ].map(b => `<div class="p-4 rounded-xl flex flex-col justify-center items-center" style="background:var(--bg2); border:1px solid var(--brd); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div class="text-[11px] uppercase tracking-wider font-semibold mb-1" style="color:var(--tx-m);">${b.l}</div>
+        <div class="text-3xl font-bold" style="color:${b.col};">${b.c}</div>
+        </div>`).join('')}
     </div>
 
     <div class="mb-8">
         <div class="flex items-center justify-between mb-2">
-        <span class="text-xs font-semibold uppercase tracking-wider" style="color:var(--tx-m);">${t('testRunProgress')} (${totalSteps} steps)</span>
+        <span class="text-xs font-semibold uppercase tracking-wider" style="color:var(--tx-m);">${t('testRunProgress')} (${totalCases} ${totalCases === 1 ? 'case' : 'cases'})</span>
         <span class="text-xs font-medium" style="color:var(--tx);">${Math.round(passPct)}% Passed</span>
         </div>
         <div class="w-full h-1.5 rounded-full overflow-hidden flex" style="background:var(--bg2); border:1px solid var(--brd);">
-        <div style="width:${passPct}%;background:#10b981;transition:width .4s ease;"></div>
-        <div style="width:${failPct}%;background:#ef4444;transition:width .4s ease;"></div>
-        <div style="width:${blockedPct}%;background:#f59e0b;transition:width .4s ease;"></div>
-        <div style="width:${untestedPct}%;background:transparent;"></div>
+        ${[{ w: passPct, c: '#10b981' }, { w: failPct, c: '#ef4444' }, { w: blockedPct, c: '#f59e0b' }, { w: untestedPct, c: 'transparent' }].map(s => `<div style="width:${s.w}%;background:${s.c};${s.c !== 'transparent' ? 'transition:width .4s ease;' : ''}"></div>`).join('')}
         </div>
     </div>
     <div class="space-y-4">
@@ -493,26 +483,31 @@ function renderViewerCategory(doc) {
     if (targets.length === 0) {
         html += `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases selected.</div>`;
     } else {
+        const outcomeColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
+        const outcomeBgs = { pass: 'rgba(16,185,129,0.12)', fail: 'rgba(239,68,68,0.12)', blocked: 'rgba(245,158,11,0.12)', untested: 'rgba(122,139,168,0.1)' };
+        const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
         targets.forEach(tc => {
         const steps = stepsOf(tc);
         const drifted = isDrifted(tc);
-        const tcNote = doc.runData?.results?.[tc.id]?.note || '';
+        const tcNote = results[tc.id]?.note || '';
+        const caseOutcome = _runCaseOutcome(steps, results[tc.id]);
         html += `
-        <div class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
-        <div class="px-4 py-3 flex items-center gap-3" style="background:var(--bg2); border-bottom:1px solid var(--brd);">
+        <details open class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+        <summary class="px-4 py-3" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
+        <div class="flex items-center gap-3">
         <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
         <span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
         ${drifted ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style="background:rgba(245,158,11,0.12);color:#f59e0b;" title="This test case was edited after this run was recorded. Results reflect the steps at run time."><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> TC changed</span>` : ''}
-        ${state.sharedView ? '' : `<button class="btn-s text-xs ml-auto" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-auto" style="background:${outcomeBgs[caseOutcome]};color:${outcomeColors[caseOutcome]};">${t(caseOutcome)}</span>
+        ${state.sharedView ? '' : `<button class="btn-s text-xs" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
         </div>
+        </summary>
         <div class="bg-transparent p-4">
         ${steps.length === 0 ? `<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>` :
         steps.map((step, idx) => {
         const status = results[tc.id]?.[idx] || 'untested';
-        const statusColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
-        const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
         // B1: a bug already reported from this exact step, if any
-        const linkedBug = documents.find(b => b.category === 'bug' && b.status !== 'deleted' && b.bugData && b.bugData.foundInRun === doc.id && b.bugData.foundInTc === tc.id && b.bugData.foundInStep === idx);
+        const linkedBug = documents.find(b => b.category === 'bug' && b.status !== 'deleted' && b.bugData?.foundInRun === doc.id && b.bugData?.foundInTc === tc.id && b.bugData?.foundInStep === idx);
         return `
         <div class="py-4 ${idx !== steps.length - 1 ? 'border-b' : ''}" style="border-color:var(--brd);">
         <div class="flex items-center gap-2 mb-2">
@@ -525,7 +520,7 @@ function renderViewerCategory(doc) {
         </div>
         <div class="shrink-0 flex flex-col items-end gap-1.5">
         ${state.sharedView ? `
-        <span class="px-3 py-1.5 text-[11px] font-medium rounded-lg" style="background:${status !== 'untested' ? statusColors[status] + '22' : 'var(--bg2)'}; color:${statusColors[status]}; border:1px solid ${status !== 'untested' ? statusColors[status] + '55' : 'var(--brd)'};">
+        <span class="px-3 py-1.5 text-[11px] font-medium rounded-lg" style="background:${status !== 'untested' ? outcomeColors[status] + '22' : 'var(--bg2)'}; color:${outcomeColors[status]}; border:1px solid ${status !== 'untested' ? outcomeColors[status] + '55' : 'var(--brd)'};">
         ${statusLabels[status]}
         </span>
         ` : `
@@ -545,17 +540,12 @@ function renderViewerCategory(doc) {
         `;
         }).join('')}
 
-        ${state.sharedView ? (tcNote ? `
-        <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+        ${state.sharedView && !tcNote ? '' : `<div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
         <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
-        <p class="text-sm" style="color:var(--tx);">${escHtml(tcNote)}</p>
-        </div>` : '') : `
-        <div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
-        <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
-        <textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution…" data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>
+        ${state.sharedView ? `<p class="text-sm" style="color:var(--tx);">${escHtml(tcNote)}</p>` : `<textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution…" data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>`}
         </div>`}
         </div>
-        </div>
+        </details>
         `;
         });
     }
