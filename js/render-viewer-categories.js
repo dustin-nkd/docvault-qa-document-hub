@@ -147,6 +147,20 @@ function _runCaseOutcome(steps, row) {
     return 'untested';
 }
 
+function toggleAllTestRunCases() {
+    const root = document.getElementById('testrun-cases');
+    const label = document.getElementById('testrun-toggle-all-label');
+    if (!root || !label) return;
+    const expand = label.textContent === 'Expand all';
+    Array.from(root.children).forEach(node => {
+        if (node.tagName === 'DETAILS') node.open = expand;
+    });
+    label.textContent = expand ? 'Collapse all' : 'Expand all';
+    const icon = document.getElementById('testrun-toggle-all-icon');
+    if (icon) icon.className = expand ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
+}
+window.toggleAllTestRunCases = toggleAllTestRunCases;
+
 function renderApiTestViewer(doc) {
     const tc = doc.apiTcData || {};
     const method = tc.method || 'GET';
@@ -477,12 +491,23 @@ function renderViewerCategory(doc) {
         ${[{ w: passPct, c: '#10b981' }, { w: failPct, c: '#ef4444' }, { w: blockedPct, c: '#f59e0b' }, { w: untestedPct, c: 'transparent' }].map(s => `<div style="width:${s.w}%;background:${s.c};${s.c !== 'transparent' ? 'transition:width .4s ease;' : ''}"></div>`).join('')}
         </div>
     </div>
-    <div class="space-y-4">
     `;
 
     if (targets.length === 0) {
-        html += `<div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases selected.</div>`;
+        html += `<div class="space-y-4"><div class="text-center text-sm py-4" style="color:var(--tx-d);">No test cases selected.</div></div>`;
     } else {
+        const stepBtnDefs = [
+            ['pass', 'bg-emerald-500 text-white', 'fa-check', 'Pass', true],
+            ['fail', 'bg-rose-500 text-white', 'fa-xmark', 'Fail', true],
+            ['blocked', 'bg-amber-500 text-white', 'fa-ban', 'Block', false]
+        ];
+        html += `<div class="flex justify-end mb-3">
+<button type="button" id="testrun-toggle-all" class="btn-s text-xs flex items-center gap-1.5" data-onclick="toggleAllTestRunCases()">
+<i id="testrun-toggle-all-icon" class="fa-solid fa-chevron-up" style="font-size:11px;" aria-hidden="true"></i>
+<span id="testrun-toggle-all-label">Collapse all</span>
+</button>
+</div>
+<div class="space-y-4" id="testrun-cases">`;
         const outcomeColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
         const outcomeBgs = { pass: 'rgba(16,185,129,0.12)', fail: 'rgba(239,68,68,0.12)', blocked: 'rgba(245,158,11,0.12)', untested: 'rgba(122,139,168,0.1)' };
         const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
@@ -491,65 +516,55 @@ function renderViewerCategory(doc) {
         const drifted = isDrifted(tc);
         const tcNote = results[tc.id]?.note || '';
         const caseOutcome = _runCaseOutcome(steps, results[tc.id]);
-        html += `
-        <details open class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
-        <summary class="px-4 py-3" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
-        <div class="flex items-center gap-3">
-        <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
-        <span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
-        ${drifted ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style="background:rgba(245,158,11,0.12);color:#f59e0b;" title="This test case was edited after this run was recorded. Results reflect the steps at run time."><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> TC changed</span>` : ''}
-        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-auto" style="background:${outcomeBgs[caseOutcome]};color:${outcomeColors[caseOutcome]};">${t(caseOutcome)}</span>
-        ${state.sharedView ? '' : `<button class="btn-s text-xs" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
-        </div>
-        </summary>
-        <div class="bg-transparent p-4">
-        ${steps.length === 0 ? `<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>` :
-        steps.map((step, idx) => {
-        const status = results[tc.id]?.[idx] || 'untested';
-        // B1: a bug already reported from this exact step, if any
-        const linkedBug = documents.find(b => b.category === 'bug' && b.status !== 'deleted' && b.bugData?.foundInRun === doc.id && b.bugData?.foundInTc === tc.id && b.bugData?.foundInStep === idx);
-        return `
-        <div class="py-4 ${idx !== steps.length - 1 ? 'border-b' : ''}" style="border-color:var(--brd);">
-        <div class="flex items-center gap-2 mb-2">
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/5" style="color:var(--tx-m);">Step ${idx + 1}</span>
-        </div>
-        <div class="flex flex-col md:flex-row gap-4">
-        <div class="flex-1 space-y-2">
-        <div class="text-sm leading-relaxed" style="color:var(--tx);">${escHtml(step.action).replace(/\n/g, '<br>')}</div>
-        ${step.expected ? `<div class="text-[13px] leading-relaxed" style="color:var(--tx-m);"><span class="font-semibold opacity-60 uppercase text-[10px] tracking-wider mr-1">Expected:</span> ${escHtml(step.expected).replace(/\n/g, '<br>')}</div>` : ''}
-        </div>
-        <div class="shrink-0 flex flex-col items-end gap-1.5">
-        ${state.sharedView ? `
-        <span class="px-3 py-1.5 text-[11px] font-medium rounded-lg" style="background:${status !== 'untested' ? outcomeColors[status] + '22' : 'var(--bg2)'}; color:${outcomeColors[status]}; border:1px solid ${status !== 'untested' ? outcomeColors[status] + '55' : 'var(--brd)'};">
-        ${statusLabels[status]}
-        </span>
-        ` : `
-        <div class="flex rounded-lg overflow-hidden border" style="border-color:var(--brd); background:var(--bg2); box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-        <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'pass' ? 'bg-emerald-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'pass' ? 'color:var(--tx-m);' : ''} border-right:1px solid var(--brd);" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'pass')" title="${t('pass')}"><i class="fa-solid fa-check mr-1.5"></i>Pass</button>
-        <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'fail' ? 'bg-rose-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'fail' ? 'color:var(--tx-m);' : ''} border-right:1px solid var(--brd);" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'fail')" title="${t('fail')}"><i class="fa-solid fa-xmark mr-1.5"></i>Fail</button>
-        <button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === 'blocked' ? 'bg-amber-500 text-white' : 'hover:bg-white/5'}" style="${status !== 'blocked' ? 'color:var(--tx-m);' : ''}" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, 'blocked')" title="${t('blocked')}"><i class="fa-solid fa-ban mr-1.5"></i>Block</button>
-        </div>
-        `}
-        ${!state.sharedView && status === 'fail' ? (linkedBug
-        ? `<button class="text-[10px] font-semibold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.12);color:#f87171;" data-onclick="viewDoc('${linkedBug.id}')" title="View linked bug"><i class="fa-solid fa-bug mr-1" style="font-size:9px;"></i>${bugRef(linkedBug)}</button>`
-        : `<button class="text-[10px] font-semibold px-2 py-1 rounded" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);" data-onclick="reportBugFromStep('${doc.id}','${tc.id}',${idx})"><i class="fa-solid fa-bug mr-1" style="font-size:9px;"></i>Report bug</button>`
-        ) : ''}
-        </div>
-        </div>
-        </div>
-        `;
-        }).join('')}
+        html += `<details open class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+<summary class="px-4 py-3" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
+<span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
+${drifted ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style="background:rgba(245,158,11,0.12);color:#f59e0b;" title="This test case was edited after this run was recorded. Results reflect the steps at run time."><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> TC changed</span>` : ''}
+<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-auto" style="background:${outcomeBgs[caseOutcome]};color:${outcomeColors[caseOutcome]};">${t(caseOutcome)}</span>
+${state.sharedView ? '' : `<button class="btn-s text-xs" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
+</div>
+</summary>
+<div class="bg-transparent p-4">
+${steps.length === 0 ? `<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>` :
+steps.map((step, idx) => {
+const status = results[tc.id]?.[idx] || 'untested';
+// B1: a bug already reported from this exact step, if any
+const linkedBug = documents.find(b => b.category === 'bug' && b.status !== 'deleted' && b.bugData?.foundInRun === doc.id && b.bugData?.foundInTc === tc.id && b.bugData?.foundInStep === idx);
+return `<div class="py-4 ${idx !== steps.length - 1 ? 'border-b' : ''}" style="border-color:var(--brd);">
+<div class="flex items-center gap-2 mb-2">
+<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/5" style="color:var(--tx-m);">Step ${idx + 1}</span>
+</div>
+<div class="flex flex-col md:flex-row gap-4">
+<div class="flex-1 space-y-2">
+<div class="text-sm leading-relaxed" style="color:var(--tx);">${escHtml(step.action).replace(/\n/g, '<br>')}</div>
+${step.expected ? `<div class="text-[13px] leading-relaxed" style="color:var(--tx-m);"><span class="font-semibold opacity-60 uppercase text-[10px] tracking-wider mr-1">Expected:</span> ${escHtml(step.expected).replace(/\n/g, '<br>')}</div>` : ''}
+</div>
+<div class="shrink-0 flex flex-col items-end gap-1.5">
+${state.sharedView ? `<span class="px-3 py-1.5 text-[11px] font-medium rounded-lg" style="background:${status !== 'untested' ? outcomeColors[status] + '22' : 'var(--bg2)'}; color:${outcomeColors[status]}; border:1px solid ${status !== 'untested' ? outcomeColors[status] + '55' : 'var(--brd)'};">
+${statusLabels[status]}
+</span>` : `<div class="flex rounded-lg overflow-hidden border" style="border-color:var(--brd); background:var(--bg2); box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+${stepBtnDefs.map(([k, c, i, l, r]) => `<button class="px-3 py-1.5 text-[11px] font-medium transition-colors ${status === k ? c : 'hover:bg-white/5'}" style="${status !== k ? 'color:var(--tx-m);' : ''}${r ? ' border-right:1px solid var(--brd);' : ''}" data-onclick="updateTestRunStep('${doc.id}', '${tc.id}', ${idx}, '${k}')" title="${t(k)}"><i class="fa-solid ${i} mr-1.5"></i>${l}</button>`).join('')}
+</div>`}
+${!state.sharedView && status === 'fail' ? (linkedBug
+? `<button class="text-[10px] font-semibold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.12);color:#f87171;" data-onclick="viewDoc('${linkedBug.id}')" title="View linked bug"><i class="fa-solid fa-bug mr-1" style="font-size:9px;"></i>${bugRef(linkedBug)}</button>`
+: `<button class="text-[10px] font-semibold px-2 py-1 rounded" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);" data-onclick="reportBugFromStep('${doc.id}','${tc.id}',${idx})"><i class="fa-solid fa-bug mr-1" style="font-size:9px;"></i>Report bug</button>`
+) : ''}
+</div>
+</div>
+</div>`;
+}).join('')}
 
-        ${state.sharedView && !tcNote ? '' : `<div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
-        <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
-        ${state.sharedView ? `<p class="text-sm" style="color:var(--tx);">${escHtml(tcNote)}</p>` : `<textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution…" data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>`}
-        </div>`}
-        </div>
-        </details>
-        `;
+${state.sharedView && !tcNote ? '' : `<div class="mt-4 pt-4 border-t" style="border-color:var(--brd);">
+<p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--tx-m);">Execution Note</p>
+${state.sharedView ? `<p class="text-sm" style="color:var(--tx);">${escHtml(tcNote)}</p>` : `<textarea id="tr-note-${tc.id}" class="form-input w-full text-sm bg-black/20" style="height:60px;" placeholder="Add any notes about this test case execution…" data-onchange="updateTestRunNote('${doc.id}', '${tc.id}', this.value)">${escHtml(tcNote)}</textarea>`}
+</div>`}
+</div>
+</details>`;
         });
+        html += `</div>`;
     }
-    html += `</div>`;
     return html;
         })()}
         ` : doc.category === 'testplan' ? `
