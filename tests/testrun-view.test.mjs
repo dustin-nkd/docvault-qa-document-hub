@@ -7,10 +7,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-function createTestRunViewerContext(initialDocs = [], sharedView = false) {
+function createTestRunViewerContext(initialDocs = [], sharedView = false, mockDocument = null) {
     const context = vm.createContext({
         console,
         window: {},
+        document: mockDocument || { getElementById: () => null },
         state: { sharedView },
         URLSearchParams,
         location: { search: '' }
@@ -48,7 +49,8 @@ function createTestRunViewerContext(initialDocs = [], sharedView = false) {
             context._run = run;
             context._tcId = tcId;
             return vm.runInContext('_traceRunOutcome(_run, _tcId)', context);
-        }
+        },
+        toggleAllTestRunCases: () => vm.runInContext('window.toggleAllTestRunCases()', context)
     };
 }
 
@@ -138,6 +140,11 @@ test('Test Run view: Sprint 24 fixture renders three open details, case-level me
     const ctx = createTestRunViewerContext(docs, false);
     const html = ctx.render(runSprint24, false);
 
+    assert.ok(html.includes('id="testrun-toggle-all"'), 'renders toggle all button');
+    assert.ok(html.includes('data-onclick="toggleAllTestRunCases()"'), 'toggle button calls toggleAllTestRunCases()');
+    assert.ok(html.includes('Collapse all'), 'toggle button shows Collapse all');
+    assert.ok(!html.includes('Expand all'), 'toggle button must not show Expand all on initial render');
+    assert.ok(html.includes('id="testrun-cases"'), 'cases container has id="testrun-cases"');
     assert.equal((html.match(/<details open/g) || []).length, 3, 'renders exactly 3 <details open> elements');
     assert.ok(html.includes('Login'), 'renders Login title');
     assert.ok(html.includes('Checkout'), 'renders Checkout title');
@@ -297,6 +304,8 @@ test('Test Run view: run with no targets renders No test cases selected and zero
     const ctx = createTestRunViewerContext([run], false);
     const html = ctx.render(run, false);
     assert.ok(html.includes('No test cases selected.'), 'renders "No test cases selected."');
+    assert.ok(!html.includes('testrun-toggle-all'), 'zero-targets run must not render toggle button');
+    assert.ok(!html.includes('id="testrun-cases"'), 'zero-targets run must not render testrun-cases container');
     assert.ok(html.includes('Progress (0 cases)'), 'renders Progress (0 cases)');
     assert.match(html, /#10b981[^>]*>\s*0\s*<\/div>/, 'Pass box is 0');
     assert.match(html, /#ef4444[^>]*>\s*0\s*<\/div>/, 'Fail box is 0');
@@ -383,6 +392,8 @@ test('Test Run view: sharedView retains details and notes, omits action buttons 
     const htmlShared = ctx.render(run, true);
 
     assert.ok(htmlShared.includes('<details open'), 'details open is retained in sharedView');
+    assert.ok(htmlShared.includes('id="testrun-toggle-all"'), 'toggle button is retained in sharedView');
+    assert.ok(htmlShared.includes('Collapse all'), 'Collapse all is present in sharedView');
     assert.ok(htmlShared.includes('Login note shared view verification.'), 'execution note text is visible in sharedView');
     assert.ok(!htmlShared.includes('data-onclick="viewDoc"'), 'no data-onclick="viewDoc" in sharedView');
     assert.ok(!htmlShared.includes('updateTestRunStep'), 'no updateTestRunStep in sharedView');
@@ -403,4 +414,44 @@ test('Test Run contracts and source hygiene: style selectors, release loop, trac
 
     const renderCoreSource = fs.readFileSync(path.join(root, 'js/render-core.js'), 'utf8');
     assert.ok(renderCoreSource.includes("values.every(value => value === 'pass')"), '_traceRunOutcome intact in render-core.js');
+});
+
+test('Test Run view: window.toggleAllTestRunCases toggles details open state, label, icon, and handles missing container', () => {
+    const d1 = { tagName: 'DETAILS', open: true };
+    const d2 = { tagName: 'DETAILS', open: true };
+    const d3 = { tagName: 'DETAILS', open: true };
+    const label = { textContent: 'Collapse all' };
+    const icon = { className: 'fa-solid fa-chevron-up' };
+    const mockElements = {
+        'testrun-cases': { children: [d1, d2, d3] },
+        'testrun-toggle-all-label': label,
+        'testrun-toggle-all-icon': icon
+    };
+    const mockDoc = {
+        getElementById: id => mockElements[id] || null
+    };
+
+    const ctx = createTestRunViewerContext([], false, mockDoc);
+
+    // Call 1: collapse all
+    ctx.toggleAllTestRunCases();
+    assert.equal(d1.open, false);
+    assert.equal(d2.open, false);
+    assert.equal(d3.open, false);
+    assert.equal(label.textContent, 'Expand all');
+    assert.equal(icon.className, 'fa-solid fa-chevron-down');
+
+    // Call 2: expand all
+    ctx.toggleAllTestRunCases();
+    assert.equal(d1.open, true);
+    assert.equal(d2.open, true);
+    assert.equal(d3.open, true);
+    assert.equal(label.textContent, 'Collapse all');
+    assert.equal(icon.className, 'fa-solid fa-chevron-up');
+
+    // When #testrun-cases is missing, returns without throwing
+    delete mockElements['testrun-cases'];
+    assert.doesNotThrow(() => {
+        ctx.toggleAllTestRunCases();
+    });
 });
