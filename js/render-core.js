@@ -325,6 +325,7 @@ function renderContent() {
 
     if (state.view !== 'viewer') {
         if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
+        if (window.cleanupCollabCommentsSubscription) try { window.cleanupCollabCommentsSubscription(); } catch (_) {}
         window.currentViewerDocId = null;
     }
 
@@ -339,17 +340,14 @@ function renderContent() {
         c.innerHTML = renderEditor();
         window.tuiEditor = null;
         const container = document.getElementById('editor-container');
-        if (container) {
-            const hiddenTa = document.getElementById('ed-content-hidden');
-            _initializeMarkdownEditor(container, hiddenTa ? hiddenTa.value : '');
-        }
+        if (container) _initializeMarkdownEditor(container, document.getElementById('ed-content-hidden')?.value || '');
     }
     else if (state.view === 'viewer') {
         const docId = state.editingDoc?.id;
-        const isSameDoc = window.currentViewerDocId === docId;
-        if (isSameDoc) {
+        if (window.currentViewerDocId === docId) {
             updateDOM(c, renderViewer());
         } else {
+            if (window.cleanupCollabCommentsSubscription) try { window.cleanupCollabCommentsSubscription(); } catch (_) {}
             if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} window.tuiEditor = null; }
             if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
             c.innerHTML = renderViewer();

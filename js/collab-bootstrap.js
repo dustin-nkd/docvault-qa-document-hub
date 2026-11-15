@@ -254,7 +254,7 @@
             if (res.status === 'owner' || res.status === 'member') {
                 renderCollabMe(user, res.member);
                 updateSidebarLockToSignOut();
-                await Promise.all([loadCollabViewer(), loadCollabWorkspaces(), loadCollabActivity(), loadCollabAssign()]);
+                await Promise.all([loadCollabViewer(), loadCollabWorkspaces(), loadCollabActivity(), loadCollabAssign(), loadCollabComments()]);
                 await root.CollabWorkspaces?.loadWorkspaces?.();
                 root.CollabActivity?.startListening?.();
                 root.CollabAssign?.startListening?.();
@@ -314,11 +314,18 @@
         return _loadScript(s.src);
     }
 
+    function loadCollabComments() {
+        if (root.CollabComments) return Promise.resolve();
+        let s = {}; s.src = 'js/collab-comments.js';
+        return _loadScript(s.src);
+    }
+
     function start() {
         loadCollabViewer();
         loadCollabWorkspaces();
         loadCollabActivity();
         loadCollabAssign();
+        loadCollabComments();
         showCollabLockScreen('signin');
         updateSidebarLockToSignOut();
 
@@ -351,6 +358,7 @@
         if (root.CollabWorkspaces?.stopListening) root.CollabWorkspaces.stopListening();
         if (root.CollabActivity?.stopListening) root.CollabActivity.stopListening();
         if (root.CollabAssign?.stopListening) root.CollabAssign.stopListening();
+        if (root.CollabComments?.stopListening) root.CollabComments.stopListening();
         if (root.CollabAuth?.signOutUser) {
             await root.CollabAuth.signOutUser().catch(() => {});
         }
@@ -371,6 +379,7 @@
         loadCollabWorkspaces,
         loadCollabActivity,
         loadCollabAssign,
+        loadCollabComments,
         applyViewerRestrictions: () => root.CollabViewer?.applyViewerRestrictions?.(),
         getCurrentMember: () => _currentMember
     };
@@ -389,4 +398,5 @@
     loadCollabWorkspaces();
     loadCollabActivity();
     loadCollabAssign();
+    loadCollabComments();
 })(typeof window !== 'undefined' ? window : globalThis);
