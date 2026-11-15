@@ -487,13 +487,13 @@ test('persist() does not swallow delete rejection and lets error propagate', asy
     assert.equal(ctx.CollabStore.getKnownDocs().has('doc-to-delete'), true, 'Document retained in _knownDocs on delete failure');
 });
 
-test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v87', () => {
+test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v88', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-store'/);
     assert.ok(events.indexOf("'collab-store'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v87'/);
+    assert.match(sw, /const SW_VERSION = 'v88'/);
     assert.match(sw, /'\.\/js\/collab-store\.js'/);
 });
 
@@ -638,7 +638,7 @@ test('editor dirty does not get overwritten by snapshot and shows conflict banne
     const banner = ctx.document.getElementById('collab-editor-banner');
     assert.ok(banner, 'Banner must exist in DOM');
     assert.match(banner.innerHTML, /Updated by someone else/);
-    assert.match(banner.innerHTML, /reloadCollabDoc\('doc-edit'\)/);
+    assert.match(banner.innerHTML, /reloadCollabDoc\((?:'|&quot;)doc-edit(?:'|&quot;)\)/);
 
     // 4. Reloading the document loads the remote version and removes the banner
     ctx.reloadCollabDoc('doc-edit');
@@ -904,5 +904,24 @@ test('CollabStore: toFirestoreDoc and fromFirestoreDoc preserve task assignee an
     assert.equal(restoredDoc.kanbanStatus, 'in-progress');
     assert.equal(restoredDoc.taskData.priority, 'High');
     assert.equal(restoredDoc.taskData.estimate, '2d');
+});
+
+test('CollabStore: toFirestoreDoc and fromFirestoreDoc preserve rotatedAt date string and number', () => {
+    const ctx = createStoreContext();
+    const credString = { id: 'c1', title: 'Cred 1', category: 'credential', rotatedAt: '2026-11-15' };
+    const fsString = ctx.CollabStore.toFirestoreDoc(credString);
+    assert.equal(fsString.rotatedAt, '2026-11-15');
+    const restoredString = ctx.CollabStore.fromFirestoreDoc(fsString, 'c1');
+    assert.equal(restoredString.rotatedAt, '2026-11-15');
+
+    const credNumber = { id: 'c2', title: 'Cred 2', category: 'credential', rotatedAt: 1763200000000 };
+    const fsNumber = ctx.CollabStore.toFirestoreDoc(credNumber);
+    assert.equal(fsNumber.rotatedAt, 1763200000000);
+    const restoredNumber = ctx.CollabStore.fromFirestoreDoc(fsNumber, 'c2');
+    assert.equal(restoredNumber.rotatedAt, 1763200000000);
+
+    const credEmpty = { id: 'c3', title: 'Cred 3', category: 'credential', rotatedAt: '' };
+    const fsEmpty = ctx.CollabStore.toFirestoreDoc(credEmpty);
+    assert.equal(fsEmpty.rotatedAt, null);
 });
 

@@ -383,6 +383,46 @@ test('Branch 6 (create document): denies viewer, wrong version, or mismatched cr
         createdBy: 'someone-else',
         updatedBy: 'ed-uid'
     }));
+    // Cannot create doc with malformed or illegal characters in document path ID
+    await assertFails(editor.collection('documents').doc("doc'xss").set({
+        id: "doc'xss",
+        title: 'XSS Doc',
+        version: 1,
+        createdBy: 'ed-uid',
+        updatedBy: 'ed-uid'
+    }));
+    await assertFails(editor.collection('documents').doc('doc.with.dot').set({
+        id: 'doc.with.dot',
+        title: 'Dot Doc',
+        version: 1,
+        createdBy: 'ed-uid',
+        updatedBy: 'ed-uid'
+    }));
+    // Cannot create doc with ID length > 64 chars
+    const longId = 'doc_' + 'a'.repeat(65);
+    await assertFails(editor.collection('documents').doc(longId).set({
+        id: longId,
+        title: 'Long ID Doc',
+        version: 1,
+        createdBy: 'ed-uid',
+        updatedBy: 'ed-uid'
+    }));
+    // Cannot create doc where body id does not match path id or is malformed
+    await assertFails(editor.collection('documents').doc('doc-valid-id').set({
+        id: "doc'injection",
+        title: 'Mismatched ID',
+        version: 1,
+        createdBy: 'ed-uid',
+        updatedBy: 'ed-uid'
+    }));
+    // Valid ID with hyphens, underscores and alphanumeric succeeds
+    await assertSucceeds(editor.collection('documents').doc('doc_valid-123_ABC').set({
+        id: 'doc_valid-123_ABC',
+        title: 'Valid ID Doc',
+        version: 1,
+        createdBy: 'ed-uid',
+        updatedBy: 'ed-uid'
+    }));
 });
 
 // ---------------------------------------------------------------------------
@@ -462,6 +502,34 @@ test('Branch 7 (update document): denies viewer, version mismatch, or tampering 
     await assertFails(editor.collection('documents').doc('doc-1').update({
         version: 2,
         id: 'tampered-id',
+        updatedBy: 'ed-uid'
+    }));
+    // Cannot update with malformed id
+    await assertFails(editor.collection('documents').doc('doc-1').update({
+        version: 2,
+        id: "doc'xss",
+        updatedBy: 'ed-uid'
+    }));
+    // Seed a doc without a body id field to exercise the update restriction on unmatching/malformed id
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('documents').doc('doc-no-body-id').set({
+            title: 'Doc without body id',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid',
+            createdAt: '2026-10-08T00:00:00Z',
+            updatedAt: '2026-10-08T00:00:00Z'
+        });
+    });
+    await assertFails(editor.collection('documents').doc('doc-no-body-id').update({
+        version: 2,
+        id: "doc'xss",
+        updatedBy: 'ed-uid'
+    }));
+    await assertFails(editor.collection('documents').doc('doc-no-body-id').update({
+        version: 2,
+        id: 'mismatched-id',
         updatedBy: 'ed-uid'
     }));
     // Cannot tamper by adding workspaceId to legacy doc

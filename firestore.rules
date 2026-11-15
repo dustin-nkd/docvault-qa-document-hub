@@ -102,6 +102,8 @@ service cloud.firestore {
       allow read: if isMember();
 
       allow create: if isEditorOrOwner() &&
+        id.matches('^[a-zA-Z0-9_-]{1,64}$') &&
+        (!('id' in request.resource.data) || (request.resource.data.id == id && request.resource.data.id.matches('^[a-zA-Z0-9_-]{1,64}$'))) &&
         request.resource.data.version == 1 &&
         request.resource.data.createdBy == request.auth.uid &&
         request.resource.data.updatedBy == request.auth.uid &&
@@ -120,6 +122,7 @@ service cloud.firestore {
         request.resource.data.createdBy == resource.data.createdBy &&
         (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
         (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+        (!('id' in request.resource.data) || (request.resource.data.id == id && request.resource.data.id.matches('^[a-zA-Z0-9_-]{1,64}$'))) &&
         ((!('workspaceId' in resource.data) && !('workspaceId' in request.resource.data)) ||
          (request.resource.data.workspaceId == resource.data.workspaceId)) &&
         request.resource.data.updatedBy == request.auth.uid;

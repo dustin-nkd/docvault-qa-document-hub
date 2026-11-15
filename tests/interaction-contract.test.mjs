@@ -47,7 +47,7 @@ test('user-controlled editor actions use the shared safe action serializer', () 
 });
 
 test('service worker version is bumped for the strict CSP shell change', () => {
-    assert.match(read('sw.js'), /const SW_VERSION = 'v87'/);
+    assert.match(read('sw.js'), /const SW_VERSION = 'v88'/);
     assert.match(read('sw.js'), /'\.\/js\/workspaces\.js'/, 'the workspace module must be cached in the app shell');
 });
 
@@ -182,7 +182,7 @@ test('a fixed bug can be recorded as fixed', () => {
     // could ever set it: all four menu actions forced the bug to closed, so the
     // one outcome most bugs actually reach had no way to be recorded.
     assert.match(read('js/constants.js'), /bugFixed: "Fixed",/);
-    assert.match(read('js/ui.js'), /resolveBug\('\$\{id\}','fixed','resolved'\)/,
+    assert.match(read('js/ui.js'), /actionAttr\('resolveBug',\s*id,\s*'fixed',\s*'resolved'\)/,
         'Fixed must land in Resolved so the retest and verify steps still happen');
     const actions = read('js/actions-documents.js');
     assert.match(actions, /window\.resolveBug = async function\(id, resolution, targetStatus\)/);
@@ -342,7 +342,7 @@ test('document titles are real links that can be opened in a new tab', () => {
     // which is why the anchor cannot simply wrap the whole card (it contains
     // the favourite and menu buttons, and interactive content cannot nest).
     const source = read('js/render-core.js');
-    assert.equal((source.match(/<a class="doc-card-link" href="\$\{_docHref\(d\.id\)\}" data-doc-link="\$\{d\.id\}"/g) || []).length, 1,
+    assert.equal((source.match(/<a class="doc-card-link" href="\$\{(?:escHtml\()?_docHref\(d\.id\)\)?\}" data-doc-link="\$\{(?:escHtml\()?d\.id\)?\}"/g) || []).length, 1,
         'standard card layout must link its title');
     // guest=1 must survive, or opening a card in a new tab drops a demo visitor
     // into the real locked vault — the reason _appUrl() exists.
@@ -408,7 +408,7 @@ test('nothing in the UI is labelled only by an icon glyph', () => {
     // Hiding the glyphs exposed controls whose only content was the icon: the
     // bug board card menu, and the viewer's secret-reveal and copy buttons.
     for (const [relativePath, needle] of [
-        ['js/render-core.js', "showDocMenu('${d.id}', this)"],
+        ['js/render-core.js', 'showDocMenu('],
         ['js/render-viewer-categories.js', "togglePasswordVisibility('view-pw'"],
         ['js/render-viewer-categories.js', '_copyProp(this)']
     ]) {
@@ -544,7 +544,7 @@ test('the activity timeline is a real list with full-row targets', () => {
     const end = row.indexOf('\nfunction renderActivityLog');
     const body = row.slice(0, end);
     assert.match(body, /<li class="act-row">/, 'each entry must be a list item');
-    assert.match(body, /<button class="act-item" data-onclick="viewDoc\(/, 'the whole row must be the target');
+    assert.match(body, /<button class="act-item" data-onclick="(?:viewDoc\(|\$\{actionAttr\('viewDoc')/, 'the whole row must be the target');
     assert.doesNotMatch(body, /<span[^>]*data-onclick="viewDoc\(/, 'navigation must not hang off a span');
     assert.match(source, /timeline \+= `<div class="act-day">/, 'entries must be grouped by day');
     // Relative-only timestamps hid the exact time; keep the machine-readable one.
@@ -978,21 +978,21 @@ test('credential document cards in grid disable card click and link navigation w
     assert.doesNotMatch(credNormalHtml, /<li[^>]*data-onclick=/, 'credential <li> in normal mode must not have any data-onclick attribute');
     assert.doesNotMatch(credNormalHtml, /data-doc-link=/, 'credential card in normal mode must not contain data-doc-link');
     assert.match(credNormalHtml, /<span class="doc-card-title">Staging Database Secret<\/span>/, 'credential title must be a static span without link');
-    assert.match(credNormalHtml, /copyUsername\('cred-test-1', this\)/, 'credential copy username button must be preserved');
-    assert.match(credNormalHtml, /copyPassword\('cred-test-1', this\)/, 'credential copy password button must be preserved');
-    assert.match(credNormalHtml, /toggleFav\('cred-test-1'\)/, 'credential favorite button must be preserved');
-    assert.match(credNormalHtml, /showDocMenu\('cred-test-1', this\)/, 'credential menu button must be preserved');
+    assert.match(credNormalHtml, /copyUsername\((?:'|&quot;)cred-test-1(?:'|&quot;), this\)/, 'credential copy username button must be preserved');
+    assert.match(credNormalHtml, /copyPassword\((?:'|&quot;)cred-test-1(?:'|&quot;), this\)/, 'credential copy password button must be preserved');
+    assert.match(credNormalHtml, /toggleFav\((?:'|&quot;)cred-test-1(?:'|&quot;)\)/, 'credential favorite button must be preserved');
+    assert.match(credNormalHtml, /showDocMenu\((?:'|&quot;)cred-test-1(?:'|&quot;), this\)/, 'credential menu button must be preserved');
 
     // Other categories in normal mode (task, bug) still render data-doc-link and viewDoc
     const taskNormalHtml = normalCards.find(c => c.includes('Implement OAuth Token Refresh'));
     assert.ok(taskNormalHtml, 'task card must be rendered in grid');
-    assert.match(taskNormalHtml, /data-onclick="viewDoc\('task-test-1'\)"/, 'task card must have data-onclick="viewDoc"');
+    assert.match(taskNormalHtml, /data-onclick="viewDoc\((?:'|&quot;)task-test-1(?:'|&quot;)\)"/, 'task card must have data-onclick="viewDoc"');
     assert.match(taskNormalHtml, /data-doc-link="task-test-1"/, 'task card must contain data-doc-link');
     assert.doesNotMatch(taskNormalHtml, /doc-card-static/, 'task card must not have doc-card-static');
 
     const bugNormalHtml = normalCards.find(c => c.includes('Session memory leak on disconnect'));
     assert.ok(bugNormalHtml, 'bug card must be rendered in grid');
-    assert.match(bugNormalHtml, /data-onclick="viewDoc\('bug-test-1'\)"/, 'bug card must have data-onclick="viewDoc"');
+    assert.match(bugNormalHtml, /data-onclick="viewDoc\((?:'|&quot;)bug-test-1(?:'|&quot;)\)"/, 'bug card must have data-onclick="viewDoc"');
     assert.match(bugNormalHtml, /data-doc-link="bug-test-1"/, 'bug card must contain data-doc-link');
     assert.doesNotMatch(bugNormalHtml, /doc-card-static/, 'bug card must not have doc-card-static');
 
@@ -1002,7 +1002,111 @@ test('credential document cards in grid disable card click and link navigation w
     const credBatchHtml = batchCards.find(c => c.includes('Staging Database Secret'));
     assert.ok(credBatchHtml, 'credential card must be rendered in batch mode');
 
-    assert.match(credBatchHtml, /data-onclick="toggleSelectDoc\('cred-test-1', event\)"/, 'credential card in batch mode must have data-onclick="toggleSelectDoc"');
+    assert.match(credBatchHtml, /data-onclick="toggleSelectDoc\((?:'|&quot;)cred-test-1(?:'|&quot;),\s*event\)"/, 'credential card in batch mode must have data-onclick="toggleSelectDoc"');
     assert.doesNotMatch(credBatchHtml, /doc-card-static/, 'credential card in batch mode must not have doc-card-static class');
     assert.doesNotMatch(credBatchHtml, /data-doc-link=/, 'credential card in batch mode must not contain data-doc-link');
+});
+
+test('toast: sanitizes message HTML to prevent DOM XSS', () => {
+    let innerHtmlOutput = '';
+    const mockToastsEl = { appendChild: (el) => { innerHtmlOutput = el.innerHTML; } };
+    const mockDocument = {
+        createElement: () => ({ style: {}, classList: { add: () => {} } }),
+        getElementById: (id) => (id === 'toasts' ? mockToastsEl : null)
+    };
+    const uiSource = read('js/ui.js').replace(/\r\n/g, '\n');
+    const match = uiSource.match(/function toast\(msg, type = 'success'\) \{[\s\S]*?\n\}/);
+    assert.ok(match, 'toast() function must be defined in js/ui.js');
+    const toastFn = new Function('document', 'setTimeout', 'escHtml', match[0] + '; return toast;')(
+        mockDocument,
+        () => {},
+        (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    );
+
+    toastFn('<img src=x onerror=alert(1)> Hello & "world"');
+    assert.ok(!innerHtmlOutput.includes('<img'), 'must not contain unescaped img tag');
+    assert.ok(innerHtmlOutput.includes('&lt;img'), 'must escape < to &lt;');
+    assert.ok(innerHtmlOutput.includes('&quot;world&quot;'), 'must escape quotes');
+});
+
+test('client-side action escaping survives CSP delegator without statement breakout on evil document IDs', () => {
+    const evilId = "doc_evil'x);eval('window._xss=1');//";
+
+    // Prepare runtime VM with utils, events helpers and renderers
+    const noop = () => {};
+    const context = vm.createContext({
+        console,
+        URLSearchParams,
+        location: { search: '', pathname: '/' },
+        document: {
+            addEventListener: noop,
+            removeEventListener: noop,
+            getElementById: () => null
+        },
+        addEventListener: noop,
+        removeEventListener: noop
+    });
+    context.window = context;
+    for (const file of ['js/constants.js', 'js/utils.js', 'js/state.js', 'js/render-editor.js', 'js/render-core.js']) {
+        vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+    }
+    const eventsSource = read('js/events.js');
+    const delegatorCode = eventsSource.slice(
+        eventsSource.indexOf('function _splitTopLevel'),
+        eventsSource.indexOf('function unlockVaultFromForm')
+    );
+    vm.runInContext(delegatorCode, context);
+
+    // 1. Direct actionAttr check
+    const attr = vm.runInContext(`actionAttr('viewDoc', ${JSON.stringify(evilId)})`, context);
+    // When rendered into an HTML attribute and retrieved with getAttribute():
+    const domAttrValue = attr.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const calls = vm.runInContext(`_splitTopLevel(${JSON.stringify(domAttrValue)}, ';').map(s => s.trim()).filter(Boolean)`, context);
+    assert.strictEqual(calls.length, 1, 'evil ID must not split into multiple top-level calls');
+    assert.ok(calls[0].startsWith('viewDoc('), 'must remain a single call to viewDoc');
+
+    // 2. Full render check in renderDocList()
+    context._evilDoc = [{
+        id: evilId,
+        title: 'Security Probe',
+        category: 'task',
+        status: 'published',
+        tags: [],
+        content: 'test content',
+        updatedAt: 1700000000000
+    }];
+    vm.runInContext(`
+        documents = _evilDoc;
+        state.view = 'documents';
+        state.category = 'all';
+        state.batchMode = false;
+    `, context);
+    const html = vm.runInContext('renderDocList()', context);
+    const match = html.match(/<li[^>]*data-onclick="([^"]+)"/);
+    assert.ok(match, 'card must have data-onclick');
+
+    // Verify href attribute does not break out
+    const linkMatch = html.match(/<a class="doc-card-link" href="([^"]+)"/);
+    assert.ok(linkMatch, 'card must render doc-card-link anchor');
+    assert.ok(!linkMatch[1].includes('"'), 'href must not break out of attribute quotes');
+
+    const cardAttr = match[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const cardCalls = vm.runInContext(`_splitTopLevel(${JSON.stringify(cardAttr)}, ';').map(s => s.trim()).filter(Boolean)`, context);
+    assert.strictEqual(cardCalls.length, 1, 'card data-onclick must not split into multiple top-level statements');
+    assert.ok(cardCalls[0].startsWith('viewDoc('), 'card action must only be viewDoc');
+
+    // 3. Execution check: executeAction only invokes viewDoc with exact evilId
+    let calledId = null;
+    let evalInvoked = false;
+    context.viewDoc = (id) => { calledId = id; };
+    context.eval = () => { evalInvoked = true; };
+    vm.runInContext(`executeAction(${JSON.stringify(cardAttr)}, {}, {})`, context);
+    assert.strictEqual(calledId, evilId, 'viewDoc argument must match original evil ID exactly');
+    assert.strictEqual(evalInvoked, false, 'injected eval statement must not be executed');
+
+    // 4. Drag parser check: decodeActionArgument restores the full evilId from handleDragStart JSON-literal
+    const dragCode = 'handleDragStart(' + JSON.stringify(evilId) + ')';
+    const dragMatch = dragCode.match(/^handleDragStart\((.*)\)$/);
+    const parsedDragId = vm.runInContext(`decodeActionArgument(${JSON.stringify(dragMatch[1].trim())})`, context);
+    assert.strictEqual(parsedDragId, evilId, 'drag parser must extract full evil ID without truncating at apostrophe');
 });

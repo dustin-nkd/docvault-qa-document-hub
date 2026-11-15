@@ -29,7 +29,7 @@
         const out = {
             id: doc.id || '', title: doc.title || '', category: doc.category || 'general', subfolder: doc.subfolder || '', status: doc.status || 'active',
             content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [],
-            username: doc.username || '', password: doc.password || '', rotatedAt: typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null,
+            username: doc.username || '', password: doc.password || '', rotatedAt: (typeof doc.rotatedAt === 'string' && doc.rotatedAt.trim()) ? doc.rotatedAt.trim() : (typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null),
             bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData),
             runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
             taskData: _cleanJson(doc.taskData), assignee: doc.assignee || doc.taskData?.assignee || '', assigneeUid: doc.assigneeUid || doc.taskData?.assigneeUid || '',
@@ -109,7 +109,10 @@
             banner.setAttribute('role', 'alert');
             (document.querySelector('#content .fade-up') || document.getElementById('content'))?.prepend(banner);
         }
-        banner.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i><span>Updated by someone else</span></div><button class="btn-s text-xs h-7 px-3" data-onclick="reloadCollabDoc('${docId}')">Reload</button>`;
+        const reloadAction = typeof actionAttr === 'function'
+            ? actionAttr('reloadCollabDoc', docId)
+            : (typeof escHtml === 'function' ? escHtml('reloadCollabDoc(' + JSON.stringify(docId) + ')') : 'reloadCollabDoc(&quot;' + docId + '&quot;)');
+        banner.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i><span>Updated by someone else</span></div><button class="btn-s text-xs h-7 px-3" data-onclick="${reloadAction}">Reload</button>`;
         if (typeof root.enhanceInteractionSemantics === 'function') root.enhanceInteractionSemantics(banner, false);
     }
 
@@ -373,7 +376,8 @@
 
         return await db.runTransaction(async tx => {
             const snap = await tx.get(counterRef);
-            if (!snap.exists) { allocated = 1; tx.set(counterRef, { next: 1 }); }
+            let allocated = 1;
+            if (!snap.exists) { tx.set(counterRef, { next: 1 }); }
             else {
                 const data = (typeof snap.data === 'function') ? snap.data() : snap.data;
                 allocated = ((typeof data?.next === 'number') ? data.next : 0) + 1;

@@ -75,13 +75,13 @@ function createCollabSharesContext(customGlobals = {}) {
     return sandbox;
 }
 
-test('Shell contracts: events.js loads collab-shares, sw.js caches it in v87, and budgets hold', () => {
+test('Shell contracts: events.js loads collab-shares, sw.js caches it in v88, and budgets hold', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-shares'/);
     assert.ok(events.indexOf("'collab-shares'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v87'/);
+    assert.match(sw, /const SW_VERSION = 'v88'/);
     assert.match(sw, /'\.\/js\/collab-shares\.js'/);
 
     const sharesLines = read('js/collab-shares.js').split('\n').length;
