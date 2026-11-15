@@ -319,3 +319,137 @@ test('Phase 2: CollabMembers inviteMember normalizes lowercase and revokeInvite 
     assert.equal(inviteStore.has('test.user@example.com'), false, 'Invite must be deleted from store');
     assert.ok(calls.deletes.includes('test.user@example.com'), 'Delete call must target lowercased document ID');
 });
+
+test('Phase 2 fix: inviteMember rejects existing members, UI filters them, and loadAndRenderTeam purges stale invites', async () => {
+    const memberStore = new Map([
+        ['user-1', { uid: 'user-1', email: 'existing@company.com', displayName: 'Existing User', role: 'editor' }]
+    ]);
+    const inviteStore = new Map([
+        ['existing@company.com', { email: 'existing@company.com', role: 'editor' }],
+        ['newbie@company.com', { email: 'newbie@company.com', role: 'viewer' }]
+    ]);
+    const toasts = [];
+
+    const firestoreMock = {
+        collection: (col) => ({
+            get: async () => {
+                const store = col === 'members' ? memberStore : (col === 'invites' ? inviteStore : new Map());
+                const docs = Array.from(store.entries()).map(([id, d]) => ({ id, data: () => ({ ...d }) }));
+                return { docs, forEach: (fn) => docs.forEach(fn) };
+            },
+            doc: (docId) => ({
+                get: async () => {
+                    const store = col === 'members' ? memberStore : (col === 'invites' ? inviteStore : new Map());
+                    const exists = store.has(docId);
+                    return { exists, data: () => exists ? { ...store.get(docId) } : null };
+                },
+                set: async (data) => {
+                    const store = col === 'members' ? memberStore : (col === 'invites' ? inviteStore : new Map());
+                    store.set(docId, data);
+                },
+                delete: async () => {
+                    const store = col === 'members' ? memberStore : (col === 'invites' ? inviteStore : new Map());
+                    store.delete(docId);
+                }
+            })
+        })
+    };
+
+    let containerHtml = '';
+    const ctx = {
+        COLLAB_MODE: true,
+        GUEST_MODE: false,
+        firebase: { firestore: () => firestoreMock },
+        ensureFirebase: async () => {},
+        CollabBootstrap: {
+            getCurrentMember: () => ({ uid: 'owner-uid', email: 'owner@test.com', role: 'owner' })
+        },
+        document: {
+            getElementById: (id) => {
+                if (id === 'collab-team-tab-container') {
+                    return {
+                        set innerHTML(val) { containerHtml = val; },
+                        get innerHTML() { return containerHtml; }
+                    };
+                }
+                return null;
+            },
+            querySelectorAll: () => []
+        },
+        toast: (msg, type) => { toasts.push({ msg, type }); },
+        t: (k) => k
+    };
+    ctx.window = ctx;
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(read('js/collab-members.js'), ctx);
+
+    // 1. Inviting an existing member is blocked with a warning
+    toasts.length = 0;
+    const ok = await ctx.CollabMembers.inviteMember('  Existing@Company.COM  ', 'editor');
+    assert.equal(ok, false, 'inviteMember must return false for existing member');
+    assert.ok(toasts.some(t => t.msg === 'This user is already a team member.'), 'Must show already a member warning toast');
+
+    // 2. loadAndRenderTeam filters out existing@company.com from Pending Invitations
+    await ctx.CollabMembers.loadAndRenderTeam();
+    assert.match(containerHtml, /Pending Invitations \(1\)/, 'Only genuinely pending invite counted');
+    assert.match(containerHtml, /newbie@company\.com/, 'Newbie must appear in pending');
+    assert.doesNotMatch(containerHtml, /existing@company\.com.*Revoke/, 'Existing member must NOT appear in pending invitations list');
+
+    // 3. Stale invite for existing member is automatically purged from Firestore
+    assert.equal(inviteStore.has('existing@company.com'), false, 'Stale invite must be automatically deleted from Firestore');
+    assert.equal(inviteStore.has('newbie@company.com'), true, 'Genuinely pending invite remains in Firestore');
+});
+
+test('Phase 2 fix: initTeamUser cleans up leftover invites when member logs in', async () => {
+    const inviteStore = new Map([
+        ['collab@example.com', { email: 'collab@example.com', role: 'editor' }]
+    ]);
+    const memberStore = new Map([
+        ['user-uid', { uid: 'user-uid', email: 'collab@example.com', role: 'editor' }]
+    ]);
+    const metaStore = new Map([
+        ['team', { ownerUid: 'some-owner-uid', initialized: true }]
+    ]);
+
+    const firestoreDb = {
+        collection: (col) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    const store = col === 'members' ? memberStore : (col === 'invites' ? inviteStore : (col === 'meta' ? metaStore : new Map()));
+                    const exists = store.has(docId);
+                    return { exists, data: () => exists ? { ...store.get(docId) } : null };
+                },
+                set: async (data) => {
+                    const store = col === 'members' ? memberStore : (col === 'invites' ? inviteStore : (col === 'meta' ? metaStore : new Map()));
+                    store.set(docId, data);
+                },
+                delete: async () => {
+                    const store = col === 'members' ? memberStore : (col === 'invites' ? inviteStore : (col === 'meta' ? metaStore : new Map()));
+                    store.delete(docId);
+                }
+            })
+        })
+    };
+
+    const ctx = {
+        COLLAB_MODE: true,
+        GUEST_MODE: false,
+        firebase: { firestore: () => firestoreDb },
+        ensureFirebase: async () => {},
+        CollabStore: { enableOfflinePersistence: async () => {} },
+        document: {
+            getElementById: () => null,
+            querySelector: () => null
+        }
+    };
+    ctx.window = ctx;
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(read('js/collab-bootstrap.js'), ctx);
+
+    // Existing member logs in
+    const res = await ctx.CollabBootstrap.initTeamUser({ uid: 'user-uid', email: 'Collab@Example.COM' });
+    assert.equal(res.status, 'member');
+    assert.equal(inviteStore.has('collab@example.com'), false, 'Leftover invite must be deleted when member logs in');
+});
