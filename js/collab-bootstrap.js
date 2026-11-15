@@ -316,8 +316,7 @@
 
     function loadCollabComments() {
         if (root.CollabComments) return Promise.resolve();
-        let s = {}; s.src = 'js/collab-comments.js';
-        return _loadScript(s.src);
+        let s = {}; s.src = 'js/collab-comments.js'; return _loadScript(s.src);
     }
 
     function start() {
@@ -394,9 +393,5 @@
         return signOut();
     };
 
-    loadCollabViewer();
-    loadCollabWorkspaces();
-    loadCollabActivity();
-    loadCollabAssign();
-    loadCollabComments();
+    loadCollabViewer(); loadCollabWorkspaces(); loadCollabActivity(); loadCollabAssign(); loadCollabComments();
 })(typeof window !== 'undefined' ? window : globalThis);

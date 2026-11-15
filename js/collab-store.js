@@ -15,22 +15,15 @@
         if (_customDb) return _customDb;
         if (!root.firebase?.firestore) return null;
         const db = root.firebase.firestore(), host = root.location?.hostname || '';
-        const emulatorHost = root.FIRESTORE_EMULATOR_HOST || (typeof process !== 'undefined' && process.env?.FIRESTORE_EMULATOR_HOST) ||
-            (host === 'localhost' || host === '127.0.0.1' ? '127.0.0.1:8080' : null);
+        const emulatorHost = root.FIRESTORE_EMULATOR_HOST || (typeof process !== 'undefined' && process.env?.FIRESTORE_EMULATOR_HOST) || (host === 'localhost' || host === '127.0.0.1' ? '127.0.0.1:8080' : null);
         if (emulatorHost && !db._emulatorConnected) {
             try { const [h, p] = emulatorHost.split(':'); db.useEmulator(h, parseInt(p || '8080', 10)); db._emulatorConnected = true; } catch (_) {}
         }
         return db;
     }
 
-    function getCurrentUser() {
-        return _customUser || (root.CollabAuth?.getCurrentUser ? root.CollabAuth.getCurrentUser() : null) || (root.firebase?.auth ? root.firebase.auth().currentUser || null : null);
-    }
-
-    function _cleanJson(val) {
-        if (!val || typeof val !== 'object') return val ?? null;
-        try { return JSON.parse(JSON.stringify(val)); } catch (_) { return null; }
-    }
+    function getCurrentUser() { return _customUser || (root.CollabAuth?.getCurrentUser ? root.CollabAuth.getCurrentUser() : null) || (root.firebase?.auth ? root.firebase.auth().currentUser || null : null); }
+    function _cleanJson(val) { if (!val || typeof val !== 'object') return val ?? null; try { return JSON.parse(JSON.stringify(val)); } catch (_) { return null; } }
 
     function toFirestoreDoc(doc, meta = {}) {
         const out = {
@@ -39,6 +32,7 @@
             username: doc.username || '', password: doc.password || '', rotatedAt: typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null,
             bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData),
             runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
+            taskData: _cleanJson(doc.taskData), assignee: doc.assignee || doc.taskData?.assignee || '', assigneeUid: doc.assigneeUid || doc.taskData?.assigneeUid || '',
             kanbanStatus: doc.kanbanStatus || '', bugStatus: doc.bugStatus || '', bugStatusEvents: Array.isArray(doc.bugStatusEvents) ? [...doc.bugStatusEvents] : [],
             bugNumber: typeof doc.bugNumber === 'number' ? doc.bugNumber : null, favorite: Boolean(doc.favorite),
             createdAt: typeof meta.createdAt === 'number' ? meta.createdAt : (typeof doc.createdAt === 'number' ? doc.createdAt : Date.now()),
@@ -49,7 +43,7 @@
         };
         const wsId = meta.workspaceId || doc.workspaceId;
         if (typeof wsId === 'string' && wsId) out.workspaceId = wsId;
-        return out;
+        return _cleanJson(out);
     }
 
     function fromFirestoreDoc(data, docId) {
@@ -60,6 +54,7 @@
             username: data.username || '', password: data.password || '', rotatedAt: data.rotatedAt || null,
             bugData: data.bugData || null, tcData: data.tcData || null, apiData: data.apiData || null, apiTcData: data.apiTcData || null,
             runData: data.runData || null, envData: data.envData || null, releaseData: data.releaseData || null, tcPlanData: data.tcPlanData || null,
+            taskData: data.taskData || null, assignee: data.assignee || data.taskData?.assignee || '', assigneeUid: data.assigneeUid || data.taskData?.assigneeUid || '',
             kanbanStatus: data.kanbanStatus || '', bugStatus: data.bugStatus || '', bugStatusEvents: Array.isArray(data.bugStatusEvents) ? data.bugStatusEvents : [],
             bugNumber: typeof data.bugNumber === 'number' ? data.bugNumber : null, favorite: Boolean(data.favorite),
             createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
@@ -389,15 +384,12 @@
     }
 
     root.applyRemoteDoc = applyRemoteDoc;
-
     root.CollabStore = {
         loadDocuments, persist, toFirestoreDoc, fromFirestoreDoc,
         getKnownDocs: () => _knownDocs, clearKnownDocs: () => _knownDocs.clear(),
         getLastConflict: () => _lastConflict, clearLastConflict: () => { _lastConflict = null; },
         setDb: (db) => { _customDb = db; }, setUser: (user) => { _customUser = user; },
-        startListening, stopListening, applyRemoteDoc,
-        isEditorDirty, showEditorConflictBanner, enableOfflinePersistence,
-        isListening: () => Boolean(_unsubscribeSnapshot),
-        recordActivity, saveHistory, allocateBugNumber
+        startListening, stopListening, applyRemoteDoc, isEditorDirty, showEditorConflictBanner, enableOfflinePersistence,
+        isListening: () => Boolean(_unsubscribeSnapshot), recordActivity, saveHistory, allocateBugNumber
     };
 })(typeof window !== 'undefined' ? window : globalThis);

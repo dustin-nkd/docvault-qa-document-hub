@@ -87,6 +87,21 @@
         if (temp.firstElementChild && el.parentNode) el.parentNode.replaceChild(temp.firstElementChild, el);
     }
 
+    function replaceTaskAssigneeInput() {
+        if (!isCollabMode() || typeof document === 'undefined') return;
+        const el = document.getElementById('ed-task-assignee');
+        if (!el || el.type === 'hidden') return;
+        const taskDoc = root.state?.editingDoc;
+        const currentAssignee = taskDoc?.assignee || taskDoc?.taskData?.assignee || el.value || root.state?._newTaskAssignee || '';
+        const currentAssigneeUid = taskDoc?.assigneeUid || taskDoc?.taskData?.assigneeUid || root.state?._newTaskAssigneeUid || '';
+        const { options, selectedValue } = buildAssigneeOptions(currentAssignee, currentAssigneeUid, false);
+        const html = root.renderSelect ? root.renderSelect('ed-task-assignee', options, selectedValue, 'w-full') : '';
+        if (!html) return;
+        const temp = document.createElement('div');
+        temp.innerHTML = html.trim();
+        if (temp.firstElementChild && el.parentNode) el.parentNode.replaceChild(temp.firstElementChild, el);
+    }
+
     function ensureAssignStyles() {
         if (_stylesInjected || typeof document === 'undefined') return;
         const head = document.head || document.body || document.documentElement;
@@ -290,6 +305,12 @@
                 const { options, selectedValue } = buildAssigneeOptions(bugData.assignee || '', bugData.assigneeUid || '', false);
                 const selectHtml = root.renderSelect('ed-bug-assignee', options, selectedValue, 'w-full');
                 html = html.replace(/<input\s+id=["']ed-bug-assignee["'][^>]*>/i, selectHtml);
+                const taskDoc = root.state?.editingDoc;
+                const taskAssignee = taskDoc?.assignee || taskDoc?.taskData?.assignee || root.state?._newTaskAssignee || '';
+                const taskAssigneeUid = taskDoc?.assigneeUid || taskDoc?.taskData?.assigneeUid || root.state?._newTaskAssigneeUid || '';
+                const taskOpts = buildAssigneeOptions(taskAssignee, taskAssigneeUid, false);
+                const taskSelectHtml = root.renderSelect('ed-task-assignee', taskOpts.options, taskOpts.selectedValue, 'w-full');
+                html = html.replace(/<input\s+id=["']ed-task-assignee["'][^>]*>/i, taskSelectHtml);
             }
             return html;
         };
@@ -301,6 +322,7 @@
         root.renderContent = function(...args) {
             origRenderContent.apply(this, args);
             replaceBugAssigneeInput();
+            replaceTaskAssigneeInput();
         };
         root.renderContent._collabAssignWrapped = true;
     }
@@ -334,6 +356,7 @@
         renderFocusOwnerField,
         renderBatchAssigneeField,
         replaceBugAssigneeInput,
+        replaceTaskAssigneeInput,
         attachNotificationBell,
         updateNotificationBell,
         toggleNotifications,

@@ -21,11 +21,10 @@ window._moduleVocabulary = _moduleVocabulary;
 
 const API_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const API_STATUS_OPTIONS = [
-    {value: '200', label: '200 OK'}, {value: '201', label: '201 Created'}, {value: '204', label: '204 No Content'},
-    {value: '301', label: '301 Moved Permanently'}, {value: '400', label: '400 Bad Request'}, {value: '401', label: '401 Unauthorized'},
-    {value: '403', label: '403 Forbidden'}, {value: '404', label: '404 Not Found'}, {value: '409', label: '409 Conflict'},
-    {value: '422', label: '422 Unprocessable Entity'}, {value: '429', label: '429 Too Many Requests'}, {value: '500', label: '500 Internal Server Error'},
-    {value: '502', label: '502 Bad Gateway'}, {value: '503', label: '503 Service Unavailable'}
+    {value: '200', label: '200 OK'}, {value: '201', label: '201 Created'}, {value: '204', label: '204 No Content'}, {value: '301', label: '301 Moved Permanently'},
+    {value: '400', label: '400 Bad Request'}, {value: '401', label: '401 Unauthorized'}, {value: '403', label: '403 Forbidden'}, {value: '404', label: '404 Not Found'},
+    {value: '409', label: '409 Conflict'}, {value: '422', label: '422 Unprocessable Entity'}, {value: '429', label: '429 Too Many Requests'},
+    {value: '500', label: '500 Internal Server Error'}, {value: '502', label: '502 Bad Gateway'}, {value: '503', label: '503 Service Unavailable'}
 ];
 window.API_STATUS_OPTIONS = API_STATUS_OPTIONS;
 
@@ -39,10 +38,7 @@ function _apiTcKvRows(rows, rowClass, keyPlaceholder) {
 }
 
 function renderEditorCategory(context) {
-    const {
-        doc, isEdit, category, content, bugData, tcData, apiData, apiTcData,
-        runData, envData, releaseData, releasePolicy, tcPlanData, bugDefaultSla
-    } = context;
+    const { doc, isEdit, category, content, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, releasePolicy, tcPlanData, bugDefaultSla } = context;
     return`
         ${category === 'credential' ? `
         <div class="grid sm:grid-cols-2 gap-4 mb-4">
@@ -62,6 +58,11 @@ function renderEditorCategory(context) {
                 <input type="date" id="ed-cred-rotated" class="form-input" value="${escHtml(doc?.rotatedAt || '')}">
                 <p class="text-[10px] mt-1" style="color:var(--tx-d);">Used for the rotation-reminder badge. Leave blank to use the creation date.</p>
             </div>
+        </div>
+        ` : category === 'task' ? `
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div><label for="ed-task-assignee" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugAssignee')}</label><input id="ed-task-assignee" class="form-input" placeholder="${t('bugAssigneePl')}" value="${escHtml(doc?.assignee || doc?.taskData?.assignee || (typeof state !== 'undefined' ? state._newTaskAssignee : '') || '')}"></div>
+            <div><label for="ed-task-kanban-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('status')}</label>${renderSelect('ed-task-kanban', [{value: 'todo', label: t('todo')}, {value: 'in-progress', label: t('inProgress')}, {value: 'review', label: t('review')}, {value: 'done', label: t('done')}], doc?.kanbanStatus || 'todo', 'w-full')}</div>
         </div>
         ` : category === 'bug' ? `
         <div class="grid sm:grid-cols-3 gap-4 mb-4">
