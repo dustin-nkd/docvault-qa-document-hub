@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -341,8 +342,8 @@ test('document titles are real links that can be opened in a new tab', () => {
     // which is why the anchor cannot simply wrap the whole card (it contains
     // the favourite and menu buttons, and interactive content cannot nest).
     const source = read('js/render-core.js');
-    assert.equal((source.match(/<a class="doc-card-link" href="\$\{_docHref\(d\.id\)\}" data-doc-link="\$\{d\.id\}"/g) || []).length, 2,
-        'both card layouts must link their title');
+    assert.equal((source.match(/<a class="doc-card-link" href="\$\{_docHref\(d\.id\)\}" data-doc-link="\$\{d\.id\}"/g) || []).length, 1,
+        'standard card layout must link its title');
     // guest=1 must survive, or opening a card in a new tab drops a demo visitor
     // into the real locked vault — the reason _appUrl() exists.
     assert.match(source, /function _docHref\(id\)/);
@@ -372,7 +373,7 @@ test('the document list toolbar groups its controls', () => {
     assert.match(source, /aria-hidden="true" style="width:1px;height:20px;background:var\(--brd\);"><\/span><button class="btn-d[^>]*showEmptyTrashModal/);
     // The grid is a list of documents.
     assert.match(source, /<ul class="grid grid-cols-1/);
-    assert.equal((source.match(/<li class="\$\{cardCls\(d\.id\)\}"/g) || []).length, 2);
+    assert.equal((source.match(/<li class="\$\{cardCls\(d\.id\)\}/g) || []).length, 2);
 });
 
 test('the shell declares its own dark scheme and drops the tap delay', () => {
@@ -891,4 +892,117 @@ test('delete confirmation modals use high-contrast target names and accessible w
     assert.match(css, /\.delete-target-name\s*\{[^}]*color:\s*#fff/i, 'style.css must style delete-target-name in high contrast');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.delete-target-name/, 'style.css must style delete-target-name for Bauhaus mode');
     assert.match(css, /\[data-ui-style=["']bauhaus["']\]\s*\.delete-warning-callout/, 'style.css must style delete-warning-callout for Bauhaus mode');
+});
+
+test('credential document cards in grid disable card click and link navigation while preserving batch selection and other categories', () => {
+    const css = read('style.css');
+    assert.match(css, /\.doc-card\.doc-card-static\s*\{[^}]*cursor:\s*default;/, 'style.css must define cursor: default for .doc-card.doc-card-static');
+    assert.match(css, /\.doc-card\.doc-card-static:hover\s*\{[^}]*transform:\s*none;[^}]*box-shadow:\s*none;/, 'style.css must reset transform and box-shadow on .doc-card.doc-card-static:hover');
+
+    const renderCoreSource = read('js/render-core.js');
+    assert.match(renderCoreSource, /doc-card-static/, 'render-core.js must reference doc-card-static');
+    assert.match(renderCoreSource, /<span class="doc-card-title">\$\{escHtml\(d\.title\)\}<\/span>/, 'render-core.js must render credential title as a static span');
+
+    function createDocGridRenderer(initialDocs = [], isBatchMode = false) {
+        const context = vm.createContext({
+            console,
+            URLSearchParams,
+            location: { search: '' }
+        });
+        context.window = context;
+        for (const file of ['js/constants.js', 'js/utils.js', 'js/state.js', 'js/render-editor.js', 'js/render-core.js']) {
+            vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+        }
+        context._testDocs = initialDocs;
+        vm.runInContext(`
+            documents = _testDocs;
+            state.view = 'documents';
+            state.category = 'all';
+            state.batchMode = ${Boolean(isBatchMode)};
+        `, context);
+        return {
+            render: (bm) => {
+                if (bm !== undefined) {
+                    vm.runInContext(`state.batchMode = ${Boolean(bm)};`, context);
+                }
+                return vm.runInContext('renderDocList()', context);
+            }
+        };
+    }
+
+    const credDoc = {
+        id: 'cred-test-1',
+        title: 'Staging Database Secret',
+        category: 'credential',
+        status: 'published',
+        tags: ['db', 'staging'],
+        username: 'db_admin',
+        updatedAt: 1700000000000
+    };
+    const taskDoc = {
+        id: 'task-test-1',
+        title: 'Implement OAuth Token Refresh',
+        category: 'task',
+        status: 'published',
+        tags: ['auth'],
+        content: 'Refresh token implementation notes.',
+        updatedAt: 1700000000000
+    };
+    const bugDoc = {
+        id: 'bug-test-1',
+        title: 'Session memory leak on disconnect',
+        category: 'bug',
+        status: 'published',
+        tags: ['backend'],
+        content: 'Investigating heap dump from cluster 2.',
+        updatedAt: 1700000000000
+    };
+
+    const renderer = createDocGridRenderer([credDoc, taskDoc, bugDoc]);
+
+    // 1. Normal mode (bm = false)
+    const normalHtml = renderer.render(false);
+    const normalCards = normalHtml.match(/<li\b[\s\S]*?<\/li>/g) || [];
+
+    // Credential in normal mode:
+    // - has doc-card-static
+    // - has no data-onclick="viewDoc" (and no data-onclick attribute on the <li>)
+    // - contains no data-doc-link
+    // - title rendered as static span
+    // - action buttons (copy username, copy password, fav, menu) are functional
+    const credNormalHtml = normalCards.find(c => c.includes('Staging Database Secret'));
+    assert.ok(credNormalHtml, 'credential card must be rendered in normal mode');
+
+    assert.match(credNormalHtml, /class="[^"]*doc-card-static[^"]*"/, 'credential card in normal mode must have doc-card-static class');
+    assert.doesNotMatch(credNormalHtml, /data-onclick="viewDoc/, 'credential card in normal mode must not have data-onclick="viewDoc"');
+    assert.doesNotMatch(credNormalHtml, /<li[^>]*data-onclick=/, 'credential <li> in normal mode must not have any data-onclick attribute');
+    assert.doesNotMatch(credNormalHtml, /data-doc-link=/, 'credential card in normal mode must not contain data-doc-link');
+    assert.match(credNormalHtml, /<span class="doc-card-title">Staging Database Secret<\/span>/, 'credential title must be a static span without link');
+    assert.match(credNormalHtml, /copyUsername\('cred-test-1', this\)/, 'credential copy username button must be preserved');
+    assert.match(credNormalHtml, /copyPassword\('cred-test-1', this\)/, 'credential copy password button must be preserved');
+    assert.match(credNormalHtml, /toggleFav\('cred-test-1'\)/, 'credential favorite button must be preserved');
+    assert.match(credNormalHtml, /showDocMenu\('cred-test-1', this\)/, 'credential menu button must be preserved');
+
+    // Other categories in normal mode (task, bug) still render data-doc-link and viewDoc
+    const taskNormalHtml = normalCards.find(c => c.includes('Implement OAuth Token Refresh'));
+    assert.ok(taskNormalHtml, 'task card must be rendered in grid');
+    assert.match(taskNormalHtml, /data-onclick="viewDoc\('task-test-1'\)"/, 'task card must have data-onclick="viewDoc"');
+    assert.match(taskNormalHtml, /data-doc-link="task-test-1"/, 'task card must contain data-doc-link');
+    assert.doesNotMatch(taskNormalHtml, /doc-card-static/, 'task card must not have doc-card-static');
+
+    const bugNormalHtml = normalCards.find(c => c.includes('Session memory leak on disconnect'));
+    assert.ok(bugNormalHtml, 'bug card must be rendered in grid');
+    assert.match(bugNormalHtml, /data-onclick="viewDoc\('bug-test-1'\)"/, 'bug card must have data-onclick="viewDoc"');
+    assert.match(bugNormalHtml, /data-doc-link="bug-test-1"/, 'bug card must contain data-doc-link');
+    assert.doesNotMatch(bugNormalHtml, /doc-card-static/, 'bug card must not have doc-card-static');
+
+    // 2. Batch mode (bm = true)
+    const batchHtml = renderer.render(true);
+    const batchCards = batchHtml.match(/<li\b[\s\S]*?<\/li>/g) || [];
+    const credBatchHtml = batchCards.find(c => c.includes('Staging Database Secret'));
+    assert.ok(credBatchHtml, 'credential card must be rendered in batch mode');
+
+    assert.match(credBatchHtml, /data-onclick="toggleSelectDoc\('cred-test-1', event\)"/, 'credential card in batch mode must have data-onclick="toggleSelectDoc"');
+    assert.doesNotMatch(credBatchHtml, /doc-card-static/, 'credential card in batch mode must not have doc-card-static class');
+    assert.doesNotMatch(credBatchHtml, /data-doc-link=/, 'credential card in batch mode must not contain data-doc-link');
 });

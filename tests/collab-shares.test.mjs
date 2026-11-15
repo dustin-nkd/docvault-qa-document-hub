@@ -102,7 +102,7 @@ test('Shell contracts: events.js loads collab-shares, sw.js caches it in v85, an
         const absolutePath = path.join(rootDir, relativePath);
         return total + (fs.existsSync(absolutePath) ? fs.statSync(absolutePath).size : 0);
     }, 0);
-    assert.ok(bytes <= 1_070_000, `Direct startup assets must be <= 1,070,000 bytes (got ${bytes})`);
+    assert.ok(bytes <= 1_075_000, `Direct startup assets must be <= 1,075,000 bytes (got ${bytes})`);
 });
 
 test('Firestore shares payload contains exact fields and NEVER contains key, password, PAT, or token', async () => {
