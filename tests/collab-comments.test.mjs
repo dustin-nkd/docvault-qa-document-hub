@@ -314,3 +314,48 @@ test('9. addComment, updateComment, and deleteComment operations with schema val
     await deleteComment('doc-1', created.id);
     assert.equal(commentsStore.has(created.id), false);
 });
+
+test('10. notifyCommentMention and addComment resolve document title from state or documents when docObj is omitted', async () => {
+    const ctx = createCommentsTestContext();
+    const { init, addComment } = ctx.CollabComments;
+
+    ctx.window.documents = [{ id: 'doc-99', title: 'Real Bug Title' }];
+    ctx.window.state = { editingDoc: { id: 'doc-99', title: 'Real Bug Title' } };
+
+    const notifsStore = new Map();
+    const mockDb = {
+        collection: (col) => {
+            if (col === 'documents') {
+                return {
+                    doc: () => ({
+                        collection: () => ({
+                            doc: () => ({ set: async () => {} })
+                        })
+                    })
+                };
+            }
+            if (col === 'notifications') {
+                return {
+                    doc: (nId) => ({
+                        set: async (data) => { notifsStore.set(nId, data); }
+                    })
+                };
+            }
+            throw new Error('Unknown collection: ' + col);
+        }
+    };
+
+    init(mockDb, { uid: 'u-1' }, { uid: 'u-1', displayName: 'Tester', email: 'tester@test.com' });
+
+    // Call addComment WITHOUT docObj (as happened from UI)
+    await addComment('doc-99', {
+        content: 'Hey @[Dev](u-2)',
+        mentions: ['u-2']
+    });
+
+    assert.equal(notifsStore.size, 1);
+    const notif = Array.from(notifsStore.values())[0];
+    assert.equal(notif.docId, 'doc-99');
+    assert.equal(notif.docTitle, 'Real Bug Title', 'docTitle must be resolved from documents or state, not raw docId');
+    assert.equal(notif.kind, 'comment_mention');
+});

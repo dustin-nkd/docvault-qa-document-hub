@@ -835,3 +835,47 @@ test('enableOfflinePersistence logs warning and rejects on failed-precondition, 
     }
 });
 
+test('CollabStore: toFirestoreDoc strips undefined fields from bugData and category payloads', async () => {
+    let receivedData = null;
+    const ctx = createStoreContext({
+        onSet: async (docId, data) => {
+            receivedData = data;
+            // Strict check mimicking Firestore SDK: reject any property whose value is undefined
+            const checkNoUndefined = (obj, p = '') => {
+                if (!obj || typeof obj !== 'object') return;
+                for (const [k, v] of Object.entries(obj)) {
+                    if (v === undefined) {
+                        throw new Error(`Function DocumentReference.set() called with invalid data. Unsupported field value: undefined (found in field ${p}${k})`);
+                    }
+                    if (v && typeof v === 'object') checkNoUndefined(v, `${p}${k}.`);
+                }
+            };
+            checkNoUndefined(data);
+        }
+    });
+
+    const bugDoc = {
+        id: 'bug-test-undefined',
+        title: 'Bug Report Without Run',
+        category: 'bug',
+        status: 'published',
+        bugData: {
+            severity: 'Major',
+            priority: 'P2',
+            env: 'Staging',
+            foundInRun: undefined,
+            foundInTc: undefined,
+            foundInStep: undefined
+        }
+    };
+
+    await ctx.CollabStore.persist([bugDoc]);
+
+    assert.ok(receivedData, 'Document must be written to Firestore');
+    assert.equal(receivedData.bugData.foundInRun, undefined);
+    assert.ok(!('foundInRun' in receivedData.bugData), 'foundInRun property must be stripped');
+    assert.ok(!('foundInTc' in receivedData.bugData), 'foundInTc property must be stripped');
+    assert.ok(!('foundInStep' in receivedData.bugData), 'foundInStep property must be stripped');
+    assert.equal(receivedData.bugData.severity, 'Major');
+});
+

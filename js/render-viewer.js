@@ -513,9 +513,12 @@ rootObj.collabSubmitComment = async function(docId) {
     const mentions = (rootObj.CollabComments && typeof rootObj.CollabComments.extractMentions === 'function')
         ? rootObj.CollabComments.extractMentions(content, members)
         : [];
+    const docsList = typeof rootObj.documents !== 'undefined' ? rootObj.documents : (typeof documents !== 'undefined' ? documents : []);
+    const currentDoc = (rootObj.state?.editingDoc?.id === targetDocId ? rootObj.state.editingDoc : null)
+        || (Array.isArray(docsList) ? docsList.find(d => d.id === targetDocId) : null);
     try {
         if (rootObj.CollabComments && typeof rootObj.CollabComments.addComment === 'function') {
-            await rootObj.CollabComments.addComment(targetDocId, { content, mentions });
+            await rootObj.CollabComments.addComment(targetDocId, { content, mentions }, currentDoc);
         }
         if (ta) ta.value = '';
         const dropdown = typeof document !== 'undefined' ? document.getElementById('collab-mention-dropdown-root') : null;
@@ -551,9 +554,12 @@ rootObj.collabSubmitReply = async function(docId, parentId) {
     const mentions = (rootObj.CollabComments && typeof rootObj.CollabComments.extractMentions === 'function')
         ? rootObj.CollabComments.extractMentions(content, members)
         : [];
+    const docsList = typeof rootObj.documents !== 'undefined' ? rootObj.documents : (typeof documents !== 'undefined' ? documents : []);
+    const currentDoc = (rootObj.state?.editingDoc?.id === targetDocId ? rootObj.state.editingDoc : null)
+        || (Array.isArray(docsList) ? docsList.find(d => d.id === targetDocId) : null);
     try {
         if (rootObj.CollabComments && typeof rootObj.CollabComments.addComment === 'function') {
-            await rootObj.CollabComments.addComment(targetDocId, { content, parentId, mentions });
+            await rootObj.CollabComments.addComment(targetDocId, { content, parentId, mentions }, currentDoc);
         }
         if (ta) ta.value = '';
         rootObj.collabToggleReplyForm(parentId, false);

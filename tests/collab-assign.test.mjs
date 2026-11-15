@@ -487,6 +487,28 @@ test('CollabAssign: notification bell in header attaches, updates badge, and ren
     assert.equal(updatedBadge.textContent, '1');
 });
 
+test('CollabAssign: notification panel renders "mentioned you in" for mentions and resolves title from documents', () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n1', { id: 'n1', recipientUid: 'user-current', actorName: 'Alice QA', actorEmail: 'alice@example.com', docId: 'doc-legacy', docTitle: 'doc-legacy', kind: 'comment_mention', createdAt: 3000, readAt: null }]
+        ]
+    });
+    ctx.window.documents = [
+        { id: 'doc-legacy', title: 'Payment Gateway Crash' }
+    ];
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+
+    const panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel, 'Panel must exist');
+    assert.ok(
+        panel.innerHTML.includes('Alice QA (alice@example.com) mentioned you in Payment Gateway Crash'),
+        'Panel must render "mentioned you in" and live document title instead of raw doc-legacy ID'
+    );
+});
+
 test('CollabAssign: badge formats 0 unread as hidden and >9 as 9+', () => {
     const ctx = createAssignContext();
     ctx.CollabAssign.attachNotificationBell();

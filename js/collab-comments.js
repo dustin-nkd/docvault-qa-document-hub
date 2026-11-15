@@ -188,14 +188,20 @@
         const db = getFirestoreDb();
         if (!db) return null;
         const notifId = 'notif_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+        const docId = typeof doc === 'string' ? doc : (doc?.id || '');
+        const docsList = typeof root.documents !== 'undefined' ? root.documents : (typeof documents !== 'undefined' ? documents : []);
+        const foundDoc = (typeof doc === 'object' && doc?.title && doc.title !== docId) ? doc
+            : ((root.state?.editingDoc?.id === docId && root.state.editingDoc.title) ? root.state.editingDoc
+            : (Array.isArray(docsList) ? docsList.find(d => d.id === docId) : null));
+        const docTitle = foundDoc?.title || (typeof doc === 'object' && doc?.title ? doc.title : 'Untitled');
         const payload = {
             id: notifId,
             recipientUid,
             actorUid: comment.authorUid,
             actorName: comment.authorName || 'Team Member',
             actorEmail: comment.authorEmail || '',
-            docId: doc.id || (typeof doc === 'string' ? doc : ''),
-            docTitle: doc.title || (typeof doc === 'object' && doc.id) || 'Untitled',
+            docId,
+            docTitle,
             kind: 'comment_mention',
             signalKey: '',
             createdAt: Date.now(),
@@ -250,7 +256,11 @@
 
         await db.collection('documents').doc(docId).collection('comments').doc(commentId).set(comment);
 
-        const targetDoc = docObj || (root.state?.docs?.find ? root.state.docs.find(d => d.id === docId) : null) || { id: docId, title: docId };
+        const docsList = typeof root.documents !== 'undefined' ? root.documents : (typeof documents !== 'undefined' ? documents : []);
+        const targetDoc = (docObj && docObj.title && docObj.title !== docId) ? docObj
+            : ((root.state?.editingDoc?.id === docId && root.state.editingDoc.title) ? root.state.editingDoc
+            : (Array.isArray(docsList) ? docsList.find(d => d.id === docId) : null))
+            || docObj || { id: docId, title: 'Untitled' };
         if (Array.isArray(comment.mentions) && comment.mentions.length > 0) {
             for (const recipientUid of comment.mentions) {
                 if (recipientUid && recipientUid !== authorUid) {
