@@ -313,7 +313,7 @@ window.shareDoc = async function(id) {
         const keyBase64 = uint8ToBase64(keyBytes);
         const encContent = await _encryptSharePayload(doc, keyBytes);
 
-        const shareId = `sh_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+        const shareId = typeof generateSecureShareId === 'function' ? generateSecureShareId() : `sh_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
         const res = await fetch(
             `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/shared/${shareId}.enc`,
             {

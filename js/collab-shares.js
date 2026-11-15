@@ -75,7 +75,7 @@
             const keyBase64 = root.uint8ToBase64 ? root.uint8ToBase64(keyBytes) : btoa(String.fromCharCode(...keyBytes));
             const encContent = await _encryptSharePayloadLocal({ ...doc, content }, keyBytes);
 
-            const shareId = 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
+            const shareId = typeof root.generateSecureShareId === 'function' ? root.generateSecureShareId() : (typeof generateSecureShareId === 'function' ? generateSecureShareId() : ('sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6)));
             const db = getDb();
             if (!db) throw new Error('Firestore is not available');
             const user = getCurrentUser();

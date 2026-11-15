@@ -38,8 +38,9 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     // 1_045_000 for restoring the GitHub PAT from the encrypted vault on a new browser.
     // 1_070_000 for the API test case form, its viewer, and the coverage joins.
     // 1_075_000 for disabling credential card navigation and static card styles.
-    // 1_115_000 for Team Edition comments UI rendering, viewer integration, mention dropdowns, and Bauhaus styling.
-    assert.ok(bytes <= 1_115_000, `Dashboard direct startup assets exceed 1115 KB: ${bytes} bytes`);
+    // 1_115_000 for Team Edition comments UI rendering, viewer integration, mention dropdowns, and Bauhaus styling, and
+    // 1_118_000 for workspace persist race guard, owner-only trash delete, and 128-bit cryptographic share IDs.
+    assert.ok(bytes <= 1_118_000, `Dashboard direct startup assets exceed 1118 KB: ${bytes} bytes`);
 });
 
 test('editor runtime remains offline-capable and is loaded through one shared lazy promise', () => {

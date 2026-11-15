@@ -295,18 +295,19 @@ test('Team tab markup: owner sees invite form & role select, editor does not', a
     assert.doesNotMatch(editorContainerHtml, /owner@example\.com\s*<span[^>]*>\(You\)/, 'owner-1 must not have You in editor session');
 });
 
-test('inviteMember creates invites/{email} with exact email (no toLowerCase) and role editor/viewer', async () => {
+test('inviteMember creates invites/{email} with normalized lowercase email and role editor/viewer', async () => {
     const ctx = createMembersContext({
         currentMember: { uid: 'owner-uid', email: 'owner@example.com', role: 'owner' }
     });
 
     // 1. Successful invite with mixed case email
     const mixedEmail = 'John.Doe@Company.COM';
+    const normalizedEmail = 'john.doe@company.com';
     const ok = await ctx.CollabMembers.inviteMember(mixedEmail, 'editor');
     assert.equal(ok, true);
-    assert.ok(ctx.inviteStore.has(mixedEmail), 'Invite doc id must preserve exact email without toLowerCase');
-    assert.equal(ctx.inviteStore.get(mixedEmail).email, mixedEmail);
-    assert.equal(ctx.inviteStore.get(mixedEmail).role, 'editor');
+    assert.ok(ctx.inviteStore.has(normalizedEmail), 'Invite doc id must be normalized to lowercase for auth token match');
+    assert.equal(ctx.inviteStore.get(normalizedEmail).email, normalizedEmail);
+    assert.equal(ctx.inviteStore.get(normalizedEmail).role, 'editor');
 
     // 2. Attempt to invite with owner role is blocked
     const okOwner = await ctx.CollabMembers.inviteMember('hacker@example.com', 'owner');
@@ -643,4 +644,6 @@ test('Phase 14: Settings modal hides Account/Security tabs and defaults to Team 
     assert.match(personalModalHtml, /_switchSettingsTab\('security'\)/, 'Personal edition must have Security tab');
     assert.match(personalModalHtml, /Current Password/, 'Personal edition must default to Account and show Current Password');
 });
+
+
 

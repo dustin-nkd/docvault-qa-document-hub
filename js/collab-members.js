@@ -91,7 +91,7 @@
             if (typeof root.toast === 'function') root.toast('Please enter a valid email.', 'error');
             return false;
         }
-        const trimmedEmail = email.trim();
+        const trimmedEmail = email.trim().toLowerCase();
         if (!trimmedEmail) {
             if (typeof root.toast === 'function') root.toast('Please enter a valid email.', 'error');
             return false;
@@ -183,8 +183,9 @@
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
 
-        await db.collection('invites').doc(email).delete();
-        if (typeof root.toast === 'function') root.toast(`Revoked invite for ${email}`, 'success');
+        const targetEmail = String(email || '').trim().toLowerCase();
+        await db.collection('invites').doc(targetEmail).delete();
+        if (typeof root.toast === 'function') root.toast(`Revoked invite for ${targetEmail}`, 'success');
         await loadAndRenderTeam();
         return true;
     }

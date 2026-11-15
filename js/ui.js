@@ -286,7 +286,25 @@ function closeModal() {
     }
 }
 
+function _checkHardDeletePermission(msg) {
+    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
+        toast('You have view access', 'error');
+        return false;
+    }
+    const isOwner = typeof canHardDeleteDocs === 'function'
+        ? canHardDeleteDocs()
+        : (!window.COLLAB_MODE || window.CollabBootstrap?.getCurrentMember?.()?.role === 'owner');
+    if (!isOwner) {
+        toast(msg, 'warning');
+        return false;
+    }
+    return true;
+}
+
 function showDeleteModal(id, isPermanent = false) {
+    if (isPermanent && !_checkHardDeletePermission('Only the team owner can permanently delete documents from trash.')) {
+        return;
+    }
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
 
@@ -364,8 +382,7 @@ async function restoreDoc(id) {
 }
 
 async function hardDeleteDoc(id) {
-    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
-        toast('You have view access', 'error');
+    if (!_checkHardDeletePermission('Only the team owner can permanently delete documents from trash.')) {
         return;
     }
     const doc = documents.find(d => d.id === id);
@@ -383,6 +400,9 @@ async function hardDeleteDoc(id) {
 }
 
 function showEmptyTrashModal() {
+    if (!_checkHardDeletePermission('Only the team owner can empty the trash.')) {
+        return;
+    }
     showModal(`
         <div class="text-center">
             <div class="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(244,63,94,0.1);">
@@ -399,8 +419,7 @@ function showEmptyTrashModal() {
 }
 
 async function emptyTrash() {
-    if (window.COLLAB_MODE && window.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') {
-        toast('You have view access', 'error');
+    if (!_checkHardDeletePermission('Only the team owner can empty the trash.')) {
         return;
     }
     const trashed = documents.filter(d => d.status === 'deleted');
@@ -657,11 +676,12 @@ function showDocMenu(id, btn) {
     menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;padding:4px;z-index:80;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);`;
     let menuHtml = '';
     if (state.view === 'trash') {
+        const canDeleteForever = typeof canHardDeleteDocs !== 'function' || canHardDeleteDocs();
         menuHtml = `
             <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-card" style="color:var(--acc);transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();${actionAttr('restoreDoc', id)}">
                 <i class="fa-solid fa-rotate-left w-4 text-center"></i> ${t('restore') || 'Restore'} </button>
-            <button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-danger" style="color:#f43f5e;transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();${actionAttr('showDeleteModal', id, true)}">
-                <i class="fa-solid fa-trash w-4 text-center"></i> ${t('deleteForever') || 'Delete Forever'} </button>
+            ${canDeleteForever ? `<button class="w-full text-left text-xs px-3 py-2 rounded-md flex items-center gap-2 ui-hover-danger" style="color:#f43f5e;transition:background .15s;" data-onclick="document.getElementById('doc-menu').remove();${actionAttr('showDeleteModal', id, true)}">
+                <i class="fa-solid fa-trash w-4 text-center"></i> ${t('deleteForever') || 'Delete Forever'} </button>` : ''}
         `;
     } else {
         menuHtml = `
