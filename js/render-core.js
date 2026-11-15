@@ -3,11 +3,8 @@
 // ========================
 window.applyStatusFilter = function(val) { state.statusFilter = val; state.docListPage = 1; renderContent(); };
 window.applySortBy = function(val) { state.sortBy = val; state.docListPage = 1; renderContent(); };
-window.setDocListPage = function(p) {
-    state.docListPage = p;
-    renderContent();
-    document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' });
-};
+window.applyTaskAssigneeFilter = function(val) { state.taskAssigneeFilter = val; renderContent(); };
+window.setDocListPage = function(p) { state.docListPage = p; renderContent(); document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' }); };
 
 // ========================
 // HEADER
@@ -39,12 +36,9 @@ function updateHeader() {
                 ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="showHistoryPanel('${doc.id}')" title="History"><i class="fa-regular fa-clock sm:mr-1.5"></i><span class="hdr-btn-label">History</span></button><button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="exportDoc('${doc.id}')" title="Export"><i class="fa-solid fa-file-export sm:mr-1.5"></i><span class="hdr-btn-label">Export</span></button>` : ''}
                 <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>`;
         }
-    } else if (state.view === 'focus') {
-        title = `<h2 class="font-heading font-bold text-lg">${t('focus')}</h2>`;
-    } else if (state.view === 'traceability') {
-        title = `<h2 class="font-heading font-bold text-lg">${t('traceability')}</h2>`;
-    } else if (state.view === 'trash') {
-        title = `<h2 class="font-heading font-bold text-lg">${t('trash') || 'Trash'}</h2>`;
+    } else if (state.view === 'focus') { title = `<h2 class="font-heading font-bold text-lg">${t('focus')}</h2>`;
+    } else if (state.view === 'traceability') { title = `<h2 class="font-heading font-bold text-lg">${t('traceability')}</h2>`;
+    } else if (state.view === 'trash') { title = `<h2 class="font-heading font-bold text-lg">${t('trash') || 'Trash'}</h2>`;
     }
 
     const isSearchView = state.view === 'documents' || state.view === 'favorites';
@@ -102,16 +96,8 @@ window.syncEditorState = function() {
     const titleEl = document.getElementById('ed-title');
     if (!titleEl) return;
 
-    const title = titleEl.value || '';
-    const cat = document.getElementById('ed-cat')?.value || 'runbook';
-    const subfolder = document.getElementById('ed-subfolder')?.value || '';
-    const status = document.getElementById('ed-status')?.value || 'draft';
-    const content = getEditorMarkdown();
-
-    let bugData = null;
-    let tcData = null;
-    let apiData = null;
-    let apiTcData = null;
+    const title = titleEl.value || '', cat = document.getElementById('ed-cat')?.value || 'runbook', subfolder = document.getElementById('ed-subfolder')?.value || '', status = document.getElementById('ed-status')?.value || 'draft', content = getEditorMarkdown();
+    let bugData = null, tcData = null, apiData = null, apiTcData = null;
     // applyLinkedApiSpec writes the merged case, then re-renders. The spec's
     // inputs are not in the DOM yet, so reading the form here would throw that
     // copy away. The flag tells this pass to keep the stored case.
@@ -1162,6 +1148,7 @@ const DOC_LIST_PAGE_SIZE = 60;
 window.clearDocumentFilters = function() {
     state.search = '';
     state.statusFilter = 'all';
+    state.taskAssigneeFilter = 'all';
     state.docListPage = 1;
     renderContent();
 };
@@ -1202,7 +1189,7 @@ function renderDocList() {
     // not just the current page — a page fully selected but with other
     // pages partially selected should still read as "not all selected".
     const allSelected = docs.length > 0 && docs.every(d => sel.has(d.id));
-    const hasActiveFilters = !inTrash && (Boolean((state.search || '').trim()) || state.statusFilter !== 'all');
+    const hasActiveFilters = !inTrash && (Boolean((state.search || '').trim()) || state.statusFilter !== 'all' || (state.category === 'task' && state.taskAssigneeFilter && state.taskAssigneeFilter !== 'all'));
     const isFavoritesEmpty = state.view === 'favorites' && !hasActiveFilters;
     const emptyTitle = hasActiveFilters ? 'No documents match these filters'
         : isFavoritesEmpty ? t('noFavorites')
@@ -1236,17 +1223,8 @@ function renderDocList() {
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
             <div class="flex items-center gap-2" role="group" aria-label="Filter and sort documents">
-                ${renderSelect('hdr-status-filter', [
-                    {value: 'all', label: t('allStatus')},
-                    {value: 'published', label: 'Published'},
-                    {value: 'draft', label: 'Draft'},
-                    {value: 'archived', label: 'Archived'}
-                ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
-                ${renderSelect('hdr-sort-by', [
-                    {value: 'updated', label: t('recentlyUpdated')},
-                    {value: 'created', label: t('newest')},
-                    {value: 'title', label: t('sortAZ')}
-                ], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)', 'Sort documents')}
+                ${renderSelect('hdr-status-filter', [{value: 'all', label: t('allStatus')}, {value: 'published', label: 'Published'}, {value: 'draft', label: 'Draft'}, {value: 'archived', label: 'Archived'}], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
+                ${renderSelect('hdr-sort-by', [{value: 'updated', label: t('recentlyUpdated')}, {value: 'created', label: t('newest')}, {value: 'title', label: t('sortAZ')}], state.sortBy, 'text-sm !w-auto min-w-[140px]', 'applySortBy(this.value)', 'Sort documents')}
             </div>
             <!-- Filtering changed the result count silently; announcing it is the
                  only signal a screen reader gets that anything happened. -->
@@ -1539,12 +1517,7 @@ function renderBugKanban(docs, isMobileSearch) {
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
-            ${renderSelect('bug-status-filter', [
-                {value: 'all', label: t('allStatus')},
-                {value: 'published', label: 'Published'},
-                {value: 'draft', label: 'Draft'},
-                {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
+            ${renderSelect('bug-status-filter', [{value: 'all', label: t('allStatus')}, {value: 'published', label: 'Published'}, {value: 'draft', label: 'Draft'}, {value: 'archived', label: 'Archived'}], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
             <button class="btn-s text-xs flex items-center gap-1.5" style="${showClosed ? 'color:var(--acc);' : 'color:var(--tx-d);'}" data-onclick="window._bugShowClosed=!window._bugShowClosed;renderContent();">
                 <i class="fa-solid fa-${showClosed ? 'eye-slash' : 'eye'}" style="font-size:10px;"></i>
                 ${showClosed ? 'Hide' : 'Show'} Closed${!showClosed && closedCount > 0 ? ` (${closedCount})` : ''}
@@ -1593,8 +1566,30 @@ function renderKanbanBoard(docs, isMobileSearch) {
         { id: 'done', get label() { return t('done'); }, color: '#10b981' }
     ];
 
+    const memberMap = new Map(), optMap = new Map();
+    window.CollabAssign?.getMembers?.()?.forEach(m => {
+        const l = window.CollabAssign.getMemberLabel(m);
+        if (m.uid && l) { memberMap.set(m.uid, { uid: m.uid, label: l, email: m.email || '', name: m.displayName || '' }); optMap.set(m.uid, l); }
+    });
+    docs.forEach(d => {
+        const n = d.assignee || d.taskData?.assignee, u = d.assigneeUid || d.taskData?.assigneeUid;
+        if (u && !optMap.has(u)) optMap.set(u, n || u);
+        else if (n && !u && !Array.from(memberMap.values()).some(m => m.label === n || m.email === n || m.name === n) && !optMap.has(n)) optMap.set(n, n);
+    });
+    let activeAssignee = state.taskAssigneeFilter || 'all';
+    if (activeAssignee !== 'all' && activeAssignee !== 'unassigned' && !optMap.has(activeAssignee)) optMap.set(activeAssignee, memberMap.get(activeAssignee)?.label || activeAssignee);
+    const assigneeFilterOptions = [{ value: 'all', label: 'All Assignees' }, { value: 'unassigned', label: 'Unassigned' }, ...Array.from(optMap.entries()).map(([value, label]) => ({ value, label }))];
+    const filteredDocs = docs.filter(d => {
+        if (activeAssignee === 'all') return true;
+        const a = d.assignee || d.taskData?.assignee, u = d.assigneeUid || d.taskData?.assigneeUid;
+        if (activeAssignee === 'unassigned') return !a && !u;
+        const targetMember = memberMap.get(activeAssignee);
+        if (targetMember) return u === activeAssignee || (a && (a === targetMember.label || a === targetMember.email || a === targetMember.name));
+        return u === activeAssignee || a === activeAssignee;
+    });
+
     const kanbanHtml = cols.map(col => {
-        const colDocs = docs.filter(d => (d.kanbanStatus || 'todo') === col.id);
+        const colDocs = filteredDocs.filter(d => (d.kanbanStatus || 'todo') === col.id);
 
         return `
         <section class="flex flex-col shrink-0 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd); max-height: calc(100vh - 180px); width: 300px; min-width: 300px;"
@@ -1657,12 +1652,8 @@ function renderKanbanBoard(docs, isMobileSearch) {
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center gap-3 mb-5">
-            ${renderSelect('kb-status-filter', [
-                {value: 'all', label: t('allStatus')},
-                {value: 'published', label: 'Published'},
-                {value: 'draft', label: 'Draft'},
-                {value: 'archived', label: 'Archived'}
-            ], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
+            ${renderSelect('kb-status-filter', [{value: 'all', label: t('allStatus')}, {value: 'published', label: 'Published'}, {value: 'draft', label: 'Draft'}, {value: 'archived', label: 'Archived'}], state.statusFilter, 'text-sm !w-auto min-w-[130px]', 'applyStatusFilter(this.value)', 'Filter by status')}
+            ${renderSelect('kb-assignee-filter', assigneeFilterOptions, activeAssignee, 'text-sm !w-auto min-w-[140px]', 'applyTaskAssigneeFilter(this.value)', 'Filter by assignee')}
             <div class="flex-1"></div>
             <button class="btn-p text-sm" data-onclick="createDoc('task')"><i class="fa-solid fa-plus mr-1.5"></i>${t('newTask')}</button>
         </div>

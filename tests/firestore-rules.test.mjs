@@ -1068,6 +1068,13 @@ test('Branch 14 (notifications): allows editor/owner create matching saved doc, 
                 critical: { owner: 'Viewer (vw@example.com)', ownerUid: 'viewer-uid' }
             }
         });
+        await db.collection('documents').doc('task-doc').set({
+            id: 'task-doc',
+            title: 'Task Document',
+            category: 'task',
+            assignee: 'Viewer (vw@example.com)',
+            assigneeUid: 'viewer-uid'
+        });
     });
 
     const editor = testEnv.authenticatedContext('editor-uid', { email: 'ed@example.com' }).firestore();
@@ -1097,6 +1104,62 @@ test('Branch 14 (notifications): allows editor/owner create matching saved doc, 
         docId: 'focus-doc',
         docTitle: 'Focus Document',
         kind: 'focus',
+        signalKey: 'critical',
+        createdAt: 2001,
+        readAt: null
+    }));
+
+    // 2b. Editor creates valid task notification for viewer
+    await assertSucceeds(editor.collection('notifications').doc('notif-task-1').set({
+        recipientUid: 'viewer-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'task-doc',
+        docTitle: 'Task Document',
+        kind: 'task',
+        signalKey: '',
+        createdAt: 2001,
+        readAt: null
+    }));
+
+    // 2c. Task notification with mismatched recipientUid is DENIED
+    await assertFails(editor.collection('notifications').doc('notif-task-mismatch').set({
+        recipientUid: 'owner-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'task-doc',
+        docTitle: 'Task Document',
+        kind: 'task',
+        signalKey: '',
+        createdAt: 2001,
+        readAt: null
+    }));
+
+    // 2d. Task notification for non-task doc is DENIED
+    await assertFails(editor.collection('notifications').doc('notif-task-wrongcat').set({
+        recipientUid: 'viewer-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'bug-doc',
+        docTitle: 'Bug Document',
+        kind: 'task',
+        signalKey: '',
+        createdAt: 2001,
+        readAt: null
+    }));
+
+    // 2e. Task notification with non-empty signalKey is DENIED
+    await assertFails(editor.collection('notifications').doc('notif-task-signal').set({
+        recipientUid: 'viewer-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor',
+        actorEmail: 'ed@example.com',
+        docId: 'task-doc',
+        docTitle: 'Task Document',
+        kind: 'task',
         signalKey: 'critical',
         createdAt: 2001,
         readAt: null

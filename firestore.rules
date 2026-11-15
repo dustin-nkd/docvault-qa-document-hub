@@ -266,6 +266,15 @@ service cloud.firestore {
            exists(/databases/$(database)/documents/documents/$(request.resource.data.docId)) &&
            'bugData' in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data &&
            get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.bugData.assigneeUid == request.resource.data.recipientUid) ||
+          (request.resource.data.kind == 'task' &&
+           request.resource.data.signalKey == '' &&
+           exists(/databases/$(database)/documents/documents/$(request.resource.data.docId)) &&
+           get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.category == 'task' &&
+           (('assigneeUid' in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data &&
+             get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.assigneeUid == request.resource.data.recipientUid) ||
+            ('taskData' in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data &&
+             'assigneeUid' in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.taskData &&
+             get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.taskData.assigneeUid == request.resource.data.recipientUid))) ||
           (request.resource.data.kind == 'focus' &&
            request.resource.data.signalKey in ['critical', 'retest', 'release', 'task', 'stale'] &&
            exists(/databases/$(database)/documents/documents/$(request.resource.data.docId)) &&
