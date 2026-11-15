@@ -229,13 +229,14 @@
 
     async function persist(currentDocuments) {
         if (isGuestMode() || !isCollabMode() || !Array.isArray(currentDocuments)) return;
+        const activeWs = getActiveWs(), targetDocs = currentDocuments.slice(), targetIds = new Set(targetDocs.filter(d => d?.id).map(d => d.id));
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
         await enableOfflinePersistence(db);
         const user = getCurrentUser();
         if (!user?.uid) throw new Error('Cannot persist in collab mode: unauthenticated');
-        const uid = user.uid, activeWs = getActiveWs();
+        const uid = user.uid;
 
         const isDocOversize = (d) => {
             const sz = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(JSON.stringify(d)).length : JSON.stringify(d).length;
@@ -244,7 +245,7 @@
         };
 
         // 1. New documents (CREATE)
-        for (const doc of currentDocuments) {
+        for (const doc of targetDocs) {
             if (!doc?.id || _knownDocs.has(doc.id)) continue;
             const now = Date.now(), createdAt = typeof doc.createdAt === 'number' ? doc.createdAt : now, updatedAt = typeof doc.updatedAt === 'number' ? doc.updatedAt : now;
             if (!doc.workspaceId) doc.workspaceId = activeWs;
@@ -260,7 +261,7 @@
         }
 
         // 2. Modified documents (UPDATE)
-        for (const doc of currentDocuments) {
+        for (const doc of targetDocs) {
             if (!doc?.id || !_knownDocs.has(doc.id)) continue;
             const known = _knownDocs.get(doc.id);
             const isUpdated = typeof doc.updatedAt === 'number' && doc.updatedAt > (known.updatedAt || 0);
@@ -293,10 +294,10 @@
         }
 
         // 3. Disappeared documents (DELETE)
-        const currentIds = new Set(currentDocuments.filter(d => d?.id).map(d => d.id));
+        if (getActiveWs() !== activeWs) return;
         for (const [id, known] of Array.from(_knownDocs.entries())) {
             if ((known?.workspaceId || 'default') !== activeWs) continue;
-            if (!currentIds.has(id)) {
+            if (!targetIds.has(id)) {
                 try {
                     if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) {
                         await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);

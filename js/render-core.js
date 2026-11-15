@@ -1242,7 +1242,7 @@ function renderDocList() {
                         ${bm ? '✕ Cancel' : '<i class="fa-regular fa-square-check" style="margin-right:5px;font-size:11px;"></i>Select'}
                     </button>
                 ` : ''}
-                ${inTrash && docs.length > 0 ? `<span class="shrink-0" aria-hidden="true" style="width:1px;height:20px;background:var(--brd);"></span><button class="btn-d text-xs py-1 px-2.5" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
+                ${inTrash && docs.length > 0 && (typeof canHardDeleteDocs !== 'function' || canHardDeleteDocs()) ? `<span class="shrink-0" aria-hidden="true" style="width:1px;height:20px;background:var(--brd);"></span><button class="btn-d text-xs py-1 px-2.5" data-onclick="showEmptyTrashModal()"><i class="fa-solid fa-trash-can mr-1.5"></i>${t('emptyTrash') || 'Empty Trash'}</button>` : ''}
             </div>
         </div>
 

@@ -387,3 +387,23 @@ function apiTestCaseMarkdown(title, data) {
     ];
     return parts.filter(part => part !== '').join('\n');
 }
+
+function canHardDeleteDocs() {
+    const isCollab = typeof COLLAB_MODE !== 'undefined' && Boolean(COLLAB_MODE) && !(typeof GUEST_MODE !== 'undefined' && Boolean(GUEST_MODE));
+    if (!isCollab) return true;
+    const root = typeof window !== 'undefined' ? window : globalThis;
+    if (typeof root._isOwner === 'boolean') return root._isOwner;
+    if (root._collabCurrentUser?.role === 'owner') return true;
+    if (root.CollabMembers && typeof root.CollabMembers.isOwner === 'function') return Boolean(root.CollabMembers.isOwner());
+    if (root.CollabBootstrap && typeof root.CollabBootstrap.getCurrentMember === 'function') return root.CollabBootstrap.getCurrentMember()?.role === 'owner';
+    return false;
+}
+
+function generateSecureShareId() {
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        return 'sh_' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+    return 'sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
+}

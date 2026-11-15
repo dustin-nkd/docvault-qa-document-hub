@@ -171,24 +171,27 @@
             return { status: 'member', role: memberData.role, member: memberData };
         }
 
-        let inviteSnap = null;
-        if (user.email) {
-            inviteSnap = await db.collection('invites').doc(user.email).get();
+        let inviteSnap = null, matchedInviteId = null;
+        const rawEmail = (user.email || '').trim(), normalizedEmail = rawEmail.toLowerCase();
+        if (rawEmail) {
+            inviteSnap = await db.collection('invites').doc(rawEmail).get();
+            if (inviteSnap?.exists) matchedInviteId = rawEmail;
+            else if (normalizedEmail && normalizedEmail !== rawEmail) {
+                inviteSnap = await db.collection('invites').doc(normalizedEmail).get();
+                if (inviteSnap?.exists) matchedInviteId = normalizedEmail;
+            }
         }
 
         if (inviteSnap && inviteSnap.exists) {
             const inviteData = inviteSnap.data();
             const now = new Date().toISOString();
             const newMember = {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName || user.email || 'Team Member',
-                role: inviteData.role,
-                createdAt: now,
-                updatedAt: now
+                uid: user.uid, email: normalizedEmail || rawEmail,
+                displayName: user.displayName || normalizedEmail || 'Team Member',
+                role: inviteData.role, createdAt: now, updatedAt: now
             };
             await db.collection('members').doc(user.uid).set(newMember);
-            await db.collection('invites').doc(user.email).delete().catch(() => {});
+            await db.collection('invites').doc(matchedInviteId || normalizedEmail || rawEmail).delete().catch(() => {});
             _currentMember = newMember;
             return { status: 'member', role: inviteData.role, member: newMember };
         }
