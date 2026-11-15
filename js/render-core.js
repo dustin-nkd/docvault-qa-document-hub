@@ -25,10 +25,7 @@ function updateHeader() {
         actions = `<button class="btn-p header-new-doc-btn flex items-center justify-center h-[38px] gap-2" data-onclick="showTemplateModal()"><i class="fa-solid fa-plus text-xs"></i> ${t('newDoc')}</button>`;
     } else if (state.view === 'editor') {
         title = `<h2 class="font-heading font-bold text-lg">${state.editingDoc ? t('editDoc') : t('newDoc')}</h2>`;
-        actions = `
-            <button class="btn-s flex items-center justify-center h-[38px]" data-onclick="cancelEdit()"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button>
-            <button class="btn-p flex items-center justify-center h-[38px]" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>
-        `;
+        actions = `<button class="btn-s flex items-center justify-center h-[38px]" data-onclick="cancelEdit()"><i class="fa-solid fa-xmark mr-1.5"></i>${t('cancel')}</button><button class="btn-p flex items-center justify-center h-[38px]" data-onclick="saveDoc()"><i class="fa-solid fa-check mr-1.5"></i>${t('save')}</button>`;
     } else if (state.view === 'viewer') {
         const doc = documents.find(d => d.id === state.editingDoc?.id);
         title = `<h2 class="font-heading font-bold text-lg truncate max-w-md" title="${doc ? escHtml(doc.title) : ''}">${doc ? escHtml(doc.title) : ''}</h2>`;
@@ -37,13 +34,10 @@ function updateHeader() {
                 ? `<button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>`
                 : `<button class="btn-p text-sm" data-onclick="openAppHome()">Open DocVault</button>`;
         } else {
-            actions = `
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="shareDoc('${doc.id}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>` : ''}
+            actions = `${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="shareDoc('${doc.id}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>` : ''}
                 <button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left sm:mr-1.5"></i><span class="hdr-btn-label">${t('back')}</span></button>
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="showHistoryPanel('${doc.id}')" title="History"><i class="fa-regular fa-clock sm:mr-1.5"></i><span class="hdr-btn-label">History</span></button>` : ''}
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="exportDoc('${doc.id}')" title="Export"><i class="fa-solid fa-file-export sm:mr-1.5"></i><span class="hdr-btn-label">Export</span></button>` : ''}
-                <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>
-            `;
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="showHistoryPanel('${doc.id}')" title="History"><i class="fa-regular fa-clock sm:mr-1.5"></i><span class="hdr-btn-label">History</span></button><button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="exportDoc('${doc.id}')" title="Export"><i class="fa-solid fa-file-export sm:mr-1.5"></i><span class="hdr-btn-label">Export</span></button>` : ''}
+                <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>`;
         }
     } else if (state.view === 'focus') {
         title = `<h2 class="font-heading font-bold text-lg">${t('focus')}</h2>`;
@@ -140,6 +134,13 @@ window.syncEditorState = function() {
             expected: document.getElementById('ed-bug-expected')?.value || '',
             actual: document.getElementById('ed-bug-actual')?.value || ''
         };
+        if (!bugData.foundInRun) delete bugData.foundInRun;
+        if (!bugData.foundInTc) delete bugData.foundInTc;
+        if (bugData.foundInStep == null || bugData.foundInStep === '') delete bugData.foundInStep;
+    } else if (cat === 'task') {
+        const el = document.getElementById('ed-task-assignee'), kEl = document.getElementById('ed-task-kanban');
+        if (el) { const res = window.CollabAssign?.resolveMember?.(el.value || '') || { assignee: el.value || '', assigneeUid: '' }; if (state.editingDoc) { state.editingDoc.assignee = res.assignee; state.editingDoc.assigneeUid = res.assigneeUid; } else { state._newTaskAssignee = res.assignee; state._newTaskAssigneeUid = res.assigneeUid; } }
+        if (kEl?.value) { if (state.editingDoc) state.editingDoc.kanbanStatus = kEl.value; else state._newTaskKanban = kEl.value; }
     } else if (cat === 'testcases') {
         tcData = {
             module: document.getElementById('ed-tc-module')?.value || '',
@@ -1630,6 +1631,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
                         </div>
 
                         <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
+                        ${(d.assignee || d.taskData?.assignee) ? `<p class="text-[11px] mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:9px;color:var(--acc);"></i>${escHtml(d.assignee || d.taskData?.assignee)}</p>` : ''}
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
                             ${d.tags.slice(0, 2).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}

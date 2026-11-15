@@ -547,3 +547,37 @@ test('CollabAssign: viewer role can interact with notification bell without rest
     assert.notEqual(btn.getAttribute('aria-disabled'), 'true');
     assert.equal(btn.disabled, undefined);
 });
+
+test('CollabAssign: renderEditor wraps task assignee and replaces with custom select', () => {
+    const ctx = createAssignContext({ isCollab: true });
+    ctx.renderEditor = () => '<input id="ed-task-assignee" class="form-input" value="">';
+    const assignSource = read('js/collab-assign.js');
+    vm.runInNewContext(assignSource, ctx);
+
+    ctx.state = { editingDoc: { category: 'task', assignee: 'Alice', assigneeUid: 'user-1' } };
+    const html = ctx.renderEditor();
+    assert.ok(html.includes('id="ed-task-assignee"'));
+    assert.ok(html.includes('type="hidden"'));
+});
+
+test('CollabAssign: notifyAssignment creates notification with kind task', async () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' }
+    });
+    ctx.CollabAssign.startListening();
+
+    const taskDoc = { id: 'task-100', title: 'Refactor DB Queries', category: 'task' };
+    await ctx.CollabAssign.notifyAssignment({
+        doc: taskDoc,
+        kind: 'task',
+        oldUid: '',
+        newUid: 'user-1'
+    });
+
+    assert.equal(ctx.notifSets.length, 1);
+    const notif = ctx.notifSets[0].data;
+    assert.equal(notif.recipientUid, 'user-1');
+    assert.equal(notif.kind, 'task');
+    assert.equal(notif.docId, 'task-100');
+    assert.equal(notif.docTitle, 'Refactor DB Queries');
+});

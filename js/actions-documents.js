@@ -26,6 +26,9 @@ function createDoc(cat) {
     state._newSubfolder = '';
     state._newStatus = 'draft';
     state._newBugData = null;
+    state._newTaskAssignee = '';
+    state._newTaskAssigneeUid = '';
+    state._newTaskKanban = 'todo';
     state._newTcData = null;
     state._newApiData = null;
     state._newApiTcData = null;
@@ -91,9 +94,11 @@ window.reportBugFromStep = function(runId, tcId, stepIdx) {
         // Repro steps = the test case's actions up to and including the failed step.
         steps: steps.slice(0, stepIdx + 1).map(s => s.action).filter(Boolean),
         expected: step.expected || '',
-        actual: '',
-        foundInRun: runId, foundInTc: tcId, foundInStep: stepIdx
+        actual: ''
     };
+    if (runId) state._newBugData.foundInRun = runId;
+    if (tcId) state._newBugData.foundInTc = tcId;
+    if (stepIdx !== undefined && stepIdx !== null) state._newBugData.foundInStep = stepIdx;
     state._newContent = `> Reported from test run **${escHtml(run.title)}** — ${escHtml(tc.title)}, step ${stepIdx + 1}.`;
     render();
     setTimeout(() => document.getElementById('ed-bug-actual')?.focus(), 120);
@@ -625,13 +630,24 @@ ${respMd ? respMd : ''}`;
     const password = document.getElementById('ed-password')?.value || '';
     const rotatedAt = document.getElementById('ed-cred-rotated')?.value || '';
 
+    let taskAssignee = '', taskAssigneeUid = '', taskKanban = '';
+    if (cat === 'task') {
+        const rawTaskAssignee = document.getElementById('ed-task-assignee')?.value || '';
+        const res = window.CollabAssign?.resolveMember?.(rawTaskAssignee) || { assignee: rawTaskAssignee, assigneeUid: '' };
+        taskAssignee = res.assignee;
+        taskAssigneeUid = res.assigneeUid;
+        taskKanban = document.getElementById('ed-task-kanban')?.value || '';
+    }
+
     if (!title) { toast(t('titleRequired'), 'error'); document.getElementById('ed-title')?.focus(); return; }
     const editingIdx = (state.editingDoc && state.editingDoc.id) ? documents.findIndex(d => d.id === state.editingDoc.id) : -1;
     const prevBugUid = (editingIdx !== -1 && documents[editingIdx].category === 'bug') ? (documents[editingIdx].bugData?.assigneeUid || '') : '';
+    const prevTaskUid = (editingIdx !== -1 && documents[editingIdx].category === 'task') ? (documents[editingIdx].assigneeUid || documents[editingIdx].taskData?.assigneeUid || '') : '';
     if (editingIdx !== -1) {
         const idx = editingIdx;
         DocHistory.save(documents[idx]);
-        documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, apiTcData: apiTcData !== null ? apiTcData : documents[idx].apiTcData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, updatedAt: Date.now() };
+        const taskFields = cat === 'task' ? { assignee: taskAssignee, assigneeUid: taskAssigneeUid, ...(taskKanban ? { kanbanStatus: taskKanban } : {}) } : {};
+        documents[idx] = { ...documents[idx], title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData: bugData !== null ? bugData : documents[idx].bugData, tcData: tcData !== null ? tcData : documents[idx].tcData, apiData: apiData !== null ? apiData : documents[idx].apiData, apiTcData: apiTcData !== null ? apiTcData : documents[idx].apiTcData, runData: runData !== null ? runData : documents[idx].runData, envData: envData !== null ? envData : documents[idx].envData, releaseData: releaseData !== null ? releaseData : documents[idx].releaseData, tcPlanData: tcPlanData !== null ? tcPlanData : documents[idx].tcPlanData, ...taskFields, updatedAt: Date.now() };
         ActivityLog.record('updated', documents[idx]);
         toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
@@ -642,7 +658,8 @@ ${respMd ? respMd : ''}`;
         // documents[-1] (which previously produced a broken "?view=undefined" viewer).
         const revivedAt = Date.now();
         const revivedBugStatus = cat === 'bug' ? normalizeBugStatusValue(state.editingDoc.bugStatus) : undefined;
-        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? (state.editingDoc.kanbanStatus || 'todo') : undefined, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || (await _nextBugNumber())) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
+        const revivedKanban = cat === 'task' ? (taskKanban || state.editingDoc.kanbanStatus || 'todo') : undefined;
+        const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, assignee: cat === 'task' ? taskAssignee : '', assigneeUid: cat === 'task' ? taskAssigneeUid : '', kanbanStatus: revivedKanban, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || (await _nextBugNumber())) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
         documents.unshift(revived);
         toast('Original document was removed elsewhere — saved as a new copy.', 'info');
         state.editingDoc = { ...revived };
@@ -650,7 +667,8 @@ ${respMd ? respMd : ''}`;
         state.category = cat;
     } else {
         const createdAt = Date.now();
-        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, kanbanStatus: cat === 'task' ? 'todo' : undefined, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? (await _nextBugNumber()) : undefined, favorite: false, createdAt, updatedAt: createdAt };
+        const newKanban = cat === 'task' ? (taskKanban || 'todo') : undefined;
+        const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, assignee: cat === 'task' ? taskAssignee : '', assigneeUid: cat === 'task' ? taskAssigneeUid : '', kanbanStatus: newKanban, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? (await _nextBugNumber()) : undefined, favorite: false, createdAt, updatedAt: createdAt };
         documents.unshift(newDoc);
         ActivityLog.record('created', newDoc);
         toast(t('docCreated'), 'success');
@@ -666,6 +684,7 @@ ${respMd ? respMd : ''}`;
     history.replaceState({}, '', _appUrl(state.editingDoc.id));
     await persist();
     if (cat === 'bug') window.CollabAssign?.notifyAssignment?.({ doc: state.editingDoc, kind: 'bug', signalKey: '', oldUid: prevBugUid, newUid: bugData?.assigneeUid || '' });
+    if (cat === 'task') window.CollabAssign?.notifyAssignment?.({ doc: state.editingDoc, kind: 'task', signalKey: '', oldUid: prevTaskUid, newUid: taskAssigneeUid });
     await new Promise(r => setTimeout(() => requestAnimationFrame(r), 60));
     render();
 }

@@ -487,13 +487,13 @@ test('persist() does not swallow delete rejection and lets error propagate', asy
     assert.equal(ctx.CollabStore.getKnownDocs().has('doc-to-delete'), true, 'Document retained in _knownDocs on delete failure');
 });
 
-test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v85', () => {
+test('events.js loads collab-store before CollabBootstrap.start and sw.js caches it in APP_SHELL with v86', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-store'/);
     assert.ok(events.indexOf("'collab-store'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v85'/);
+    assert.match(sw, /const SW_VERSION = 'v86'/);
     assert.match(sw, /'\.\/js\/collab-store\.js'/);
 });
 
@@ -877,5 +877,32 @@ test('CollabStore: toFirestoreDoc strips undefined fields from bugData and categ
     assert.ok(!('foundInTc' in receivedData.bugData), 'foundInTc property must be stripped');
     assert.ok(!('foundInStep' in receivedData.bugData), 'foundInStep property must be stripped');
     assert.equal(receivedData.bugData.severity, 'Major');
+});
+
+test('CollabStore: toFirestoreDoc and fromFirestoreDoc preserve task assignee and taskData', () => {
+    const ctx = createStoreContext();
+    const taskDoc = {
+        id: 'task-123',
+        title: 'Task Alpha',
+        category: 'task',
+        assignee: 'Alice Wonder',
+        assigneeUid: 'uid-alice',
+        kanbanStatus: 'in-progress',
+        taskData: { priority: 'High', estimate: '2d' }
+    };
+
+    const firestoreData = ctx.CollabStore.toFirestoreDoc(taskDoc, { version: 1 });
+    assert.equal(firestoreData.assignee, 'Alice Wonder');
+    assert.equal(firestoreData.assigneeUid, 'uid-alice');
+    assert.equal(firestoreData.kanbanStatus, 'in-progress');
+    assert.equal(firestoreData.taskData.priority, 'High');
+    assert.equal(firestoreData.taskData.estimate, '2d');
+
+    const restoredDoc = ctx.CollabStore.fromFirestoreDoc(firestoreData, 'task-123');
+    assert.equal(restoredDoc.assignee, 'Alice Wonder');
+    assert.equal(restoredDoc.assigneeUid, 'uid-alice');
+    assert.equal(restoredDoc.kanbanStatus, 'in-progress');
+    assert.equal(restoredDoc.taskData.priority, 'High');
+    assert.equal(restoredDoc.taskData.estimate, '2d');
 });
 

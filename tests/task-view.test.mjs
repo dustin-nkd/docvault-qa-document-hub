@@ -127,3 +127,31 @@ test('Task view: sharedView preserves status and does not contain data-onclick="
     assert.ok(htmlShared.includes('In Progress'), 'renders In Progress in shared view');
     assert.ok(!htmlShared.includes('data-onclick="viewDoc"'), 'shared view contains no data-onclick="viewDoc"');
 });
+
+test('Task view: renders assignee name when present and Unassigned when omitted', () => {
+    const renderer = createViewerCategoryRenderer();
+
+    const taskWithAssignee = {
+        id: 'task-assigned',
+        title: 'Task with assignee',
+        category: 'task',
+        status: 'published',
+        kanbanStatus: 'todo',
+        assignee: 'Nguyen Khanh Duy',
+        content: ''
+    };
+    const htmlAssigned = renderer.render(taskWithAssignee);
+    assert.ok(htmlAssigned.includes('Nguyen Khanh Duy'), 'renders assignee name');
+    assert.ok(htmlAssigned.includes('fa-user'), 'renders user icon');
+
+    const taskUnassigned = {
+        id: 'task-unassigned',
+        title: 'Task without assignee',
+        category: 'task',
+        status: 'published',
+        kanbanStatus: 'todo',
+        content: ''
+    };
+    const htmlUnassigned = renderer.render(taskUnassigned);
+    assert.ok(htmlUnassigned.includes('Unassigned'), 'renders fallback Unassigned');
+});
