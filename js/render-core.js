@@ -31,10 +31,10 @@ function updateHeader() {
                 ? `<button class="btn-s" data-onclick="navigateBack()"><i class="fa-solid fa-arrow-left mr-1.5"></i>${t('back')}</button>`
                 : `<button class="btn-p text-sm" data-onclick="openAppHome()">Open DocVault</button>`;
         } else {
-            actions = `${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="shareDoc('${doc.id}')" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>` : ''}
+            actions = `${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="${actionAttr('shareDoc', doc.id)}" title="${t('share') || 'Share'}"><i class="fa-solid fa-share-nodes sm:mr-1.5"></i><span class="hdr-btn-label">${t('share') || 'Share'}</span></button>` : ''}
                 <button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="navigateBack()" title="${t('back')}"><i class="fa-solid fa-arrow-left sm:mr-1.5"></i><span class="hdr-btn-label">${t('back')}</span></button>
-                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="showHistoryPanel('${doc.id}')" title="History"><i class="fa-regular fa-clock sm:mr-1.5"></i><span class="hdr-btn-label">History</span></button><button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="exportDoc('${doc.id}')" title="Export"><i class="fa-solid fa-file-export sm:mr-1.5"></i><span class="hdr-btn-label">Export</span></button>` : ''}
-                <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="editDoc('${doc ? doc.id : ''}')" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>`;
+                ${doc && doc.category !== 'credential' ? `<button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="${actionAttr('showHistoryPanel', doc.id)}" title="History"><i class="fa-regular fa-clock sm:mr-1.5"></i><span class="hdr-btn-label">History</span></button><button class="btn-s hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="${actionAttr('exportDoc', doc.id)}" title="Export"><i class="fa-solid fa-file-export sm:mr-1.5"></i><span class="hdr-btn-label">Export</span></button>` : ''}
+                <button class="btn-p hdr-icon-btn flex items-center justify-center h-[38px]" data-onclick="${actionAttr('editDoc', doc ? doc.id : '')}" title="${t('edit')}"><i class="fa-solid fa-pen sm:mr-1.5"></i><span class="hdr-btn-label">${t('edit')}</span></button>`;
         }
     } else if (state.view === 'focus') { title = `<h2 class="font-heading font-bold text-lg">${t('focus')}</h2>`;
     } else if (state.view === 'traceability') { title = `<h2 class="font-heading font-bold text-lg">${t('traceability')}</h2>`;
@@ -621,7 +621,7 @@ function _renderAttentionPanel(m) {
             </div>` : `
             <div class="attention-list">
                 ${visible.map(item => `
-                    <button class="attention-item" data-onclick="viewDoc('${item.doc.id}')">
+                    <button class="attention-item" data-onclick="${actionAttr('viewDoc', item.doc.id)}">
                         <span class="attention-icon" style="color:${item.color};background:${item.color}14;"><i class="fa-solid ${item.icon}"></i></span>
                         <span class="min-w-0 flex-1 text-left">
                             <span class="attention-label" style="color:${item.color};">${item.label}</span>
@@ -806,7 +806,7 @@ function renderFocus() {
             })
             : '';
         return `<div class="focus-item">
-            <button class="focus-item-open" data-onclick="viewDoc('${item.doc.id}')">
+            <button class="focus-item-open" data-onclick="${actionAttr('viewDoc', item.doc.id)}">
                 <span class="focus-item-icon" style="color:${item.color};background:${item.color}16;"><i class="fa-solid ${item.icon}"></i></span>
                 <span class="min-w-0 flex-1 text-left">
                     <strong>${escHtml(item.doc.title)}</strong>
@@ -935,7 +935,7 @@ function renderTraceability() {
         </button>`).join('');
 
     const docButton = (doc, cls = '') => doc
-        ? `<button class="trace-link ${cls}" data-onclick="viewDoc('${doc.id}')" title="${escHtml(doc.title)}">${escHtml(doc.title)}</button>`
+        ? `<button class="trace-link ${cls}" data-onclick="${actionAttr('viewDoc', doc.id)}" title="${escHtml(doc.title)}">${escHtml(doc.title)}</button>`
         : '';
 
     let emptyMessage = t('traceEmpty');
@@ -1054,7 +1054,7 @@ function _renderActivityRow(entry) {
     // The whole row is the target when the document still exists, instead of
     // just the few characters of its title.
     return `<li class="act-row">${documents.some(d => d.id === entry.docId)
-        ? `<button class="act-item" data-onclick="viewDoc('${entry.docId}')">${body}</button>`
+        ? `<button class="act-item" data-onclick="${actionAttr('viewDoc', entry.docId)}">${body}</button>`
         : `<span class="act-item is-gone" title="This document no longer exists">${body}</span>`}</li>`;
 }
 
@@ -1213,7 +1213,7 @@ function renderDocList() {
             </div>
         </div>` : '';
 
-    const cardAction = (id) => bm ? `toggleSelectDoc('${id}', event)` : `viewDoc('${id}')`;
+    const cardAction = (id) => bm ? escHtml('toggleSelectDoc(' + JSON.stringify(id) + ',event)') : actionAttr('viewDoc', id);
     const cardCls = (id) => `doc-card p-4 flex flex-col${bm && sel.has(id) ? ' batch-selected' : ''}`;
 
     return `<div class="fade-up max-w-6xl 2xl:max-w-[1600px] mx-auto">
@@ -1273,10 +1273,10 @@ function renderDocList() {
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
-                                    <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                    <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();${actionAttr('toggleFav', d.id)}">
                                         <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                     </button>
-                                    <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                    <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();${escHtml('showDocMenu(' + JSON.stringify(d.id) + ', this)')}" title="More actions">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
                                 </div>
@@ -1287,8 +1287,8 @@ function renderDocList() {
                                     ${credRotationInfo(d).stale ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.15);color:#f59e0b;" title="Not rotated in ${credRotationInfo(d).ageDays} days"><i class="fa-solid fa-rotate" style="font-size:9px;"></i> ${credRotationInfo(d).ageDays}d</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-1" style="${bm ? 'visibility:hidden;' : ''}">
-                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:background-color .15s, color .15s;" data-onclick="event.stopPropagation();copyUsername('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
-                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:background-color .15s, color .15s;" data-onclick="event.stopPropagation();copyPassword('${d.id}', this)"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
+                                    ${d.username ? `<button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:background-color .15s, color .15s;" data-onclick="event.stopPropagation();${escHtml('copyUsername(' + JSON.stringify(d.id) + ', this)')}"><i class="fa-solid fa-copy"></i> ${t('copyUsername')}</button>` : ''}
+                                    <button class="text-xs p-1.5 rounded flex items-center gap-1.5 ui-hover-card-h ui-hover-text" style="color:var(--tx-m);transition:background-color .15s, color .15s;" data-onclick="event.stopPropagation();${escHtml('copyPassword(' + JSON.stringify(d.id) + ', this)')}"><i class="fa-solid fa-copy"></i> ${t('copyPassword')}</button>
                                 </div>
                             </div>
                         </li>`;
@@ -1303,15 +1303,15 @@ function renderDocList() {
                                 <span class="st-badge st-${d.status}">${d.status}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
-                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();${actionAttr('toggleFav', d.id)}">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
-                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();${escHtml('showDocMenu(' + JSON.stringify(d.id) + ', this)')}" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
                             </div>
                         </div>
-                        <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);"><a class="doc-card-link" href="${_docHref(d.id)}" data-doc-link="${d.id}">${escHtml(d.title)}</a></h4>
+                        <h4 class="text-sm font-semibold mb-1.5 leading-snug" style="color:var(--tx);"><a class="doc-card-link" href="${escHtml(_docHref(d.id))}" data-doc-link="${escHtml(d.id)}">${escHtml(d.title)}</a></h4>
                         <p class="text-xs leading-relaxed flex-1 mb-3" style="color:var(--tx-d);">${escHtml(excerpt(d.content, 100))}</p>
                         <div class="flex items-center gap-1.5 flex-wrap mb-3">
                             ${d.tags.slice(0, 3).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
@@ -1456,9 +1456,9 @@ function renderBugKanban(docs, isMobileSearch) {
                     return `
                     <li class="doc-card flex flex-col ${!bm ? 'cursor-grab active:cursor-grabbing' : ''}${bm && sel.has(d.id) ? ' batch-selected' : ''}"
                          draggable="${!bm}"
-                         data-ondragstart="handleDragStart('${d.id}')"
+                         data-ondragstart="${escHtml('handleDragStart(' + JSON.stringify(d.id) + ')')}"
                          data-ondragend="handleDragEnd"
-                         data-onclick="${bm ? `toggleSelectDoc('${d.id}', event)` : `viewDoc('${d.id}')`}"
+                         data-onclick="${bm ? escHtml('toggleSelectDoc(' + JSON.stringify(d.id) + ',event)') : actionAttr('viewDoc', d.id)}"
                          style="background:var(--card); padding: 12px; margin-bottom: 0; border-radius: 8px; border-left: 3px solid ${sevColor}; position:relative;">
 
                         ${bm ? `<div style="position:absolute;top:8px;right:8px;z-index:5;pointer-events:none;">
@@ -1475,10 +1475,10 @@ function renderBugKanban(docs, isMobileSearch) {
                                 <span class="triage-mini is-${triage.stateName}">${triageLabel}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
-                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();${actionAttr('toggleFav', d.id)}">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
-                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();${escHtml('showDocMenu(' + JSON.stringify(d.id) + ', this)')}" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
                             </div>
@@ -1608,18 +1608,18 @@ function renderKanbanBoard(docs, isMobileSearch) {
                 ${colDocs.map(d => `
                     <li class="doc-card flex flex-col cursor-grab active:cursor-grabbing"
                          draggable="true"
-                         data-ondragstart="handleDragStart('${d.id}')"
+                         data-ondragstart="${escHtml('handleDragStart(' + JSON.stringify(d.id) + ')')}"
                          data-ondragend="handleDragEnd"
-                         data-onclick="viewDoc('${d.id}')"
+                         data-onclick="${actionAttr('viewDoc', d.id)}"
                          style="background:var(--card); padding: 14px; margin-bottom: 0px; border-radius: 8px;">
 
                         <div class="flex items-start justify-between mb-2">
                             <span class="st-badge st-${d.status}">${d.status}</span>
                             <div class="flex items-center gap-1 shrink-0 ml-2">
-                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();toggleFav('${d.id}')">
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();${actionAttr('toggleFav', d.id)}">
                                     <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
                                 </button>
-                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();showDocMenu('${d.id}', this)" title="More actions">
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();${escHtml('showDocMenu(' + JSON.stringify(d.id) + ', this)')}" title="More actions">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
                             </div>
@@ -1695,9 +1695,9 @@ function renderBugReportViewer(doc) {
             ${sev ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${(SEV[sev] || '#94a3b8')}20;color:${SEV[sev] || '#94a3b8'};">${escHtml(sev)}</span>` : ''}
             ${prio ? `<span class="text-[11px] font-bold px-2 py-1 rounded" style="background:${prioColor}20;color:${prioColor};" title="Priority">${escHtml(prio)}</span>` : ''}
             ${doc.bugData?.assignee ? `<span class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:10px;"></i>${escHtml(doc.bugData.assignee)}</span>` : ''}
-            ${run && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')"><i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}</button>` : ''}
-            ${tc && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="viewDoc('${tc.id}')"><i class="fa-solid fa-flask-vial" style="font-size:10px;"></i>Linked TC: ${escHtml(tc.title)}</button>` : ''}
-            ${dup && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(148,163,184,0.15);color:var(--tx-m);" data-onclick="viewDoc('${dup.id}')"><i class="fa-solid fa-copy" style="font-size:10px;"></i>Duplicate of: ${ref ? bugRef(dup) + ' ' : ''}${escHtml(dup.title)}</button>` : (doc.bugData?.resolution === 'duplicate' && doc.bugData?.duplicateOf && !state.sharedView ? `<span class="text-[11px] px-2 py-1 rounded" style="background:rgba(148,163,184,0.1);color:var(--tx-d);"><i class="fa-solid fa-copy mr-1"></i>Duplicate of a removed bug</span>` : '')}
+            ${run && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="${actionAttr('viewDoc', run.id)}"><i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}</button>` : ''}
+            ${tc && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="${actionAttr('viewDoc', tc.id)}"><i class="fa-solid fa-flask-vial" style="font-size:10px;"></i>Linked TC: ${escHtml(tc.title)}</button>` : ''}
+            ${dup && !state.sharedView ? `<button class="text-[11px] flex items-center gap-1.5 px-2 py-1 rounded" style="background:rgba(148,163,184,0.15);color:var(--tx-m);" data-onclick="${actionAttr('viewDoc', dup.id)}"><i class="fa-solid fa-copy" style="font-size:10px;"></i>Duplicate of: ${ref ? bugRef(dup) + ' ' : ''}${escHtml(dup.title)}</button>` : (doc.bugData?.resolution === 'duplicate' && doc.bugData?.duplicateOf && !state.sharedView ? `<span class="text-[11px] px-2 py-1 rounded" style="background:rgba(148,163,184,0.1);color:var(--tx-d);"><i class="fa-solid fa-copy mr-1"></i>Duplicate of a removed bug</span>` : '')}
         </div>`;
     }
 
@@ -1716,13 +1716,13 @@ function renderBugReportViewer(doc) {
     const runChip = run ? (() => {
         const inH = `<i class="fa-solid fa-play-circle" style="font-size:10px;"></i>Found in: ${escHtml(run.title)}`;
         const cls = 'text-[11px] flex items-center gap-1.5 px-2 py-1 rounded font-medium';
-        return isShared ? `<span class="${cls}" style="background:rgba(99,102,241,0.1);color:#818cf8;">${inH}</span>` : `<button class="${cls}" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="viewDoc('${run.id}')">${inH}</button>`;
+        return isShared ? `<span class="${cls}" style="background:rgba(99,102,241,0.1);color:#818cf8;">${inH}</span>` : `<button class="${cls}" style="background:rgba(99,102,241,0.1);color:#818cf8;" data-onclick="${actionAttr('viewDoc', run.id)}">${inH}</button>`;
     })() : '';
 
     const makeTc = (tc, pfx) => {
         const inH = `<i class="fa-solid fa-flask-vial" style="font-size:10px;"></i>${(pfx || '') + escHtml(tc.title)}`;
         const cls = 'text-[11px] flex items-center gap-1.5 px-2 py-1 rounded font-medium';
-        return isShared ? `<span class="${cls}" style="background:rgba(245,158,11,0.1);color:var(--c-tc);">${inH}</span>` : `<button class="${cls}" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="viewDoc('${tc.id}')">${inH}</button>`;
+        return isShared ? `<span class="${cls}" style="background:rgba(245,158,11,0.1);color:var(--c-tc);">${inH}</span>` : `<button class="${cls}" style="background:rgba(245,158,11,0.1);color:var(--c-tc);" data-onclick="${actionAttr('viewDoc', tc.id)}">${inH}</button>`;
     };
     let tcFoundChip = '', tcLinkedChip = '', orphanStep = stepHtml;
     if (tcFound) { tcFoundChip = `<div class="flex items-center gap-1.5">${makeTc(tcFound, '')}${stepHtml}</div>`; orphanStep = ''; }

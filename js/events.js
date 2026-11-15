@@ -538,8 +538,9 @@ document.addEventListener('dragstart', (e) => {
     let target = e.target.closest('[data-ondragstart]');
     if (target) {
         const action = target.getAttribute('data-ondragstart');
-        if (action.startsWith('handleDragStart')) {
-            const id = action.match(/'([^']+)'/)[1];
+        if (action && action.startsWith('handleDragStart')) {
+            const m = action.match(/^handleDragStart\((.*)\)$/);
+            const id = m ? (typeof decodeActionArgument === 'function' ? decodeActionArgument(m[1].trim()) : m[1].replace(/^['"]|['"]$/g, '')) : '';
             window.handleDragStart(e, id, target);
         }
     }
@@ -589,7 +590,8 @@ document.addEventListener('touchstart', (e) => {
     const action = card.getAttribute('data-ondragstart');
     if (!action || !action.startsWith('handleDragStart')) return;
 
-    _touchDragId = action.match(/'([^']+)'/)[1];
+    const m = action.match(/^handleDragStart\((.*)\)$/);
+    _touchDragId = m ? (typeof decodeActionArgument === 'function' ? decodeActionArgument(m[1].trim()) : m[1].replace(/^['"]|['"]$/g, '')) : null;
     _touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY, card };
     _touchDragging = false;
 }, { passive: true });

@@ -408,7 +408,7 @@ window.showSnapshotDiff = function(id, snapIndex) {
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                 <span style="font-size:11px;background:rgba(16,185,129,.1);color:var(--acc);border:1px solid rgba(16,185,129,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;">+${added}</span>
                 <span style="font-size:11px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;">−${removed}</span>
-                <button class="btn-s text-xs py-1.5 px-3" data-onclick="restoreSnapshot('${id}', ${snapIndex})"><i class="fa-solid fa-rotate-left mr-1"></i>Restore</button>
+                <button class="btn-s text-xs py-1.5 px-3" data-onclick="${actionAttr('restoreSnapshot', id, snapIndex)}"><i class="fa-solid fa-rotate-left mr-1"></i>Restore</button>
                 <button class="btn-s text-xs py-1.5 px-3" data-onclick="closeModal()">Close</button>
             </div>
         </div>
@@ -433,10 +433,10 @@ window.showHistoryPanel = function(id) {
                 <span class="st-badge st-${s.status}" style="display:inline-block;margin-top:4px;">${s.status}</span>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0;">
-                <button class="btn-s text-xs py-1.5 px-3" data-onclick="showSnapshotDiff('${id}', ${i})">
+                <button class="btn-s text-xs py-1.5 px-3" data-onclick="${actionAttr('showSnapshotDiff', id, i)}">
                     <i class="fa-solid fa-code-compare mr-1"></i>Diff
                 </button>
-                <button class="btn-s text-xs py-1.5 px-3" data-onclick="restoreSnapshot('${id}', ${i})">
+                <button class="btn-s text-xs py-1.5 px-3" data-onclick="${actionAttr('restoreSnapshot', id, i)}">
                     <i class="fa-solid fa-rotate-left mr-1"></i>Restore
                 </button>
             </div>
