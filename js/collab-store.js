@@ -27,20 +27,25 @@
         return _customUser || (root.CollabAuth?.getCurrentUser ? root.CollabAuth.getCurrentUser() : null) || (root.firebase?.auth ? root.firebase.auth().currentUser || null : null);
     }
 
+    function _cleanJson(val) {
+        if (!val || typeof val !== 'object') return val ?? null;
+        try { return JSON.parse(JSON.stringify(val)); } catch (_) { return null; }
+    }
+
     function toFirestoreDoc(doc, meta = {}) {
         const out = {
             id: doc.id || '', title: doc.title || '', category: doc.category || 'general', subfolder: doc.subfolder || '', status: doc.status || 'active',
             content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [],
             username: doc.username || '', password: doc.password || '', rotatedAt: typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null,
-            bugData: doc.bugData ?? null, tcData: doc.tcData ?? null, apiData: doc.apiData ?? null, apiTcData: doc.apiTcData ?? null,
-            runData: doc.runData ?? null, envData: doc.envData ?? null, releaseData: doc.releaseData ?? null, tcPlanData: doc.tcPlanData ?? null,
+            bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData),
+            runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
             kanbanStatus: doc.kanbanStatus || '', bugStatus: doc.bugStatus || '', bugStatusEvents: Array.isArray(doc.bugStatusEvents) ? [...doc.bugStatusEvents] : [],
             bugNumber: typeof doc.bugNumber === 'number' ? doc.bugNumber : null, favorite: Boolean(doc.favorite),
             createdAt: typeof meta.createdAt === 'number' ? meta.createdAt : (typeof doc.createdAt === 'number' ? doc.createdAt : Date.now()),
             updatedAt: typeof meta.updatedAt === 'number' ? meta.updatedAt : (typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now()),
             version: typeof meta.version === 'number' ? meta.version : (typeof doc.version === 'number' ? doc.version : 1),
             createdBy: meta.createdBy || doc.createdBy || '', updatedBy: meta.updatedBy || doc.updatedBy || '',
-            focusWorkflow: doc.focusWorkflow ?? null, focusWorkflowUpdatedAt: typeof doc.focusWorkflowUpdatedAt === 'number' ? doc.focusWorkflowUpdatedAt : null
+            focusWorkflow: _cleanJson(doc.focusWorkflow), focusWorkflowUpdatedAt: typeof doc.focusWorkflowUpdatedAt === 'number' ? doc.focusWorkflowUpdatedAt : null
         };
         const wsId = meta.workspaceId || doc.workspaceId;
         if (typeof wsId === 'string' && wsId) out.workspaceId = wsId;

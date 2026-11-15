@@ -160,8 +160,14 @@
             const unreadClass = item.readAt == null ? ' is-unread' : '';
             const actorName = String(item.actorName || '').trim(), actorEmail = String(item.actorEmail || '').trim();
             const actorLabel = (actorName && actorEmail && !actorName.includes(actorEmail)) ? `${actorName} (${actorEmail})` : (actorName || actorEmail || 'Unknown account');
-            const docTitle = String(item.docTitle || 'Untitled');
-            return `<div class="collab-notif-item${unreadClass}" data-onclick="collabOpenNotification('${esc(item.id)}','${esc(item.docId)}')"><div class="text-xs" style="color:var(--tx);font-weight:${item.readAt == null ? '600' : '400'};">${esc(actorLabel)} assigned you ${esc(docTitle)}</div></div>`;
+            const docsList = typeof root.documents !== 'undefined' ? root.documents : (typeof documents !== 'undefined' ? documents : []);
+            const foundDoc = Array.isArray(docsList) ? docsList.find(d => d.id === item.docId) : null;
+            const docTitle = (foundDoc && foundDoc.title) ? foundDoc.title : ((item.docTitle && item.docTitle !== item.docId) ? item.docTitle : (foundDoc?.title || item.docTitle || 'Untitled'));
+            const actionVerb = item.kind === 'comment_mention' ? 'mentioned you in' : 'assigned you';
+            const actionClick = typeof root.actionAttr === 'function'
+                ? root.actionAttr('collabOpenNotification', item.id, item.docId)
+                : `collabOpenNotification('${esc(item.id)}','${esc(item.docId)}')`;
+            return `<div class="collab-notif-item${unreadClass}" data-onclick="${actionClick}"><div class="text-xs" style="color:var(--tx);font-weight:${item.readAt == null ? '600' : '400'};">${esc(actorLabel)} ${actionVerb} ${esc(docTitle)}</div></div>`;
         }).join('');
     }
 
@@ -213,10 +219,13 @@
         const member = getCurrentMember();
         const actorName = member?.displayName || authUser?.displayName || member?.email || authUser?.email || 'Team Member';
         const actorEmail = member?.email || authUser?.email || '';
+        const docsList = typeof root.documents !== 'undefined' ? root.documents : (typeof documents !== 'undefined' ? documents : []);
+        const foundDoc = Array.isArray(docsList) ? docsList.find(d => d.id === doc.id) : null;
+        const docTitle = (doc && doc.title && doc.title !== doc.id) ? doc.title : (foundDoc?.title || doc?.title || 'Untitled');
         const notifId = 'notif_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
         const payload = {
             recipientUid: newUid, actorUid: currentUid, actorName, actorEmail,
-            docId: doc.id, docTitle: doc.title || 'Untitled', kind,
+            docId: doc.id, docTitle, kind,
             signalKey: signalKey || '', createdAt: Date.now(), readAt: null
         };
         try { await db.collection('notifications').doc(notifId).set(payload); } catch (err) { console.warn('[CollabAssign] create notification:', err); }

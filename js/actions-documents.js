@@ -442,8 +442,12 @@ async function saveDoc() {
         bugData = { env, browser, severity, priority, assignee, assigneeUid, classification, slaHours, triagedAt, precond, steps, expected, actual, linkedTc,
             resolution: existing.resolution || '',
             duplicateOf: existing.duplicateOf || '',
-            resolutionHistory: existing.resolutionHistory || [],
-            foundInRun: existing.foundInRun, foundInTc: existing.foundInTc, foundInStep: existing.foundInStep };
+            resolutionHistory: existing.resolutionHistory || [] };
+        if (existing.foundInRun) bugData.foundInRun = existing.foundInRun;
+        if (existing.foundInTc) bugData.foundInTc = existing.foundInTc;
+        if (existing.foundInStep !== undefined && existing.foundInStep !== null && existing.foundInStep !== '') {
+            bugData.foundInStep = existing.foundInStep;
+        }
 
         finalContent = `# ${title}
 
