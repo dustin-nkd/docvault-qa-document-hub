@@ -55,8 +55,7 @@
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) return [];
-        const snapshot = await db.collection('members').get();
-        const list = [];
+        const snapshot = await db.collection('members').get(), list = [];
         snapshot.forEach(docSnap => {
             const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap;
             list.push({ uid: docSnap.id, ...data });
@@ -70,16 +69,13 @@
         const db = getFirestoreDb();
         if (!db) return [];
         try {
-            const snapshot = await db.collection('invites').get();
-            const list = [];
+            const snapshot = await db.collection('invites').get(), list = [];
             snapshot.forEach(docSnap => {
                 const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap;
-                list.push({ email: docSnap.id, ...data });
+                list.push({ ...data, id: docSnap.id, email: data?.email || docSnap.id });
             });
             return list;
-        } catch (_) {
-            return [];
-        }
+        } catch (_) { return []; }
     }
 
     async function inviteMember(email, role) {
@@ -98,6 +94,12 @@
         }
         if (role !== 'editor' && role !== 'viewer') {
             if (typeof root.toast === 'function') root.toast('Role must be editor or viewer.', 'error');
+            return false;
+        }
+
+        const currentMembers = await fetchMembers();
+        if (currentMembers.some(m => (m.email || '').trim().toLowerCase() === trimmedEmail)) {
+            if (typeof root.toast === 'function') root.toast('This user is already a team member.', 'warning');
             return false;
         }
 
@@ -131,21 +133,11 @@
         if (!db) throw new Error('Firestore is not available');
 
         const memberDoc = await db.collection('members').doc(uid).get();
-        if (!memberDoc.exists) {
-            if (typeof root.toast === 'function') root.toast('Member not found.', 'error');
-            return false;
-        }
+        if (!memberDoc.exists) { if (typeof root.toast === 'function') root.toast('Member not found.', 'error'); return false; }
         const currentData = memberDoc.data();
-        if (currentData.role === 'owner') {
-            if (typeof root.toast === 'function') root.toast('Cannot change team owner role.', 'error');
-            return false;
-        }
+        if (currentData.role === 'owner') { if (typeof root.toast === 'function') root.toast('Cannot change team owner role.', 'error'); return false; }
 
-        await db.collection('members').doc(uid).update({
-            role: newRole,
-            updatedAt: new Date().toISOString()
-        });
-
+        await db.collection('members').doc(uid).update({ role: newRole, updatedAt: new Date().toISOString() });
         if (typeof root.toast === 'function') root.toast(`Updated role for ${currentData.email || uid}`, 'success');
         await loadAndRenderTeam();
         return true;
@@ -163,8 +155,7 @@
 
         const memberDoc = await db.collection('members').doc(uid).get();
         if (memberDoc.exists && memberDoc.data()?.role === 'owner') {
-            if (typeof root.toast === 'function') root.toast('Cannot remove the team owner.', 'error');
-            return false;
+            if (typeof root.toast === 'function') root.toast('Cannot remove the team owner.', 'error'); return false;
         }
 
         await db.collection('members').doc(uid).delete();
@@ -183,20 +174,25 @@
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
 
-        const targetEmail = String(email || '').trim().toLowerCase();
-        await db.collection('invites').doc(targetEmail).delete();
-        if (typeof root.toast === 'function') root.toast(`Revoked invite for ${targetEmail}`, 'success');
-        await loadAndRenderTeam();
-        return true;
+        const docId = String(email || '').trim();
+        const lowerId = docId.toLowerCase();
+        try {
+            await db.collection('invites').doc(docId).delete();
+            if (lowerId && lowerId !== docId) {
+                await db.collection('invites').doc(lowerId).delete();
+            }
+            if (typeof root.toast === 'function') root.toast(`Revoked invite for ${lowerId || docId}`, 'success');
+            await loadAndRenderTeam();
+            return true;
+        } catch (err) {
+            if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to revoke invite.', 'error');
+            return false;
+        }
     }
 
     function renderRoleBadge(role) {
-        if (role === 'owner') {
-            return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider" style="background:rgba(59,130,246,0.15);color:var(--acc);border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-crown text-[9px] mr-1"></i>Owner</span>`;
-        }
-        if (role === 'editor') {
-            return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-pen text-[9px] mr-1"></i>Editor</span>`;
-        }
+        if (role === 'owner') return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider" style="background:rgba(59,130,246,0.15);color:var(--acc);border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-crown text-[9px] mr-1"></i>Owner</span>`;
+        if (role === 'editor') return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-pen text-[9px] mr-1"></i>Editor</span>`;
         return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider" style="background:rgba(107,114,128,0.15);color:var(--tx-d);border:1px solid rgba(107,114,128,0.3);"><i class="fa-solid fa-eye text-[9px] mr-1"></i>Viewer</span>`;
     }
 
@@ -219,20 +215,23 @@
             </div>`;
         }
 
+        const memberEmails = new Set(members.map(m => (m.email || '').trim().toLowerCase()));
+        const pendingInvites = invites.filter(inv => !memberEmails.has((inv.email || '').trim().toLowerCase()));
+
         let pendingInvitesHtml = '';
-        if (currentIsOwner && invites.length > 0) {
+        if (currentIsOwner && pendingInvites.length > 0) {
             pendingInvitesHtml = `
             <div class="mb-4">
-                <div class="text-[11px] font-bold mb-2" style="color:var(--tx-m);">Pending Invitations (${invites.length})</div>
+                <div class="text-[11px] font-bold mb-2" style="color:var(--tx-m);">Pending Invitations (${pendingInvites.length})</div>
                 <div class="flex flex-col gap-1.5">
-                    ${invites.map(inv => `
+                    ${pendingInvites.map(inv => `
                         <div class="flex items-center justify-between p-2 rounded-lg text-xs" style="background:var(--card);border:1px solid var(--brd);">
                             <div class="flex items-center gap-2 min-w-0">
                                 <i class="fa-regular fa-envelope text-[var(--tx-d)] text-xs"></i>
                                 <span class="font-medium truncate" style="color:var(--tx);">${esc(inv.email)}</span>
                                 ${renderRoleBadge(inv.role)}
                             </div>
-                            <button type="button" class="btn-d text-[10px] py-1 px-2 shrink-0" data-onclick="collabRevokeInvite('${esc(inv.email)}')" title="Revoke invite">
+                            <button type="button" class="btn-d text-[10px] py-1 px-2 shrink-0" data-onclick="collabRevokeInvite('${esc(inv.id || inv.email)}')" title="Revoke invite">
                                 <i class="fa-solid fa-xmark"></i> Revoke
                             </button>
                         </div>
@@ -317,6 +316,14 @@
             container.innerHTML = buildTeamMarkup(members, invites, isOwner());
             if (typeof root.enhanceInteractionSemantics === 'function') {
                 root.enhanceInteractionSemantics(container, false);
+            }
+            if (isOwner() && invites.length > 0) {
+                const memberEmails = new Set(members.map(m => (m.email || '').trim().toLowerCase()));
+                const stale = invites.filter(inv => memberEmails.has((inv.email || '').trim().toLowerCase()));
+                const db = getFirestoreDb();
+                if (db && stale.length > 0) {
+                    for (const inv of stale) db.collection('invites').doc(inv.id || inv.email).delete().catch(() => {});
+                }
             }
         } catch (err) {
             console.error('[CollabMembers] Failed to load team data:', err);

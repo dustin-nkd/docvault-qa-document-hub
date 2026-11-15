@@ -131,32 +131,14 @@
             const metaSnap = await db.collection('meta').doc('team').get();
             isTeamInitialized = metaSnap.exists;
         } catch (err) {
-            const isPermissionDenied = err?.code === 'permission-denied' ||
-                err?.code === 7 ||
-                String(err?.message || '').includes('PERMISSION_DENIED');
-            if (isPermissionDenied) {
-                isTeamInitialized = true;
-            } else {
-                throw err;
-            }
+            const isPermissionDenied = err?.code === 'permission-denied' || err?.code === 7 || String(err?.message || '').includes('PERMISSION_DENIED');
+            if (isPermissionDenied) isTeamInitialized = true; else throw err;
         }
 
         if (!isTeamInitialized) {
             const now = new Date().toISOString();
-            await db.collection('meta').doc('team').set({
-                ownerUid: user.uid,
-                name: 'DocVault Team',
-                createdAt: now,
-                initialized: true
-            });
-            const ownerMember = {
-                uid: user.uid,
-                email: user.email || '',
-                displayName: user.displayName || user.email || 'Team Owner',
-                role: 'owner',
-                createdAt: now,
-                updatedAt: now
-            };
+            await db.collection('meta').doc('team').set({ ownerUid: user.uid, name: 'DocVault Team', createdAt: now, initialized: true });
+            const ownerMember = { uid: user.uid, email: user.email || '', displayName: user.displayName || user.email || 'Team Owner', role: 'owner', createdAt: now, updatedAt: now };
             await db.collection('members').doc(user.uid).set(ownerMember);
             _currentMember = ownerMember;
             return { status: 'owner', role: 'owner', member: ownerMember };
@@ -168,6 +150,11 @@
         if (memberSnap && memberSnap.exists) {
             const memberData = memberSnap.data();
             _currentMember = memberData;
+            if (user.email) {
+                const em = (user.email || '').trim();
+                db.collection('invites').doc(em).delete().catch(() => {});
+                if (em.toLowerCase() !== em) db.collection('invites').doc(em.toLowerCase()).delete().catch(() => {});
+            }
             return { status: 'member', role: memberData.role, member: memberData };
         }
 
@@ -183,15 +170,15 @@
         }
 
         if (inviteSnap && inviteSnap.exists) {
-            const inviteData = inviteSnap.data();
-            const now = new Date().toISOString();
+            const inviteData = inviteSnap.data(), now = new Date().toISOString();
             const newMember = {
                 uid: user.uid, email: normalizedEmail || rawEmail,
                 displayName: user.displayName || normalizedEmail || 'Team Member',
                 role: inviteData.role, createdAt: now, updatedAt: now
             };
             await db.collection('members').doc(user.uid).set(newMember);
-            await db.collection('invites').doc(matchedInviteId || normalizedEmail || rawEmail).delete().catch(() => {});
+            const toDel = new Set([matchedInviteId, rawEmail, normalizedEmail].filter(Boolean));
+            for (const id of toDel) await db.collection('invites').doc(id).delete().catch(() => {});
             _currentMember = newMember;
             return { status: 'member', role: inviteData.role, member: newMember };
         }
