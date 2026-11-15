@@ -1276,8 +1276,9 @@ function renderDocList() {
                     if (d.category === 'credential') {
                         const domain = guessDomain(d.title);
                         const favUrl = `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`;
+                        const cardActionAttr = bm ? ` data-onclick="${cardAction(d.id)}"` : '';
                         return `
-                        <li class="${cardCls(d.id)}" data-onclick="${cardAction(d.id)}" style="position:relative;">
+                        <li class="${cardCls(d.id)}${!bm ? ' doc-card-static' : ''}"${cardActionAttr} style="position:relative;">
                             ${batchCheckbox(d.id)}
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-3">
@@ -1290,7 +1291,7 @@ function renderDocList() {
                                         <span>${escHtml(d.title.charAt(0).toUpperCase())}</span>
                                     </div>
                                     <div class="min-w-0">
-                                        <h4 class="text-sm font-semibold leading-snug truncate" style="color:var(--tx);"><a class="doc-card-link" href="${_docHref(d.id)}" data-doc-link="${d.id}">${escHtml(d.title)}</a></h4>
+                                        <h4 class="text-sm font-semibold leading-snug truncate" style="color:var(--tx);"><span class="doc-card-title">${escHtml(d.title)}</span></h4>
                                         ${d.username ? `<p class="text-[11px] truncate mt-0.5" style="color:var(--tx-m);">${escHtml(d.username)}</p>` : ''}
                                     </div>
                                 </div>
