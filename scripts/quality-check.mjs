@@ -76,7 +76,10 @@ const maintainabilityBudgets = {
     // result and the copy-from-spec behavior are one editor, so they stay in
     // this file with the other category forms.
     'js/render-editor-categories.js': 921,
-    'js/render-viewer.js': 150,
+    // Raised from 150 for team collaboration comments section on bug and task
+    // documents: comment card rendering, reply trees, mention dropdown, and
+    // event dispatchers.
+    'js/render-viewer.js': 750,
     // Raised from 850 for the API test case viewer. It has to ship beside the
     // other category viewers so a cached shell cannot pair an old viewer with
     // the new case shape.

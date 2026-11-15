@@ -140,6 +140,33 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isTeamOwner();
       }
+
+      // 4c. documents/{id}/comments/{commentId}: Document team comments
+      match /comments/{commentId} {
+        allow read: if isMember();
+
+        allow create: if isMember() &&
+          request.resource.data.authorUid == request.auth.uid &&
+          request.resource.data.docId == id &&
+          request.resource.data.createdAt is int &&
+          request.resource.data.content is string &&
+          request.resource.data.content.size() > 0 &&
+          request.resource.data.content.size() <= 4000;
+
+        allow update: if isMember() &&
+          resource.data.authorUid == request.auth.uid &&
+          request.resource.data.authorUid == resource.data.authorUid &&
+          request.resource.data.docId == resource.data.docId &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          ((!('parentId' in resource.data) && !('parentId' in request.resource.data)) ||
+           (request.resource.data.parentId == resource.data.parentId)) &&
+          request.resource.data.updatedAt is int &&
+          request.resource.data.content is string &&
+          request.resource.data.content.size() > 0 &&
+          request.resource.data.content.size() <= 4000;
+
+        allow delete: if (isMember() && resource.data.authorUid == request.auth.uid) || isTeamOwner();
+      }
     }
 
     // 5. activity/{id}: Append-only audit activity log
@@ -229,16 +256,11 @@ service cloud.firestore {
         resource.data.docCount == 0;
     }
 
-    // 10. notifications/{notifId}: Task assignment notifications
+    // 10. notifications/{notifId}: Task assignment and mention notifications
     match /notifications/{notifId} {
       allow read: if isMember() && resource.data.recipientUid == request.auth.uid;
-      allow create: if isEditorOrOwner() &&
-        request.resource.data.actorUid == request.auth.uid &&
-        request.resource.data.recipientUid != request.auth.uid &&
-        exists(/databases/$(database)/documents/members/$(request.resource.data.recipientUid)) &&
-        request.resource.data.readAt == null &&
-        request.resource.data.createdAt is int &&
-        (
+      allow create: if (
+        (isEditorOrOwner() && (
           (request.resource.data.kind == 'bug' &&
            request.resource.data.signalKey == '' &&
            exists(/databases/$(database)/documents/documents/$(request.resource.data.docId)) &&
@@ -250,7 +272,17 @@ service cloud.firestore {
            'focusWorkflow' in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data &&
            request.resource.data.signalKey in get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.focusWorkflow &&
            get(/databases/$(database)/documents/documents/$(request.resource.data.docId)).data.focusWorkflow[request.resource.data.signalKey].ownerUid == request.resource.data.recipientUid)
-        );
+        )) ||
+        (isMember() &&
+         request.resource.data.kind == 'comment_mention' &&
+         request.resource.data.signalKey == '' &&
+         exists(/databases/$(database)/documents/documents/$(request.resource.data.docId)))
+      ) &&
+      request.resource.data.actorUid == request.auth.uid &&
+      request.resource.data.recipientUid != request.auth.uid &&
+      exists(/databases/$(database)/documents/members/$(request.resource.data.recipientUid)) &&
+      request.resource.data.readAt == null &&
+      request.resource.data.createdAt is int;
       allow update: if isMember() &&
         resource.data.recipientUid == request.auth.uid &&
         resource.data.readAt == null &&

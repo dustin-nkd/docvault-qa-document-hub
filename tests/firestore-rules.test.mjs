@@ -1236,3 +1236,428 @@ test('Branch 14 (notifications): allows recipient to transition readAt null to i
     await assertFails(owner.collection('notifications').doc('notif-unread').delete());
 });
 
+// ---------------------------------------------------------------------------
+// 15. comments subcollection & comment_mention notifications
+// ---------------------------------------------------------------------------
+test('Branch 15 (comments): allows all member roles (viewer, editor, owner) to read and create comments with valid schema', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner', email: 'owner@example.com' });
+        await db.collection('members').doc('editor-uid').set({ uid: 'editor-uid', role: 'editor', email: 'editor@example.com' });
+        await db.collection('members').doc('viewer-uid').set({ uid: 'viewer-uid', role: 'viewer', email: 'viewer@example.com' });
+        await db.collection('documents').doc('doc-1').set({
+            id: 'doc-1',
+            title: 'Bug Report 1',
+            category: 'bug',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+        await db.collection('documents').doc('doc-1').collection('comments').doc('cmt-seeded').set({
+            id: 'cmt-seeded',
+            docId: 'doc-1',
+            authorUid: 'owner-uid',
+            authorName: 'Owner',
+            content: 'Seeded comment',
+            createdAt: 1000
+        });
+    });
+
+    const owner = testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' }).firestore();
+    const editor = testEnv.authenticatedContext('editor-uid', { email: 'editor@example.com' }).firestore();
+    const viewer = testEnv.authenticatedContext('viewer-uid', { email: 'viewer@example.com' }).firestore();
+
+    // 1. All roles can read existing comments
+    await assertSucceeds(owner.collection('documents').doc('doc-1').collection('comments').doc('cmt-seeded').get());
+    await assertSucceeds(editor.collection('documents').doc('doc-1').collection('comments').doc('cmt-seeded').get());
+    await assertSucceeds(viewer.collection('documents').doc('doc-1').collection('comments').doc('cmt-seeded').get());
+
+    // 2. Viewer can create top-level comment
+    await assertSucceeds(viewer.collection('documents').doc('doc-1').collection('comments').doc('cmt-viewer').set({
+        id: 'cmt-viewer',
+        docId: 'doc-1',
+        authorUid: 'viewer-uid',
+        authorName: 'Viewer User',
+        authorEmail: 'viewer@example.com',
+        content: 'I observed this bug as well.',
+        createdAt: 2000
+    }));
+
+    // 3. Editor can create reply comment with parentId
+    await assertSucceeds(editor.collection('documents').doc('doc-1').collection('comments').doc('cmt-editor').set({
+        id: 'cmt-editor',
+        docId: 'doc-1',
+        parentId: 'cmt-viewer',
+        authorUid: 'editor-uid',
+        authorName: 'Editor User',
+        authorEmail: 'editor@example.com',
+        content: 'Fixing this in next release.',
+        createdAt: 2001
+    }));
+
+    // 4. Owner can create comment
+    await assertSucceeds(owner.collection('documents').doc('doc-1').collection('comments').doc('cmt-owner').set({
+        id: 'cmt-owner',
+        docId: 'doc-1',
+        authorUid: 'owner-uid',
+        content: 'Approved.',
+        createdAt: 2002
+    }));
+});
+
+test('Branch 15 (comments): denies stranger and unauthenticated read and create', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('documents').doc('doc-1').set({
+            id: 'doc-1',
+            title: 'Doc 1',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+        await db.collection('documents').doc('doc-1').collection('comments').doc('cmt-1').set({
+            docId: 'doc-1',
+            authorUid: 'owner-uid',
+            content: 'Hello',
+            createdAt: 1000
+        });
+    });
+
+    const stranger = testEnv.authenticatedContext('stranger-uid', { email: 'stranger@example.com' }).firestore();
+    const unauthed = testEnv.unauthenticatedContext().firestore();
+
+    // Stranger cannot read or create
+    await assertFails(stranger.collection('documents').doc('doc-1').collection('comments').doc('cmt-1').get());
+    await assertFails(stranger.collection('documents').doc('doc-1').collection('comments').doc('cmt-stranger').set({
+        docId: 'doc-1',
+        authorUid: 'stranger-uid',
+        content: 'Intruder comment',
+        createdAt: 1005
+    }));
+
+    // Unauthenticated cannot read or create
+    await assertFails(unauthed.collection('documents').doc('doc-1').collection('comments').doc('cmt-1').get());
+    await assertFails(unauthed.collection('documents').doc('doc-1').collection('comments').doc('cmt-anon').set({
+        docId: 'doc-1',
+        authorUid: 'anon',
+        content: 'Anon comment',
+        createdAt: 1005
+    }));
+});
+
+test('Branch 15 (comments): validates schema on create (docId match, authorUid, createdAt int, non-empty and max 4000 char content)', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('member-uid').set({ uid: 'member-uid', role: 'editor', email: 'mem@example.com' });
+        await db.collection('documents').doc('doc-1').set({
+            id: 'doc-1',
+            title: 'Doc 1',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+    });
+
+    const member = testEnv.authenticatedContext('member-uid', { email: 'mem@example.com' }).firestore();
+
+    // 1. authorUid != auth.uid is DENIED
+    await assertFails(member.collection('documents').doc('doc-1').collection('comments').doc('cmt-spoof').set({
+        docId: 'doc-1',
+        authorUid: 'other-uid',
+        content: 'Impersonation attempt',
+        createdAt: 1000
+    }));
+
+    // 2. docId != path id is DENIED
+    await assertFails(member.collection('documents').doc('doc-1').collection('comments').doc('cmt-mismatch-doc').set({
+        docId: 'doc-other',
+        authorUid: 'member-uid',
+        content: 'Wrong docId',
+        createdAt: 1000
+    }));
+
+    // 3. createdAt not an int is DENIED
+    await assertFails(member.collection('documents').doc('doc-1').collection('comments').doc('cmt-bad-time').set({
+        docId: 'doc-1',
+        authorUid: 'member-uid',
+        content: 'String date',
+        createdAt: '2026-11-15T00:00:00Z'
+    }));
+
+    // 4. content empty string is DENIED
+    await assertFails(member.collection('documents').doc('doc-1').collection('comments').doc('cmt-empty').set({
+        docId: 'doc-1',
+        authorUid: 'member-uid',
+        content: '',
+        createdAt: 1000
+    }));
+
+    // 5. content exceeding 4000 chars is DENIED
+    const oversizedContent = 'a'.repeat(4001);
+    await assertFails(member.collection('documents').doc('doc-1').collection('comments').doc('cmt-oversized').set({
+        docId: 'doc-1',
+        authorUid: 'member-uid',
+        content: oversizedContent,
+        createdAt: 1000
+    }));
+
+    // 6. content exactly 4000 chars SUCCEEDS
+    const maxContent = 'a'.repeat(4000);
+    await assertSucceeds(member.collection('documents').doc('doc-1').collection('comments').doc('cmt-max').set({
+        docId: 'doc-1',
+        authorUid: 'member-uid',
+        content: maxContent,
+        createdAt: 1000
+    }));
+});
+
+test('Branch 15 (comments): allows author update content and updatedAt; denies changing authorUid, docId, createdAt, parentId, and non-author updates', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('author-uid').set({ uid: 'author-uid', role: 'viewer', email: 'author@example.com' });
+        await db.collection('members').doc('other-uid').set({ uid: 'other-uid', role: 'editor', email: 'other@example.com' });
+        await db.collection('documents').doc('doc-1').set({
+            id: 'doc-1',
+            title: 'Doc 1',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+        await db.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').set({
+            docId: 'doc-1',
+            parentId: 'root-cmt',
+            authorUid: 'author-uid',
+            content: 'Original comment text',
+            createdAt: 1000
+        });
+    });
+
+    const author = testEnv.authenticatedContext('author-uid', { email: 'author@example.com' }).firestore();
+    const other = testEnv.authenticatedContext('other-uid', { email: 'other@example.com' }).firestore();
+    const owner = testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' }).firestore();
+
+    // 1. Author updates content and updatedAt: SUCCEEDS
+    await assertSucceeds(author.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        content: 'Updated comment text',
+        updatedAt: 1050
+    }));
+
+    // 2. Author trying to update without updatedAt int: DENIED
+    await assertFails(author.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        content: 'Another update without int updatedAt'
+    }));
+
+    // 3. Author tampering with authorUid: DENIED
+    await assertFails(author.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        authorUid: 'other-uid',
+        content: 'Tampered author',
+        updatedAt: 1060
+    }));
+
+    // 4. Author tampering with docId: DENIED
+    await assertFails(author.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        docId: 'doc-2',
+        content: 'Tampered docId',
+        updatedAt: 1060
+    }));
+
+    // 5. Author tampering with createdAt: DENIED
+    await assertFails(author.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        createdAt: 9999,
+        content: 'Tampered createdAt',
+        updatedAt: 1060
+    }));
+
+    // 6. Author tampering with parentId: DENIED
+    await assertFails(author.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        parentId: 'different-parent',
+        content: 'Tampered parentId',
+        updatedAt: 1060
+    }));
+
+    // 7. Non-author editor attempting update: DENIED
+    await assertFails(other.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        content: 'Hijacked by editor',
+        updatedAt: 1070
+    }));
+
+    // 8. Non-author owner attempting update: DENIED (updates are author-only)
+    await assertFails(owner.collection('documents').doc('doc-1').collection('comments').doc('cmt-orig').update({
+        content: 'Hijacked by owner',
+        updatedAt: 1070
+    }));
+});
+
+test('Branch 15 (comments): allows author and Team Owner to delete; denies non-author editor/viewer deletion', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('author-uid').set({ uid: 'author-uid', role: 'viewer', email: 'author@example.com' });
+        await db.collection('members').doc('editor-uid').set({ uid: 'editor-uid', role: 'editor', email: 'editor@example.com' });
+        await db.collection('members').doc('viewer-uid').set({ uid: 'viewer-uid', role: 'viewer', email: 'viewer@example.com' });
+        await db.collection('documents').doc('doc-1').set({
+            id: 'doc-1',
+            title: 'Doc 1',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+        await db.collection('documents').doc('doc-1').collection('comments').doc('cmt-author-del').set({
+            docId: 'doc-1',
+            authorUid: 'author-uid',
+            content: 'Comment to be deleted by author',
+            createdAt: 1000
+        });
+        await db.collection('documents').doc('doc-1').collection('comments').doc('cmt-owner-del').set({
+            docId: 'doc-1',
+            authorUid: 'author-uid',
+            content: 'Comment to be deleted by owner',
+            createdAt: 1001
+        });
+    });
+
+    const author = testEnv.authenticatedContext('author-uid', { email: 'author@example.com' }).firestore();
+    const editor = testEnv.authenticatedContext('editor-uid', { email: 'editor@example.com' }).firestore();
+    const viewer = testEnv.authenticatedContext('viewer-uid', { email: 'viewer@example.com' }).firestore();
+    const owner = testEnv.authenticatedContext('owner-uid', { email: 'owner@example.com' }).firestore();
+
+    // 1. Non-author editor cannot delete: DENIED
+    await assertFails(editor.collection('documents').doc('doc-1').collection('comments').doc('cmt-author-del').delete());
+
+    // 2. Non-author viewer cannot delete: DENIED
+    await assertFails(viewer.collection('documents').doc('doc-1').collection('comments').doc('cmt-author-del').delete());
+
+    // 3. Author deletes own comment: SUCCEEDS
+    await assertSucceeds(author.collection('documents').doc('doc-1').collection('comments').doc('cmt-author-del').delete());
+
+    // 4. Team Owner deletes another member's comment: SUCCEEDS
+    await assertSucceeds(owner.collection('documents').doc('doc-1').collection('comments').doc('cmt-owner-del').delete());
+});
+
+test('Branch 15 (notifications): allows any member (including viewer) to create comment_mention notification for another member on existing document', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', name: 'Team', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('editor-uid').set({ uid: 'editor-uid', role: 'editor', email: 'editor@example.com' });
+        await db.collection('members').doc('viewer-uid').set({ uid: 'viewer-uid', role: 'viewer', email: 'viewer@example.com' });
+        await db.collection('documents').doc('doc-bug').set({
+            id: 'doc-bug',
+            title: 'Bug Document',
+            category: 'bug',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+    });
+
+    const viewer = testEnv.authenticatedContext('viewer-uid', { email: 'viewer@example.com' }).firestore();
+    const editor = testEnv.authenticatedContext('editor-uid', { email: 'editor@example.com' }).firestore();
+    const stranger = testEnv.authenticatedContext('stranger-uid', { email: 'stranger@example.com' }).firestore();
+
+    // 1. Viewer creates comment_mention notification for editor on existing document: SUCCEEDS
+    await assertSucceeds(viewer.collection('notifications').doc('notif-mention-1').set({
+        recipientUid: 'editor-uid',
+        actorUid: 'viewer-uid',
+        actorName: 'Viewer User',
+        actorEmail: 'viewer@example.com',
+        docId: 'doc-bug',
+        docTitle: 'Bug Document',
+        kind: 'comment_mention',
+        signalKey: '',
+        createdAt: 2000,
+        readAt: null
+    }));
+
+    // 2. Editor creates comment_mention notification for owner on existing document: SUCCEEDS
+    await assertSucceeds(editor.collection('notifications').doc('notif-mention-2').set({
+        recipientUid: 'owner-uid',
+        actorUid: 'editor-uid',
+        actorName: 'Editor User',
+        actorEmail: 'editor@example.com',
+        docId: 'doc-bug',
+        docTitle: 'Bug Document',
+        kind: 'comment_mention',
+        signalKey: '',
+        createdAt: 2001,
+        readAt: null
+    }));
+
+    // 3. Self-mention (recipientUid == actorUid) is DENIED
+    await assertFails(viewer.collection('notifications').doc('notif-mention-self').set({
+        recipientUid: 'viewer-uid',
+        actorUid: 'viewer-uid',
+        actorName: 'Viewer User',
+        actorEmail: 'viewer@example.com',
+        docId: 'doc-bug',
+        docTitle: 'Bug Document',
+        kind: 'comment_mention',
+        signalKey: '',
+        createdAt: 2002,
+        readAt: null
+    }));
+
+    // 4. Mention on non-existent document is DENIED
+    await assertFails(viewer.collection('notifications').doc('notif-mention-bad-doc').set({
+        recipientUid: 'editor-uid',
+        actorUid: 'viewer-uid',
+        actorName: 'Viewer User',
+        actorEmail: 'viewer@example.com',
+        docId: 'doc-does-not-exist',
+        docTitle: 'Ghost Doc',
+        kind: 'comment_mention',
+        signalKey: '',
+        createdAt: 2003,
+        readAt: null
+    }));
+
+    // 5. Mention with non-member recipient is DENIED
+    await assertFails(viewer.collection('notifications').doc('notif-mention-bad-recip').set({
+        recipientUid: 'ghost-recipient',
+        actorUid: 'viewer-uid',
+        actorName: 'Viewer User',
+        actorEmail: 'viewer@example.com',
+        docId: 'doc-bug',
+        docTitle: 'Bug Document',
+        kind: 'comment_mention',
+        signalKey: '',
+        createdAt: 2004,
+        readAt: null
+    }));
+
+    // 6. Mention with signalKey != '' is DENIED
+    await assertFails(viewer.collection('notifications').doc('notif-mention-bad-signal').set({
+        recipientUid: 'editor-uid',
+        actorUid: 'viewer-uid',
+        actorName: 'Viewer User',
+        actorEmail: 'viewer@example.com',
+        docId: 'doc-bug',
+        docTitle: 'Bug Document',
+        kind: 'comment_mention',
+        signalKey: 'critical',
+        createdAt: 2005,
+        readAt: null
+    }));
+
+    // 7. Stranger cannot create comment_mention notification: DENIED
+    await assertFails(stranger.collection('notifications').doc('notif-mention-stranger').set({
+        recipientUid: 'editor-uid',
+        actorUid: 'stranger-uid',
+        actorName: 'Stranger',
+        actorEmail: 'stranger@example.com',
+        docId: 'doc-bug',
+        docTitle: 'Bug Document',
+        kind: 'comment_mention',
+        signalKey: '',
+        createdAt: 2006,
+        readAt: null
+    }));
+});
+

@@ -22,3 +22,5 @@ import './release-view.test.mjs';
 import './api-test-example.test.mjs';
 import './testrun-view.test.mjs';
 import './environment-view.test.mjs';
+import './collab-comments.test.mjs';
+import './collab-comments-ui.test.mjs';
