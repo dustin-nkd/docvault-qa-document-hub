@@ -64,6 +64,8 @@ function renderEditorCategory(context) {
             <div><label for="ed-task-assignee" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugAssignee')}</label><input id="ed-task-assignee" class="form-input" placeholder="${t('bugAssigneePl')}" value="${escHtml(doc?.assignee || doc?.taskData?.assignee || (typeof state !== 'undefined' ? state._newTaskAssignee : '') || '')}"></div>
             <div><label for="ed-task-kanban-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('status')}</label>${renderSelect('ed-task-kanban', [{value: 'todo', label: t('todo')}, {value: 'in-progress', label: t('inProgress')}, {value: 'review', label: t('review')}, {value: 'done', label: t('done')}], doc?.kanbanStatus || 'todo', 'w-full')}</div>
         </div>
+        <div id="editor-container" class="mt-4 text-left"></div>
+        <textarea id="ed-content-hidden" style="display:none;">${escHtml(content)}</textarea>
         ` : category === 'bug' ? `
         <div class="grid sm:grid-cols-3 gap-4 mb-4">
             <div>
@@ -77,10 +79,8 @@ function renderEditorCategory(context) {
             <div>
                 <label for="ed-bug-severity-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">${t('bugSeverity')}</label>
                 ${renderSelect('ed-bug-severity', [
-                    {value: 'Critical', label: t('severityCritical')},
-                    {value: 'Major', label: t('severityMajor')},
-                    {value: 'Minor', label: t('severityMinor')},
-                    {value: 'Trivial', label: t('severityTrivial')}
+                    {value: 'Critical', label: t('severityCritical')}, {value: 'Major', label: t('severityMajor')},
+                    {value: 'Minor', label: t('severityMinor')}, {value: 'Trivial', label: t('severityTrivial')}
                 ], bugData?.severity || 'Minor', 'w-full')}
             </div>
         </div>
@@ -93,10 +93,8 @@ function renderEditorCategory(context) {
             <div>
                 <label for="ed-bug-priority-display" class="text-xs font-medium block mb-1.5" style="color:var(--tx-m);">Priority</label>
                 ${renderSelect('ed-bug-priority', [
-                    {value: 'P1', label: 'P1 — Urgent'},
-                    {value: 'P2', label: 'P2 — High'},
-                    {value: 'P3', label: 'P3 — Medium'},
-                    {value: 'P4', label: 'P4 — Low'}
+                    {value: 'P1', label: 'P1 — Urgent'}, {value: 'P2', label: 'P2 — High'},
+                    {value: 'P3', label: 'P3 — Medium'}, {value: 'P4', label: 'P4 — Low'}
                 ], bugData?.priority || 'P3', 'w-full')}
             </div>
         </div>
