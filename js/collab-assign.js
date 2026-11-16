@@ -1,14 +1,25 @@
 // DocVault team collaboration member assignments and notifications module
 (function(root) {
-    let _membersMap = new Map(), _notifications = [], _unsubMembers = null, _unsubNotifications = null, _bellPanelOpen = false, _stylesInjected = false;
-
+    let _membersMap = new Map(), _notifications = [], _unsubMembers = null, _unsubNotifications = null, _bellPanelOpen = false, _stylesInjected = false, _onKeydown = null, _onClickOutside = null, _clickOutsideTimer = null;
     function isGuestMode() { return Boolean(root.GUEST_MODE || /(?:^|[?&])guest=1(?:&|$)/.test(root.location?.search || '')); }
     function isCollabMode() { return !isGuestMode() && Boolean(root.COLLAB_MODE); }
     function getFirestoreDb() { return root.CollabStore?.getFirestoreDb ? root.CollabStore.getFirestoreDb() : (root.firebase?.firestore ? root.firebase.firestore() : null); }
     function getCurrentMember() { return root.CollabBootstrap?.getCurrentMember?.() || null; }
     function getCurrentUser() { return root.firebase?.auth?.().currentUser || null; }
-    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-
+    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+    function fmtNotifTime(ts) {
+        if (!ts) return '';
+        const t = typeof ts === 'number' ? ts : new Date(ts).getTime();
+        if (!t || isNaN(t)) return '';
+        const diff = Math.max(0, Date.now() - t);
+        if (diff < 60000) return 'just now';
+        const m = Math.floor(diff / 60000); if (m < 60) return `${m}m ago`;
+        const h = Math.floor(diff / 3600000); if (h < 24) return `${h}h ago`;
+        const d = Math.floor(diff / 86400000);
+        if (d === 1) return 'Yesterday';
+        if (d < 7) return `${d}d ago`;
+        return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
     function getMemberLabel(m) {
         if (!m) return 'Unknown account';
         const name = String(m.displayName || '').trim(), email = String(m.email || '').trim();
@@ -23,7 +34,6 @@
             return ua < ub ? -1 : (ua > ub ? 1 : 0);
         });
     }
-
     function buildAssigneeOptions(currentVal, currentUid, isBatch) {
         currentVal = String(currentVal || '').trim(); currentUid = String(currentUid || '').trim();
         const members = getSortedMembers(), options = [isBatch ? { value: '', label: '— No change —' } : { value: '', label: 'Unassigned' }];
@@ -46,18 +56,8 @@
         return { label: val, uid: '', assignee: val, assigneeUid: '' };
     }
 
-    function renderFocusOwnerField(workflow) {
-        if (!isCollabMode() || !root.renderSelect) return null;
-        const { options, selectedValue } = buildAssigneeOptions(workflow?.owner || '', workflow?.ownerUid || '', false);
-        return root.renderSelect('focus-owner', options, selectedValue, 'w-full');
-    }
-
-    function renderBatchAssigneeField() {
-        if (!isCollabMode() || !root.renderSelect) return null;
-        const { options, selectedValue } = buildAssigneeOptions('', '', true);
-        return root.renderSelect('batch-bug-assignee', options, selectedValue, 'w-full');
-    }
-
+    function renderFocusOwnerField(wf) { if (!isCollabMode() || !root.renderSelect) return null; const { options, selectedValue } = buildAssigneeOptions(wf?.owner || '', wf?.ownerUid || '', false); return root.renderSelect('focus-owner', options, selectedValue, 'w-full'); }
+    function renderBatchAssigneeField() { if (!isCollabMode() || !root.renderSelect) return null; const { options, selectedValue } = buildAssigneeOptions('', '', true); return root.renderSelect('batch-bug-assignee', options, selectedValue, 'w-full'); }
     function replaceCustomSelectInput(inputId, currentVal, currentUid) {
         if (!isCollabMode() || typeof document === 'undefined') return;
         const el = document.getElementById(inputId);
@@ -69,24 +69,15 @@
         temp.innerHTML = html.trim();
         if (temp.firstElementChild && el.parentNode) el.parentNode.replaceChild(temp.firstElementChild, el);
     }
-
-    function replaceBugAssigneeInput() {
-        const bugData = root.state?.editingDoc?.bugData || root.state?._newBugData || {};
-        replaceCustomSelectInput('ed-bug-assignee', bugData.assignee, bugData.assigneeUid);
-    }
-
-    function replaceTaskAssigneeInput() {
-        const d = root.state?.editingDoc;
-        replaceCustomSelectInput('ed-task-assignee', d?.assignee || d?.taskData?.assignee || root.state?._newTaskAssignee, d?.assigneeUid || d?.taskData?.assigneeUid || root.state?._newTaskAssigneeUid);
-    }
-
+    function replaceBugAssigneeInput() { const b = root.state?.editingDoc?.bugData || root.state?._newBugData || {}; replaceCustomSelectInput('ed-bug-assignee', b.assignee, b.assigneeUid); }
+    function replaceTaskAssigneeInput() { const d = root.state?.editingDoc; replaceCustomSelectInput('ed-task-assignee', d?.assignee || d?.taskData?.assignee || root.state?._newTaskAssignee, d?.assigneeUid || d?.taskData?.assigneeUid || root.state?._newTaskAssigneeUid); }
     function ensureAssignStyles() {
         if (_stylesInjected || typeof document === 'undefined') return;
         const head = document.head || document.body || document.documentElement;
         if (!head) return;
         const style = document.createElement('style');
         style.id = 'collab-assign-styles';
-        style.textContent = '#collab-notif-btn{position:relative;}.collab-notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;line-height:1;padding:2px 4px;border-radius:9999px;border:2px solid var(--bg);pointer-events:none;}#collab-notif-panel{position:fixed;z-index:1000;width:360px;max-width:calc(100vw - 24px);max-height:420px;overflow:hidden;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.4);display:flex;flex-direction:column;}.collab-notif-item{padding:10px 12px;border-bottom:1px solid var(--brd);cursor:pointer;transition:background .15s;}.collab-notif-item:last-child{border-bottom:none;}.collab-notif-item:hover{background:var(--bg-hover,rgba(255,255,255,0.06));}.collab-notif-item.is-unread{background:rgba(59,130,246,0.08);}[data-ui-style="bauhaus"] #collab-notif-panel{border:2px solid #121212 !important;border-radius:0 !important;box-shadow:3px 3px 0 0 #121212 !important;}[data-ui-style="bauhaus"] .collab-notif-badge,[data-ui-style="bauhaus"] .collab-notif-avatar,[data-ui-style="bauhaus"] .collab-notif-action-btn,[data-ui-style="bauhaus"] .collab-assignee-avatar{border:1.5px solid #121212 !important;border-radius:0 !important;}';
+        style.textContent = '#collab-notif-btn{position:relative;}.collab-notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;line-height:1;padding:2px 4px;border-radius:9999px;border:2px solid var(--bg);pointer-events:none;}#collab-notif-panel{position:fixed;z-index:85;width:360px;max-width:calc(100vw - 24px);max-height:420px;overflow:hidden;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.4);display:flex;flex-direction:column;}.collab-notif-item{padding:10px 12px;border-bottom:1px solid var(--brd);cursor:pointer;transition:background .15s;}.collab-notif-item:last-child{border-bottom:none;}.collab-notif-item:hover{background:var(--bg-hover,rgba(255,255,255,0.06));}.collab-notif-item.is-unread{background:rgba(59,130,246,0.08);}[data-ui-style="bauhaus"] #collab-notif-panel{border:2px solid #121212 !important;border-radius:0 !important;box-shadow:3px 3px 0 0 #121212 !important;}[data-ui-style="bauhaus"] .collab-notif-badge,[data-ui-style="bauhaus"] .collab-notif-avatar,[data-ui-style="bauhaus"] .collab-notif-action-btn,[data-ui-style="bauhaus"] .collab-assignee-avatar,[data-ui-style="bauhaus"] .collab-notif-count{border:1.5px solid #121212 !important;border-radius:0 !important;}';
         head.appendChild(style);
         _stylesInjected = true;
     }
@@ -97,7 +88,6 @@
         for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff;
         return colors[(hash >>> 0) % colors.length];
     }
-
     function getActorDisplayName(name, email) {
         name = String(name || '').trim(); email = String(email || '').trim();
         if (name && name !== email && !name.includes('@')) return name;
@@ -121,12 +111,13 @@
             btn.setAttribute('aria-label', 'Notifications');
             btn.setAttribute('title', 'Notifications');
             btn.setAttribute('data-onclick', 'collabToggleNotifications()');
+            btn.setAttribute('aria-expanded', 'false');
             btn.innerHTML = '<i class="fa-solid fa-bell"></i>';
             container.appendChild(btn);
         }
+        btn.setAttribute('aria-expanded', _bellPanelOpen ? 'true' : 'false');
         updateNotificationBell();
     }
-
     function updateNotificationBell() {
         if (typeof document === 'undefined') return;
         const btn = document.getElementById('collab-notif-btn');
@@ -139,7 +130,6 @@
         } else if (badge) { badge.remove(); }
         if (_bellPanelOpen) renderNotificationPanel();
     }
-
     function renderNotificationPanel() {
         if (typeof document === 'undefined') return;
         const btn = document.getElementById('collab-notif-btn');
@@ -150,20 +140,16 @@
         panel.style.top = `${Math.round(rect.bottom + 6)}px`;
         panel.style.right = `${Math.max(12, Math.round(document.documentElement.clientWidth - rect.right))}px`;
         const displayItems = _notifications.slice(0, 50), unreadCount = _notifications.filter(n => n.readAt == null).length;
-
-        const headerHtml = `<div class="collab-notif-header flex items-center justify-between px-3.5 py-2.5 border-b shrink-0" style="border-color:var(--brd);background:var(--bg2);"><div class="flex items-center gap-2"><span class="text-xs font-semibold" style="color:var(--tx);">Notifications</span>${unreadCount > 0 ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style="background:rgba(59,130,246,0.15);color:var(--acc);">${unreadCount}</span>` : ''}</div><div class="flex items-center gap-1"><button type="button" class="collab-notif-action-btn flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--bg)] text-xs transition-colors" style="color:var(--tx-m);${unreadCount === 0 ? 'opacity:.35;cursor:default;' : ''}" title="Mark all as read" aria-label="Mark all as read" data-onclick="collabMarkAllNotificationsRead(event)"><i class="fa-solid fa-check-double"></i></button><button type="button" class="collab-notif-action-btn flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--bg)] hover:text-red-400 text-xs transition-colors" style="color:var(--tx-m);${!displayItems.length ? 'opacity:.35;cursor:default;' : ''}" title="Delete all notifications" aria-label="Delete all notifications" data-onclick="collabClearAllNotifications(event)"><i class="fa-solid fa-trash-can"></i></button></div></div>`;
-
+        const headerHtml = `<div class="collab-notif-header flex items-center justify-between px-3.5 py-2.5 border-b shrink-0" style="border-color:var(--brd);background:var(--bg2);"><div class="flex items-center gap-2"><span class="text-xs font-semibold" style="color:var(--tx);">Notifications</span>${unreadCount > 0 ? `<span class="collab-notif-count text-[10px] px-1.5 py-0.5 rounded-full font-bold" style="background:rgba(59,130,246,0.15);color:var(--acc);">${unreadCount}</span>` : ''}</div><div class="flex items-center gap-1"><button type="button" class="collab-notif-action-btn flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--bg)] text-xs transition-colors" style="color:var(--tx-m);${unreadCount === 0 ? 'opacity:.35;cursor:default;' : ''}" title="Mark all as read" aria-label="Mark all as read" data-onclick="collabMarkAllNotificationsRead(event)"><i class="fa-solid fa-check-double"></i></button><button type="button" class="collab-notif-action-btn flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--bg)] hover:text-red-400 text-xs transition-colors" style="color:var(--tx-m);${!displayItems.length ? 'opacity:.35;cursor:default;' : ''}" title="Delete all notifications" aria-label="Delete all notifications" data-onclick="collabConfirmClearNotifications(event)"><i class="fa-solid fa-trash-can"></i></button></div></div>`;
         if (!displayItems.length) {
-            panel.innerHTML = headerHtml + '<div class="p-6 text-xs text-center" style="color:var(--tx-d);">No assignments yet.</div>';
+            panel.innerHTML = headerHtml + '<div class="p-6 text-xs text-center" style="color:var(--tx-d);">You\'re all caught up.</div>';
             return;
         }
-
         const itemsHtml = displayItems.map(item => {
             const unreadClass = item.readAt == null ? ' is-unread' : '', actorName = getActorDisplayName(item.actorName, item.actorEmail);
             const member = item.actorUid ? _membersMap.get(item.actorUid) : null;
             const photo = (typeof item.actorPhotoUrl === 'string' && /^https:\/\//i.test(item.actorPhotoUrl)) ? item.actorPhotoUrl : (member?.photoURL || member?.photoUrl);
-            const isValidPhoto = typeof photo === 'string' && /^https:\/\//i.test(photo);
-            const initial = (actorName.charAt(0) || 'U').toUpperCase(), avatarColor = getAvatarColor(item.actorUid || item.actorEmail || actorName);
+            const isValidPhoto = typeof photo === 'string' && /^https:\/\//i.test(photo), initial = (actorName.charAt(0) || 'U').toUpperCase(), avatarColor = getAvatarColor(item.actorUid || item.actorEmail || actorName);
             const avatarHtml = isValidPhoto
                 ? `<img src="${esc(photo)}" alt="${esc(actorName)}" class="collab-notif-avatar w-7 h-7 rounded-full object-cover shrink-0" style="border:1px solid var(--brd);">`
                 : `<div class="collab-notif-avatar w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-bold text-xs text-white select-none" style="background-color:${avatarColor};">${esc(initial)}</div>`;
@@ -176,18 +162,16 @@
             if (item.kind === 'comment_mention') catMeta = { icon: 'fa-comment', color: 'var(--acc)', label: 'Comment' };
             else if (item.kind === 'focus') catMeta = { icon: 'fa-crosshairs', color: 'var(--c-run)', label: 'Focus' };
             else if (!catMeta) catMeta = cat === 'bug' ? { icon: 'fa-bug', color: 'var(--c-bug)', label: 'Bug' } : { icon: 'fa-list-check', color: 'var(--c-task)', label: 'Task' };
-            const actionClick = typeof root.actionAttr === 'function' ? root.actionAttr('collabOpenNotification', item.id, item.docId) : `collabOpenNotification('${esc(item.id)}','${esc(item.docId)}')`;
-
-            return `<div class="collab-notif-item${unreadClass} flex items-center gap-2.5" data-onclick="${actionClick}">` +
+            const actionClick = typeof root.actionAttr === 'function' ? root.actionAttr('collabOpenNotification', item.id, item.docId) : esc(`collabOpenNotification(${JSON.stringify(String(item.id || ''))},${JSON.stringify(String(item.docId || ''))})`);
+            const relTime = fmtNotifTime(item.createdAt), timeTitle = esc(new Date(item.createdAt || Date.now()).toLocaleString());
+            return `<div class="collab-notif-item${unreadClass} flex items-center gap-2.5" role="button" tabindex="0" data-onclick="${actionClick}">` +
                 avatarHtml +
-                `<div class="flex-1 min-w-0"><div class="text-xs leading-snug truncate" style="color:var(--tx);font-weight:${item.readAt == null ? '600' : '400'};"><span>${esc(actorName)}</span> ${actionVerb} <span class="underline-offset-2">${esc(docTitle)}</span></div></div>` +
+                `<div class="flex-1 min-w-0"><div class="flex items-center justify-between gap-1"><span class="truncate font-medium text-xs" style="color:var(--tx);"><span>${esc(actorName)}</span> ${actionVerb}</span><span class="collab-notif-time shrink-0 text-[10px]" style="color:var(--tx-d);" title="${timeTitle}">${relTime}</span></div><div class="collab-notif-title text-[11px] font-semibold truncate mt-0.5" style="color:var(--tx);">${esc(docTitle)}</div></div>` +
                 `<div class="shrink-0 ml-1.5 flex items-center justify-center w-5 h-5" style="color:${catMeta.color || 'var(--tx-d)'};" title="${esc(catMeta.label || cat)}"><i class="fa-solid ${catMeta.icon || 'fa-file'} text-xs"></i></div>` +
                 `</div>`;
         }).join('');
-
         panel.innerHTML = headerHtml + `<div class="collab-notif-list flex flex-col overflow-y-auto" style="max-height:350px;">${itemsHtml}</div>`;
     }
-
     async function markAllNotificationsRead(e) {
         if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         const unread = _notifications.filter(n => n.readAt == null);
@@ -216,9 +200,8 @@
             }
         }
     }
-
-    async function clearAllNotifications(e) {
-        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    async function executeClearAllNotifications() {
+        if (typeof root.closeModal === 'function') root.closeModal();
         if (!_notifications.length) return;
         const prev = [..._notifications], toDelete = [..._notifications], committed = new Set();
         _notifications = [];
@@ -245,29 +228,64 @@
         }
     }
 
+    function confirmClearNotifications(e) {
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        if (!_notifications.length) return;
+        closeNotificationPanel();
+        if (typeof root.showModal === 'function') {
+            root.showModal(
+                `<div class="p-1"><div class="flex items-center gap-2 mb-2 text-amber-500"><i class="fa-solid fa-triangle-exclamation"></i><h3 class="font-heading font-bold text-base" style="color:var(--tx);">Delete all notifications?</h3></div>` +
+                `<p class="text-xs mb-4" style="color:var(--tx-m);">This permanently removes all notifications from your inbox and cannot be undone.</p>` +
+                `<div class="flex justify-end gap-2"><button type="button" class="btn-s text-xs px-3 py-1.5" data-onclick="closeModal()">Cancel</button><button type="button" class="btn-d text-xs px-3 py-1.5" data-onclick="collabExecuteClearAllNotifications()">Delete all</button></div></div>`
+            );
+            return;
+        }
+        if (typeof root.confirm === 'function' && root.confirm('Delete all notifications?')) return executeClearAllNotifications();
+    }
+
     function closeNotificationPanel() {
         _bellPanelOpen = false;
-        const panel = typeof document !== 'undefined' ? document.getElementById('collab-notif-panel') : null;
+        if (typeof document === 'undefined') return;
+        const btn = document.getElementById('collab-notif-btn'), panel = document.getElementById('collab-notif-panel');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
         if (panel) panel.remove();
+        if (_onKeydown) { document.removeEventListener('keydown', _onKeydown, true); _onKeydown = null; }
+        if (_clickOutsideTimer) { clearTimeout(_clickOutsideTimer); _clickOutsideTimer = null; }
+        if (_onClickOutside) { document.removeEventListener('click', _onClickOutside); _onClickOutside = null; }
     }
-
-    function toggleNotifications() {
-        _bellPanelOpen = !_bellPanelOpen;
-        if (_bellPanelOpen) {
-            renderNotificationPanel();
-            setTimeout(() => {
-                const closeHandler = (e) => {
-                    const btn = document.getElementById('collab-notif-btn'), panel = document.getElementById('collab-notif-panel');
-                    if (btn && btn.contains(e.target)) return;
-                    if (panel && panel.contains(e.target)) return;
+    function openNotificationPanel() {
+        _bellPanelOpen = true;
+        if (typeof document !== 'undefined') {
+            const btn = document.getElementById('collab-notif-btn');
+            if (btn) btn.setAttribute('aria-expanded', 'true');
+            if (_onKeydown) document.removeEventListener('keydown', _onKeydown, true);
+            _onKeydown = (e) => {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    e.preventDefault?.(); e.stopPropagation?.(); e.stopImmediatePropagation?.();
                     closeNotificationPanel();
-                    document.removeEventListener('click', closeHandler);
+                    const b = document.getElementById('collab-notif-btn');
+                    if (b?.focus) b.focus();
+                }
+            };
+            document.addEventListener('keydown', _onKeydown, true);
+        }
+        renderNotificationPanel();
+        if (typeof document !== 'undefined') {
+            if (_clickOutsideTimer) { clearTimeout(_clickOutsideTimer); _clickOutsideTimer = null; }
+            if (_onClickOutside) { document.removeEventListener('click', _onClickOutside); _onClickOutside = null; }
+            _clickOutsideTimer = setTimeout(() => {
+                _clickOutsideTimer = null;
+                if (!_bellPanelOpen) return;
+                _onClickOutside = (e) => {
+                    const btn = document.getElementById('collab-notif-btn'), panel = document.getElementById('collab-notif-panel');
+                    if ((btn && btn.contains(e.target)) || (panel && panel.contains(e.target))) return;
+                    closeNotificationPanel();
                 };
-                document.addEventListener('click', closeHandler);
+                document.addEventListener('click', _onClickOutside);
             }, 10);
-        } else { closeNotificationPanel(); }
+        }
     }
-
+    function toggleNotifications() { _bellPanelOpen ? closeNotificationPanel() : openNotificationPanel(); }
     async function openNotification(notifId, docId) {
         closeNotificationPanel();
         const notif = _notifications.find(n => n.id === notifId);
@@ -279,9 +297,14 @@
                 try { await db.collection('notifications').doc(notifId).update({ readAt: notif.readAt }); } catch (err) { console.warn('[CollabAssign] update readAt:', err); }
             }
         }
+        if (notif?.kind === 'focus') {
+            if (root.state) root.state.view = 'focus';
+            if (typeof root.render === 'function') root.render();
+            else if (typeof root.renderContent === 'function') root.renderContent();
+            return;
+        }
         if (docId && typeof root.viewDoc === 'function') root.viewDoc(docId);
     }
-
     async function notifyAssignment(opts) {
         if (!isCollabMode() || !opts) return;
         const { doc, kind, signalKey = '', oldUid = '', newUid = '' } = opts;
@@ -297,11 +320,8 @@
         const notifId = 'notif_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
         const payload = { recipientUid: newUid, actorUid: currentUid, actorName, actorEmail, docId: doc.id, docTitle, kind, signalKey: signalKey || '', createdAt: Date.now(), readAt: null };
         if (actorPhoto) payload.actorPhotoUrl = actorPhoto;
-        try {
-            await db.collection('notifications').doc(notifId).set(payload);
-        } catch (err) { console.warn('[CollabAssign] create notification:', err); }
+        try { await db.collection('notifications').doc(notifId).set(payload); } catch (err) { console.warn('[CollabAssign] create notification:', err); }
     }
-
     async function notifyBatchBugAssign(items) {
         if (!isCollabMode() || !Array.isArray(items)) return;
         for (const item of items) await notifyAssignment({ doc: item.doc, kind: 'bug', signalKey: '', oldUid: item.oldUid || '', newUid: item.newUid || '' });
@@ -316,10 +336,7 @@
                 _unsubMembers = db.collection('members').onSnapshot(snap => {
                     if (!snap) return;
                     _membersMap.clear();
-                    snap.forEach(docSnap => {
-                        const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap, uid = docSnap.id || data?.uid;
-                        if (uid) _membersMap.set(uid, { ...data, uid });
-                    });
+                    snap.forEach(d => { const data = typeof d.data === 'function' ? d.data() : d, uid = d.id || data?.uid; if (uid) _membersMap.set(uid, { ...data, uid }); });
                 }, err => console.warn('[CollabAssign] members onSnapshot:', err));
             } catch (err) { console.warn('[CollabAssign] startListening members:', err); }
         }
@@ -329,32 +346,26 @@
                 _unsubNotifications = db.collection('notifications').where('recipientUid', '==', uid).onSnapshot(snap => {
                     if (!snap) return;
                     const list = [];
-                    snap.forEach(docSnap => {
-                        const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap, notifId = docSnap.id || data?.id;
-                        if (notifId) list.push({ ...data, id: notifId });
-                    });
+                    snap.forEach(d => { const data = typeof d.data === 'function' ? d.data() : d, notifId = d.id || data?.id; if (notifId) list.push({ ...data, id: notifId }); });
                     _notifications = list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                     updateNotificationBell();
                 }, err => console.warn('[CollabAssign] notifications onSnapshot:', err));
             } catch (err) { console.warn('[CollabAssign] startListening notifs:', err); }
         }
     }
-
     function stopListening() {
         if (_unsubMembers) { try { _unsubMembers(); } catch (_) {} _unsubMembers = null; }
         if (_unsubNotifications) { try { _unsubNotifications(); } catch (_) {} _unsubNotifications = null; }
         _membersMap.clear(); _notifications = []; closeNotificationPanel();
     }
-
     if (root.renderEditor && !root.renderEditor._collabAssignWrapped) {
         const origRenderEditor = root.renderEditor;
         root.renderEditor = function(...args) {
             let html = origRenderEditor.apply(this, args);
             if (isCollabMode() && root.renderSelect) {
-                const b = root.state?.editingDoc?.bugData || root.state?._newBugData || {};
+                const b = root.state?.editingDoc?.bugData || root.state?._newBugData || {}, td = root.state?.editingDoc;
                 const bOpts = buildAssigneeOptions(b.assignee || '', b.assigneeUid || '', false);
                 html = html.replace(/<input\s+id=["']ed-bug-assignee["'][^>]*>/i, root.renderSelect('ed-bug-assignee', bOpts.options, bOpts.selectedValue, 'w-full'));
-                const td = root.state?.editingDoc;
                 const tOpts = buildAssigneeOptions(td?.assignee || td?.taskData?.assignee || root.state?._newTaskAssignee || '', td?.assigneeUid || td?.taskData?.assigneeUid || root.state?._newTaskAssigneeUid || '', false);
                 html = html.replace(/<input\s+id=["']ed-task-assignee["'][^>]*>/i, root.renderSelect('ed-task-assignee', tOpts.options, tOpts.selectedValue, 'w-full'));
             }
@@ -362,7 +373,6 @@
         };
         root.renderEditor._collabAssignWrapped = true;
     }
-
     function wrapMethod(obj, prop, flag, after) {
         if (obj[prop] && !obj[prop][flag]) {
             const orig = obj[prop];
@@ -370,21 +380,19 @@
             obj[prop][flag] = true;
         }
     }
-
     wrapMethod(root, 'renderContent', '_collabAssignWrapped', () => { replaceBugAssigneeInput(); replaceTaskAssigneeInput(); });
     wrapMethod(root, 'updateHeader', '_collabBellWrapped', attachNotificationBell);
     wrapMethod(root, 'render', '_collabBellWrapped', attachNotificationBell);
-
-    root.collabToggleNotifications = toggleNotifications;
-    root.collabOpenNotification = openNotification;
-    root.collabMarkAllNotificationsRead = markAllNotificationsRead;
-    root.collabClearAllNotifications = clearAllNotifications;
-
+    root.collabToggleNotifications = toggleNotifications; root.collabOpenNotification = openNotification;
+    root.collabMarkAllNotificationsRead = markAllNotificationsRead; root.collabConfirmClearNotifications = confirmClearNotifications;
+    root.collabExecuteClearAllNotifications = executeClearAllNotifications; root.collabClearAllNotifications = confirmClearNotifications;
     root.CollabAssign = {
         getMembers: () => getSortedMembers(), getMemberLabel, buildAssigneeOptions, resolveMember,
         renderFocusOwnerField, renderBatchAssigneeField, replaceBugAssigneeInput, replaceTaskAssigneeInput,
         attachNotificationBell, updateNotificationBell, toggleNotifications, openNotification,
-        markAllNotificationsRead, clearAllNotifications, notifyAssignment, notifyBatchBugAssign,
-        startListening, stopListening, setMembers: (map) => { _membersMap = map; }, setNotifications: (list) => { _notifications = list; }
+        markAllNotificationsRead, clearAllNotifications: confirmClearNotifications,
+        confirmClearNotifications, executeClearAllNotifications, fmtNotifTime,
+        notifyAssignment, notifyBatchBugAssign, startListening, stopListening,
+        setMembers: (map) => { _membersMap = map; }, setNotifications: (list) => { _notifications = list; }
     };
 })(typeof window !== 'undefined' ? window : globalThis);
