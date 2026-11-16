@@ -616,6 +616,8 @@ test('Phase 14: Settings modal hides Account/Security tabs and defaults to Team 
     teamCtx._settingsTab = 'security';
     await teamCtx.showGitHubSettingsModal();
     assert.equal(teamCtx._settingsTab, 'team', '_settingsTab remembering security must reset to team');
+    assert.equal(typeof teamCtx.showSettings, 'function', 'showSettings alias must be defined on window');
+    assert.equal(teamCtx.showSettings, teamCtx.showGitHubSettingsModal, 'showSettings must alias showGitHubSettingsModal');
 
     // 2. Personal edition (COLLAB_MODE: false)
     let personalModalHtml = '';
@@ -643,6 +645,322 @@ test('Phase 14: Settings modal hides Account/Security tabs and defaults to Team 
     assert.match(personalModalHtml, /_switchSettingsTab\('account'\)/, 'Personal edition must have Account tab');
     assert.match(personalModalHtml, /_switchSettingsTab\('security'\)/, 'Personal edition must have Security tab');
     assert.match(personalModalHtml, /Current Password/, 'Personal edition must default to Account and show Current Password');
+});
+
+test('CollabMembers Stage B: line budget check for js/collab-members.js is <= 400 lines', () => {
+    const code = read('js/collab-members.js');
+    const lines = code.split('\n').length;
+    assert.ok(lines <= 400, `js/collab-members.js must be <= 400 lines (got ${lines})`);
+});
+
+test('CollabMembers Stage B: team member avatar rendering (palette color and photoURL) and Bauhaus CSS', async () => {
+    const palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
+    function computeColor(str) {
+        let hash = 0, k = String(str || '');
+        for (let i = 0; i < k.length; i++) hash = (hash * 31 + k.charCodeAt(i)) & 0xffffffff;
+        return palette[(hash >>> 0) % palette.length];
+    }
+
+    const ctx = createMembersContext({
+        currentMember: { uid: 'owner-1', role: 'owner' },
+        initialMembers: {
+            'm-photo': { uid: 'm-photo', displayName: 'Alice Photo', email: 'alice@example.com', role: 'editor', photoURL: 'https://images.example.com/alice.jpg' },
+            'm-palette': { uid: 'm-palette', displayName: 'Bob Initial', email: 'bob@example.com', role: 'viewer' },
+            'm-insecure': { uid: 'm-insecure', displayName: 'Insecure Pic', email: 'insecure@example.com', role: 'viewer', photoURL: 'http://insecure.example.com/pic.jpg' },
+            'm-photo2': { uid: 'm-photo2', displayName: 'Carol URL', email: 'carol@example.com', role: 'editor', photoUrl: 'https://images.example.com/carol.png' }
+        }
+    });
+
+    let renderedHtml = '';
+    ctx.document.getElementById = (id) => (id === 'collab-team-tab-container' ? {
+        set innerHTML(h) { renderedHtml = h; },
+        get innerHTML() { return renderedHtml; }
+    } : { value: '', classList: { add() {}, remove() {}, contains() { return false; } } });
+
+    await ctx.CollabMembers.loadAndRenderTeam();
+
+    // 1. Check m-photo renders img with photoURL
+    assert.match(renderedHtml, /<img src="https:\/\/images\.example\.com\/alice\.jpg" alt="Alice Photo" class="collab-member-avatar w-7 h-7 rounded-full object-cover shrink-0 select-none" style="border:1px solid var\(--brd\);"[^>]*>/);
+
+    // 2. Check m-photo2 renders img with photoUrl
+    assert.match(renderedHtml, /<img src="https:\/\/images\.example\.com\/carol\.png" alt="Carol URL" class="collab-member-avatar w-7 h-7 rounded-full object-cover shrink-0 select-none" style="border:1px solid var\(--brd\);"[^>]*>/);
+
+    // 3. Check m-palette renders colored initial avatar
+    const bobExpectedColor = computeColor('m-palette');
+    assert.match(renderedHtml, new RegExp(`<div class="collab-member-avatar w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-bold text-xs text-white select-none" style="background-color:${bobExpectedColor};">B</div>`));
+
+    // 4. Check m-insecure (non-https) falls back to colored initial avatar
+    const insecureExpectedColor = computeColor('m-insecure');
+    assert.match(renderedHtml, new RegExp(`<div class="collab-member-avatar w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-bold text-xs text-white select-none" style="background-color:${insecureExpectedColor};">I</div>`));
+    assert.doesNotMatch(renderedHtml, /http:\/\/insecure\.example\.com\/pic\.jpg/);
+
+    // 5. Check Bauhaus CSS override inside buildTeamMarkup
+    assert.match(renderedHtml, /\[data-ui-style="bauhaus"\] #collab-team-tab-container \.collab-member-avatar \{ border: 1\.5px solid #121212 !important; border-radius: 0 !important; \}/);
+});
+
+test('CollabMembers Stage B: safe confirmation modal for removing members', async () => {
+    let modalHtml = null;
+    let closeModalCalled = false;
+    const ctx = createMembersContext({
+        currentMember: { uid: 'owner-1', role: 'owner' },
+        initialMembers: {
+            'owner-1': { uid: 'owner-1', email: 'owner@example.com', role: 'owner' },
+            'member-2': { uid: 'member-2', displayName: 'Dev Dan', email: 'dan@example.com', role: 'editor' }
+        }
+    });
+    ctx.showModal = (html) => { modalHtml = html; };
+    ctx.closeModal = () => { closeModalCalled = true; };
+
+    let teamHtml = '';
+    ctx.document.getElementById = (id) => (id === 'collab-team-tab-container' ? {
+        set innerHTML(h) { teamHtml = h; },
+        get innerHTML() { return teamHtml; }
+    } : { value: '', classList: { add() {}, remove() {}, contains() { return false; } } });
+
+    await ctx.CollabMembers.loadAndRenderTeam();
+
+    // 1. Verify remove button markup in member row
+    assert.match(teamHtml, /data-onclick="collabConfirmRemoveMember\(&quot;member-2&quot;,&quot;Dev Dan&quot;\)"/);
+    assert.match(teamHtml, /class="btn-d w-7 h-7 flex items-center justify-center rounded text-xs"/);
+
+    // 2. Trigger collabConfirmRemoveMember
+    ctx.collabConfirmRemoveMember('member-2', 'Dev Dan');
+    assert.ok(modalHtml, 'showModal must have been called');
+    assert.match(modalHtml, /fa-triangle-exclamation/);
+    assert.match(modalHtml, /Remove team member\?/);
+    assert.match(modalHtml, /Are you sure you want to remove <b>Dev Dan<\/b> from the team\? They will immediately lose access to all documents in this workspace\./);
+    assert.match(modalHtml, /data-onclick="collabCancelRemoveMember\(\)"/);
+    assert.match(modalHtml, /data-onclick="collabExecuteRemoveMember\(&quot;member-2&quot;\)"/);
+    assert.match(modalHtml, />Remove member<\/button>/);
+
+    // Verify member is NOT removed yet
+    assert.equal(ctx.memberStore.has('member-2'), true, 'Member must still exist prior to execution');
+
+    // Test cancel restores settings modal via showGitHubSettingsModal / showSettings
+    let showSettingsCalled = false;
+    ctx.showGitHubSettingsModal = () => { showSettingsCalled = true; };
+    ctx.collabCancelRemoveMember();
+    assert.equal(showSettingsCalled, true, 'cancelRemoveMember must call showGitHubSettingsModal when available');
+    assert.equal(ctx._settingsTab, 'team', 'cancelRemoveMember must restore team tab in settings');
+
+    // Test quote escaping in confirmation modal
+    ctx.collabConfirmRemoveMember("m-o'brien", "O'Brien");
+    assert.match(modalHtml, /<b>O&#39;Brien<\/b>/);
+    assert.match(modalHtml, /collabExecuteRemoveMember\(&quot;m-o&#39;brien&quot;\)/);
+
+    // Test dismiss hook (_modalOnClose) restores settings on backdrop / Escape
+    showSettingsCalled = false;
+    assert.equal(typeof ctx._modalOnClose, 'function', '_modalOnClose hook must be registered when confirm modal opens');
+    ctx._modalOnClose();
+    assert.equal(showSettingsCalled, true, '_modalOnClose must restore settings on dismiss');
+
+    // 3. Trigger collabExecuteRemoveMember
+    showSettingsCalled = false;
+    closeModalCalled = false;
+    await ctx.collabExecuteRemoveMember('member-2');
+    assert.equal(showSettingsCalled, true, 'showGitHubSettingsModal must be called on execute to restore settings modal');
+    assert.equal(ctx.memberStore.has('member-2'), false, 'Member must be deleted on execute');
+    assert.ok(ctx.calls.memberDeletes.includes('member-2'));
+
+    // Test execute failure still restores settings in finally block
+    showSettingsCalled = false;
+    let toastErrorMsg = null;
+    ctx.toast = (msg, type) => { if (type === 'error') toastErrorMsg = msg; };
+    ctx.firebase.firestore = () => ({
+        collection: () => ({
+            doc: () => ({
+                get: async () => ({ exists: true, data: () => ({ role: 'editor' }) }),
+                delete: async () => { throw new Error('Firestore network error'); }
+            })
+        })
+    });
+    await ctx.collabExecuteRemoveMember('error-member');
+    assert.equal(showSettingsCalled, true, 'executeRemoveMember must restore settings even when deletion throws');
+    assert.match(toastErrorMsg || '', /Firestore network error/);
+
+    // 4. Test fallback to confirm() when showModal is unavailable
+    const fallbackCtx = createMembersContext({
+        currentMember: { uid: 'owner-1', role: 'owner' },
+        initialMembers: {
+            'owner-1': { uid: 'owner-1', email: 'owner@example.com', role: 'owner' },
+            'member-3': { uid: 'member-3', displayName: 'Dev Eva', email: 'eva@example.com', role: 'editor' }
+        }
+    });
+    delete fallbackCtx.showModal;
+    let confirmPrompt = null;
+    let confirmResult = false;
+    fallbackCtx.confirm = (msg) => { confirmPrompt = msg; return confirmResult; };
+
+    // Trigger collabRemoveMember (which routes to confirmRemoveMember)
+    await fallbackCtx.collabRemoveMember('member-3', 'Dev Eva');
+    assert.equal(confirmPrompt, 'Remove Dev Eva from the team?');
+    assert.equal(fallbackCtx.memberStore.has('member-3'), true, 'Must not delete if confirm returned false');
+
+    confirmResult = true;
+    await fallbackCtx.collabRemoveMember('member-3', 'Dev Eva');
+    assert.equal(fallbackCtx.memberStore.has('member-3'), false, 'Must delete if confirm returned true');
+
+    // 5. Test abort when neither showModal nor confirm is available
+    const abortCtx = createMembersContext({
+        currentMember: { uid: 'owner-1', role: 'owner' },
+        initialMembers: {
+            'owner-1': { uid: 'owner-1', email: 'owner@example.com', role: 'owner' },
+            'member-4': { uid: 'member-4', displayName: 'Dev Frank', email: 'frank@example.com', role: 'editor' }
+        }
+    });
+    delete abortCtx.showModal;
+    delete abortCtx.confirm;
+    await abortCtx.collabRemoveMember('member-4', 'Dev Frank');
+    assert.equal(abortCtx.memberStore.has('member-4'), true, 'Must abort if neither showModal nor confirm exists');
+});
+
+test('CollabMembers Stage B: invite helper note and revoke button style', async () => {
+    const ctx = createMembersContext({
+        currentMember: { uid: 'owner-1', role: 'owner' },
+        initialMembers: {
+            'owner-1': { uid: 'owner-1', email: 'owner@example.com', role: 'owner' }
+        },
+        initialInvites: {
+            'pending@example.com': { email: 'pending@example.com', role: 'editor' }
+        }
+    });
+
+    let html = '';
+    ctx.document.getElementById = (id) => (id === 'collab-team-tab-container' ? {
+        set innerHTML(h) { html = h; },
+        get innerHTML() { return html; }
+    } : { value: '', classList: { add() {}, remove() {}, contains() { return false; } } });
+
+    await ctx.CollabMembers.loadAndRenderTeam();
+
+    // 1. Invite helper note
+    assert.match(html, /<p class="text-\[11px\] mt-1\.5 flex items-center gap-1\.5" style="color:var\(--tx-d\);"><i class="fa-solid fa-circle-info text-\[10px\]" style="color:var\(--acc\);"><\/i><span>They will automatically join the team vault next time they sign in with this Google account\.<\/span><\/p>/);
+
+    // 2. Revoke button style
+    assert.match(html, /class="btn-d h-7 px-2\.5 flex items-center gap-1 text-\[10px\] shrink-0"/);
+    assert.match(html, /title="Revoke invite"/);
+});
+
+test('CollabMembers Stage B: Focus Queue owner chip rendering avatar badge and photoURL support', () => {
+    const renderCoreSource = read('js/render-core.js');
+
+    const ctx = vm.createContext({
+        console,
+        URLSearchParams,
+        location: { search: '' },
+        window: {
+            CollabAssign: {
+                getMembers: () => [
+                    { uid: 'u-sam', displayName: 'Sam Smith', email: 'sam@example.com', photoURL: 'https://photos.example.com/sam.png' },
+                    { uid: 'u-leo', displayName: 'Leo Lion', email: 'leo@example.com' }
+                ]
+            }
+        },
+        document: { getElementById: () => null },
+        state: { focusQueueTab: 'active', view: 'focus' },
+        t: (k, params) => {
+            if (k === 'focusUnassigned') return 'Unassigned';
+            return k;
+        },
+        escHtml: s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+        renderActionButton: () => '<button>act</button>',
+        fmtDate: () => '2026-11-16',
+        _normBugStatus: s => s || 'open',
+        bugRef: () => 'BUG-101',
+        bugTriageInfo: () => ({ stateName: 'pending', classificationLabel: 'Normal', slaHours: 24 })
+    });
+    ctx.window.window = ctx.window;
+    vm.runInContext(read('js/constants.js'), ctx);
+    vm.runInContext(read('js/utils.js'), ctx);
+    vm.runInContext(read('js/state.js'), ctx);
+    vm.runInContext(renderCoreSource, ctx);
+
+    // 1. Test _renderAssigneeBadge directly with photoURL
+    const photoBadge = vm.runInContext("_renderAssigneeBadge('Sam Smith', 'u-sam')", ctx);
+    assert.match(photoBadge, /<img src="https:\/\/photos\.example\.com\/sam\.png" alt="Sam Smith" class="collab-assignee-avatar w-4 h-4 rounded-full object-cover shrink-0 select-none" style="border:1px solid var\(--brd\);">/);
+    assert.match(photoBadge, /<span class="truncate">Sam Smith<\/span>/);
+
+    // 2. Test _renderAssigneeBadge directly without photoURL (colored initial badge)
+    const initialBadge = vm.runInContext("_renderAssigneeBadge('Leo Lion', 'u-leo')", ctx);
+    assert.match(initialBadge, /<span class="collab-assignee-avatar w-4 h-4 rounded-full flex items-center justify-center font-bold text-\[9px\] text-white shrink-0 select-none" style="background-color:[^"]+;">L<\/span>/);
+    assert.match(initialBadge, /<span class="truncate">Leo Lion<\/span>/);
+
+    // 3. Test Focus Queue row with owner
+    ctx._testDocs = [{
+        id: 'task-owned',
+        title: 'Owned Task',
+        category: 'task',
+        status: 'published',
+        kanbanStatus: 'in-progress',
+        focusWorkflow: {
+            task: { owner: 'Sam Smith', ownerUid: 'u-sam' }
+        }
+    }];
+    vm.runInContext('documents = _testDocs;', ctx);
+    const focusHtmlOwned = vm.runInContext('renderFocus()', ctx);
+    assert.match(focusHtmlOwned, /<span class="focus-chip focus-owner-chip">/);
+    assert.match(focusHtmlOwned, /<img src="https:\/\/photos\.example\.com\/sam\.png" alt="Sam Smith"/);
+
+    // 4. Test Focus Queue row unassigned
+    ctx._testDocs = [{
+        id: 'task-unassigned',
+        title: 'Unassigned Task',
+        category: 'task',
+        status: 'published',
+        kanbanStatus: 'in-progress'
+    }];
+    vm.runInContext('documents = _testDocs;', ctx);
+    const focusHtmlUnassigned = vm.runInContext('renderFocus()', ctx);
+    assert.match(focusHtmlUnassigned, /<span class="focus-chip is-unassigned"><i class="fa-regular fa-user"><\/i>Unassigned<\/span>/);
+});
+
+test('CollabMembers Stage B: ui.js showModal dedupes _modalTrapHandler keydown listener on consecutive opens', () => {
+    const listeners = [];
+    const ctx = vm.createContext({
+        console,
+        Element: class Element {},
+        state: {},
+        window: {
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            matchMedia: () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })
+        },
+        document: {
+            getElementById: () => ({
+                classList: { contains: () => false },
+                setAttribute: () => {},
+                removeAttribute: () => {},
+                toggleAttribute: () => {},
+                querySelector: () => null,
+                querySelectorAll: () => []
+            }),
+            activeElement: null,
+            addEventListener: (type, fn) => { listeners.push({ type, fn }); },
+            removeEventListener: (type, fn) => {
+                const idx = listeners.findIndex(l => l.type === type && l.fn === fn);
+                if (idx !== -1) listeners.splice(idx, 1);
+            }
+        },
+        enhanceInteractionSemantics: () => {},
+        updateUiStyleSwitcher: () => {}
+    });
+    ctx.window.window = ctx.window;
+    vm.runInContext(read('js/ui.js'), ctx);
+
+    // Call showModal first time (e.g. Settings modal)
+    vm.runInContext('showModal("<div>Settings</div>")', ctx);
+    const countAfterFirst = listeners.filter(l => l.type === 'keydown').length;
+    assert.equal(countAfterFirst, 1, 'First showModal must register exactly 1 keydown listener');
+
+    // Call showModal second time (e.g. Confirm remove dialog)
+    vm.runInContext('showModal("<div>Confirm</div>")', ctx);
+    const countAfterSecond = listeners.filter(l => l.type === 'keydown').length;
+    assert.equal(countAfterSecond, 1, 'Second showModal must NOT stack keydown listener');
+
+    // Call closeModal
+    vm.runInContext('closeModal()', ctx);
+    const countAfterClose = listeners.filter(l => l.type === 'keydown').length;
+    assert.equal(countAfterClose, 0, 'closeModal must remove the keydown listener cleanly');
 });
 
 

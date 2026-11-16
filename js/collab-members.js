@@ -5,49 +5,37 @@
 (function(root) {
     'use strict';
 
-    function isCollabMode() {
-        return typeof root.COLLAB_MODE !== 'undefined' ? Boolean(root.COLLAB_MODE) : false;
-    }
-
-    function isGuestMode() {
-        return typeof root.GUEST_MODE !== 'undefined' ? Boolean(root.GUEST_MODE) : false;
-    }
-
-    function getFirestoreDb() {
-        return root.firebase && typeof root.firebase.firestore === 'function' ? root.firebase.firestore() : null;
-    }
+    function isCollabMode() { return typeof root.COLLAB_MODE !== 'undefined' ? Boolean(root.COLLAB_MODE) : false; }
+    function isGuestMode() { return typeof root.GUEST_MODE !== 'undefined' ? Boolean(root.GUEST_MODE) : false; }
+    function getFirestoreDb() { return root.firebase && typeof root.firebase.firestore === 'function' ? root.firebase.firestore() : null; }
 
     function getCurrentMember() {
-        return root.CollabBootstrap && typeof root.CollabBootstrap.getCurrentMember === 'function'
-            ? root.CollabBootstrap.getCurrentMember()
-            : null;
+        return root.CollabBootstrap && typeof root.CollabBootstrap.getCurrentMember === 'function' ? root.CollabBootstrap.getCurrentMember() : null;
     }
 
     function getCurrentRole() {
         const m = getCurrentMember();
-        if (m && m.role) return m.role;
-        return isCollabMode() ? null : 'owner';
+        return m && m.role ? m.role : (isCollabMode() ? null : 'owner');
     }
 
     function isOwner() { return getCurrentRole() === 'owner'; }
     function isEditor() { return getCurrentRole() === 'editor'; }
     function isViewer() { return getCurrentRole() === 'viewer'; }
-
-    function canWrite() {
-        if (!isCollabMode()) return true;
-        return isOwner() || isEditor();
-    }
+    function canWrite() { return !isCollabMode() || isOwner() || isEditor(); }
 
     function hasUnimportedLocalVault() {
-        if (typeof localStorage === 'undefined') return false;
-        if (localStorage.getItem('docvault_collab_imported_at')) return false;
+        if (typeof localStorage === 'undefined' || localStorage.getItem('docvault_collab_imported_at')) return false;
         const raw = localStorage.getItem('docvault_docs');
         return Boolean(raw && raw !== '[]' && raw !== '{}');
     }
 
     function esc(s) {
         if (typeof root.escHtml === 'function') return root.escHtml(s || '');
-        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function makeAction(name, ...args) {
+        if (typeof root.actionAttr === 'function') return root.actionAttr(name, ...args);
+        return esc(`${name}(${args.map(a => JSON.stringify(a === undefined ? null : String(a))).join(',')})`);
     }
 
     async function fetchMembers() {
@@ -83,11 +71,7 @@
             if (typeof root.toast === 'function') root.toast('Only the team owner can invite members.', 'error');
             return false;
         }
-        if (!email || typeof email !== 'string') {
-            if (typeof root.toast === 'function') root.toast('Please enter a valid email.', 'error');
-            return false;
-        }
-        const trimmedEmail = email.trim().toLowerCase();
+        const trimmedEmail = String(email || '').trim().toLowerCase();
         if (!trimmedEmail) {
             if (typeof root.toast === 'function') root.toast('Please enter a valid email.', 'error');
             return false;
@@ -107,11 +91,7 @@
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
 
-        await db.collection('invites').doc(trimmedEmail).set({
-            email: trimmedEmail,
-            role: role,
-            createdAt: new Date().toISOString()
-        });
+        await db.collection('invites').doc(trimmedEmail).set({ email: trimmedEmail, role: role, createdAt: new Date().toISOString() });
 
         if (typeof root.toast === 'function') root.toast(`Invitation sent to ${trimmedEmail}`, 'success');
         await loadAndRenderTeam();
@@ -143,25 +123,70 @@
         return true;
     }
 
+    function restoreSettings() {
+        if (typeof root !== 'undefined') root._modalOnClose = null;
+        if (typeof root.showGitHubSettingsModal === 'function') {
+            root._settingsTab = 'team';
+            return root.showGitHubSettingsModal();
+        }
+        if (typeof root.showSettings === 'function') return root.showSettings();
+        if (typeof root.closeModal === 'function') return root.closeModal();
+        return loadAndRenderTeam();
+    }
+
+    function cancelRemoveMember() {
+        restoreSettings();
+    }
+
+    function confirmRemoveMember(uid, name) {
+        const targetName = name || 'this member';
+        if (typeof root.showModal === 'function') {
+            if (typeof root !== 'undefined') root._modalOnClose = () => restoreSettings();
+            root.showModal(
+                `<div class="p-1"><div class="flex items-center gap-2 mb-2 text-amber-500"><i class="fa-solid fa-triangle-exclamation"></i><h3 class="font-heading font-bold text-base" style="color:var(--tx);">Remove team member?</h3></div>` +
+                `<p class="text-xs mb-4" style="color:var(--tx-m);">Are you sure you want to remove <b>${esc(targetName)}</b> from the team? They will immediately lose access to all documents in this workspace.</p>` +
+                `<div class="flex justify-end gap-2"><button type="button" class="btn-s text-xs px-3 py-1.5" data-onclick="collabCancelRemoveMember()">Cancel</button>` +
+                `<button type="button" class="btn-d text-xs px-3 py-1.5" data-onclick="${makeAction('collabExecuteRemoveMember', uid)}">Remove member</button></div></div>`
+            );
+            return;
+        }
+        if (typeof root.confirm === 'function' && root.confirm(`Remove ${targetName} from the team?`)) return executeRemoveMember(uid);
+    }
+
+    async function executeRemoveMember(uid) {
+        if (typeof root !== 'undefined') root._modalOnClose = null;
+        try {
+            await removeMember(uid);
+        } catch (err) {
+            console.error('[CollabMembers] executeRemoveMember:', err);
+            if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to remove member.', 'error');
+        } finally {
+            restoreSettings();
+        }
+    }
+
     async function removeMember(uid) {
         if (!isOwner()) {
             if (typeof root.toast === 'function') root.toast('Only the team owner can remove members.', 'error');
             return false;
         }
-
-        if (root.ensureFirebase) await root.ensureFirebase();
-        const db = getFirestoreDb();
-        if (!db) throw new Error('Firestore is not available');
-
-        const memberDoc = await db.collection('members').doc(uid).get();
-        if (memberDoc.exists && memberDoc.data()?.role === 'owner') {
-            if (typeof root.toast === 'function') root.toast('Cannot remove the team owner.', 'error'); return false;
+        try {
+            if (root.ensureFirebase) await root.ensureFirebase();
+            const db = getFirestoreDb();
+            if (!db) throw new Error('Firestore is not available');
+            const memberDoc = await db.collection('members').doc(uid).get();
+            if (memberDoc.exists && memberDoc.data()?.role === 'owner') {
+                if (typeof root.toast === 'function') root.toast('Cannot remove the team owner.', 'error'); return false;
+            }
+            await db.collection('members').doc(uid).delete();
+            if (typeof root.toast === 'function') root.toast('Member removed.', 'success');
+            await loadAndRenderTeam();
+            return true;
+        } catch (err) {
+            console.error('[CollabMembers] removeMember:', err);
+            if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to remove member.', 'error');
+            return false;
         }
-
-        await db.collection('members').doc(uid).delete();
-        if (typeof root.toast === 'function') root.toast('Member removed.', 'success');
-        await loadAndRenderTeam();
-        return true;
     }
 
     async function revokeInvite(email) {
@@ -174,13 +199,10 @@
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
 
-        const docId = String(email || '').trim();
-        const lowerId = docId.toLowerCase();
+        const docId = String(email || '').trim(), lowerId = docId.toLowerCase();
         try {
             await db.collection('invites').doc(docId).delete();
-            if (lowerId && lowerId !== docId) {
-                await db.collection('invites').doc(lowerId).delete();
-            }
+            if (lowerId && lowerId !== docId) await db.collection('invites').doc(lowerId).delete();
             if (typeof root.toast === 'function') root.toast(`Revoked invite for ${lowerId || docId}`, 'success');
             await loadAndRenderTeam();
             return true;
@@ -212,6 +234,7 @@
                         <i class="fa-solid fa-paper-plane text-[10px]"></i> Invite
                     </button>
                 </div>
+                <p class="text-[11px] mt-1.5 flex items-center gap-1.5" style="color:var(--tx-d);"><i class="fa-solid fa-circle-info text-[10px]" style="color:var(--acc);"></i><span>They will automatically join the team vault next time they sign in with this Google account.</span></p>
             </div>`;
         }
 
@@ -231,7 +254,7 @@
                                 <span class="font-medium truncate" style="color:var(--tx);">${esc(inv.email)}</span>
                                 ${renderRoleBadge(inv.role)}
                             </div>
-                            <button type="button" class="btn-d text-[10px] py-1 px-2 shrink-0" data-onclick="collabRevokeInvite('${esc(inv.id || inv.email)}')" title="Revoke invite">
+                            <button type="button" class="btn-d h-7 px-2.5 flex items-center gap-1 text-[10px] shrink-0" data-onclick="${makeAction('collabRevokeInvite', inv.id || inv.email)}" title="Revoke invite">
                                 <i class="fa-solid fa-xmark"></i> Revoke
                             </button>
                         </div>
@@ -247,12 +270,21 @@
             const isTargetOwner = m.role === 'owner';
             const showControls = currentIsOwner && !isTargetOwner;
             const isYou = Boolean(currentUid && m.uid === currentUid);
+            const photoRaw = m.photoURL || m.photoUrl;
+            let avatarHtml;
+            if (typeof photoRaw === 'string' && /^https:\/\//i.test(photoRaw)) {
+                avatarHtml = `<img src="${esc(photoRaw)}" alt="${esc(m.displayName || m.email || 'Member')}" class="collab-member-avatar w-7 h-7 rounded-full object-cover shrink-0 select-none" style="border:1px solid var(--brd);">`;
+            } else {
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
+                let hash = 0, k = String(m.uid || m.email || m.displayName || '');
+                for (let i = 0; i < k.length; i++) hash = (hash * 31 + k.charCodeAt(i)) & 0xffffffff;
+                const color = colors[(hash >>> 0) % colors.length];
+                avatarHtml = `<div class="collab-member-avatar w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-bold text-xs text-white select-none" style="background-color:${color};">${esc((m.displayName || m.email || 'U')[0].toUpperCase())}</div>`;
+            }
             return `
             <div class="flex items-center justify-between p-2.5 rounded-lg text-xs" style="background:var(--card);border:1px solid var(--brd);">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs" style="background:rgba(59,130,246,0.15);color:var(--acc);">
-                        ${esc((m.displayName || m.email || 'U')[0].toUpperCase())}
-                    </div>
+                    ${avatarHtml}
                     <div class="min-w-0">
                         <div class="font-medium truncate" style="color:var(--tx);">${esc(m.displayName || m.email)}${isYou ? ' <span class="text-[10px] font-normal" style="color:var(--tx-d);">(You)</span>' : ''}</div>
                         <div class="text-[10px] truncate" style="color:var(--tx-d);">${esc(m.email)}</div>
@@ -261,11 +293,9 @@
                 <div class="flex items-center gap-2 shrink-0">
                     ${showControls ? `
                         <div class="member-role-select">
-                            ${renderSelect ? renderSelect('team-member-role-' + m.uid, [{ value: 'editor', label: 'Editor' }, { value: 'viewer', label: 'Viewer' }], m.role, 'w-24 py-1 px-2 text-[11px]', `collabChangeMemberRole('${m.uid}', this.value)`, 'Role') : ''}
+                            ${renderSelect ? renderSelect('team-member-role-' + m.uid, [{ value: 'editor', label: 'Editor' }, { value: 'viewer', label: 'Viewer' }], m.role, 'w-24 py-1 px-2 text-[11px]', `collabChangeMemberRole(${JSON.stringify(String(m.uid))}, this.value)`, 'Role') : ''}
                         </div>
-                        <button type="button" class="btn-d text-[10px] py-1 px-2" data-onclick="collabRemoveMember('${esc(m.uid)}')" title="Remove member">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        <button type="button" class="btn-d w-7 h-7 flex items-center justify-center rounded text-xs" data-onclick="${makeAction('collabConfirmRemoveMember', m.uid, m.displayName || m.email || 'this member')}" title="Remove member"><i class="fa-solid fa-trash"></i></button>
                     ` : renderRoleBadge(m.role)}
                 </div>
             </div>`;
@@ -291,7 +321,7 @@
                 [data-ui-style="bauhaus"] #collab-team-tab-container .rounded-lg { background: #FFFFFF !important; border: 2px solid #121212 !important; border-radius: 0 !important; box-shadow: 2px 2px 0 0 #121212 !important; }
                 [data-ui-style="bauhaus"] #collab-team-tab-container :is([style*="color:var(--tx)"],.font-medium,.text-xs.font-bold) { color: #121212 !important; }
                 [data-ui-style="bauhaus"] #collab-team-tab-container :is([style*="color:var(--tx-m)"],[style*="color:var(--tx-d)"]) { color: #555555 !important; font-weight: 600 !important; }
-                [data-ui-style="bauhaus"] #collab-team-tab-container .w-7.h-7 { border: 1.5px solid #121212 !important; border-radius: 0 !important; background: #EBF3FF !important; color: #1040C0 !important; }
+                [data-ui-style="bauhaus"] #collab-team-tab-container .collab-member-avatar { border: 1.5px solid #121212 !important; border-radius: 0 !important; }
                 [data-ui-style="bauhaus"] #collab-team-tab-container span.rounded[style*="uppercase"] { border: 1.5px solid #121212 !important; border-radius: 0 !important; box-shadow: 1px 1px 0 0 #121212 !important; }
                 [data-ui-style="bauhaus"] #collab-team-tab-container div[style*="border-top"] { border-top: 2px solid #121212 !important; }
                 #collab-team-tab-container .member-role-select .custom-select-list { top: auto !important; bottom: 100% !important; margin-top: 0 !important; margin-bottom: 4px !important; }
@@ -314,9 +344,7 @@
         try {
             const [members, invites] = await Promise.all([fetchMembers(), fetchInvites()]);
             container.innerHTML = buildTeamMarkup(members, invites, isOwner());
-            if (typeof root.enhanceInteractionSemantics === 'function') {
-                root.enhanceInteractionSemantics(container, false);
-            }
+            if (typeof root.enhanceInteractionSemantics === 'function') root.enhanceInteractionSemantics(container, false);
             if (isOwner() && invites.length > 0) {
                 const memberEmails = new Set(members.map(m => (m.email || '').trim().toLowerCase()));
                 const stale = invites.filter(inv => memberEmails.has((inv.email || '').trim().toLowerCase()));
@@ -333,64 +361,37 @@
 
     function renderTeamTab() {
         setTimeout(() => { loadAndRenderTeam(); }, 0);
-        return `
-        <div id="collab-team-tab-container">
-            <div class="py-8 text-center text-xs" style="color:var(--tx-d);">
-                <i class="fa-solid fa-circle-notch fa-spin text-sm mb-2" style="color:var(--acc);"></i>
-                <p>Loading team members…</p>
-            </div>
-        </div>`;
+        return `<div id="collab-team-tab-container"><div class="py-8 text-center text-xs" style="color:var(--tx-d);"><i class="fa-solid fa-circle-notch fa-spin text-sm mb-2" style="color:var(--acc);"></i><p>Loading team members…</p></div></div>`;
     }
 
     function getTeamTab() {
-        return {
-            id: 'team',
-            label: 'Team',
-            icon: 'fa-users',
-            render: renderTeamTab
-        };
+        return { id: 'team', label: 'Team', icon: 'fa-users', render: renderTeamTab };
     }
 
     // Global handlers for UI elements
     root.collabInviteMember = async function() {
-        const emailInput = document.getElementById('team-invite-email');
-        const roleSelect = document.getElementById('team-invite-role');
-        const email = emailInput?.value || '';
-        const role = roleSelect?.value || 'editor';
-        const ok = await inviteMember(email, role);
+        const emailInput = document.getElementById('team-invite-email'), roleSelect = document.getElementById('team-invite-role');
+        const ok = await inviteMember(emailInput?.value || '', roleSelect?.value || 'editor');
         if (ok && emailInput) emailInput.value = '';
     };
 
+    root.collabConfirmRemoveMember = (uid, name) => confirmRemoveMember(uid, name);
+    root.collabCancelRemoveMember = () => cancelRemoveMember();
+    root.collabExecuteRemoveMember = (uid) => executeRemoveMember(uid);
+    root.collabRemoveMember = (uid, name) => confirmRemoveMember(uid, name);
     root.collabChangeMemberRole = (uid, newRole) => updateMemberRole(uid, newRole);
-    root.collabRemoveMember = (uid) => removeMember(uid);
     root.collabRevokeInvite = (email) => revokeInvite(email);
     root.collabStartImport = () => root.CollabImport?.startImport?.();
 
     // Public API
     const CollabMembers = {
-        getCurrentMember,
-        getCurrentRole,
-        isOwner,
-        isEditor,
-        isViewer,
-        canWrite,
-        fetchMembers,
-        fetchInvites,
-        inviteMember,
-        updateMemberRole,
-        removeMember,
-        revokeInvite,
-        renderTeamTab,
-        loadAndRenderTeam,
-        getTeamTab,
-        hasUnimportedLocalVault
+        getCurrentMember, getCurrentRole, isOwner, isEditor, isViewer, canWrite,
+        fetchMembers, fetchInvites, inviteMember, updateMemberRole,
+        confirmRemoveMember, cancelRemoveMember, executeRemoveMember, removeMember, revokeInvite,
+        renderTeamTab, loadAndRenderTeam, getTeamTab, hasUnimportedLocalVault
     };
 
     root.CollabMembers = CollabMembers;
-
-    // Register into settings tab if hook is present
-    if (typeof root.registerSettingsTab === 'function') {
-        root.registerSettingsTab(getTeamTab());
-    }
+    if (typeof root.registerSettingsTab === 'function') root.registerSettingsTab(getTeamTab());
 
 })(typeof window !== 'undefined' ? window : globalThis);
