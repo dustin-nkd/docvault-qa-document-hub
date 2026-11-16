@@ -782,7 +782,7 @@ function renderFocus() {
     };
     const focusItem = item => {
         const owner = item.workflow.owner
-            ? `<span class="focus-chip"><i class="fa-regular fa-user"></i>${escHtml(item.workflow.owner)}</span>`
+            ? `<span class="focus-chip focus-owner-chip">${_renderAssigneeBadge(item.workflow.owner, item.workflow.ownerUid)}</span>`
             : `<span class="focus-chip is-unassigned"><i class="fa-regular fa-user"></i>${t('focusUnassigned')}</span>`;
         const lifecycle = item.workflowStatus === 'snoozed'
             ? `<span class="focus-chip is-snoozed"><i class="fa-regular fa-clock"></i>${t('focusSnoozedUntil', { date: focusDate(item.workflow.snoozedUntil) })}</span>`
@@ -1406,10 +1406,16 @@ function bugTriageInfo(doc) {
 
 function _renderAssigneeBadge(raw, uid) {
     if (!raw && !uid) return '';
-    let name = String(raw || '').trim();
-    if (uid && window.CollabAssign?.getMembers) {
-        const m = window.CollabAssign.getMembers().find(x => x.uid === uid);
-        if (m && m.displayName) name = m.displayName.trim();
+    let name = String(raw || '').trim(), photo = null;
+    const assignMod = (typeof window !== 'undefined' && window.CollabAssign) || (typeof globalThis !== 'undefined' && globalThis.CollabAssign);
+    if (assignMod?.getMembers) {
+        const members = assignMod.getMembers() || [];
+        const m = (uid ? members.find(x => x.uid === uid) : null) || members.find(x => x.displayName === raw || x.email === raw);
+        if (m) {
+            if (m.displayName) name = m.displayName.trim();
+            const p = m.photoURL || m.photoUrl;
+            if (typeof p === 'string' && /^https:\/\//i.test(p)) photo = p;
+        }
     }
     if (/\([^)]*@[^)]*\)$/.test(name)) name = name.replace(/\s*\([^)]*@[^)]*\)$/, '').trim();
     if (name.includes('@') && !name.includes(' ')) name = name.split('@')[0].trim();
@@ -1418,7 +1424,10 @@ function _renderAssigneeBadge(raw, uid) {
     let hash = 0, k = String(uid || raw || name);
     for (let i = 0; i < k.length; i++) hash = (hash * 31 + k.charCodeAt(i)) & 0xffffffff;
     const color = colors[(hash >>> 0) % colors.length];
-    return `<span class="inline-flex items-center gap-1.5 truncate max-w-full"><span class="collab-assignee-avatar w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] text-white shrink-0 select-none" style="background-color:${color};">${escHtml((name.charAt(0) || 'U').toUpperCase())}</span><span class="truncate">${escHtml(name)}</span></span>`;
+    const avatarHtml = photo
+        ? `<img src="${escHtml(photo)}" alt="${escHtml(name)}" class="collab-assignee-avatar w-4 h-4 rounded-full object-cover shrink-0 select-none" style="border:1px solid var(--brd);">`
+        : `<span class="collab-assignee-avatar w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] text-white shrink-0 select-none" style="background-color:${color};">${escHtml((name.charAt(0) || 'U').toUpperCase())}</span>`;
+    return `<span class="inline-flex items-center gap-1.5 truncate max-w-full">${avatarHtml}<span class="truncate">${escHtml(name)}</span></span>`;
 }
 
 function renderBugKanban(docs, isMobileSearch) {

@@ -271,16 +271,22 @@ function showModal(html) {
     }
     enhanceInteractionSemantics(m);
     m.onclick = (e) => { if (e.target === m) closeModal(); };
+    document.removeEventListener('keydown', _modalTrapHandler);
     document.addEventListener('keydown', _modalTrapHandler);
     const f = _modalFocusables();
     if (f.length) f[0].focus();
     else dialog?.focus();
 }
 function closeModal() {
+    const onClose = typeof window !== 'undefined' ? window._modalOnClose : null;
+    if (typeof window !== 'undefined') window._modalOnClose = null;
     document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden';
     document.removeEventListener('keydown', _modalTrapHandler);
     const prev = _modalPreviouslyFocusedEl;
     _modalPreviouslyFocusedEl = null;
+    if (typeof onClose === 'function') {
+        try { onClose(); } catch (e) { console.error('[closeModal onClose]', e); }
+    }
     if (prev && typeof prev.focus === 'function' && document.contains(prev)) {
         try { prev.focus(); } catch (e) {}
     }

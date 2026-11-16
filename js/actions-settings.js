@@ -277,6 +277,7 @@ window.showGitHubSettingsModal = async function() {
     }
     showModal(_renderSettingsModal());
 };
+window.showSettings = window.showGitHubSettingsModal;
 
 window.toggleImageCdn = function(el) {
     const on = !!(el && el.checked);
