@@ -300,7 +300,7 @@ service cloud.firestore {
         resource.data.readAt == null &&
         request.resource.data.readAt is int &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
-      allow delete: if false;
+      allow delete: if isMember() && resource.data.recipientUid == request.auth.uid;
     }
   }
 }

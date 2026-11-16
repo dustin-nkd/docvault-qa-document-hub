@@ -1404,20 +1404,35 @@ function bugTriageInfo(doc) {
     };
 }
 
+function _renderAssigneeBadge(raw, uid) {
+    if (!raw && !uid) return '';
+    let name = String(raw || '').trim();
+    if (uid && window.CollabAssign?.getMembers) {
+        const m = window.CollabAssign.getMembers().find(x => x.uid === uid);
+        if (m && m.displayName) name = m.displayName.trim();
+    }
+    if (/\([^)]*@[^)]*\)$/.test(name)) name = name.replace(/\s*\([^)]*@[^)]*\)$/, '').trim();
+    if (name.includes('@') && !name.includes(' ')) name = name.split('@')[0].trim();
+    if (!name) name = 'User';
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
+    let hash = 0, k = String(uid || raw || name);
+    for (let i = 0; i < k.length; i++) hash = (hash * 31 + k.charCodeAt(i)) & 0xffffffff;
+    const color = colors[(hash >>> 0) % colors.length];
+    return `<span class="inline-flex items-center gap-1.5 truncate max-w-full"><span class="collab-assignee-avatar w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] text-white shrink-0 select-none" style="background-color:${color};">${escHtml((name.charAt(0) || 'U').toUpperCase())}</span><span class="truncate">${escHtml(name)}</span></span>`;
+}
+
 function renderBugKanban(docs, isMobileSearch) {
     const SEV_COLOR = { Critical: '#ef4444', Major: '#f97316', Minor: '#f59e0b', Trivial: '#94a3b8' };
-    const showClosed = window._bugShowClosed !== false; // default show all
-    const bm = state.batchMode;
-    const sel = state.selectedIds;
-
+    const showClosed = window._bugShowClosed !== false;
+    const bm = state.batchMode, sel = state.selectedIds;
     const cols = [
-        { id: 'new',         get label() { return t('bugNew'); },        color: '#94a3b8', icon: 'fa-circle-plus' },
-        { id: 'open',        get label() { return t('bugOpen'); },       color: '#60a5fa', icon: 'fa-circle-dot' },
+        { id: 'new', get label() { return t('bugNew'); }, color: '#94a3b8', icon: 'fa-circle-plus' },
+        { id: 'open', get label() { return t('bugOpen'); }, color: '#60a5fa', icon: 'fa-circle-dot' },
         { id: 'in-progress', get label() { return t('bugInProgress'); }, color: '#a78bfa', icon: 'fa-spinner' },
-        { id: 'resolved',    get label() { return t('bugResolved'); },   color: '#38bdf8', icon: 'fa-circle-half-stroke' },
-        { id: 'retest',      get label() { return t('bugRetest'); },     color: '#c084fc', icon: 'fa-rotate' },
-        { id: 'verified',    get label() { return t('bugVerified'); },   color: '#4ade80', icon: 'fa-circle-check' },
-        { id: 'closed',      get label() { return t('bugClosed'); },     color: '#34d399', icon: 'fa-circle-xmark', isEnd: true },
+        { id: 'resolved', get label() { return t('bugResolved'); }, color: '#38bdf8', icon: 'fa-circle-half-stroke' },
+        { id: 'retest', get label() { return t('bugRetest'); }, color: '#c084fc', icon: 'fa-rotate' },
+        { id: 'verified', get label() { return t('bugVerified'); }, color: '#4ade80', icon: 'fa-circle-check' },
+        { id: 'closed', get label() { return t('bugClosed'); }, color: '#34d399', icon: 'fa-circle-xmark', isEnd: true }
     ];
 
     const closedCount = docs.filter(d => _normBugStatus(d.bugStatus) === 'closed').length;
@@ -1445,12 +1460,9 @@ function renderBugKanban(docs, isMobileSearch) {
                     const sevColor = SEV_COLOR[sev] || '#f59e0b';
                     const env = d.bugData?.env && d.bugData.env !== '-' ? d.bugData.env : '';
                     const browser = d.bugData?.browser && d.bugData.browser !== '-' ? d.bugData.browser : '';
-                    const assignee = d.bugData?.assignee || '';
-                    const resolution = d.bugData?.resolution || '';
-                    const reopenCount = typeof bugReopenCount === 'function' ? bugReopenCount(d) : 0;
-                    const priority = d.bugData?.priority || '';
-                    const ref = bugRef(d);
-                    const triage = bugTriageInfo(d);
+                    const assignee = d.bugData?.assignee || '', assigneeUid = d.bugData?.assigneeUid || '';
+                    const resolution = d.bugData?.resolution || '', reopenCount = typeof bugReopenCount === 'function' ? bugReopenCount(d) : 0;
+                    const priority = d.bugData?.priority || '', ref = bugRef(d), triage = bugTriageInfo(d);
                     const triageLabel = { pending: t('triageStatusPending'), soon: t('triageStatusSoon'), breached: t('triageStatusBreached'),
                         done: t('triageStatusDone'), missed: t('triageStatusMissed'), duplicate: t('triageStatusDuplicate') }[triage.stateName];
                     return `
@@ -1461,11 +1473,7 @@ function renderBugKanban(docs, isMobileSearch) {
                          data-onclick="${bm ? escHtml('toggleSelectDoc(' + JSON.stringify(d.id) + ',event)') : actionAttr('viewDoc', d.id)}"
                          style="background:var(--card); padding: 12px; margin-bottom: 0; border-radius: 8px; border-left: 3px solid ${sevColor}; position:relative;">
 
-                        ${bm ? `<div style="position:absolute;top:8px;right:8px;z-index:5;pointer-events:none;">
-                            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(d.id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(d.id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;">
-                                ${sel.has(d.id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}
-                            </div>
-                        </div>` : ''}
+                        ${bm ? `<div style="position:absolute;top:8px;right:8px;z-index:5;pointer-events:none;"><div style="width:18px;height:18px;border-radius:4px;border:2px solid ${sel.has(d.id) ? 'var(--acc)' : 'var(--brd-l)'};background:${sel.has(d.id) ? 'var(--acc)' : 'rgba(13,21,36,0.7)'};display:flex;align-items:center;justify-content:center;">${sel.has(d.id) ? '<i class="fa-solid fa-check" style="font-size:9px;color:white;"></i>' : ''}</div></div>` : ''}
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sevColor}20; color:${sevColor}; letter-spacing:.3px;">${escHtml(sev.toUpperCase())}</span>
@@ -1475,21 +1483,15 @@ function renderBugKanban(docs, isMobileSearch) {
                                 <span class="triage-mini is-${triage.stateName}">${triageLabel}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 ml-2" style="${bm ? 'visibility:hidden;' : ''}">
-                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();${actionAttr('toggleFav', d.id)}">
-                                    <i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i>
-                                </button>
-                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();${escHtml('showDocMenu(' + JSON.stringify(d.id) + ', this)')}" title="More actions">
-                                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                                </button>
+                                <button class="fav-btn ${d.favorite ? 'on' : ''} text-xs p-1" style="color:${d.favorite ? '#f59e0b' : 'var(--tx-d)'};" aria-label="${d.favorite ? 'Remove from favorites' : 'Add to favorites'}" data-onclick="event.stopPropagation();${actionAttr('toggleFav', d.id)}"><i class="fa-${d.favorite ? 'solid' : 'regular'} fa-star"></i></button>
+                                <button class="text-xs p-1 rounded ui-hover-bg2" style="color:var(--tx-d);transition:color .15s;" data-onclick="event.stopPropagation();${escHtml('showDocMenu(' + JSON.stringify(d.id) + ', this)')}" title="More actions"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                             </div>
                         </div>
 
                         <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
 
-                        ${assignee ? `<p class="text-[10px] mb-1.5 flex items-center gap-1" style="color:var(--tx-d);"><i class="fa-solid fa-user" style="font-size:8px;"></i> ${escHtml(assignee)}</p>` : ''}
-                        <p class="bug-card-triage">
-                            <span>${escHtml(triage.classificationLabel)}</span><span>${triage.slaHours}h SLA</span>
-                        </p>
+                        ${assignee ? `<p class="text-[10px] mb-1.5 flex items-center gap-1" style="color:var(--tx-d);">${_renderAssigneeBadge(assignee, assigneeUid)}</p>` : ''}
+                        <p class="bug-card-triage"><span>${escHtml(triage.classificationLabel)}</span><span>${triage.slaHours}h SLA</span></p>
                         ${env || browser ? `<p class="text-[10px] mb-2 truncate" style="color:var(--tx-d);"><i class="fa-solid fa-bug mr-1"></i>${escHtml([env, browser].filter(Boolean).join(' · '))}</p>` : ''}
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
@@ -1501,11 +1503,7 @@ function renderBugKanban(docs, isMobileSearch) {
                     </li>`;
                 }).join('')}
 
-                ${colDocs.length === 0 ? `
-                    <li class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);list-style:none;">
-                        <p class="text-[11px] font-medium">${t('dragBugHere')}</p>
-                    </li>
-                ` : ''}
+                ${colDocs.length === 0 ? `<li class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);list-style:none;"><p class="text-[11px] font-medium">${t('dragBugHere')}</p></li>` : ''}
             </ul>
         </section>
         `;
@@ -1626,7 +1624,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
                         </div>
 
                         <h4 class="text-sm font-semibold mb-2 leading-snug" style="color:var(--tx);">${escHtml(d.title)}</h4>
-                        ${(d.assignee || d.taskData?.assignee) ? `<p class="text-[11px] mb-2 flex items-center gap-1.5" style="color:var(--tx-m);"><i class="fa-solid fa-user" style="font-size:9px;color:var(--acc);"></i>${escHtml(d.assignee || d.taskData?.assignee)}</p>` : ''}
+                        ${(d.assignee || d.taskData?.assignee) ? `<p class="text-[11px] mb-2 flex items-center gap-1.5" style="color:var(--tx-m);">${_renderAssigneeBadge(d.assignee || d.taskData?.assignee, d.assigneeUid || d.taskData?.assigneeUid)}</p>` : ''}
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-auto pt-2 border-t" style="border-color:var(--brd);">
                             ${d.tags.slice(0, 2).map(tg => `<span class="tag">${escHtml(tg)}</span>`).join('')}
@@ -1636,11 +1634,7 @@ function renderKanbanBoard(docs, isMobileSearch) {
                     </li>
                 `).join('')}
 
-                ${colDocs.length === 0 ? `
-                    <li class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);list-style:none;">
-                        <p class="text-[11px] font-medium">${t('dragTaskHere')}</p>
-                    </li>
-                ` : ''}
+                ${colDocs.length === 0 ? `<li class="py-6 text-center border-2 border-dashed rounded-lg" style="border-color:var(--brd); color:var(--tx-d);list-style:none;"><p class="text-[11px] font-medium">${t('dragTaskHere')}</p></li>` : ''}
             </ul>
         </section>
         `;

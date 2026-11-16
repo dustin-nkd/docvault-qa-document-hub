@@ -24,4 +24,5 @@ import './testrun-view.test.mjs';
 import './environment-view.test.mjs';
 import './collab-comments.test.mjs';
 import './collab-comments-ui.test.mjs';
+import './collab-assign.test.mjs';
 import './collab-phase2-integrity.test.mjs';

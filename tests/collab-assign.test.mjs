@@ -24,8 +24,17 @@ function createAssignContext(options = {}) {
     const notifStore = new Map(options.initialNotifications || []);
     const notifSets = [];
     const notifUpdates = [];
+    const notifDeletes = [];
 
     const firestoreMock = {
+        batch: options.batch || (() => {
+            const ops = [];
+            return {
+                update: (docRef, data) => ops.push(() => docRef.update(data)),
+                delete: (docRef) => ops.push(() => docRef.delete()),
+                commit: async () => { for (const op of ops) await op(); }
+            };
+        }),
         collection: (colName) => {
             if (colName === 'members') {
                 return {
@@ -62,12 +71,16 @@ function createAssignContext(options = {}) {
                             notifUpdates.push({ id: notifId, data });
                             const existing = notifStore.get(notifId) || {};
                             notifStore.set(notifId, { ...existing, ...data });
+                        },
+                        delete: async () => {
+                            notifDeletes.push(notifId);
+                            notifStore.delete(notifId);
                         }
                     })
                 };
             }
             return {
-                doc: () => ({ get: async () => ({ exists: false }), set: async () => {}, update: async () => {} })
+                doc: () => ({ get: async () => ({ exists: false }), set: async () => {}, update: async () => {}, delete: async () => {} })
             };
         }
     };
@@ -234,8 +247,10 @@ function createAssignContext(options = {}) {
         },
         viewDoc: (docId) => { viewedDocId = docId; },
         getViewedDocId: () => viewedDocId,
+        getCatMeta: (cat) => cat === 'bug' ? { icon: 'fa-bug', color: 'var(--c-bug)', label: 'Bug' } : { icon: 'fa-list-check', color: 'var(--c-task)', label: 'Task' },
         notifSets,
         notifUpdates,
+        notifDeletes,
         notifStore,
         membersStore
     };
@@ -471,8 +486,21 @@ test('CollabAssign: notification bell in header attaches, updates badge, and ren
     ctx.CollabAssign.toggleNotifications();
     const panel = ctx.document.getElementById('collab-notif-panel');
     assert.ok(panel, 'Panel must exist after toggling open');
-    assert.ok(panel.innerHTML.includes('Alice QA (alice@example.com) assigned you Bug One'));
-    assert.ok(panel.innerHTML.includes('Bob Lead (bob@example.com) assigned you Focus Two'));
+
+    // Header buttons (fa-check-double and fa-trash-can)
+    assert.ok(panel.innerHTML.includes('fa-check-double'), 'Header must contain mark-all-read icon');
+    assert.ok(panel.innerHTML.includes('collabMarkAllNotificationsRead'), 'Mark-all-read button must call collabMarkAllNotificationsRead');
+    assert.ok(panel.innerHTML.includes('fa-trash-can'), 'Header must contain clear-all icon');
+    assert.ok(panel.innerHTML.includes('collabClearAllNotifications'), 'Clear-all button must call collabClearAllNotifications');
+
+    // Item notification format: avatar, user name only (no email), category icon
+    assert.ok(panel.innerHTML.includes('collab-notif-avatar'), 'Panel item must include avatar');
+    assert.ok(panel.innerHTML.includes('>A<'), 'Panel avatar must render initial A for Alice QA');
+    assert.ok(panel.innerHTML.includes('Alice QA'), 'Panel item must render actor name');
+    assert.ok(!panel.innerHTML.includes('alice@example.com'), 'Panel item must NOT include actor email');
+    assert.ok(panel.innerHTML.includes('Bob Lead'), 'Panel item must render actor name for second item');
+    assert.ok(!panel.innerHTML.includes('bob@example.com'), 'Panel item must NOT include actor email for second item');
+    assert.ok(panel.innerHTML.includes('fa-bug'), 'Bug notification must render fa-bug category icon');
 
     // Click first notification to open doc and mark as read
     await ctx.CollabAssign.openNotification('n1', 'doc-1');
@@ -504,9 +532,10 @@ test('CollabAssign: notification panel renders "mentioned you in" for mentions a
     const panel = ctx.document.getElementById('collab-notif-panel');
     assert.ok(panel, 'Panel must exist');
     assert.ok(
-        panel.innerHTML.includes('Alice QA (alice@example.com) mentioned you in Payment Gateway Crash'),
-        'Panel must render "mentioned you in" and live document title instead of raw doc-legacy ID'
+        panel.innerHTML.includes('Alice QA') && panel.innerHTML.includes('mentioned you in') && panel.innerHTML.includes('Payment Gateway Crash'),
+        'Panel must render actor name, "mentioned you in", and live document title instead of raw doc-legacy ID'
     );
+    assert.ok(!panel.innerHTML.includes('alice@example.com'), 'Notification must not show actor email');
 });
 
 test('CollabAssign: badge formats 0 unread as hidden and >9 as 9+', () => {
@@ -580,4 +609,247 @@ test('CollabAssign: notifyAssignment creates notification with kind task', async
     assert.equal(notif.kind, 'task');
     assert.equal(notif.docId, 'task-100');
     assert.equal(notif.docTitle, 'Refactor DB Queries');
+});
+
+test('CollabAssign: line budget check for js/collab-assign.js is <= 400 lines', () => {
+    const lines = read('js/collab-assign.js').split(/\r?\n/).length;
+    assert.ok(lines <= 400, `js/collab-assign.js exceeds 400 lines: ${lines} > 400`);
+});
+
+test('CollabAssign: collabMarkAllNotificationsRead marks all notifications read in memory and Firestore', async () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n1', { id: 'n1', recipientUid: 'user-current', actorName: 'Alice', actorEmail: 'a@ex.com', docId: 'd1', docTitle: 'D1', kind: 'bug', createdAt: 1000, readAt: null }],
+            ['n2', { id: 'n2', recipientUid: 'user-current', actorName: 'Bob', actorEmail: 'b@ex.com', docId: 'd2', docTitle: 'D2', kind: 'task', createdAt: 2000, readAt: null }]
+        ]
+    });
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    const btn = ctx.document.getElementById('collab-notif-btn');
+    assert.equal(btn.querySelector('.collab-notif-badge')?.textContent, '2');
+
+    await ctx.collabMarkAllNotificationsRead();
+
+    // Badge should disappear
+    assert.equal(btn.querySelector('.collab-notif-badge'), null);
+    // All items should have readAt set
+    for (const notif of ctx.notifStore.values()) {
+        assert.ok(typeof notif.readAt === 'number');
+    }
+});
+
+test('CollabAssign: collabClearAllNotifications deletes all notifications in memory and Firestore', async () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n1', { id: 'n1', recipientUid: 'user-current', actorName: 'Alice', actorEmail: 'a@ex.com', docId: 'd1', docTitle: 'D1', kind: 'bug', createdAt: 1000, readAt: null }],
+            ['n2', { id: 'n2', recipientUid: 'user-current', actorName: 'Bob', actorEmail: 'b@ex.com', docId: 'd2', docTitle: 'D2', kind: 'task', createdAt: 2000, readAt: null }]
+        ]
+    });
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+    const panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel.innerHTML.includes('collab-notif-item'));
+
+    await ctx.collabClearAllNotifications();
+
+    // Memory notifications cleared
+    assert.equal(ctx.notifDeletes.length, 2);
+    assert.ok(ctx.notifDeletes.includes('n1'));
+    assert.ok(ctx.notifDeletes.includes('n2'));
+    assert.equal(ctx.notifStore.size, 0);
+
+    // Panel shows empty state
+    assert.ok(panel.innerHTML.includes('No assignments yet.'));
+});
+
+test('CollabAssign: notification item renders photoUrl avatar when member profile contains photo', () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialMembers: [
+            ['user-photo', { uid: 'user-photo', displayName: 'Photo User', email: 'photo@example.com', role: 'editor', photoURL: 'https://example.com/avatar.png' }]
+        ],
+        initialNotifications: [
+            ['n-photo', { id: 'n-photo', recipientUid: 'user-current', actorUid: 'user-photo', actorName: 'Photo User', actorEmail: 'photo@example.com', docId: 'd1', docTitle: 'Task Title', kind: 'task', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+
+    const panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel.innerHTML.includes('<img src="https://example.com/avatar.png"'), 'Renders img tag with photoURL');
+    assert.ok(panel.innerHTML.includes('alt="Photo User"'), 'Img tag has correct alt text');
+    assert.ok(panel.innerHTML.includes('fa-list-check'), 'Renders fa-list-check category icon for task');
+});
+
+test('CollabAssign / Kanban: Bug and Task kanban render round avatar and user name only, without email', () => {
+    const renderCoreSource = read('js/render-core.js');
+    assert.doesNotMatch(renderCoreSource, /actorEmail/, 'js/render-core.js must NOT contain literal actorEmail');
+
+    const kanbanCtx = vm.createContext({
+        console,
+        window: {
+            CollabAssign: {
+                getMembers: () => [
+                    { uid: 'u-alice', displayName: 'Alice QA', email: 'alice@example.com', role: 'editor' },
+                    { uid: 'u-bob', displayName: 'Bob Dev', email: 'bob@example.com', role: 'editor' }
+                ],
+                getMemberLabel: m => `${m.displayName} (${m.email})`
+            }
+        },
+        document: { getElementById: () => null },
+        state: { batchMode: false, selectedIds: new Set(), taskAssigneeFilter: 'all', search: '', statusFilter: 'all' },
+        debounce: fn => fn,
+        t: k => k,
+        escHtml: s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+        actionAttr: (fn, ...args) => `${fn}(${args.map(a => JSON.stringify(a)).join(',')})`,
+        fmtDate: () => '2026-11-16',
+        _normBugStatus: s => s || 'open',
+        bugRef: () => 'BUG-1',
+        bugTriageInfo: () => ({ stateName: 'pending', classificationLabel: 'Normal', slaHours: 24 }),
+        renderSelect: () => ''
+    });
+    kanbanCtx.window.window = kanbanCtx.window;
+    vm.runInContext(renderCoreSource, kanbanCtx);
+
+    // Test Bug Kanban
+    const bugDocs = [{
+        id: 'b1', title: 'Login Button Overflow', category: 'bug', bugStatus: 'open',
+        bugData: { severity: 'Major', assignee: 'Alice QA (alice@example.com)', assigneeUid: 'u-alice' },
+        tags: [], updatedAt: Date.now()
+    }];
+    const bugHtml = kanbanCtx.renderBugKanban(bugDocs, false);
+    assert.ok(bugHtml.includes('collab-assignee-avatar'), 'Bug card renders round avatar');
+    assert.ok(bugHtml.includes('>A<'), 'Bug card avatar renders initial A');
+    assert.ok(bugHtml.includes('Alice QA'), 'Bug card renders user name');
+    assert.ok(!bugHtml.includes('alice@example.com'), 'Bug card does NOT render email');
+
+    // Test Task Kanban
+    const taskDocs = [{
+        id: 't1', title: 'Implement SSO Flow', category: 'task', kanbanStatus: 'todo', status: 'published',
+        assignee: 'Bob Dev (bob@example.com)', assigneeUid: 'u-bob',
+        tags: [], updatedAt: Date.now()
+    }];
+    const taskHtml = kanbanCtx.renderKanbanBoard(taskDocs, false);
+    assert.ok(taskHtml.includes('collab-assignee-avatar'), 'Task card renders round avatar');
+    assert.ok(taskHtml.includes('>B<'), 'Task card avatar renders initial B');
+    assert.ok(taskHtml.includes('Bob Dev'), 'Task card renders user name');
+    assert.ok(!taskHtml.includes('bob@example.com'), 'Task card does NOT render email');
+});
+
+test('CollabAssign: notifyAssignment snapshots actorPhotoUrl and rejects non-https photo in notification item', async () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com', photoURL: 'https://cdn.example.com/avatar.jpg' }
+    });
+    ctx.CollabAssign.startListening();
+    await ctx.CollabAssign.notifyAssignment({
+        doc: { id: 'doc-1', title: 'Feature Alpha' },
+        kind: 'task',
+        signalKey: '',
+        oldUid: '',
+        newUid: 'user-1'
+    });
+    assert.equal(ctx.notifSets.length, 1);
+    assert.equal(ctx.notifSets[0].data.actorPhotoUrl, 'https://cdn.example.com/avatar.jpg');
+
+    // Test rejection of non-https photo (e.g. http:// or javascript:) in notification item
+    const ctx2 = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n-http', { id: 'n-http', recipientUid: 'user-current', actorUid: 'user-1', actorName: 'Insecure User', actorEmail: 'insecure@example.com', actorPhotoUrl: 'http://insecure.example.com/pic.jpg', docId: 'd1', docTitle: 'Task 1', kind: 'task', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx2.CollabAssign.startListening();
+    ctx2.CollabAssign.attachNotificationBell();
+    ctx2.CollabAssign.toggleNotifications();
+    const panel = ctx2.document.getElementById('collab-notif-panel');
+    assert.ok(!panel.innerHTML.includes('<img'), 'Must NOT render img tag for non-https photo URL');
+    assert.ok(panel.innerHTML.includes('>I<'), 'Must fall back to initial letter I');
+});
+
+test('CollabAssign: notification item renders correct category icon for comment_mention and focus even when doc is missing', () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n-mention', { id: 'n-mention', recipientUid: 'user-current', actorUid: 'user-1', actorName: 'Alice', actorEmail: 'alice@example.com', docId: 'missing-doc-1', docTitle: 'Some Doc', kind: 'comment_mention', createdAt: 2000, readAt: null }],
+            ['n-focus', { id: 'n-focus', recipientUid: 'user-current', actorUid: 'user-1', actorName: 'Alice', actorEmail: 'alice@example.com', docId: 'missing-doc-2', docTitle: 'Some Doc', kind: 'focus', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+    const panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel.innerHTML.includes('fa-comment'), 'Must render fa-comment icon for comment_mention');
+    assert.ok(panel.innerHTML.includes('fa-crosshairs'), 'Must render fa-crosshairs icon for focus');
+});
+
+test('CollabAssign / Kanban: preserves role tags like (QA Lead) while stripping email parentheticals', () => {
+    const renderCoreSource = read('js/render-core.js');
+    const kanbanCtx = vm.createContext({
+        console,
+        window: {
+            CollabAssign: {
+                getMembers: () => [
+                    { uid: 'u-lead', displayName: 'Bob', email: 'bob@example.com', role: 'editor' }
+                ],
+                getMemberLabel: m => `${m.displayName} (${m.email})`
+            }
+        },
+        document: { getElementById: () => null },
+        state: { batchMode: false, selectedIds: new Set(), taskAssigneeFilter: 'all', search: '', statusFilter: 'all' },
+        debounce: fn => fn,
+        t: k => k,
+        escHtml: s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+        actionAttr: (fn, ...args) => `${fn}(${args.map(a => JSON.stringify(a)).join(',')})`,
+        fmtDate: () => '2026-11-16',
+        _normBugStatus: s => s || 'open',
+        bugRef: () => 'BUG-1',
+        bugTriageInfo: () => ({ stateName: 'pending', classificationLabel: 'Normal', slaHours: 24 }),
+        renderSelect: () => ''
+    });
+    kanbanCtx.window.window = kanbanCtx.window;
+    vm.runInContext(renderCoreSource, kanbanCtx);
+
+    const taskDocs = [{
+        id: 't-lead', title: 'Audit Task', category: 'task', kanbanStatus: 'todo', status: 'published',
+        assignee: 'Bob (QA Lead)',
+        tags: [], updatedAt: Date.now()
+    }];
+    const taskHtml = kanbanCtx.renderKanbanBoard(taskDocs, false);
+    assert.ok(taskHtml.includes('Bob (QA Lead)'), 'Must preserve role tag (QA Lead) in assignee badge');
+});
+
+test('CollabAssign: markAllNotificationsRead chunked rollback on later batch failure', async () => {
+    let batchCount = 0;
+    const initialNotifs = [];
+    for (let i = 0; i < 405; i++) {
+        initialNotifs.push([`n-${i}`, { id: `n-${i}`, recipientUid: 'user-current', actorUid: 'user-1', docId: 'd1', docTitle: 'T', kind: 'task', createdAt: i, readAt: null }]);
+    }
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: initialNotifs,
+        batch: () => {
+            batchCount++;
+            const currentBatch = batchCount;
+            const ops = [];
+            return {
+                update: (docRef, data) => ops.push(() => docRef.update(data)),
+                delete: (docRef) => ops.push(() => docRef.delete()),
+                commit: async () => {
+                    if (currentBatch === 2) throw new Error('Simulated second chunk failure');
+                    for (const op of ops) await op();
+                }
+            };
+        }
+    });
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    await ctx.collabMarkAllNotificationsRead();
+
+    // The first 400 items were committed and remain read, the remaining 5 failed and rolled back
+    const badge = ctx.document.getElementById('collab-notif-btn')?.querySelector('.collab-notif-badge');
+    assert.equal(badge?.textContent, '5', 'Badge reflects only the 5 uncommitted rolled-back items');
 });

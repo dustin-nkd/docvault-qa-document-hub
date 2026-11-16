@@ -1361,10 +1361,10 @@ test('Branch 14 (notifications): allows recipient to transition readAt null to i
         readAt: 4000
     }));
 
-    // 5. Delete is DENIED for all roles (recipient, other, even team owner)
-    await assertFails(recipient.collection('notifications').doc('notif-unread').delete());
-    await assertFails(other.collection('notifications').doc('notif-unread').delete());
-    await assertFails(owner.collection('notifications').doc('notif-unread').delete());
+    // 5. Delete is allowed for recipient, DENIED for other member and owner on live doc
+    await assertSucceeds(recipient.collection('notifications').doc('notif-unread').delete());
+    await assertFails(other.collection('notifications').doc('notif-already-read').delete());
+    await assertFails(owner.collection('notifications').doc('notif-already-read').delete());
 });
 
 // ---------------------------------------------------------------------------
