@@ -317,14 +317,15 @@
         if (role !== 'editor' && role !== 'owner') return;
         const user = getCurrentUser(); if (!user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
-        const db = getFirestoreDb();
-        if (!db) return;
+        const db = getFirestoreDb(); if (!db) return;
         const actId = String(entry.id || ('act_' + Date.now())), actorEmail = member?.email || user.email || '';
         const actorName = member?.displayName || user?.displayName || member?.name || member?.email || '';
+        const actorPhoto = (typeof user?.photoURL === 'string' && /^https:\/\//i.test(user.photoURL)) ? user.photoURL : ((typeof member?.photoURL === 'string' && /^https:\/\//i.test(member.photoURL)) ? member.photoURL : '');
         const payload = {
             id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated',
             docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '',
-            actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {})
+            actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}),
+            ...(actorPhoto ? { actorPhotoUrl: actorPhoto } : {})
         };
         try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
     }
@@ -344,21 +345,13 @@
             const snap = await histCol.get(), existing = [];
             snap.forEach(d => { const data = (typeof d.data === 'function') ? d.data() : (d.data || d); existing.push({ id: d.id, ...data }); });
             existing.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-
             if (existing.length && existing[0].content === (doc.content || '') && existing[0].title === doc.title) return;
             if (role === 'editor' && existing.length >= 10) return;
-
             const snapId = 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-            const payload = {
-                id: snapId, ts: Date.now(), title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '',
-                tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '', savedBy: user.uid
-            };
+            const payload = { id: snapId, ts: Date.now(), title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '', savedBy: user.uid };
             await histCol.doc(snapId).set(payload);
-
             if (role === 'owner' && existing.length >= 10) {
-                for (const oldSnap of existing.slice(9)) {
-                    try { await histCol.doc(oldSnap.id).delete(); } catch (_) {}
-                }
+                for (const oldSnap of existing.slice(9)) { try { await histCol.doc(oldSnap.id).delete(); } catch (_) {} }
             }
         } catch (err) { console.warn('[CollabStore] saveHistory error:', err); }
     }
@@ -378,8 +371,7 @@
         return await db.runTransaction(async tx => {
             const snap = await tx.get(counterRef);
             let allocated = 1;
-            if (!snap.exists) { tx.set(counterRef, { next: 1 }); }
-            else {
+            if (!snap.exists) { tx.set(counterRef, { next: 1 }); } else {
                 const data = (typeof snap.data === 'function') ? snap.data() : snap.data;
                 allocated = ((typeof data?.next === 'number') ? data.next : 0) + 1;
                 tx.update(counterRef, { next: allocated });

@@ -141,14 +141,14 @@ function createActivityContext(options = {}) {
         GUEST_MODE: isGuest,
         location: { search: isGuest ? '?guest=1' : '', hostname: 'localhost' },
         CollabBootstrap: {
-            getCurrentMember: () => ({ uid, role, displayName, email })
+            getCurrentMember: () => ({ uid, role, displayName, email, photoURL: options.photoURL })
         },
         CollabAuth: {
-            getCurrentUser: () => ({ uid, email, displayName })
+            getCurrentUser: () => ({ uid, email, displayName, photoURL: options.photoURL })
         },
         firebase: {
             firestore: () => firestoreMock,
-            auth: () => ({ currentUser: { uid, email, displayName } })
+            auth: () => ({ currentUser: { uid, email, displayName, photoURL: options.photoURL } })
         },
         documents: [],
         state: { view: 'activity', category: 'all', activityFilter: 'all' },
@@ -256,6 +256,23 @@ test('CollabStore.recordActivity: editor payload has actorEmail preserving exact
     assert.equal(entry.title, 'Test Document');
 });
 
+test('CollabStore.recordActivity: stores actorPhotoUrl when authUser has https:// photoURL', async () => {
+    const { ctx, activityStore } = createActivityContext({
+        role: 'editor',
+        uid: 'user-photo-record',
+        displayName: 'Photo Recorder',
+        email: 'recorder@example.com',
+        photoURL: 'https://cdn.example.com/recorder.png'
+    });
+
+    const doc = { id: 'doc-p', title: 'Photo Doc', category: 'general' };
+    await vm.runInContext("ActivityLog.record('created', doc, { note: 'Snapshot test' })", Object.assign(ctx, { doc }));
+
+    assert.equal(activityStore.size, 1);
+    const entry = Array.from(activityStore.values())[0];
+    assert.equal(entry.actorPhotoUrl, 'https://cdn.example.com/recorder.png', 'Payload must include actorPhotoUrl when valid https');
+});
+
 // ---------------------------------------------------------------------------
 // 3. Timeline formatting with actor display in .act-when (Phase 20)
 // ---------------------------------------------------------------------------
@@ -289,14 +306,16 @@ test('Timeline rows: two accounts with same displayName but different emails ren
     // .act-when wraps time and actor; time is first, actor is second; title has exact account text
     assert.match(
         row1,
-        /<span class="act-when"><time\b[^>]*>[\s\S]*?<\/time><span class="act-actor" title="by Khanh Duy Nguyen \(nguyenkhanhduy\.sgd@gmail\.com\)">by Khanh Duy Nguyen \(nguyenkhanhduy\.sgd@gmail\.com\)<\/span><\/span>/,
-        'row1: time must come first, actor second inside .act-when with matching title'
+        /<span class="act-when"><time\b[^>]*>[\s\S]*?<\/time><span class="act-actor" title="by Khanh Duy Nguyen \(nguyenkhanhduy\.sgd@gmail\.com\)"><span class="collab-activity-avatar[^>]*>K<\/span><span class="act-actor-name truncate">Khanh Duy Nguyen<\/span><\/span><\/span>/,
+        'row1: time must come first, actor second inside .act-when with matching title and avatar + username'
     );
     assert.match(
         row2,
-        /<span class="act-when"><time\b[^>]*>[\s\S]*?<\/time><span class="act-actor" title="by Khanh Duy Nguyen \(nguyenkhanhduy\.contact@gmail\.com\)">by Khanh Duy Nguyen \(nguyenkhanhduy\.contact@gmail\.com\)<\/span><\/span>/,
-        'row2: time must come first, actor second inside .act-when with matching title'
+        /<span class="act-when"><time\b[^>]*>[\s\S]*?<\/time><span class="act-actor" title="by Khanh Duy Nguyen \(nguyenkhanhduy\.contact@gmail\.com\)"><span class="collab-activity-avatar[^>]*>K<\/span><span class="act-actor-name truncate">Khanh Duy Nguyen<\/span><\/span><\/span>/,
+        'row2: time must come first, actor second inside .act-when with matching title and avatar + username'
     );
+    assert.doesNotMatch(row1.replace(/title="[^"]*"/g, ''), /nguyenkhanhduy\.sgd@gmail\.com/, 'Visible text of row1 must not contain email');
+    assert.doesNotMatch(row2.replace(/title="[^"]*"/g, ''), /nguyenkhanhduy\.contact@gmail\.com/, 'Visible text of row2 must not contain email');
 
     // .act-sub must NOT contain email or actor name
     const sub1Match = row1.match(/<span class="act-sub">([\s\S]*?)<\/span>/);
@@ -374,6 +393,9 @@ test('CSS injection: js/collab-activity.js injects .act-when styles once with co
     assert.match(css, /\.act-actor/, 'Must style .act-actor');
     assert.match(css, /text-overflow:\s*ellipsis/, 'Must ellipsis long account text');
     assert.match(css, /white-space:\s*nowrap/, 'Must keep account and time on single line');
+    assert.match(css, /\[data-ui-style="bauhaus"\]\s*\.collab-activity-avatar/, 'Must style Bauhaus avatar');
+    assert.match(css, /border:\s*1\.5px solid #121212 !important/, 'Bauhaus avatar border');
+    assert.match(css, /border-radius:\s*0 !important/, 'Bauhaus avatar border radius');
 });
 
 test('Timeline rows: old document without actorEmail resolves email from members/{uid}', () => {
@@ -454,6 +476,65 @@ test('Timeline rows: entry with only email renders "by <email>"', () => {
 
     assert.match(row, /by nguyenkhanhduy\.sgd@gmail\.com/);
     assert.doesNotMatch(row, /\(nguyenkhanhduy\.sgd@gmail\.com\)/, 'Should not duplicate email in parens when only email exists');
+    assert.match(row, /<span class="act-actor-name truncate">nguyenkhanhduy\.sgd<\/span>/, 'Displays email prefix as username when only email exists');
+    assert.match(row, /<span class="collab-activity-avatar[^>]*>N<\/span>/, 'Avatar initial is N from email prefix');
+});
+
+test('Timeline rows: actor with photoURL renders img tag with .collab-activity-avatar', () => {
+    const { ctx } = createActivityContext({ role: 'editor', initialMembers: [] });
+    ctx.CollabActivity.startListening();
+
+    const rowHttps = ctx._renderActivityRow({
+        id: 'act-photo-1',
+        ts: Date.now(),
+        type: 'created',
+        title: 'Photo Doc',
+        actorName: 'Photo User',
+        actorEmail: 'photo@example.com',
+        photoURL: 'https://example.com/avatar.jpg'
+    });
+
+    assert.match(rowHttps, /<img\b[^>]*src="https:\/\/example\.com\/avatar\.jpg"[^>]*class="collab-activity-avatar[^"]*"[^>]*>/);
+    assert.match(rowHttps, /alt="Photo User"/);
+    assert.doesNotMatch(rowHttps.replace(/title="[^"]*"/g, ''), /\(photo@example\.com\)/);
+
+    // Non-https photo falls back to initial letter
+    const rowHttp = ctx._renderActivityRow({
+        id: 'act-photo-2',
+        ts: Date.now(),
+        type: 'created',
+        title: 'Insecure Photo Doc',
+        actorName: 'Insecure User',
+        photoURL: 'http://insecure.com/avatar.jpg'
+    });
+    assert.doesNotMatch(rowHttp, /<img\b/);
+    assert.match(rowHttp, /<span class="collab-activity-avatar[^>]*>I<\/span>/);
+});
+
+test('Timeline rows: color generated from hash of actor key uses designated palette and exact hash', () => {
+    const palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
+    const { ctx } = createActivityContext({ role: 'editor', initialMembers: [] });
+    ctx.CollabActivity.startListening();
+
+    const row = ctx._renderActivityRow({
+        id: 'act-color',
+        ts: Date.now(),
+        type: 'updated',
+        title: 'Color Test',
+        actorUid: 'u-color-123',
+        actorName: 'Palette Tester'
+    });
+
+    const match = row.match(/background-color:(#[0-9a-f]{6});/i);
+    assert.ok(match, 'Avatar must have inline background-color from palette');
+    assert.ok(palette.includes(match[1]), `Color ${match[1]} must belong to palette`);
+
+    // Verify exact unsigned 32-bit hash algorithm
+    const key = 'u-color-123';
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) & 0xffffffff;
+    const expectedColor = palette[(hash >>> 0) % palette.length];
+    assert.equal(match[1].toLowerCase(), expectedColor.toLowerCase(), 'Must match exact unsigned 32-bit hash calculation');
 });
 
 test('Timeline rows: hostile characters in name and email are HTML-escaped', () => {
@@ -709,7 +790,7 @@ test('Lifecycle: CollabBootstrap.signOut calls CollabActivity.stopListening', as
 
 test('Maintainability: line budgets and js/render-core.js integrity hold', () => {
     const actLines = read('js/collab-activity.js').split(/\r?\n/).length;
-    assert.ok(actLines <= 400, `js/collab-activity.js exceeds 400 lines (got ${actLines})`);
+    assert.ok(actLines <= 300, `js/collab-activity.js exceeds 300 lines (got ${actLines})`);
 
     const bootLines = read('js/collab-bootstrap.js').split(/\r?\n/).length;
     assert.ok(bootLines <= 400, `js/collab-bootstrap.js exceeds 400 lines (got ${bootLines})`);

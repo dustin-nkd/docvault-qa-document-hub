@@ -45,28 +45,51 @@
         return db;
     }
 
+    function getAvatarColor(key) {
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
+        let hash = 0, str = String(key || '');
+        for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff;
+        return colors[(hash >>> 0) % colors.length];
+    }
+
     function formatAccountText(entry) {
-        if (!entry) return 'by Unknown account';
-        let email = '';
-        let name = '';
-        if (entry.actorUid && _store.membersMap.has(entry.actorUid)) {
-            const m = _store.membersMap.get(entry.actorUid);
+        let email = '', name = '', m = null;
+        if (entry?.actorUid && _store.membersMap.has(entry.actorUid)) {
+            m = _store.membersMap.get(entry.actorUid);
             email = m?.email || '';
             name = m?.displayName || '';
         }
-        if (!email && entry.actorEmail) email = entry.actorEmail;
-        if (!name && entry.actorName) name = entry.actorName;
+        if (!email && entry?.actorEmail) email = entry.actorEmail;
+        if (!name && entry?.actorName) name = entry.actorName;
+        const photo = (typeof entry?.photoURL === 'string' && /^https:\/\//i.test(entry.photoURL)) ? entry.photoURL
+            : (typeof entry?.photoUrl === 'string' && /^https:\/\//i.test(entry.photoUrl)) ? entry.photoUrl
+            : (typeof entry?.actorPhotoUrl === 'string' && /^https:\/\//i.test(entry.actorPhotoUrl)) ? entry.actorPhotoUrl
+            : (typeof m?.photoURL === 'string' && /^https:\/\//i.test(m.photoURL)) ? m.photoURL
+            : (typeof m?.photoUrl === 'string' && /^https:\/\//i.test(m.photoUrl)) ? m.photoUrl : '';
 
-        if (name && email && name !== email) {
-            return `by ${esc(name)} (${esc(email)})`;
+        let cleanName = String(name || '').trim();
+        if (/\s*\([^)]*@[^)]*\)$/.test(cleanName)) {
+            if (!email) { const match = cleanName.match(/\(([^)]*@[^)]*)\)$/); if (match) email = match[1].trim(); }
+            cleanName = cleanName.replace(/\s*\([^)]*@[^)]*\)$/, '').trim();
         }
-        if (email) {
-            return `by ${esc(email)}`;
-        }
-        if (name) {
-            return `by ${esc(name)}`;
-        }
-        return 'by Unknown account';
+        if (!cleanName && email) cleanName = email.split('@')[0].trim();
+        if (cleanName && cleanName.includes('@') && !cleanName.includes(' ')) cleanName = cleanName.split('@')[0].trim();
+        if (!cleanName) cleanName = 'Unknown account';
+
+        const hasRealName = Boolean(name && name !== email && cleanName !== email && !cleanName.includes('@'));
+        let title = 'by Unknown account';
+        if (hasRealName && email) title = `by ${cleanName} (${email})`;
+        else if (email) title = `by ${email}`;
+        else if (hasRealName) title = `by ${cleanName}`;
+
+        const colorKey = entry?.actorUid || email || name || entry?.actorEmail || entry?.actorName || 'User';
+        const color = getAvatarColor(colorKey);
+        const initial = (cleanName.trim().charAt(0) || 'U').toUpperCase();
+        const avatarHtml = photo
+            ? `<img src="${esc(photo)}" alt="${esc(cleanName)}" class="collab-activity-avatar w-4 h-4 rounded-full object-cover shrink-0" style="border:1px solid var(--brd);">`
+            : `<span class="collab-activity-avatar w-4 h-4 rounded-full inline-flex items-center justify-center font-bold text-[9px] text-white shrink-0 select-none" style="background-color:${color};">${esc(initial)}</span>`;
+
+        return `<span class="act-actor" title="${esc(title)}">${avatarHtml}<span class="act-actor-name truncate">${esc(cleanName)}</span></span>`;
     }
 
     function ensureActivityStyles() {
@@ -82,8 +105,10 @@
         style.textContent = `
 .act-when { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex-shrink: 0; max-width: 50%; min-width: 0; gap: 2px; }
 .act-when .act-time { display: block; white-space: nowrap; }
-.act-when .act-actor { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--tx-d); line-height: 1.3; }
+.act-when .act-actor { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--tx-d); line-height: 1.3; }
+.act-when .act-actor .act-actor-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-ui-style="bauhaus"] .act-when .act-actor { color: #555555; font-weight: 600; }
+[data-ui-style="bauhaus"] .collab-activity-avatar { border: 1.5px solid #121212 !important; border-radius: 0 !important; }
 @media (max-width: 767px) { .act-when .act-actor { font-size: 10.5px; } }
 `;
         const target = document.head || document.documentElement || document.body || (typeof document.appendChild === 'function' ? document : null);
@@ -178,9 +203,9 @@
                 let html = origRow(entry);
                 if (!isCollabMode() || !entry) return html;
                 ensureActivityStyles();
-                const accountText = formatAccountText(entry);
+                const actorHtml = formatAccountText(entry);
                 return html.replace(/(<time\b[^>]*>[\s\S]*?<\/time>)/, (m, timeHtml) => {
-                    return `<span class="act-when">${timeHtml}<span class="act-actor" title="${accountText}">${accountText}</span></span>`;
+                    return `<span class="act-when">${timeHtml}${actorHtml}</span>`;
                 });
             };
             root._renderActivityRow._collabWrapped = true;
