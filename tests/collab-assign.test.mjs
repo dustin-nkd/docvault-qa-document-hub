@@ -171,6 +171,9 @@ function createAssignContext(options = {}) {
                     cur = cur.parentNode;
                 }
                 return false;
+            },
+            focus() {
+                this._focused = true;
             }
         };
         Object.defineProperty(el, 'id', {
@@ -205,6 +208,7 @@ function createAssignContext(options = {}) {
 
     const docHead = createMockElement('head');
 
+    const docListeners = new Map();
     const documentMock = {
         body: docBody,
         head: docHead,
@@ -217,8 +221,18 @@ function createAssignContext(options = {}) {
             return null;
         },
         querySelectorAll: (sel) => docBody.querySelectorAll(sel),
-        addEventListener: () => {},
-        removeEventListener: () => {}
+        addEventListener: (evt, handler) => {
+            if (!docListeners.has(evt)) docListeners.set(evt, []);
+            docListeners.get(evt).push(handler);
+        },
+        removeEventListener: (evt, handler) => {
+            if (!docListeners.has(evt)) return;
+            docListeners.set(evt, docListeners.get(evt).filter(h => h !== handler));
+        },
+        dispatchEvent: (evt) => {
+            const handlers = docListeners.get(evt.type) || [];
+            handlers.forEach(h => h(evt));
+        }
     };
 
     let viewedDocId = null;
@@ -254,6 +268,12 @@ function createAssignContext(options = {}) {
         notifStore,
         membersStore
     };
+    if (options.state) ctx.state = options.state;
+    if (options.render) ctx.render = options.render;
+    if (options.renderContent) ctx.renderContent = options.renderContent;
+    if (options.showModal) ctx.showModal = options.showModal;
+    if (options.closeModal) ctx.closeModal = options.closeModal;
+    if (options.confirm) ctx.confirm = options.confirm;
     ctx.window = ctx;
     ctx.globalThis = ctx;
 
@@ -491,7 +511,7 @@ test('CollabAssign: notification bell in header attaches, updates badge, and ren
     assert.ok(panel.innerHTML.includes('fa-check-double'), 'Header must contain mark-all-read icon');
     assert.ok(panel.innerHTML.includes('collabMarkAllNotificationsRead'), 'Mark-all-read button must call collabMarkAllNotificationsRead');
     assert.ok(panel.innerHTML.includes('fa-trash-can'), 'Header must contain clear-all icon');
-    assert.ok(panel.innerHTML.includes('collabClearAllNotifications'), 'Clear-all button must call collabClearAllNotifications');
+    assert.ok(panel.innerHTML.includes('collabConfirmClearNotifications'), 'Clear-all button must call collabConfirmClearNotifications');
 
     // Item notification format: avatar, user name only (no email), category icon
     assert.ok(panel.innerHTML.includes('collab-notif-avatar'), 'Panel item must include avatar');
@@ -624,6 +644,7 @@ test('CollabAssign: collabMarkAllNotificationsRead marks all notifications read 
             ['n2', { id: 'n2', recipientUid: 'user-current', actorName: 'Bob', actorEmail: 'b@ex.com', docId: 'd2', docTitle: 'D2', kind: 'task', createdAt: 2000, readAt: null }]
         ]
     });
+    ctx.confirm = () => true;
     ctx.CollabAssign.startListening();
     ctx.CollabAssign.attachNotificationBell();
     const btn = ctx.document.getElementById('collab-notif-btn');
@@ -647,6 +668,7 @@ test('CollabAssign: collabClearAllNotifications deletes all notifications in mem
             ['n2', { id: 'n2', recipientUid: 'user-current', actorName: 'Bob', actorEmail: 'b@ex.com', docId: 'd2', docTitle: 'D2', kind: 'task', createdAt: 2000, readAt: null }]
         ]
     });
+    ctx.confirm = () => true;
     ctx.CollabAssign.startListening();
     ctx.CollabAssign.attachNotificationBell();
     ctx.CollabAssign.toggleNotifications();
@@ -661,8 +683,10 @@ test('CollabAssign: collabClearAllNotifications deletes all notifications in mem
     assert.ok(ctx.notifDeletes.includes('n2'));
     assert.equal(ctx.notifStore.size, 0);
 
-    // Panel shows empty state
-    assert.ok(panel.innerHTML.includes('No assignments yet.'));
+    // Panel was closed when confirming clear, now re-open to verify empty state
+    ctx.CollabAssign.toggleNotifications();
+    const newPanel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(newPanel.innerHTML.includes("You're all caught up."));
 });
 
 test('CollabAssign: notification item renders photoUrl avatar when member profile contains photo', () => {
@@ -852,4 +876,265 @@ test('CollabAssign: markAllNotificationsRead chunked rollback on later batch fai
     // The first 400 items were committed and remain read, the remaining 5 failed and rolled back
     const badge = ctx.document.getElementById('collab-notif-btn')?.querySelector('.collab-notif-badge');
     assert.equal(badge?.textContent, '5', 'Badge reflects only the 5 uncommitted rolled-back items');
+});
+
+test('CollabAssign: fmtNotifTime formats relative time correctly across all boundary thresholds', () => {
+    const ctx = createAssignContext();
+    const { fmtNotifTime } = ctx.CollabAssign;
+
+    assert.equal(fmtNotifTime(null), '');
+    assert.equal(fmtNotifTime(undefined), '');
+    assert.equal(fmtNotifTime(0), '');
+
+    const now = Date.now();
+    // < 1m: 'just now'
+    assert.equal(fmtNotifTime(now), 'just now');
+    assert.equal(fmtNotifTime(now - 30 * 1000), 'just now');
+    assert.equal(fmtNotifTime(now - 59 * 1000), 'just now');
+
+    // < 60m: `${m}m ago`
+    assert.equal(fmtNotifTime(now - 60 * 1000), '1m ago');
+    assert.equal(fmtNotifTime(now - 45 * 60 * 1000), '45m ago');
+
+    // < 24h: `${h}h ago`
+    assert.equal(fmtNotifTime(now - 60 * 60 * 1000), '1h ago');
+    assert.equal(fmtNotifTime(now - 23 * 3600 * 1000), '23h ago');
+
+    // 1d: 'Yesterday'
+    assert.equal(fmtNotifTime(now - 25 * 3600 * 1000), 'Yesterday');
+    assert.equal(fmtNotifTime(now - 47 * 3600 * 1000), 'Yesterday');
+
+    // < 7d: `${d}d ago`
+    assert.equal(fmtNotifTime(now - 2 * 86400 * 1000), '2d ago');
+    assert.equal(fmtNotifTime(now - 6 * 86400 * 1000), '6d ago');
+
+    // >= 7d: new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const oldTs = now - 14 * 86400 * 1000;
+    const expectedOld = new Date(oldTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    assert.equal(fmtNotifTime(oldTs), expectedOld);
+});
+
+test('CollabAssign: notification panel renders 2-line layout with collab-notif-time and collab-notif-title', () => {
+    const fixedNow = Date.now();
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n1', { id: 'n1', recipientUid: 'user-current', actorName: 'Alice QA', actorEmail: 'alice@example.com', docId: 'doc-1', docTitle: 'Auth Timeout Issue', kind: 'bug', createdAt: fixedNow - 120000, readAt: null }]
+        ]
+    });
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+
+    const panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel);
+
+    // Verify 2-line layout elements in HTML
+    assert.ok(panel.innerHTML.includes('collab-notif-time'), 'Must render collab-notif-time');
+    assert.ok(panel.innerHTML.includes('collab-notif-title'), 'Must render collab-notif-title');
+    assert.ok(panel.innerHTML.includes('2m ago'), 'Must render 2m ago relative timestamp');
+    assert.ok(panel.innerHTML.includes('Auth Timeout Issue'), 'Must render document title');
+    assert.ok(panel.innerHTML.includes('font-semibold'), 'Title must have font-semibold');
+    assert.ok(panel.innerHTML.includes('Alice QA</span> assigned you'), 'Line 1 must contain actor and verb');
+});
+
+test('CollabAssign: notification panel displays "You\'re all caught up." when empty', () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: []
+    });
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+
+    const panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel);
+    console.log('PANEL HTML IN TEST:', panel.innerHTML);
+    assert.ok(panel.innerHTML.includes("You're all caught up."));
+    assert.ok(!panel.innerHTML.includes('No assignments yet.'));
+});
+
+test('CollabAssign: confirmClearNotifications shows modal and executeClearAllNotifications performs deletion', async () => {
+    let modalContent = null;
+    let modalClosed = false;
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n1', { id: 'n1', recipientUid: 'user-current', actorName: 'Alice', actorEmail: 'a@ex.com', docId: 'd1', docTitle: 'D1', kind: 'bug', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx.showModal = (html) => { modalContent = html; };
+    ctx.closeModal = () => { modalClosed = true; };
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+    assert.ok(ctx.document.getElementById('collab-notif-panel'), 'Panel should be open initially');
+
+    // Trigger confirmation modal - must close panel first to avoid stacking issues
+    ctx.collabConfirmClearNotifications();
+
+    assert.equal(ctx.document.getElementById('collab-notif-panel'), null, 'Panel must be closed when confirmation modal opens');
+    assert.ok(modalContent, 'showModal must have been called');
+    assert.ok(modalContent.includes('Delete all notifications?'), 'Modal title must be Delete all notifications?');
+    assert.ok(modalContent.includes('fa-triangle-exclamation'), 'Modal must include warning icon');
+    assert.ok(modalContent.includes('This permanently removes all notifications from your inbox and cannot be undone.'), 'Modal must contain warning copy');
+    assert.ok(modalContent.includes('data-onclick="closeModal()"'), 'Cancel button must invoke closeModal()');
+    assert.ok(modalContent.includes('collabExecuteClearAllNotifications()'), 'Confirm button must call collabExecuteClearAllNotifications');
+    assert.equal(ctx.notifDeletes.length, 0, 'Notifications must NOT be deleted yet');
+
+    // Execute clear all notifications
+    await ctx.collabExecuteClearAllNotifications();
+
+    assert.equal(modalClosed, true, 'closeModal must be called');
+    assert.equal(ctx.notifDeletes.length, 1);
+    assert.equal(ctx.notifStore.size, 0);
+});
+
+test('CollabAssign: confirmClearNotifications fallbacks to root.confirm when showModal is unavailable', async () => {
+    let confirmPrompt = null;
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n1', { id: 'n1', recipientUid: 'user-current', actorName: 'Alice', actorEmail: 'a@ex.com', docId: 'd1', docTitle: 'D1', kind: 'bug', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx.confirm = (msg) => { confirmPrompt = msg; return false; }; // User clicks Cancel
+    ctx.CollabAssign.startListening();
+
+    ctx.collabConfirmClearNotifications();
+    assert.equal(confirmPrompt, 'Delete all notifications?');
+    assert.equal(ctx.notifDeletes.length, 0, 'Must not delete if user cancelled confirmation');
+
+    // When confirm returns true
+    ctx.confirm = () => true;
+    await ctx.collabConfirmClearNotifications();
+    assert.equal(ctx.notifDeletes.length, 1, 'Must delete if user confirmed');
+});
+
+test('CollabAssign: confirmClearNotifications returns early if notification list is empty', () => {
+    let showModalCalled = false;
+    let confirmCalled = false;
+    const ctx = createAssignContext({
+        initialNotifications: []
+    });
+    ctx.showModal = () => { showModalCalled = true; };
+    ctx.confirm = () => { confirmCalled = true; return true; };
+    ctx.CollabAssign.startListening();
+
+    ctx.collabConfirmClearNotifications();
+    assert.equal(showModalCalled, false);
+    assert.equal(confirmCalled, false);
+});
+
+test('CollabAssign: Escape key closes panel and focuses bell button, aria-expanded toggles appropriately', () => {
+    const ctx = createAssignContext();
+    ctx.CollabAssign.attachNotificationBell();
+    const btn = ctx.document.getElementById('collab-notif-btn');
+    assert.ok(btn);
+    assert.equal(btn.getAttribute('aria-expanded'), 'false', 'Initial aria-expanded must be false');
+
+    // Open panel
+    ctx.CollabAssign.toggleNotifications();
+    assert.equal(btn.getAttribute('aria-expanded'), 'true', 'aria-expanded must be true when open');
+    let panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel, 'Panel must exist');
+
+    // Press Escape
+    btn._focused = false;
+    ctx.document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+
+    assert.equal(btn.getAttribute('aria-expanded'), 'false', 'aria-expanded must be false after Escape');
+    panel = ctx.document.getElementById('collab-notif-panel');
+    assert.equal(panel, null, 'Panel must be removed from DOM after Escape');
+    assert.equal(btn._focused, true, 'Bell button must receive focus after Escape');
+});
+
+test('CollabAssign: focus notification navigation sets state.view to focus and renders without calling viewDoc', async () => {
+    let renderCalled = false;
+    let viewedDocId = null;
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n-focus', { id: 'n-focus', recipientUid: 'user-current', actorName: 'Lead', actorEmail: 'lead@ex.com', docId: 'doc-focus', docTitle: 'Focus Task', kind: 'focus', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx.state = { view: 'documents' };
+    ctx.render = () => { renderCalled = true; };
+    ctx.viewDoc = (id) => { viewedDocId = id; };
+    ctx.CollabAssign.startListening();
+
+    await ctx.CollabAssign.openNotification('n-focus', 'doc-focus');
+
+    assert.equal(ctx.state.view, 'focus', 'Must set state.view to focus');
+    assert.equal(renderCalled, true, 'Must call root.render()');
+    assert.equal(viewedDocId, null, 'Must NOT call viewDoc');
+    assert.ok(ctx.notifUpdates.some(u => u.id === 'n-focus' && typeof u.data.readAt === 'number'), 'Must mark notification as read');
+});
+
+test('CollabAssign: focus notification navigation falls back to renderContent if render is not a function', async () => {
+    let renderContentCalled = false;
+    let viewedDocId = null;
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n-focus', { id: 'n-focus', recipientUid: 'user-current', actorName: 'Lead', actorEmail: 'lead@ex.com', docId: 'doc-focus', docTitle: 'Focus Task', kind: 'focus', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx.state = { view: 'documents' };
+    ctx.renderContent = () => { renderContentCalled = true; };
+    ctx.viewDoc = (id) => { viewedDocId = id; };
+    ctx.CollabAssign.startListening();
+
+    await ctx.CollabAssign.openNotification('n-focus', 'doc-focus');
+
+    assert.equal(ctx.state.view, 'focus');
+    assert.equal(renderContentCalled, true);
+    assert.equal(viewedDocId, null);
+});
+
+test('CollabAssign: collabClearAllNotifications public alias routes through confirm and aborts when unconfirmed', async () => {
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            ['n1', { id: 'n1', recipientUid: 'user-current', actorName: 'Alice', actorEmail: 'a@ex.com', docId: 'd1', docTitle: 'D1', kind: 'bug', createdAt: 1000, readAt: null }]
+        ]
+    });
+    ctx.CollabAssign.startListening();
+
+    // With neither showModal nor confirm available:
+    await ctx.collabClearAllNotifications();
+    assert.equal(ctx.notifDeletes.length, 0, 'Must abort and not delete if no confirm or showModal is present');
+
+    // With confirm returning false:
+    ctx.confirm = () => false;
+    await ctx.CollabAssign.clearAllNotifications();
+    assert.equal(ctx.notifDeletes.length, 0, 'Must abort if user cancels confirm');
+
+    // Only unconfirmed explicit execution deletes:
+    await ctx.collabExecuteClearAllNotifications();
+    assert.equal(ctx.notifDeletes.length, 1, 'Only collabExecuteClearAllNotifications directly clears');
+});
+
+test('CollabAssign: fallback actionAttr safely encodes ampersand, quotes, and HTML entities', () => {
+    const evilId = 'test&quot;);alert(1);';
+    const ctx = createAssignContext({
+        authUser: { uid: 'user-current', displayName: 'Current User', email: 'current@example.com' },
+        initialNotifications: [
+            [evilId, { id: evilId, recipientUid: 'user-current', actorName: 'Attacker', actorEmail: 'evil@ex.com', docId: 'd\'quote', docTitle: 'Evil & Title', kind: 'bug', createdAt: 1000, readAt: null }]
+        ]
+    });
+    delete ctx.actionAttr; // Force fallback path
+    ctx.CollabAssign.startListening();
+    ctx.CollabAssign.attachNotificationBell();
+    ctx.CollabAssign.toggleNotifications();
+
+    const panel = ctx.document.getElementById('collab-notif-panel');
+    assert.ok(panel);
+    // Must be escaped with &amp;quot; so it cannot be decoded as raw unescaped quotes in attribute
+    assert.ok(panel.innerHTML.includes('&amp;quot;'), 'Must encode &amp; so &quot; cannot break attribute boundaries');
+    assert.ok(!panel.innerHTML.includes('data-onclick="collabOpenNotification("'), 'Must not have unescaped attribute quotes');
+    // Verify Bauhaus style rule targets .collab-notif-count
+    const styleEl = ctx.document.getElementById('collab-assign-styles');
+    assert.ok(styleEl.textContent.includes('.collab-notif-count'), 'Bauhaus CSS must target .collab-notif-count');
+    assert.ok(!styleEl.textContent.includes('.collab-notif-header span{'), 'Bauhaus CSS must not target all header spans');
 });
