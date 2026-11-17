@@ -92,7 +92,11 @@ const maintainabilityBudgets = {
     // registry that changed underneath the user, which has to ship in the same
     // file as the switcher and the manager modal it re-renders.
     'js/workspaces.js': 420,
-    'js/render-trends.js': 380
+    'js/render-trends.js': 380,
+    'js/collab-store.js': 400,
+    'js/collab-bootstrap.js': 400,
+    'js/collab-import.js': 400,
+    'js/collab-activity.js': 300
 };
 for (const [relativePath, maxLines] of Object.entries(maintainabilityBudgets)) {
     const lineCount = read(relativePath).split(/\r?\n/).length;

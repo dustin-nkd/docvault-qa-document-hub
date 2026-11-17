@@ -12,9 +12,10 @@ service cloud.firestore {
     }
 
     function isTeamOwner() {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/meta/team) &&
-        teamDoc().data.ownerUid == request.auth.uid;
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/meta/team) && teamDoc().data.ownerUid == request.auth.uid) ||
+        (existsAfter(/databases/$(database)/documents/meta/team) && getAfter(/databases/$(database)/documents/meta/team).data.ownerUid == request.auth.uid)
+      );
     }
 
     function memberDoc(uid) {
@@ -43,8 +44,8 @@ service cloud.firestore {
     // 1. meta/team: Single team vault metadata
     match /meta/team {
       allow get: if isAuthenticated() &&
-        (!exists(/databases/$(database)/documents/meta/team) || isMember());
-      allow list: if isMember();
+        (!exists(/databases/$(database)/documents/meta/team) || isMember() || resource.data.ownerUid == request.auth.uid);
+      allow list: if isMember() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
       allow create: if isAuthenticated() &&
         !exists(/databases/$(database)/documents/meta/team) &&
         request.resource.data.ownerUid == request.auth.uid &&
@@ -107,6 +108,7 @@ service cloud.firestore {
         request.resource.data.version == 1 &&
         request.resource.data.createdBy == request.auth.uid &&
         request.resource.data.updatedBy == request.auth.uid &&
+        (!('category' in request.resource.data) || request.resource.data.category != 'credential' || !('password' in request.resource.data) || request.resource.data.password == '') &&
         (!('workspaceId' in request.resource.data) ||
          request.resource.data.workspaceId == 'default' ||
          (request.resource.data.workspaceId is string &&
@@ -125,6 +127,7 @@ service cloud.firestore {
         (!('id' in request.resource.data) || (request.resource.data.id == id && request.resource.data.id.matches('^[a-zA-Z0-9_-]{1,64}$'))) &&
         ((!('workspaceId' in resource.data) && !('workspaceId' in request.resource.data)) ||
          (request.resource.data.workspaceId == resource.data.workspaceId)) &&
+        (!('category' in request.resource.data) || request.resource.data.category != 'credential' || !('password' in request.resource.data) || request.resource.data.password == '') &&
         request.resource.data.updatedBy == request.auth.uid;
 
       allow delete: if isTeamOwner() &&
@@ -173,7 +176,12 @@ service cloud.firestore {
 
       // 4d. documents/{id}/secrets/{secretId}: Sensitive credential secrets
       match /secrets/{secretId} {
-        allow read, write: if isEditorOrOwner();
+        allow get, list: if isEditorOrOwner();
+        allow create, update: if isEditorOrOwner() &&
+          secretId == 'credential' &&
+          request.resource.data.keys().hasOnly(['password', 'updatedAt']) &&
+          request.resource.data.password is string &&
+          request.resource.data.password.size() <= 10000;
         allow delete: if isTeamOwner();
       }
     }

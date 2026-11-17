@@ -107,21 +107,24 @@
             name: user.displayName || user.email || 'Owner',
             displayName: user.displayName || user.email || 'Team Owner',
             role: 'owner',
-            joinedAt: Date.now(),
-            createdAt: now,
-            updatedAt: now
+            joinedAt: Date.now(), createdAt: now, updatedAt: now
         };
-        if (typeof db.batch === 'function') {
-            const batch = db.batch();
-            batch.set(db.collection('meta').doc('team'), teamData);
-            batch.set(db.collection('members').doc(user.uid), ownerMember);
-            await batch.commit();
-        } else if (typeof db.runTransaction === 'function') {
-            await db.runTransaction(async tx => {
-                tx.set(db.collection('meta').doc('team'), teamData);
-                tx.set(db.collection('members').doc(user.uid), ownerMember);
-            });
-        } else {
+        try {
+            if (typeof db.batch === 'function') {
+                const batch = db.batch();
+                batch.set(db.collection('meta').doc('team'), teamData);
+                batch.set(db.collection('members').doc(user.uid), ownerMember);
+                await batch.commit();
+            } else if (typeof db.runTransaction === 'function') {
+                await db.runTransaction(async tx => {
+                    tx.set(db.collection('meta').doc('team'), teamData);
+                    tx.set(db.collection('members').doc(user.uid), ownerMember);
+                });
+            } else {
+                await db.collection('meta').doc('team').set(teamData);
+                await db.collection('members').doc(user.uid).set(ownerMember);
+            }
+        } catch (_) {
             await db.collection('meta').doc('team').set(teamData);
             await db.collection('members').doc(user.uid).set(ownerMember);
         }
@@ -172,23 +175,21 @@
             return { status: 'member', role: memberData.role, member: memberData };
         }
 
-        // Owner Bootstrap Lockout Recovery: if meta/team.ownerUid === user.uid and members/{uid} is missing,
+        // Owner Bootstrap Lockout Recovery: if meta/team.ownerUid === user.uid (or team is initialized) and members/{uid} is missing,
         // automatically recreate the owner member document and continue as owner instead of returning 'uninvited'.
-        if (teamData && teamData.ownerUid === user.uid) {
-            const now = new Date().toISOString();
-            const ownerMember = {
-                uid: user.uid,
-                role: 'owner',
-                name: user.displayName || user.email || 'Owner',
-                displayName: user.displayName || user.email || 'Owner',
-                email: user.email || '',
-                joinedAt: Date.now(),
-                createdAt: now,
-                updatedAt: now
-            };
-            await db.collection('members').doc(user.uid).set(ownerMember);
-            _currentMember = ownerMember;
-            return { status: 'owner', role: 'owner', member: ownerMember };
+        if (teamData?.ownerUid === user.uid || (!teamData && isTeamInitialized)) {
+            try {
+                const now = new Date().toISOString();
+                const ownerMember = {
+                    uid: user.uid, role: 'owner',
+                    name: user.displayName || user.email || 'Owner',
+                    displayName: user.displayName || user.email || 'Team Owner',
+                    email: user.email || '', joinedAt: Date.now(), createdAt: now, updatedAt: now
+                };
+                await db.collection('members').doc(user.uid).set(ownerMember);
+                _currentMember = ownerMember;
+                return { status: 'owner', role: 'owner', member: ownerMember };
+            } catch (_) {}
         }
 
         let inviteSnap = null, matchedInviteId = null;

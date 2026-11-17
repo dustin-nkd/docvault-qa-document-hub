@@ -1846,8 +1846,51 @@ test('Branch 15 (secrets subcollection): allows editor/owner read/write, owner d
         updatedAt: 4000
     }));
 
+    // Editor CANNOT delete secrets (only team owner can delete)
+    await assertFails(editor.collection('documents').doc('doc-cred').collection('secrets').doc('credential').delete());
+
     // Owner CAN delete secrets
     await assertSucceeds(owner.collection('documents').doc('doc-cred').collection('secrets').doc('credential').delete());
+
+    // Root document DENIES credential creation with non-empty password
+    await assertFails(editor.collection('documents').doc('doc-cred-leaked').set({
+        id: 'doc-cred-leaked',
+        title: 'Leaked Cred',
+        category: 'credential',
+        password: 'plaintext-should-be-denied',
+        version: 1,
+        createdBy: 'editor-uid',
+        updatedBy: 'editor-uid'
+    }));
+
+    // Root document ALLOWS credential creation when password is empty or absent
+    await assertSucceeds(editor.collection('documents').doc('doc-cred-safe').set({
+        id: 'doc-cred-safe',
+        title: 'Safe Cred',
+        category: 'credential',
+        password: '',
+        version: 1,
+        createdBy: 'editor-uid',
+        updatedBy: 'editor-uid'
+    }));
+});
+
+test('Branch 15 (owner lockout recovery & batch rules): owner without member doc can read meta/team', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'locked-out-owner-uid', initialized: true });
+        // NOTE: members/locked-out-owner-uid is deliberately NOT created to simulate lost member doc
+    });
+
+    const lockedOwner = testEnv.authenticatedContext('locked-out-owner-uid').firestore();
+    const stranger = testEnv.authenticatedContext('random-stranger-uid').firestore();
+
+    // Owner without member doc CAN read meta/team
+    const teamSnap = await assertSucceeds(lockedOwner.collection('meta').doc('team').get());
+    assert.equal(teamSnap.data().ownerUid, 'locked-out-owner-uid');
+
+    // Stranger CANNOT read meta/team
+    await assertFails(stranger.collection('meta').doc('team').get());
 });
 
 test('Branch 15 (tightened shares rules): validates keys, docId size and ciphertext size', async () => {

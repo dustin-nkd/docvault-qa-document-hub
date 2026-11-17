@@ -387,3 +387,47 @@ test('Team tab button: hasUnimportedLocalVault returns true only when unimported
     ctx.localStorage.setItem('ws_other__docvault_docs', JSON.stringify([{ id: 'd2' }]));
     assert.equal(ctx.CollabMembers.hasUnimportedLocalVault(), false);
 });
+
+test('CollabImport: large credential import splits batches to respect 400-op batch threshold', async () => {
+    const committedBatches = [];
+    const mockDb = {
+        collection: (col) => ({
+            doc: (id) => ({
+                set: async () => {},
+                collection: (subCol) => ({
+                    doc: (subId) => ({
+                        set: async () => {}
+                    })
+                })
+            }),
+            get: async () => ({ forEach: () => {} })
+        }),
+        batch: () => {
+            let ops = 0;
+            return {
+                set: () => { ops++; },
+                commit: async () => { committedBatches.push(ops); }
+            };
+        }
+    };
+
+    const ctx = createCollabImportContext();
+    ctx.CollabImport.setDb(mockDb);
+    ctx.CollabImport.setUser({ uid: 'owner-uid' });
+
+    // 250 credentials = 250 root docs + 250 secrets = 500 ops total
+    const credDocs = Array.from({ length: 250 }, (_, i) => ({
+        id: `cred-${i}`,
+        title: `Cred ${i}`,
+        category: 'credential',
+        password: `pass-${i}`
+    }));
+    ctx.localStorage.setItem('docvault_docs', JSON.stringify(credDocs));
+
+    const res = await ctx.CollabImport.importLocalVault();
+    assert.equal(res.imported, 250);
+    assert.ok(committedBatches.length >= 2, 'Must split into at least 2 batches');
+    for (const count of committedBatches) {
+        assert.ok(count <= 400, `Batch must not exceed 400 operations, got ${count}`);
+    }
+});

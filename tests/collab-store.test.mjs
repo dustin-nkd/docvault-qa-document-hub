@@ -56,8 +56,9 @@ function createStoreContext(options = {}) {
                 return { exists, data: () => data };
             },
             set: async (data) => {
-                if (options.onSet) {
-                    await options.onSet(docId, data, store);
+                const onSetFn = ctx?.onSet || options.onSet;
+                if (onSetFn) {
+                    await onSetFn(docId, data, store);
                 }
                 calls.setDocs.push({ id: docId, data: JSON.parse(JSON.stringify(data)) });
                 store.set(docId, JSON.parse(JSON.stringify(data)));
@@ -123,6 +124,7 @@ function createStoreContext(options = {}) {
         toast: (msg, type) => {
             toasts.push({ msg, type });
         },
+        db: firestoreMock,
         store,
         calls,
         toasts,
@@ -1022,15 +1024,84 @@ test('Critical 1.2: persist() delete race condition guards', async () => {
     assert.equal(ctx.calls.deleteDocs.includes('doc-delete'), false, 'Doc present in live documents array must not be deleted');
     assert.ok(ctx.store.has('doc-delete'), 'doc-delete must remain in store');
 
-    // Guard 2: Doc not in initialKnownIds must not be deleted
-    // Reset live docs so guard 1 doesn't protect it
+    // Guard 2: Doc not in initialKnownIds must not be deleted even if missing in targetDocs and live docs
     ctx.documents = [];
-    // Clear known and reload with doc-delete only
     known.clear();
-    known.set('doc-delete', { id: 'doc-delete', workspaceId: 'default' });
+    known.set('doc-keep', { id: 'doc-keep', workspaceId: 'default', updatedAt: 1000 });
 
-    // Calling persist without doc-delete in targetDocs and not in live documents -> deletes it
-    await ctx.CollabStore.persist([]);
-    assert.ok(ctx.calls.deleteDocs.includes('doc-delete'), 'Existing doc missing from targetDocs is deleted');
+    // Inject a doc that arrives concurrently while saving 'doc-keep'
+    ctx.onSet = async (docId, data, store) => {
+        if (docId === 'doc-keep') {
+            // While doc-keep is being written over network, remote snapshot adds doc-concurrent
+            known.set('doc-concurrent', { id: 'doc-concurrent', workspaceId: 'default' });
+            store.set('doc-concurrent', { id: 'doc-concurrent', workspaceId: 'default' });
+        }
+    };
+
+    await ctx.CollabStore.persist([{ id: 'doc-keep', title: 'Keep Me', workspaceId: 'default', updatedAt: 2000 }]);
+    assert.equal(ctx.calls.deleteDocs.includes('doc-concurrent'), false, 'Doc arriving after persist snapshot must NOT be deleted');
+    assert.ok(ctx.store.has('doc-concurrent'), 'doc-concurrent must remain in store');
+
+    // Guard 3: Legitimate delete: Doc present in initialKnownIds, absent in targetDocs, absent in liveDocs -> deleted
+    known.set('doc-delete', { id: 'doc-delete', workspaceId: 'default' });
+    await ctx.CollabStore.persist([{ id: 'doc-keep', title: 'Keep Me', workspaceId: 'default' }]);
+    assert.ok(ctx.calls.deleteDocs.includes('doc-delete'), 'Doc present in initialKnownIds and absent from target/live is deleted');
+});
+
+test('Critical 1.1: persist() fails closed when secret write rejects and deletes secrets on doc delete', async () => {
+    // 1. writeSecret fails open prevention
+    const ctx = createStoreContext({ role: 'owner', user: { uid: 'owner-1' } });
+    const credDoc = { id: 'cred-fail', title: 'Failing Cred', category: 'credential', password: 'secret-pw' };
+
+    // Mock subcollection secret write failure
+    const origDoc = ctx.db.collection('documents').doc;
+    ctx.db.collection('documents').doc = (docId) => {
+        const ref = origDoc(docId);
+        if (docId === 'cred-fail') {
+            ref.collection = (sub) => ({
+                doc: (secretId) => ({
+                    set: async () => { throw new Error('Firestore rules: write denied to secrets'); },
+                    delete: async () => {}
+                })
+            });
+        }
+        return ref;
+    };
+
+    await assert.rejects(
+        () => ctx.CollabStore.persist([credDoc]),
+        /write denied to secrets/,
+        'persist() must throw if secret write fails, preventing silent credential loss'
+    );
+
+    // 2. Doc delete also purges secret subcollection
+    const ctxDel = createStoreContext({
+        role: 'owner',
+        user: { uid: 'owner-1' },
+        initialDocs: {
+            'cred-to-delete': { id: 'cred-to-delete', title: 'Cred To Delete', category: 'credential', workspaceId: 'default' },
+            'cred-to-delete/secrets/credential': { password: 'old-pass' }
+        }
+    });
+    await ctxDel.CollabStore.loadDocuments();
+    let secretDeleted = false;
+    const origDocDel = ctxDel.db.collection('documents').doc;
+    ctxDel.db.collection('documents').doc = (docId) => {
+        const ref = origDocDel(docId);
+        if (docId === 'cred-to-delete') {
+            ref.collection = (sub) => ({
+                doc: (secretId) => ({
+                    set: async () => {},
+                    delete: async () => { secretDeleted = true; }
+                })
+            });
+        }
+        return ref;
+    };
+
+    ctxDel.documents = [];
+    await ctxDel.CollabStore.persist([]); // Deletes cred-to-delete
+    assert.ok(ctxDel.calls.deleteDocs.includes('cred-to-delete'), 'Root doc deleted');
+    assert.equal(secretDeleted, true, 'Subcollection secret must be deleted when doc is deleted');
 });
 

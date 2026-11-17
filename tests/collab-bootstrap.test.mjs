@@ -1270,5 +1270,34 @@ test('Critical 1.3: Owner Bootstrap Lockout auto-recreates members/{uid} when mi
     assert.ok(typeof recreated.joinedAt === 'number', 'Must set joinedAt timestamp');
 });
 
+test('Critical 1.3: Owner Lockout Recovery succeeds even when meta/team get threw permission-denied', async () => {
+    const store = new Map();
+    const firestoreMock = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    if (colName === 'meta' && docId === 'team') {
+                        const err = new Error('permission-denied');
+                        err.code = 'permission-denied';
+                        throw err;
+                    }
+                    return { exists: store.has(`${colName}/${docId}`), data: () => store.get(`${colName}/${docId}`) };
+                },
+                set: async (data) => {
+                    store.set(`${colName}/${docId}`, data);
+                }
+            })
+        })
+    };
+
+    const ctx = createBootstrapContext(firestoreMock);
+    const ownerUser = { uid: 'owner-perm-uid', email: 'owner@vault.com', displayName: 'Owner Person' };
+
+    const result = await ctx.CollabBootstrap.initTeamUser(ownerUser);
+    assert.equal(result.status, 'owner', 'Must recover owner status via fallback recreate');
+    assert.equal(result.role, 'owner');
+    assert.ok(store.get('members/owner-perm-uid'), 'Member doc was recreated');
+});
+
 
 

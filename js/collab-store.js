@@ -32,10 +32,8 @@
             taskData: _cleanJson(doc.taskData), assignee: doc.assignee || doc.taskData?.assignee || '', assigneeUid: doc.assigneeUid || doc.taskData?.assigneeUid || '',
             kanbanStatus: doc.kanbanStatus || '', bugStatus: doc.bugStatus || '', bugStatusEvents: Array.isArray(doc.bugStatusEvents) ? [...doc.bugStatusEvents] : [],
             bugNumber: typeof doc.bugNumber === 'number' ? doc.bugNumber : null, favorite: Boolean(doc.favorite),
-            createdAt: typeof meta.createdAt === 'number' ? meta.createdAt : (typeof doc.createdAt === 'number' ? doc.createdAt : Date.now()),
-            updatedAt: typeof meta.updatedAt === 'number' ? meta.updatedAt : (typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now()),
-            version: typeof meta.version === 'number' ? meta.version : (typeof doc.version === 'number' ? doc.version : 1),
-            createdBy: meta.createdBy || doc.createdBy || '', updatedBy: meta.updatedBy || doc.updatedBy || '',
+            createdAt: typeof meta.createdAt === 'number' ? meta.createdAt : (typeof doc.createdAt === 'number' ? doc.createdAt : Date.now()), updatedAt: typeof meta.updatedAt === 'number' ? meta.updatedAt : (typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now()),
+            version: typeof meta.version === 'number' ? meta.version : (typeof doc.version === 'number' ? doc.version : 1), createdBy: meta.createdBy || doc.createdBy || '', updatedBy: meta.updatedBy || doc.updatedBy || '',
             focusWorkflow: _cleanJson(doc.focusWorkflow), focusWorkflowUpdatedAt: typeof doc.focusWorkflowUpdatedAt === 'number' ? doc.focusWorkflowUpdatedAt : null
         };
         const wsId = meta.workspaceId || doc.workspaceId; if (typeof wsId === 'string' && wsId) out.workspaceId = wsId;
@@ -46,14 +44,13 @@
         if (!data) return null;
         const out = {
             id: data.id || docId, title: data.title || '', category: data.category || 'general', subfolder: data.subfolder || '', status: data.status || 'active',
-            content: data.content || '', tags: Array.isArray(data.tags) ? data.tags : [], username: data.username || '', password: data.password || '', rotatedAt: data.rotatedAt || null,
+            content: data.content || '', tags: Array.isArray(data.tags) ? data.tags : [], username: data.username || '', password: (data.category === 'credential') ? '' : (data.password || ''), rotatedAt: data.rotatedAt || null,
             bugData: data.bugData || null, tcData: data.tcData || null, apiData: data.apiData || null, apiTcData: data.apiTcData || null,
             runData: data.runData || null, envData: data.envData || null, releaseData: data.releaseData || null, tcPlanData: data.tcPlanData || null,
             taskData: data.taskData || null, assignee: data.assignee || data.taskData?.assignee || '', assigneeUid: data.assigneeUid || data.taskData?.assigneeUid || '',
             kanbanStatus: data.kanbanStatus || '', bugStatus: data.bugStatus || '', bugStatusEvents: Array.isArray(data.bugStatusEvents) ? data.bugStatusEvents : [],
             bugNumber: typeof data.bugNumber === 'number' ? data.bugNumber : null, favorite: Boolean(data.favorite),
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(), updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
-            version: typeof data.version === 'number' ? data.version : 1, createdBy: data.createdBy || '', updatedBy: data.updatedBy || '',
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(), updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(), version: typeof data.version === 'number' ? data.version : 1, createdBy: data.createdBy || '', updatedBy: data.updatedBy || '',
             focusWorkflow: data.focusWorkflow || null, focusWorkflowUpdatedAt: typeof data.focusWorkflowUpdatedAt === 'number' ? data.focusWorkflowUpdatedAt : null
         };
         if (typeof data.workspaceId === 'string' && data.workspaceId) out.workspaceId = data.workspaceId;
@@ -132,6 +129,7 @@
             return;
         }
         const idx = docs.findIndex(d => d.id === docId);
+        if (remoteDoc.category === 'credential' && idx !== -1 && docs[idx].password) remoteDoc.password = docs[idx].password;
         if (idx !== -1) docs[idx] = remoteDoc; else docs.unshift(remoteDoc);
         if (typeof root.normalizeDocTags === 'function') root.normalizeDocTags(docs);
         if (s?.view === 'editor' && s.editingDoc?.id === docId) {
@@ -232,11 +230,12 @@
             return sz > 900000 ? (root.toast?.('Document exceeds 900,000 bytes limit.', 'error'), true) : false;
         };
         const writeSecret = async (d) => {
-            if (d.category === 'credential' && d.password && canSecret) {
-                try {
-                    const docRef = db.collection('documents').doc(d.id);
-                    if (typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').set({ password: d.password, updatedAt: Date.now() });
-                } catch (_) {}
+            if (d.category === 'credential' && canSecret) {
+                const docRef = db.collection('documents').doc(d.id);
+                if (typeof docRef.collection === 'function') {
+                    if (d.password) await docRef.collection('secrets').doc('credential').set({ password: d.password, updatedAt: Date.now() });
+                    else await docRef.collection('secrets').doc('credential').set({ password: '', updatedAt: Date.now() }).catch(() => {});
+                }
             }
         };
 
@@ -294,6 +293,7 @@
             if ((known?.workspaceId || 'default') !== activeWs) continue;
             if (initialKnownIds.has(id) && !targetIds.has(id) && !liveDocs.some(d => d.id === id)) {
                 try {
+                    if (known?.category === 'credential' && typeof db.collection('documents').doc(id).collection === 'function') await db.collection('documents').doc(id).collection('secrets').doc('credential').delete().catch(() => {});
                     if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
                     else await db.collection('documents').doc(id).delete();
                     _knownDocs.delete(id);
