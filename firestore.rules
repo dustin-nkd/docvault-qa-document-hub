@@ -172,6 +172,7 @@ service cloud.firestore {
            request.resource.data.content.size() <= 4000)
           ||
           (isTeamOwner() &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'isDeleted', 'updatedAt']) &&
            request.resource.data.authorUid == resource.data.authorUid &&
            request.resource.data.docId == resource.data.docId &&
            request.resource.data.createdAt == resource.data.createdAt &&

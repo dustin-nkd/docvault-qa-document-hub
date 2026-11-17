@@ -179,12 +179,13 @@ test('Stage 3 (3.1): showSnapshotDiff stacks modal and restoreSnapshot restores 
     assert.equal(persisted, true);
 });
 
-test('Stage 3 (3.2): Collab Mode hydrate runs cleanOrphanedDocReferences without stripping cross-workspace docs', async () => {
+test('Stage 3 (3.2): Collab Mode hydrate cleans known deleted ids without stripping cross-workspace docs', async () => {
     const stateCode = read('js/state.js');
 
+    let cleanedWithDeletedIds = null;
     let cleanedWithExistingIds = 'not_called';
     const testDocs = [
-        { id: 'run-1', category: 'testrun', runData: { targetIds: ['tc-in-other-ws'] } }
+        { id: 'run-1', category: 'testrun', runData: { targetIds: ['tc-deleted', 'tc-in-other-ws'] } }
     ];
 
     const ctx = {
@@ -194,9 +195,12 @@ test('Stage 3 (3.2): Collab Mode hydrate runs cleanOrphanedDocReferences without
         },
         normalizeDocTags: () => {},
         DocStorage: {
+            _getLocalDeletedIds: () => new Set(['tc-deleted']),
             cleanOrphanedDocReferences: (docs, del, existingIds) => {
+                cleanedWithDeletedIds = del;
                 cleanedWithExistingIds = existingIds;
-                return false;
+                docs[0].runData.targetIds = docs[0].runData.targetIds.filter(id => !del.has(id));
+                return true;
             }
         },
         state: {},
@@ -208,7 +212,9 @@ test('Stage 3 (3.2): Collab Mode hydrate runs cleanOrphanedDocReferences without
     vm.runInContext(stateCode, ctx);
 
     await ctx.hydrate();
+    assert.ok(cleanedWithDeletedIds instanceof Set && cleanedWithDeletedIds.has('tc-deleted'));
     assert.equal(cleanedWithExistingIds, undefined, 'Collab Mode hydrate must not pass workspace activeIds as existingIds filter');
+    assert.deepEqual(ctx.documents[0].runData.targetIds, ['tc-in-other-ws'], 'tc-deleted must be stripped while tc-in-other-ws is preserved');
 });
 
 test('Stage 3 (3.3): removeMember revokes pending invite for member email', async () => {
