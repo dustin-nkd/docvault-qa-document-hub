@@ -45,6 +45,16 @@ let state = {
 };
 
 let documents = [];
+if (typeof window !== 'undefined') {
+    try {
+        Object.defineProperty(window, 'documents', {
+            get() { return documents; },
+            set(v) { documents = v; },
+            configurable: true,
+            enumerable: true
+        });
+    } catch (_) {}
+}
 
 // ========================
 // BUG STATUS TIMELINE (QA Trends B3)

@@ -288,7 +288,7 @@ window.shareDoc = async function(id) {
         return window.CollabShares.shareDoc(id);
     }
     const doc = documents.find(d => d.id === id);
-    if (!doc) return;
+    if (!doc) { toast('Document not found.', 'error'); return; }
 
     if (doc.category === 'credential') {
         toast('Sharing is disabled for credential documents for security.', 'info');
@@ -392,11 +392,11 @@ async function loadSharedDoc(shareId, keyBase64) {
     }
 }
 
+window._buildSharePayload = _buildSharePayload;
+window._encryptSharePayload = _encryptSharePayload;
+window._recordShare = _recordShare;
 window._getShares = _getShares;
 window._saveShares = _saveShares;
-window._recordShare = _recordShare;
 window._removeShare = _removeShare;
 window.loadSharedDoc = loadSharedDoc;
 window._stripEnvSecrets = _stripEnvSecrets;
-window._buildSharePayload = _buildSharePayload;
-window._encryptSharePayload = _encryptSharePayload;

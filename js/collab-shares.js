@@ -25,6 +25,13 @@
         return root.firebase?.auth ? root.firebase.auth().currentUser || null : null;
     }
 
+    function getDocuments() {
+        const lex = typeof documents !== 'undefined' && Array.isArray(documents) ? documents : null;
+        const win = typeof root.documents !== 'undefined' && Array.isArray(root.documents) ? root.documents : (typeof window !== 'undefined' && Array.isArray(window.documents) ? window.documents : null);
+        if (lex && win && lex !== win) return lex;
+        return lex || win || [];
+    }
+
     async function _encryptSharePayloadLocal(doc, keyBytes) {
         if (typeof root._encryptSharePayload === 'function') {
             return root._encryptSharePayload(doc, keyBytes);
@@ -45,8 +52,11 @@
             if (typeof root.toast === 'function') root.toast('You have view access', 'error');
             return;
         }
-        const doc = (root.documents || []).find(d => d.id === id);
-        if (!doc) return;
+        const doc = getDocuments().find(d => d.id === id);
+        if (!doc) {
+            if (typeof root.toast === 'function') root.toast('Document not found.', 'error');
+            return;
+        }
         if (doc.category === 'credential') {
             if (typeof root.toast === 'function') root.toast('Sharing is disabled for credential documents for security.', 'info');
             return;
@@ -76,6 +86,7 @@
             const encContent = await _encryptSharePayloadLocal({ ...doc, content }, keyBytes);
 
             const shareId = typeof root.generateSecureShareId === 'function' ? root.generateSecureShareId() : (typeof generateSecureShareId === 'function' ? generateSecureShareId() : ('sh_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6)));
+            if (root.ensureFirebase) await root.ensureFirebase();
             const db = getDb();
             if (!db) throw new Error('Firestore is not available');
             const user = getCurrentUser();
@@ -140,6 +151,7 @@
         if (typeof content === 'string' && /docvault-img:/.test(content)) return;
         const keyBytes = Uint8Array.from(atob(entry.keyBase64), c => c.charCodeAt(0));
         const encContent = await _encryptSharePayloadLocal({ ...doc, content }, keyBytes);
+        if (root.ensureFirebase) await root.ensureFirebase();
         const db = getDb();
         if (!db) return;
         await db.collection('shares').doc(entry.shareId).update({
@@ -154,11 +166,14 @@
         if (root.CollabBootstrap?.getCurrentMember?.()?.role === 'viewer') return;
         const shares = typeof root._getShares === 'function' ? root._getShares() : [];
         if (!shares.length) return;
-        const docs = root.documents || [];
+        const docs = getDocuments();
         const stale = shares.filter(entry => entry.keyBase64 && entry.docUpdatedAt !== undefined
             ? docs.some(d => d.id === entry.docId && d.status !== 'deleted' && d.updatedAt !== entry.docUpdatedAt)
             : false);
         if (!stale.length) return;
+        if (root.ensureFirebase) await root.ensureFirebase();
+        const db = getDb();
+        if (!db) return;
         let changed = false;
         for (const entry of stale) {
             const doc = docs.find(d => d.id === entry.docId && d.status !== 'deleted');
@@ -178,20 +193,19 @@
             if (typeof root.toast === 'function') root.toast('You have view access', 'error');
             return;
         }
-        const db = getDb();
-        if (db) {
-            try {
-                await db.collection('shares').doc(shareId).delete();
-            } catch (e) {
-                if (typeof root.toast === 'function') root.toast('Removed from list, but team server delete failed: ' + e.message, 'error');
-                if (typeof root._removeShare === 'function') root._removeShare(shareId);
-                if (typeof root.showShareManager === 'function') root.showShareManager();
-                return;
-            }
+        try {
+            if (root.ensureFirebase) await root.ensureFirebase();
+            const db = getDb();
+            if (!db) throw new Error('Database is not available');
+            await db.collection('shares').doc(shareId).delete();
+            if (typeof root._removeShare === 'function') root._removeShare(shareId);
+            if (typeof root.toast === 'function') root.toast('Share link revoked.', 'success');
+        } catch (e) {
+            console.error('[CollabShares.revokeShare]', e);
+            if (typeof root.toast === 'function') root.toast('Failed to revoke share link: ' + e.message, 'error');
+        } finally {
+            if (typeof root.showShareManager === 'function') root.showShareManager();
         }
-        if (typeof root._removeShare === 'function') root._removeShare(shareId);
-        if (typeof root.toast === 'function') root.toast('Share link revoked.', 'success');
-        if (typeof root.showShareManager === 'function') root.showShareManager();
     }
 
     async function revokeSharesForDocs(docIds) {
@@ -204,22 +218,29 @@
         const shares = typeof root._getShares === 'function' ? root._getShares() : [];
         const doomed = shares.filter(s => ids.has(s.docId));
         if (!doomed.length) return { revoked: 0, failed: 0 };
-        const db = getDb();
-        const revoked = new Set();
-        let failed = 0;
-        for (const entry of doomed) {
-            try {
-                if (db) await db.collection('shares').doc(entry.shareId).delete();
-                revoked.add(entry.shareId);
-            } catch (e) {
-                failed++;
-                console.warn('[CollabShares.revokeSharesForDocs] could not revoke', entry.shareId, e);
+        try {
+            if (root.ensureFirebase) await root.ensureFirebase();
+            const db = getDb();
+            if (!db) throw new Error('Database is not available');
+            const revoked = new Set();
+            let failed = 0;
+            for (const entry of doomed) {
+                try {
+                    await db.collection('shares').doc(entry.shareId).delete();
+                    revoked.add(entry.shareId);
+                } catch (e) {
+                    failed++;
+                    console.warn('[CollabShares.revokeSharesForDocs] could not revoke', entry.shareId, e);
+                }
             }
+            if (revoked.size && typeof root._saveShares === 'function') {
+                root._saveShares(shares.filter(s => !revoked.has(s.shareId)));
+            }
+            return { revoked: revoked.size, failed };
+        } catch (e) {
+            console.error('[CollabShares.revokeSharesForDocs]', e);
+            return { revoked: 0, failed: doomed.length };
         }
-        if (revoked.size && typeof root._saveShares === 'function') {
-            root._saveShares(shares.filter(s => !revoked.has(s.shareId)));
-        }
-        return { revoked: revoked.size, failed };
     }
 
     async function revokeSharesInWorkspace(workspaceId) {
@@ -231,21 +252,28 @@
         let entries;
         try { entries = JSON.parse(root.localStorage?.getItem(key) || '[]'); } catch (e) { entries = []; }
         if (!Array.isArray(entries) || !entries.length) return { revoked: 0, failed: 0 };
-        const db = getDb();
-        const remaining = [];
-        let revoked = 0;
-        for (const entry of entries) {
-            try {
-                if (db) await db.collection('shares').doc(entry.shareId).delete();
-                revoked++;
-            } catch (e) {
-                remaining.push(entry);
-                console.warn('[CollabShares.revokeSharesInWorkspace] could not revoke', entry.shareId, e);
+        try {
+            if (root.ensureFirebase) await root.ensureFirebase();
+            const db = getDb();
+            if (!db) throw new Error('Database is not available');
+            const remaining = [];
+            let revoked = 0;
+            for (const entry of entries) {
+                try {
+                    await db.collection('shares').doc(entry.shareId).delete();
+                    revoked++;
+                } catch (e) {
+                    remaining.push(entry);
+                    console.warn('[CollabShares.revokeSharesInWorkspace] could not revoke', entry.shareId, e);
+                }
             }
+            if (remaining.length && root.localStorage) root.localStorage.setItem(key, JSON.stringify(remaining));
+            else if (root.localStorage) root.localStorage.removeItem(key);
+            return { revoked, failed: remaining.length };
+        } catch (e) {
+            console.error('[CollabShares.revokeSharesInWorkspace]', e);
+            return { revoked: 0, failed: entries.length };
         }
-        if (remaining.length && root.localStorage) root.localStorage.setItem(key, JSON.stringify(remaining));
-        else if (root.localStorage) root.localStorage.removeItem(key);
-        return { revoked, failed: remaining.length };
     }
 
     async function loadSharedDoc(shareId, keyBase64) {
@@ -291,7 +319,10 @@
                 updatedAt: shareData.updatedAt || doc.createdAt || Date.now(),
                 tags: doc.tags || []
             };
-            root.documents = [mainDoc, ...embeddedLinkedDocs];
+            const sharedList = [mainDoc, ...embeddedLinkedDocs];
+            root.documents = sharedList;
+            if (typeof window !== 'undefined') window.documents = sharedList;
+            if (typeof documents !== 'undefined') documents = sharedList;
             if (root.state) {
                 root.state.view = 'viewer';
                 root.state.sharedView = true;
