@@ -16,9 +16,7 @@
         if (!root.firebase?.firestore) return null;
         const db = root.firebase.firestore(), host = root.location?.hostname || '';
         const emulatorHost = root.FIRESTORE_EMULATOR_HOST || (typeof process !== 'undefined' && process.env?.FIRESTORE_EMULATOR_HOST) || (host === 'localhost' || host === '127.0.0.1' ? '127.0.0.1:8080' : null);
-        if (emulatorHost && !db._emulatorConnected) {
-            try { const [h, p] = emulatorHost.split(':'); db.useEmulator(h, parseInt(p || '8080', 10)); db._emulatorConnected = true; } catch (_) {}
-        }
+        if (emulatorHost && !db._emulatorConnected) { try { const [h, p] = emulatorHost.split(':'); db.useEmulator(h, parseInt(p || '8080', 10)); db._emulatorConnected = true; } catch (_) {} }
         return db;
     }
 
@@ -57,10 +55,8 @@
             taskData: data.taskData || null, assignee: data.assignee || data.taskData?.assignee || '', assigneeUid: data.assigneeUid || data.taskData?.assigneeUid || '',
             kanbanStatus: data.kanbanStatus || '', bugStatus: data.bugStatus || '', bugStatusEvents: Array.isArray(data.bugStatusEvents) ? data.bugStatusEvents : [],
             bugNumber: typeof data.bugNumber === 'number' ? data.bugNumber : null, favorite: Boolean(data.favorite),
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
-            updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
-            version: typeof data.version === 'number' ? data.version : 1,
-            createdBy: data.createdBy || '', updatedBy: data.updatedBy || '',
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(), updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
+            version: typeof data.version === 'number' ? data.version : 1, createdBy: data.createdBy || '', updatedBy: data.updatedBy || '',
             focusWorkflow: data.focusWorkflow || null, focusWorkflowUpdatedAt: typeof data.focusWorkflowUpdatedAt === 'number' ? data.focusWorkflowUpdatedAt : null
         };
         if (typeof data.workspaceId === 'string' && data.workspaceId) out.workspaceId = data.workspaceId;
@@ -78,8 +74,7 @@
         if (_persistencePromise) return _persistencePromise;
         _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
             if (err?.code === 'unimplemented') return;
-            if (err?.code === 'failed-precondition') console.warn('[CollabStore] enablePersistence failed-precondition:', err);
-            else console.warn('[CollabStore] enablePersistence warning:', err);
+            console.warn('[CollabStore] enablePersistence warning:', err);
             return Promise.reject(err);
         });
         return _persistencePromise;
@@ -92,9 +87,7 @@
         const s = getState();
         if (!s || s.view !== 'editor') return false;
         const captureFn = root._captureEditorFormState || (typeof _captureEditorFormState === 'function' ? _captureEditorFormState : null);
-        if (captureFn && s._editorSnapshot !== undefined) {
-            try { return captureFn() !== s._editorSnapshot; } catch (_) {}
-        }
+        if (captureFn && s._editorSnapshot !== undefined) { try { return captureFn() !== s._editorSnapshot; } catch (_) {} }
         return false;
     }
 
@@ -179,14 +172,12 @@
                 if (changes.length > 0) {
                     for (const change of changes) {
                         if (change.doc?.metadata?.hasPendingWrites) continue;
-                        const docId = change.doc?.id;
-                        if (!docId) continue;
+                        const docId = change.doc?.id; if (!docId) continue;
                         if (change.type === 'removed') { applyRemoteDoc({ id: docId }, 'removed'); continue; }
                         const remoteDoc = fromFirestoreDoc(typeof change.doc.data === 'function' ? change.doc.data() : change.doc, docId);
                         if (remoteDoc) {
                             const known = _knownDocs.get(docId);
-                            if (known && known.version === remoteDoc.version && known.updatedAt === remoteDoc.updatedAt) continue;
-                            applyRemoteDoc(remoteDoc, change.type);
+                            if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, change.type);
                         }
                     }
                 } else if (typeof snapshot.forEach === 'function') {
@@ -195,8 +186,7 @@
                         const docId = docSnap.id, remoteDoc = fromFirestoreDoc(typeof docSnap.data === 'function' ? docSnap.data() : docSnap, docId);
                         if (remoteDoc) {
                             const known = _knownDocs.get(docId);
-                            if (known && known.version === remoteDoc.version && known.updatedAt === remoteDoc.updatedAt) return;
-                            applyRemoteDoc(remoteDoc, 'modified');
+                            if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, 'modified');
                         }
                     });
                 }
@@ -240,8 +230,7 @@
 
         const isDocOversize = (d) => {
             const sz = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(JSON.stringify(d)).length : JSON.stringify(d).length;
-            if (sz > 900000) { if (typeof root.toast === 'function') root.toast('Document exceeds 900,000 bytes limit.', 'error'); return true; }
-            return false;
+            return sz > 900000 ? (root.toast?.('Document exceeds 900,000 bytes limit.', 'error'), true) : false;
         };
 
         // 1. New documents (CREATE)
@@ -278,14 +267,10 @@
                 doc.version = nextVersion; doc.createdBy = createdBy; doc.updatedBy = uid;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) {
-                const isPermDenied = err?.code === 'permission-denied' || err?.code === 7 ||
-                    String(err?.message || '').includes('PERMISSION_DENIED') || String(err?.message || '').includes('permission-denied');
+                const isPermDenied = err?.code === 'permission-denied' || err?.code === 7 || String(err?.message || '').includes('PERMISSION_DENIED') || String(err?.message || '').includes('permission-denied');
                 if (isPermDenied) {
                     let isVersionMismatch = true;
-                    try {
-                        const remoteSnap = await db.collection('documents').doc(doc.id).get();
-                        if (remoteSnap.exists) isVersionMismatch = (remoteSnap.data().version !== known.version);
-                    } catch (_) {}
+                    try { const remoteSnap = await db.collection('documents').doc(doc.id).get(); if (remoteSnap.exists) isVersionMismatch = (remoteSnap.data().version !== known.version); } catch (_) {}
                     if (isVersionMismatch) { notifyConflict('Someone else saved this document. Reload to see their version.'); continue; }
                 }
                 if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error');
@@ -330,7 +315,7 @@
         try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
     }
 
-    async function saveHistory(doc) {
+    async function saveHistory(doc, meta) {
         if (isGuestMode() || !isCollabMode() || !doc?.id || doc.category === 'credential') return;
         const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role;
         if (role !== 'editor' && role !== 'owner') return;
@@ -347,13 +332,34 @@
             existing.sort((a, b) => (b.ts || 0) - (a.ts || 0));
             if (existing.length && existing[0].content === (doc.content || '') && existing[0].title === doc.title) return;
             if (role === 'editor' && existing.length >= 10) return;
-            const snapId = 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-            const payload = { id: snapId, ts: Date.now(), title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '', savedBy: user.uid };
+            const snapId = meta?.snapId || ('snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
+            const ts = typeof meta?.ts === 'number' ? meta.ts : Date.now();
+            const savedByName = user.displayName || member?.displayName || member?.name || user.email || 'Team Member';
+            const savedByEmail = user.email || member?.email || '', rawPhoto = user.photoURL || member?.photoURL || member?.photoUrl || '';
+            const savedByPhoto = (typeof rawPhoto === 'string' && /^https:\/\//i.test(rawPhoto)) ? rawPhoto : '';
+            const payload = {
+                id: snapId, ts, title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '',
+                tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '',
+                savedBy: user.uid, savedByName, savedByEmail, ...(savedByPhoto ? { savedByPhoto } : {})
+            };
             await histCol.doc(snapId).set(payload);
             if (role === 'owner' && existing.length >= 10) {
                 for (const oldSnap of existing.slice(9)) { try { await histCol.doc(oldSnap.id).delete(); } catch (_) {} }
             }
         } catch (err) { console.warn('[CollabStore] saveHistory error:', err); }
+    }
+
+    async function loadHistory(docId) {
+        if (isGuestMode() || !isCollabMode() || !docId) return [];
+        if (root.ensureFirebase) await root.ensureFirebase();
+        const db = getFirestoreDb();
+        if (!db) return [];
+        try {
+            const snap = await db.collection('documents').doc(docId).collection('history').get(), items = [];
+            snap.forEach(d => { const data = (typeof d.data === 'function') ? d.data() : (d.data || d); items.push({ id: d.id, ...data }); });
+            items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+            return items.slice(0, 10);
+        } catch (err) { console.warn('[CollabStore] loadHistory error:', err); return []; }
     }
 
     async function allocateBugNumber() {
@@ -387,6 +393,6 @@
         getLastConflict: () => _lastConflict, clearLastConflict: () => { _lastConflict = null; },
         setDb: (db) => { _customDb = db; }, setUser: (user) => { _customUser = user; },
         startListening, stopListening, applyRemoteDoc, isEditorDirty, showEditorConflictBanner, enableOfflinePersistence,
-        isListening: () => Boolean(_unsubscribeSnapshot), recordActivity, saveHistory, allocateBugNumber
+        isListening: () => Boolean(_unsubscribeSnapshot), recordActivity, saveHistory, loadHistory, allocateBugNumber
     };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -437,19 +437,76 @@ const DocHistory = {
         // Guest demo: leave zero trace in the browser's real localStorage.
         if (typeof GUEST_MODE !== 'undefined' && GUEST_MODE) return;
         if (!doc?.id || doc.category === 'credential') return;
+        const _win = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : {});
+        const isCollab = Boolean(_win.COLLAB_MODE);
+        const member = isCollab ? _win.CollabBootstrap?.getCurrentMember?.() : null;
+        const user = isCollab ? ((_win.CollabAuth?.getCurrentUser ? _win.CollabAuth.getCurrentUser() : null) || (_win.firebase?.auth ? _win.firebase.auth().currentUser : null)) : null;
+
+        const snapId = 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        const ts = Date.now();
+        const rawPhoto = user?.photoURL || member?.photoURL || member?.photoUrl || '';
+        const validPhoto = (typeof rawPhoto === 'string' && /^https:\/\//i.test(rawPhoto)) ? rawPhoto : '';
+
         let snaps;
         try { snaps = JSON.parse(localStorage.getItem(this._key(doc.id)) || '[]'); } catch { snaps = []; }
         if (!snaps.length || snaps[0].content !== (doc.content || '') || snaps[0].title !== doc.title) {
-            snaps.unshift({ ts: Date.now(), title: doc.title, content: doc.content || '', tags: doc.tags || [], status: doc.status, subfolder: doc.subfolder || '' });
+            const snap = {
+                id: snapId,
+                ts,
+                title: doc.title,
+                content: doc.content || '',
+                tags: doc.tags || [],
+                status: doc.status,
+                subfolder: doc.subfolder || ''
+            };
+            if (isCollab && (user?.uid || member)) {
+                snap.savedBy = user?.uid || member?.uid || '';
+                snap.savedByName = user?.displayName || member?.displayName || member?.name || user?.email || 'Team Member';
+                snap.savedByEmail = user?.email || member?.email || '';
+                if (validPhoto) snap.savedByPhoto = validPhoto;
+            }
+            snaps.unshift(snap);
             try { localStorage.setItem(this._key(doc.id), JSON.stringify(snaps.slice(0, this.MAX))); }
             catch (e) { console.warn('Could not save document history:', e); }
         }
-        if (typeof window !== 'undefined' && window.COLLAB_MODE && window.CollabStore?.saveHistory) {
-            return window.CollabStore.saveHistory(doc);
+        if (isCollab && _win.CollabStore?.saveHistory) {
+            return _win.CollabStore.saveHistory(doc, { snapId, ts });
         }
     },
     get(id) {
         try { return JSON.parse(localStorage.getItem(this._key(id)) || '[]'); } catch { return []; }
+    },
+    async load(id) {
+        const localSnaps = this.get(id);
+        const _win = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : {});
+        if (_win.COLLAB_MODE && _win.CollabStore?.loadHistory) {
+            try {
+                const remoteSnaps = await _win.CollabStore.loadHistory(id);
+                if (Array.isArray(remoteSnaps)) {
+                    const combined = [...remoteSnaps, ...localSnaps];
+                    const seenIds = new Set();
+                    const merged = [];
+                    for (const snap of combined) {
+                        if (!snap) continue;
+                        const sId = snap.id;
+                        if (sId) {
+                            if (seenIds.has(sId)) continue;
+                            seenIds.add(sId);
+                        }
+                        if (merged.some(m => (sId && m.id === sId) || (m.title === snap.title && m.content === snap.content && Math.abs((m.ts || 0) - (snap.ts || 0)) < 1000))) continue;
+                        merged.push(snap);
+                    }
+                    merged.sort((a, b) => (b.ts ?? b.timestamp ?? 0) - (a.ts ?? a.timestamp ?? 0));
+                    const finalSnaps = merged.slice(0, this.MAX);
+                    try { localStorage.setItem(this._key(id), JSON.stringify(finalSnaps)); }
+                    catch (e) { console.warn('Could not cache document history:', e); }
+                    return finalSnaps;
+                }
+            } catch (err) {
+                console.warn('[DocHistory] load error:', err);
+            }
+        }
+        return localSnaps;
     }
 };
 

@@ -348,27 +348,108 @@ function _diffLines(oldText, newText) {
     return result;
 }
 
+function _highlightLineDiff(delStr, addStr) {
+    let p = 0; while (p < delStr.length && p < addStr.length && delStr[p] === addStr[p]) p++;
+    let s = 0; while (s < (delStr.length - p) && s < (addStr.length - p) && delStr[delStr.length - 1 - s] === addStr[addStr.length - 1 - s]) s++;
+    const delPrefix = delStr.slice(0, p), delMid = delStr.slice(p, delStr.length - s), delSuffix = delStr.slice(delStr.length - s);
+    const addPrefix = addStr.slice(0, p), addMid = addStr.slice(p, addStr.length - s), addSuffix = addStr.slice(addStr.length - s);
+    const delHtml = escHtml(delPrefix) + (delMid ? `<span class="diff-word-del">${escHtml(delMid)}</span>` : '') + escHtml(delSuffix);
+    const addHtml = escHtml(addPrefix) + (addMid ? `<span class="diff-word-add">${escHtml(addMid)}</span>` : '') + escHtml(addSuffix);
+    return { delHtml, addHtml };
+}
+
 function _buildDiffHtml(diff) {
+    if (!diff || !diff.length) {
+        return `<div class="diff-ctx"><span class="diff-num"></span><span class="diff-num"></span><span class="diff-sign"> </span><span class="diff-code" style="color:var(--tx-d);font-style:italic;">(empty)</span></div>`;
+    }
+    let oldNum = 1, newNum = 1;
+    diff.forEach(d => {
+        if (d.type === 'eq') { d.oldNum = oldNum++; d.newNum = newNum++; }
+        else if (d.type === 'del') { d.oldNum = oldNum++; d.newNum = null; }
+        else if (d.type === 'add') { d.oldNum = null; d.newNum = newNum++; }
+    });
+
     const CTX = 3;
     const near = new Array(diff.length).fill(false);
     diff.forEach((d, i) => {
-        if (d.type !== 'eq') for (let k = Math.max(0, i - CTX); k <= Math.min(diff.length - 1, i + CTX); k++) near[k] = true;
+        if (d.type !== 'eq') {
+            for (let k = Math.max(0, i - CTX); k <= Math.min(diff.length - 1, i + CTX); k++) near[k] = true;
+        }
     });
-    let html = '', skip = 0;
-    for (let i = 0; i <= diff.length; i++) {
-        const d = diff[i];
-        const collapse = !d || (d.type === 'eq' && !near[i]);
-        if (collapse) { if (i < diff.length) { skip++; } }
-        if (!collapse || i === diff.length) {
-            if (skip) { html += `<div class="diff-skip">··· ${skip} line${skip > 1 ? 's' : ''} unchanged ···</div>`; skip = 0; }
-            if (i === diff.length) break;
-            const s = escHtml(d.line || '') || '&nbsp;';
-            if (d.type === 'add') html += `<div class="diff-add"><span class="diff-sign">+</span><span>${s}</span></div>`;
-            else if (d.type === 'del') html += `<div class="diff-del"><span class="diff-sign">−</span><span>${s}</span></div>`;
-            else html += `<div class="diff-ctx"><span class="diff-sign"> </span><span>${s}</span></div>`;
+
+    if (!near.some(Boolean)) {
+        return `<div class="diff-ctx"><span class="diff-num"></span><span class="diff-num"></span><span class="diff-sign"> </span><span class="diff-code" style="color:var(--tx-d);font-style:italic;">(No changes)</span></div>`;
+    }
+
+    const hunks = [];
+    let curHunk = null, skipCount = 0;
+    for (let i = 0; i < diff.length; i++) {
+        if (near[i]) {
+            if (!curHunk) {
+                curHunk = { skipBefore: skipCount, items: [] };
+                hunks.push(curHunk);
+                skipCount = 0;
+            }
+            curHunk.items.push(diff[i]);
+        } else {
+            curHunk = null;
+            skipCount++;
         }
     }
-    return html || `<div class="diff-ctx"><span class="diff-sign"> </span><span style="color:var(--tx-d);font-style:italic;">(empty)</span></div>`;
+
+    let html = '';
+    for (const hunk of hunks) {
+        const oldLines = hunk.items.filter(d => d.type === 'eq' || d.type === 'del');
+        const newLines = hunk.items.filter(d => d.type === 'eq' || d.type === 'add');
+        const oldStart = oldLines.length > 0 ? oldLines[0].oldNum : (hunk.items[0].oldNum || 1);
+        const oldCount = oldLines.length;
+        const newStart = newLines.length > 0 ? newLines[0].newNum : (hunk.items[0].newNum || 1);
+        const newCount = newLines.length;
+
+        const skipNote = hunk.skipBefore > 0 ? `<span class="diff-skip-note">··· ${hunk.skipBefore} line${hunk.skipBefore > 1 ? 's' : ''} unchanged ···</span>` : '';
+        html += `<div class="diff-skip"><span class="diff-hunk-tag">@@ -${oldStart},${oldCount} +${newStart},${newCount} @@</span>${skipNote}</div>`;
+
+        let idx = 0;
+        while (idx < hunk.items.length) {
+            if (hunk.items[idx].type === 'del') {
+                const delRun = [];
+                while (idx < hunk.items.length && hunk.items[idx].type === 'del') delRun.push(hunk.items[idx++]);
+                const addRun = [];
+                while (idx < hunk.items.length && hunk.items[idx].type === 'add') addRun.push(hunk.items[idx++]);
+
+                const pairCount = Math.min(delRun.length, addRun.length);
+                for (let p = 0; p < pairCount; p++) {
+                    const { delHtml, addHtml } = _highlightLineDiff(delRun[p].line || '', addRun[p].line || '');
+                    delRun[p].codeHtml = delHtml;
+                    addRun[p].codeHtml = addHtml;
+                }
+                for (let p = pairCount; p < delRun.length; p++) delRun[p].codeHtml = escHtml(delRun[p].line || '');
+                for (let p = pairCount; p < addRun.length; p++) addRun[p].codeHtml = escHtml(addRun[p].line || '');
+            } else {
+                hunk.items[idx].codeHtml = escHtml(hunk.items[idx].line || '');
+                idx++;
+            }
+        }
+
+        for (const d of hunk.items) {
+            const oldN = d.oldNum !== null ? d.oldNum : '';
+            const newN = d.newNum !== null ? d.newNum : '';
+            const cHtml = d.codeHtml || '&nbsp;';
+            if (d.type === 'add') {
+                html += `<div class="diff-add"><span class="diff-num">${oldN}</span><span class="diff-num">${newN}</span><span class="diff-sign">+</span><span class="diff-code">${cHtml}</span></div>`;
+            } else if (d.type === 'del') {
+                html += `<div class="diff-del"><span class="diff-num">${oldN}</span><span class="diff-num">${newN}</span><span class="diff-sign">−</span><span class="diff-code">${cHtml}</span></div>`;
+            } else {
+                html += `<div class="diff-ctx"><span class="diff-num">${oldN}</span><span class="diff-num">${newN}</span><span class="diff-sign"> </span><span class="diff-code">${cHtml}</span></div>`;
+            }
+        }
+    }
+
+    if (skipCount > 0) {
+        html += `<div class="diff-skip"><span class="diff-skip-note">··· ${skipCount} line${skipCount > 1 ? 's' : ''} unchanged ···</span></div>`;
+    }
+
+    return html || `<div class="diff-ctx"><span class="diff-num"></span><span class="diff-num"></span><span class="diff-sign"> </span><span class="diff-code" style="color:var(--tx-d);font-style:italic;">(empty)</span></div>`;
 }
 
 window.showSnapshotDiff = function(id, snapIndex) {
@@ -386,12 +467,13 @@ window.showSnapshotDiff = function(id, snapIndex) {
     const added = diff.filter(d => d.type === 'add').length;
     const removed = diff.filter(d => d.type === 'del').length;
     const snapDate = new Date(snap.ts).toLocaleString();
+    const snapAuthor = snap.savedByName || (snap.savedByEmail ? snap.savedByEmail.split('@')[0] : '');
 
     const titleBlock = titleChanged ? `
         <div style="padding:8px 0 0;border-bottom:1px solid var(--brd);flex-shrink:0;">
             <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-d);padding:0 14px 6px;">Title</div>
-            <div class="diff-del" style="padding-left:14px;"><span class="diff-sign">−</span><span style="font-weight:600;">${escHtml(snap.title)}</span></div>
-            <div class="diff-add" style="padding-left:14px;"><span class="diff-sign">+</span><span style="font-weight:600;">${escHtml(doc.title)}</span></div>
+            <div class="diff-del"><span class="diff-num"></span><span class="diff-num"></span><span class="diff-sign">−</span><span class="diff-code" style="font-weight:600;">${escHtml(snap.title)}</span></div>
+            <div class="diff-add"><span class="diff-num"></span><span class="diff-num"></span><span class="diff-sign">+</span><span class="diff-code" style="font-weight:600;">${escHtml(doc.title)}</span></div>
         </div>` : '';
 
     const m = document.getElementById('modal');
@@ -403,11 +485,11 @@ window.showSnapshotDiff = function(id, snapIndex) {
             </div>
             <div style="flex:1;min-width:0;">
                 <div style="font-weight:600;font-size:14px;color:var(--tx);">Snapshot Diff</div>
-                <div style="font-size:11px;color:var(--tx-m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${snapDate} → Current</div>
+                <div style="font-size:11px;color:var(--tx-m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${snapAuthor ? escHtml(snapAuthor) + ' &middot; ' : ''}${snapDate} &rarr; Current</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                <span style="font-size:11px;background:rgba(16,185,129,.1);color:var(--acc);border:1px solid rgba(16,185,129,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;">+${added}</span>
-                <span style="font-size:11px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;">−${removed}</span>
+                <span style="font-size:11px;background:rgba(16,185,129,.1);color:var(--acc);border:1px solid rgba(16,185,129,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;font-weight:600;">+${added}</span>
+                <span style="font-size:11px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;font-weight:600;">−${removed}</span>
                 <button class="btn-s text-xs py-1.5 px-3" data-onclick="${actionAttr('restoreSnapshot', id, snapIndex)}"><i class="fa-solid fa-rotate-left mr-1"></i>Restore</button>
                 <button class="btn-s text-xs py-1.5 px-3" data-onclick="closeModal()">Close</button>
             </div>
@@ -419,18 +501,53 @@ window.showSnapshotDiff = function(id, snapIndex) {
     m.onclick = (e) => { if (e.target === m) closeModal(); };
 };
 
-window.showHistoryPanel = function(id) {
-    const snaps = DocHistory.get(id);
-    if (!snaps.length) {
+window.showHistoryPanel = async function(id) {
+    const snaps = (window.COLLAB_MODE && typeof DocHistory.load === 'function')
+        ? await DocHistory.load(id)
+        : DocHistory.get(id);
+    if (!snaps || !snaps.length) {
         toast('No history yet — snapshots are saved each time you update a document.', 'info');
         return;
     }
-    const rows = snaps.map((s, i) => `
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
+    const getCol = (key) => {
+        let hash = 0, str = String(key || '');
+        for (let k = 0; k < str.length; k++) hash = (hash * 31 + str.charCodeAt(k)) & 0xffffffff;
+        return colors[(hash >>> 0) % colors.length];
+    };
+
+    const ALLOWED_STATUSES = ['draft', 'published', 'archived', 'deleted'];
+    const rows = snaps.map((s, i) => {
+        const hasAuthor = Boolean(s.savedByName || s.savedByEmail || s.savedBy);
+        const authorName = s.savedByName || (s.savedByEmail ? s.savedByEmail.split('@')[0] : 'Team Member');
+        const authorPhoto = (typeof s.savedByPhoto === 'string' && /^https:\/\//i.test(s.savedByPhoto)) ? s.savedByPhoto : '';
+        const initial = escHtml((authorName.charAt(0) || 'U').toUpperCase());
+        const avatarBg = getCol(s.savedBy || s.savedByEmail || authorName);
+        const avatarHtml = authorPhoto
+            ? `<img src="${escHtml(authorPhoto)}" class="w-8 h-8 rounded-full object-cover shrink-0" alt="${escHtml(authorName)}" />`
+            : `<div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs text-white" style="background:${avatarBg};">${initial}</div>`;
+        const relativeTime = (typeof fmtDate === 'function') ? fmtDate(s.ts) : new Date(s.ts).toLocaleString();
+        const fullTime = new Date(s.ts).toLocaleString();
+        const safeStatusClass = ALLOWED_STATUSES.includes(s.status) ? s.status : 'draft';
+        const statusText = escHtml(s.status || 'draft');
+
+        return `
         <div class="flex items-start gap-3 p-3 rounded-lg" style="border:1px solid var(--brd);background:var(--bg2);margin-bottom:8px;">
+            ${hasAuthor ? avatarHtml : ''}
             <div class="flex-1 min-w-0">
-                <div class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(s.title)}</div>
-                <div class="text-xs mt-1" style="color:var(--tx-d);">${new Date(s.ts).toLocaleString()} &middot; ${(s.content||'').length.toLocaleString()} chars</div>
-                <span class="st-badge st-${s.status}" style="display:inline-block;margin-top:4px;">${s.status}</span>
+                ${hasAuthor ? `
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold" style="color:var(--tx);">${escHtml(authorName)}</span>
+                    <span class="text-xs" style="color:var(--tx-d);" title="${escHtml(fullTime)}">&middot; ${escHtml(relativeTime)}</span>
+                    <span class="st-badge st-${safeStatusClass}" style="margin:0;font-size:10px;padding:1px 6px;">${statusText}</span>
+                </div>
+                <div class="text-sm font-semibold truncate mt-1" style="color:var(--tx);">${escHtml(s.title || 'Untitled')}</div>
+                <div class="text-xs mt-0.5" style="color:var(--tx-d);">${(s.content || '').length.toLocaleString()} chars</div>
+                ` : `
+                <div class="text-sm font-semibold truncate" style="color:var(--tx);">${escHtml(s.title || 'Untitled')}</div>
+                <div class="text-xs mt-1" style="color:var(--tx-d);">${escHtml(fullTime)} &middot; ${(s.content || '').length.toLocaleString()} chars</div>
+                <span class="st-badge st-${safeStatusClass}" style="display:inline-block;margin-top:4px;">${statusText}</span>
+                `}
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0;">
                 <button class="btn-s text-xs py-1.5 px-3" data-onclick="${actionAttr('showSnapshotDiff', id, i)}">
@@ -440,8 +557,9 @@ window.showHistoryPanel = function(id) {
                     <i class="fa-solid fa-rotate-left mr-1"></i>Restore
                 </button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
+
     showModal(`
         <div class="p-5">
             <div class="flex items-center gap-3 mb-5">
