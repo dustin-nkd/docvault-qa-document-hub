@@ -13,12 +13,13 @@ function createCollabContext(options = {}) {
     const uid = options.uid || 'user-123';
     const displayName = options.displayName || 'Test User';
     const email = options.email || 'user@example.com';
+    const photoURL = options.photoURL || '';
     const isCollab = options.collab !== false;
     const isGuest = Boolean(options.guest);
 
-    const activityStore = new Map();
-    const historyStore = new Map(); // key: `${docId}/${snapId}`
-    const countersStore = new Map(); // key: 'bugs' -> { next: number }
+    const activityStore = options.activityStore || new Map();
+    const historyStore = options.historyStore || new Map(); // key: `${docId}/${snapId}`
+    const countersStore = options.countersStore || new Map(); // key: 'bugs' -> { next: number }
 
     const dbCalls = {
         activitySets: [],
@@ -111,14 +112,14 @@ function createCollabContext(options = {}) {
         GUEST_MODE: isGuest,
         location: { search: isGuest ? '?guest=1' : '', hostname: 'localhost' },
         CollabBootstrap: {
-            getCurrentMember: () => ({ uid, role, displayName, email })
+            getCurrentMember: () => ({ uid, role, displayName, email, photoURL })
         },
         CollabAuth: {
-            getCurrentUser: () => ({ uid, email })
+            getCurrentUser: () => ({ uid, email, displayName, photoURL })
         },
         firebase: {
             firestore: () => firestoreMock,
-            auth: () => ({ currentUser: { uid, email } })
+            auth: () => ({ currentUser: { uid, email, displayName, photoURL } })
         },
         toast: () => {},
         documents: [],
@@ -140,7 +141,7 @@ function createCollabContext(options = {}) {
 
     vm.runInContext(read('js/collab-store.js'), ctx);
     ctx.CollabStore.setDb(firestoreMock);
-    ctx.CollabStore.setUser({ uid, email });
+    ctx.CollabStore.setUser({ uid, email, displayName, photoURL });
     vm.runInContext(read('js/state.js') + '\n;globalThis.DocHistory = DocHistory; globalThis.ActivityLog = ActivityLog;', ctx);
 
     return { ctx, firestoreMock, activityStore, historyStore, countersStore, dbCalls, localStore };
@@ -335,4 +336,159 @@ test('actions-documents.js: saveDoc and duplicateDoc await _nextBugNumber and al
     const numB = await ctx._nextBugNumber();
     assert.equal(numB, 2);
     assert.notEqual(numA, numB, 'Consecutive bug numbers must be distinct');
+});
+
+// ---------------------------------------------------------------------------
+// 5. Multi-Account History Sync & Diff View
+// ---------------------------------------------------------------------------
+test('CollabStore.loadHistory and DocHistory.load: snapshots saved by Account A are synced and loaded by Account B in Collab Mode', async () => {
+    const historyStore = new Map();
+
+    // Account A (Alice)
+    const { ctx: ctxA } = createCollabContext({
+        role: 'editor',
+        uid: 'user-a-111',
+        displayName: 'Alice Architect',
+        email: 'alice@team.com',
+        photoURL: 'https://cdn.example.com/alice.png',
+        historyStore
+    });
+
+    // Account B (Bob)
+    const { ctx: ctxB } = createCollabContext({
+        role: 'editor',
+        uid: 'user-b-222',
+        displayName: 'Bob Builder',
+        email: 'bob@team.com',
+        photoURL: 'https://cdn.example.com/bob.png',
+        historyStore
+    });
+
+    const docId = 'spec-doc-42';
+    const docA = { id: docId, title: 'Auth Specification', content: 'v1 initial content by Alice', category: 'general', status: 'active' };
+
+    // 1. Account A saves doc to history
+    await ctxA.DocHistory.save(docA);
+
+    // Verify snapshot in Firestore contains author metadata
+    assert.equal(historyStore.size, 1);
+    const [snapKey, snapData] = Array.from(historyStore.entries())[0];
+    assert.ok(snapKey.startsWith(`${docId}/`));
+    assert.equal(snapData.savedBy, 'user-a-111');
+    assert.equal(snapData.savedByName, 'Alice Architect');
+    assert.equal(snapData.savedByEmail, 'alice@team.com');
+    assert.equal(snapData.savedByPhoto, 'https://cdn.example.com/alice.png');
+    assert.equal(snapData.content, 'v1 initial content by Alice');
+
+    // 2. Account B's local storage initially has NO history for this doc
+    assert.equal(ctxB.DocHistory.get(docId).length, 0, 'Account B local storage empty initially');
+
+    // 3. CollabStore.loadHistory loads the remote snapshots directly
+    const directRemote = await ctxB.CollabStore.loadHistory(docId);
+    assert.equal(directRemote.length, 1);
+    assert.equal(directRemote[0].savedByName, 'Alice Architect');
+    assert.equal(directRemote[0].content, 'v1 initial content by Alice');
+
+    // 4. DocHistory.load loads from CollabStore, merges, updates Account B's localStorage cache, and returns
+    const loadedForB = await ctxB.DocHistory.load(docId);
+    assert.equal(loadedForB.length, 1);
+    assert.equal(loadedForB[0].savedByName, 'Alice Architect');
+    assert.equal(loadedForB[0].savedByPhoto, 'https://cdn.example.com/alice.png');
+
+    // Verify Account B's local storage cache is now populated
+    const cachedB = ctxB.DocHistory.get(docId);
+    assert.equal(cachedB.length, 1);
+    assert.equal(cachedB[0].savedByName, 'Alice Architect');
+    assert.equal(cachedB[0].content, 'v1 initial content by Alice');
+
+    // 5. Account B edits the document and saves a new revision
+    await new Promise(r => setTimeout(r, 15));
+    const docB = { id: docId, title: 'Auth Specification', content: 'v2 modified by Bob', category: 'general', status: 'published' };
+    await ctxB.DocHistory.save(docB);
+
+    assert.equal(historyStore.size, 2);
+
+    // 6. Account A loads history: merges both revisions deduplicated, sorted newest first
+    const loadedForA = await ctxA.DocHistory.load(docId);
+    assert.equal(loadedForA.length, 2);
+    assert.equal(loadedForA[0].savedByName, 'Bob Builder');
+    assert.equal(loadedForA[0].content, 'v2 modified by Bob');
+    assert.equal(loadedForA[1].savedByName, 'Alice Architect');
+    assert.equal(loadedForA[1].content, 'v1 initial content by Alice');
+
+    // Verify deduplication on repeated load
+    const reloadedA = await ctxA.DocHistory.load(docId);
+    assert.equal(reloadedA.length, 2, 'Deduplication prevents duplicate entries on repeated load');
+});
+
+test('GitHub-style diff rendering: _buildDiffHtml renders dual gutters, hunk headers, and word-level diff', () => {
+    const ctx = {
+        console,
+        escHtml: (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+        window: {}
+    };
+    ctx.window = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(read('js/actions-batch-history.js'), ctx);
+
+    const oldText = 'function test() {\n    const a = 1;\n    return a;\n}';
+    const newText = 'function test() {\n    const a = 2;\n    return a;\n}';
+    const diff = ctx._diffLines(oldText, newText);
+    const html = ctx._buildDiffHtml(diff);
+
+    assert.match(html, /class="diff-skip"/, 'Renders hunk header with diff-skip');
+    assert.match(html, /class="diff-hunk-tag">@@\s*-\d+,\d+\s*\+\d+,\d+\s*@@/, 'Renders @@ -old,count +new,count @@');
+    assert.match(html, /class="diff-del"/, 'Renders diff-del line');
+    assert.match(html, /class="diff-add"/, 'Renders diff-add line');
+    assert.match(html, /class="diff-word-del"/, 'Renders word-level deletion highlight');
+    assert.match(html, /class="diff-word-add"/, 'Renders word-level addition highlight');
+    assert.match(html, /class="diff-num"/, 'Renders line number gutter');
+    assert.match(html, /class="diff-sign"/, 'Renders sign column');
+    assert.match(html, /class="diff-code"/, 'Renders code column');
+});
+
+test('DocHistory solo mode and photo validation: solo mode omits author metadata; insecure photo is stripped', async () => {
+    // Solo mode context: COLLAB_MODE = false
+    const lStore = new Map();
+    const soloCtx = {
+        console,
+        COLLAB_MODE: false,
+        _wsKey: (k) => k,
+        localStorage: {
+            getItem: (k) => lStore.get(k) || null,
+            setItem: (k, v) => lStore.set(k, String(v))
+        }
+    };
+    soloCtx.window = soloCtx;
+    vm.createContext(soloCtx);
+    vm.runInContext(read('js/state.js') + '\n;globalThis.DocHistory = DocHistory;', soloCtx);
+
+    const doc = { id: 'solo-doc-1', title: 'Solo Doc', content: 'Solo content' };
+    await soloCtx.DocHistory.save(doc);
+
+    const snaps = soloCtx.DocHistory.get('solo-doc-1');
+    assert.equal(snaps.length, 1);
+    assert.equal(snaps[0].savedByName, undefined, 'Solo mode must NOT store savedByName');
+    assert.equal(snaps[0].savedByEmail, undefined, 'Solo mode must NOT store savedByEmail');
+    assert.equal(snaps[0].savedByPhoto, undefined, 'Solo mode must NOT store savedByPhoto');
+    assert.ok(snaps[0].id && snaps[0].id.startsWith('snap_'), 'Snapshot has identity snapId');
+
+    // Collab Mode with insecure http:// photo
+    const { ctx: collabCtx, historyStore } = createCollabContext({
+        role: 'editor',
+        uid: 'user-insecure',
+        displayName: 'Eve Editor',
+        email: 'eve@team.com',
+        photoURL: 'http://insecure.example.com/avatar.jpg' // http, not https
+    });
+
+    const doc2 = { id: 'collab-doc-2', title: 'Insecure Photo Doc', content: 'content' };
+    await collabCtx.DocHistory.save(doc2);
+
+    const collabSnaps = collabCtx.DocHistory.get('collab-doc-2');
+    assert.equal(collabSnaps.length, 1);
+    assert.equal(collabSnaps[0].savedByPhoto, undefined, 'Insecure http photo must be stripped from local snapshot');
+
+    const remoteSnap = Array.from(historyStore.values())[0];
+    assert.equal(remoteSnap.savedByPhoto, undefined, 'Insecure http photo must be stripped from remote Firestore snapshot');
 });

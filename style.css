@@ -925,45 +925,103 @@
 .batch-action-btn:hover { background: var(--card); }
 
 /* ============================================
-   Snapshot Diff View
+   Snapshot Diff View (GitHub-style)
    ============================================ */
 .diff-view {
-    font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
-    font-size: 12.5px;
-    line-height: 1.6;
-}
-.diff-add, .diff-del, .diff-ctx, .diff-skip {
-    display: flex;
-    align-items: flex-start;
-    padding: 1.5px 14px;
-    min-height: 22px;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
-.diff-add  { background: rgba(16, 185, 129, 0.08); }
-.diff-del  { background: rgba(239, 68, 68, 0.08); }
-.diff-ctx  { background: transparent; }
-.diff-skip {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    line-height: 20px;
     background: var(--bg);
-    color: var(--tx-d);
-    font-size: 11px;
-    font-family: inherit;
-    font-style: italic;
-    justify-content: center;
-    padding: 3px 14px;
     border-top: 1px solid var(--brd);
-    border-bottom: 1px solid var(--brd);
+}
+.diff-add, .diff-del, .diff-ctx {
+    display: flex;
+    align-items: stretch;
+    min-height: 20px;
+    transition: background-color 0.1s ease;
+}
+.diff-add {
+    background: rgba(16, 185, 129, 0.12);
+}
+.diff-add:hover {
+    background: rgba(16, 185, 129, 0.22);
+}
+.diff-del {
+    background: rgba(239, 68, 68, 0.12);
+}
+.diff-del:hover {
+    background: rgba(239, 68, 68, 0.22);
+}
+.diff-ctx {
+    background: transparent;
+}
+.diff-ctx:hover {
+    background: rgba(125, 125, 125, 0.08);
+}
+.diff-num {
+    flex-shrink: 0;
+    width: 38px;
+    padding: 0 6px 0 2px;
+    text-align: right;
+    color: var(--tx-d);
+    opacity: 0.65;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+    cursor: default;
 }
 .diff-sign {
     flex-shrink: 0;
-    width: 20px;
+    width: 18px;
+    text-align: center;
     font-weight: 700;
+    font-size: 12px;
     user-select: none;
-    opacity: 0.7;
+    opacity: 0.85;
 }
-.diff-add .diff-sign { color: var(--acc); }
+.diff-add .diff-sign { color: var(--acc, #10b981); }
 .diff-del .diff-sign { color: #f87171; }
-.diff-ctx .diff-sign { color: var(--tx-d); }
+.diff-ctx .diff-sign { color: var(--tx-d); opacity: 0.3; }
+.diff-code {
+    flex: 1;
+    min-width: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 4;
+    padding: 0 10px 0 4px;
+    color: var(--tx);
+}
+.diff-word-add {
+    background: rgba(16, 185, 129, 0.35);
+    border-radius: 3px;
+    padding: 1px 2px;
+}
+.diff-word-del {
+    background: rgba(239, 68, 68, 0.35);
+    border-radius: 3px;
+    padding: 1px 2px;
+}
+.diff-skip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--tx-m);
+    font-size: 11px;
+    padding: 3px 12px 3px 80px;
+    border-top: 1px solid var(--brd);
+    border-bottom: 1px solid var(--brd);
+    user-select: none;
+}
+.diff-hunk-tag {
+    color: #818cf8;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+.diff-skip-note {
+    color: var(--tx-d);
+    font-style: italic;
+}
 
 .api-impact-editor { padding:14px; border:1px solid var(--brd); border-radius:10px; background:var(--bg2); }
 .api-impact-check { display:flex; align-items:center; gap:8px; color:var(--tx-m); font-size:12px; cursor:pointer; }

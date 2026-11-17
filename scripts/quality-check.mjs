@@ -48,7 +48,9 @@ for (const relativePath of jsFiles.filter((value) => value !== 'main.js')) {
 }
 
 const maintainabilityBudgets = {
-    'js/actions-batch-history.js': 500,
+    // Raised from 500 for multi-account revision sync (author avatars & metadata)
+    // and GitHub-style unified diff compare modal (dual line gutters, hunk headers, word-level diff).
+    'js/actions-batch-history.js': 620,
     // Deliberately generous: the whole sharing lifecycle (payload, encryption,
     // publish, re-sync, revoke) is kept in this one file. Splitting it to stay
     // under the old 260 budget is what produced "_encryptSharePayload is not

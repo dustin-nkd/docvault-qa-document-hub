@@ -75,13 +75,13 @@ function createCollabSharesContext(customGlobals = {}) {
     return sandbox;
 }
 
-test('Shell contracts: events.js loads collab-shares, sw.js caches it in v90, and budgets hold', () => {
+test('Shell contracts: events.js loads collab-shares, sw.js caches it in v91, and budgets hold', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-shares'/);
     assert.ok(events.indexOf("'collab-shares'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v90'/);
+    assert.match(sw, /const SW_VERSION = 'v91'/);
     assert.match(sw, /'\.\/js\/collab-shares\.js'/);
 
     const sharesLines = read('js/collab-shares.js').split('\n').length;
@@ -102,7 +102,7 @@ test('Shell contracts: events.js loads collab-shares, sw.js caches it in v90, an
         const absolutePath = path.join(rootDir, relativePath);
         return total + (fs.existsSync(absolutePath) ? fs.statSync(absolutePath).size : 0);
     }, 0);
-    assert.ok(bytes <= 1_118_000, `Direct startup assets must be <= 1,118,000 bytes (got ${bytes})`);
+    assert.ok(bytes <= 1_130_000, `Direct startup assets must be <= 1,130,000 bytes (got ${bytes})`);
 });
 
 test('Firestore shares payload contains exact fields and NEVER contains key, password, PAT, or token', async () => {
