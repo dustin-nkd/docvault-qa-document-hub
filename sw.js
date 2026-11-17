@@ -4,7 +4,7 @@
 // permanently stuck on stale code.
 // Numbering skips v45: that shell was briefly live before being rolled back, so
 // every later version stays strictly ahead of anything a browser may still hold.
-const SW_VERSION = 'v91'; // Multi-account history sync and GitHub-style diff compare modal
+const SW_VERSION = 'v91'; // Stage 3 UI polish, modal stacking, collab shell assets
 const CACHE_PREFIX = 'docvault-shell-';
 const CACHE_NAME = CACHE_PREFIX + SW_VERSION;
 
@@ -46,6 +46,8 @@ const APP_SHELL = [
     './js/collab-activity.js',
     './js/collab-assign.js',
     './js/collab-comments.js',
+    './js/collab-viewer.js',
+    './js/collab-workspaces.js',
     './js/events.js',
     './vendor/firebase/firebase-app-compat.js',
     './vendor/firebase/firebase-auth-compat.js',
@@ -108,10 +110,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(req).then((res) => {
             if (res && res.ok) {
-                const copy = res.clone();
-                caches.open(CACHE_NAME)
-                    .then((cache) => cache.put(req, copy))
-                    .catch((error) => console.warn('[DocVault SW] Could not refresh cached resource:', req.url, error));
+                // Do not cache transient query-string requests (e.g. ?shareId=...) in the app shell cache
+                if (!url.searchParams.has('shareId')) {
+                    const copy = res.clone();
+                    caches.open(CACHE_NAME)
+                        .then((cache) => cache.put(req, copy))
+                        .catch((error) => console.warn('[DocVault SW] Could not refresh cached resource:', req.url, error));
+                }
             }
             return res;
         }).catch(async () => {

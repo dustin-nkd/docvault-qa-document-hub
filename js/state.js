@@ -608,6 +608,10 @@ async function hydrate() {
     if (typeof window !== 'undefined' && window.COLLAB_MODE) {
         documents = (await window.CollabStore?.loadDocuments?.()) || [];
         normalizeDocTags(documents);
+        if (typeof DocStorage !== 'undefined' && typeof DocStorage.cleanOrphanedDocReferences === 'function') {
+            const activeIds = new Set(documents.map(d => d.id));
+            DocStorage.cleanOrphanedDocReferences(documents, new Set(), activeIds);
+        }
         return;
     }
 

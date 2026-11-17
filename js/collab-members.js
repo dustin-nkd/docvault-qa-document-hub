@@ -9,14 +9,8 @@
     function isGuestMode() { return typeof root.GUEST_MODE !== 'undefined' ? Boolean(root.GUEST_MODE) : false; }
     function getFirestoreDb() { return root.firebase && typeof root.firebase.firestore === 'function' ? root.firebase.firestore() : null; }
 
-    function getCurrentMember() {
-        return root.CollabBootstrap && typeof root.CollabBootstrap.getCurrentMember === 'function' ? root.CollabBootstrap.getCurrentMember() : null;
-    }
-
-    function getCurrentRole() {
-        const m = getCurrentMember();
-        return m && m.role ? m.role : (isCollabMode() ? null : 'owner');
-    }
+    function getCurrentMember() { return root.CollabBootstrap?.getCurrentMember?.() || null; }
+    function getCurrentRole() { const m = getCurrentMember(); return m && m.role ? m.role : (isCollabMode() ? null : 'owner'); }
 
     function isOwner() { return getCurrentRole() === 'owner'; }
     function isEditor() { return getCurrentRole() === 'editor'; }
@@ -178,7 +172,15 @@
             if (memberDoc.exists && memberDoc.data()?.role === 'owner') {
                 if (typeof root.toast === 'function') root.toast('Cannot remove the team owner.', 'error'); return false;
             }
+            const memEmail = memberDoc.exists ? memberDoc.data()?.email : null;
             await db.collection('members').doc(uid).delete();
+            if (memEmail) {
+                try {
+                    const docId = String(memEmail).trim(), lowerId = docId.toLowerCase();
+                    await db.collection('invites').doc(docId).delete();
+                    if (lowerId && lowerId !== docId) await db.collection('invites').doc(lowerId).delete();
+                } catch (_) {}
+            }
             if (typeof root.toast === 'function') root.toast('Member removed.', 'success');
             await loadAndRenderTeam();
             return true;

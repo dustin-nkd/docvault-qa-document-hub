@@ -30,3 +30,4 @@ import './collab-phase2-integrity.test.mjs';
 import './collab-shares.test.mjs';
 import './collab-store.test.mjs';
 import './collab-stage2.test.mjs';
+import './collab-stage3.test.mjs';

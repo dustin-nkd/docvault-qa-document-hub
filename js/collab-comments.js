@@ -18,28 +18,10 @@
             .replace(/'/g, '&#39;');
     }
 
-    function init(db, authUser, member) {
-        _db = db || null;
-        _authUser = authUser || null;
-        _member = member || null;
-    }
-
-    function getFirestoreDb() {
-        if (_db) return _db;
-        if (root.CollabStore?.getFirestoreDb) return root.CollabStore.getFirestoreDb();
-        if (root.firebase?.firestore) return root.firebase.firestore();
-        return null;
-    }
-
-    function getCurrentUser() {
-        if (_authUser) return _authUser;
-        return root.firebase?.auth?.().currentUser || null;
-    }
-
-    function getCurrentMember() {
-        if (_member) return _member;
-        return root.CollabBootstrap?.getCurrentMember?.() || null;
-    }
+    function init(db, authUser, member) { _db = db || null; _authUser = authUser || null; _member = member || null; }
+    function getFirestoreDb() { return _db || root.CollabStore?.getFirestoreDb?.() || root.firebase?.firestore?.() || null; }
+    function getCurrentUser() { return _authUser || root.firebase?.auth?.().currentUser || null; }
+    function getCurrentMember() { return _member || root.CollabBootstrap?.getCurrentMember?.() || null; }
 
     function buildCommentTree(flatComments) {
         if (!Array.isArray(flatComments)) return [];
@@ -225,7 +207,8 @@
             throw new Error('Comment content must be a string');
         }
         const trimmed = content.trim();
-        if (!trimmed || content.length > 4000) {
+        const byteLen = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(content).length : content.length;
+        if (!trimmed || content.length > 4000 || byteLen > 4000) {
             throw new Error('Comment content must be between 1 and 4000 characters');
         }
         const authUser = getCurrentUser();
@@ -274,15 +257,21 @@
         return comment;
     }
 
-    async function updateComment(docId, commentId, data) {
+    async function updateComment(docId, commentId, data, docObj) {
         if (!docId || !commentId) throw new Error('Invalid docId or commentId');
         const { content, mentions } = data || {};
         if (typeof content !== 'string') throw new Error('Comment content must be a string');
         const trimmed = content.trim();
-        if (!trimmed || content.length > 4000) throw new Error('Comment content must be between 1 and 4000 characters');
+        const byteLen = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(content).length : content.length;
+        if (!trimmed || content.length > 4000 || byteLen > 4000) throw new Error('Comment content must be between 1 and 4000 characters');
 
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore DB unavailable');
+
+        const commentRef = db.collection('documents').doc(docId).collection('comments').doc(commentId);
+        const existingSnap = (typeof commentRef.get === 'function') ? await commentRef.get() : null;
+        const existingData = existingSnap?.exists ? existingSnap.data() : null;
+        const oldMentions = new Set(Array.isArray(existingData?.mentions) ? existingData.mentions : []);
 
         const updateData = {
             content,
@@ -292,7 +281,21 @@
             updateData.mentions = mentions;
         }
 
-        await db.collection('documents').doc(docId).collection('comments').doc(commentId).update(updateData);
+        await commentRef.update(updateData);
+
+        if (Array.isArray(mentions) && mentions.length > 0) {
+            const authorUid = existingData?.authorUid || getCurrentUser()?.uid || getCurrentMember()?.uid;
+            const newMentions = mentions.filter(uid => uid && uid !== authorUid && !oldMentions.has(uid));
+            if (newMentions.length > 0) {
+                const docsList = typeof root.documents !== 'undefined' ? root.documents : (typeof documents !== 'undefined' ? documents : []);
+                const targetDoc = (docObj && docObj.title && docObj.title !== docId) ? docObj : ((root.state?.editingDoc?.id === docId && root.state.editingDoc.title) ? root.state.editingDoc : (Array.isArray(docsList) ? docsList.find(d => d.id === docId) : null)) || docObj || { id: docId, title: 'Untitled' };
+                const updatedComment = { ...(existingData || {}), ...updateData, id: commentId, docId };
+                for (const recipientUid of newMentions) {
+                    notifyCommentMention(targetDoc, updatedComment, recipientUid).catch(err => { console.warn('[CollabComments] notify mention err:', err); });
+                }
+            }
+        }
+
         return updateData;
     }
 
@@ -301,7 +304,25 @@
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore DB unavailable');
 
-        await db.collection('documents').doc(docId).collection('comments').doc(commentId).delete();
+        const commentsRef = db.collection('documents').doc(docId).collection('comments');
+        const commentRef = commentsRef.doc(commentId);
+        let hasReplies = false;
+        try {
+            if (typeof commentsRef.where === 'function') {
+                const repliesSnap = await commentsRef.where('parentId', '==', commentId).limit(1).get();
+                hasReplies = !repliesSnap.empty;
+            }
+        } catch (_) {}
+
+        if (hasReplies) {
+            await commentRef.update({
+                content: '[This comment has been deleted]',
+                isDeleted: true,
+                updatedAt: Date.now()
+            });
+        } else {
+            await commentRef.delete();
+        }
         return true;
     }
 

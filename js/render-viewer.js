@@ -309,11 +309,12 @@ function _renderCommentCard(doc, c, membersMap, currentUid, isOwner, isReply) {
     const avatarColor = _getCollabAvatarColor(c.authorUid || authorName);
     const role = _getCollabAuthorRole(c.authorUid, membersMap) || c.authorRole || '';
     const dateStr = _formatCommentDate(c.createdAt);
-    const formattedContent = _formatCommentBody(c.content, membersMap);
+    const isDeletedComment = Boolean(c.isDeleted || c.content === '[This comment has been deleted]');
+    const formattedContent = isDeletedComment ? '<span class="italic" style="color:var(--tx-d);">[This comment has been deleted]</span>' : _formatCommentBody(c.content, membersMap);
 
     const isAuthor = Boolean(currentUid && c.authorUid === currentUid);
-    const canEdit = isAuthor;
-    const canDelete = Boolean(currentUid && (c.authorUid === currentUid || isOwner));
+    const canEdit = isAuthor && !isDeletedComment;
+    const canDelete = Boolean(currentUid && (c.authorUid === currentUid || isOwner)) && !isDeletedComment;
 
     const cardClass = isReply
         ? 'collab-comment-card collab-reply-card p-3 rounded-lg border border-[var(--brd)]'
@@ -615,7 +616,7 @@ rootObj.collabSaveEditComment = async function(docId, commentId) {
         : [];
     try {
         if (rootObj.CollabComments && typeof rootObj.CollabComments.updateComment === 'function') {
-            await rootObj.CollabComments.updateComment(targetDocId, commentId, { content, mentions });
+            await rootObj.CollabComments.updateComment(targetDocId, commentId, { content, mentions }, rootObj.state?.editingDoc);
         }
         rootObj.collabCancelEditComment(commentId);
     } catch (err) {

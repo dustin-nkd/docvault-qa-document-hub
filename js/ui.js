@@ -256,40 +256,57 @@ function _modalTrapHandler(e) {
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
-function showModal(html) {
+const _modalStack = [];
+if (typeof window !== 'undefined') window._modalStack = _modalStack;
+
+function showModal(html, options = {}) {
     const m = document.getElementById('modal');
+    if (!m) return;
+    if (!m.classList.contains('hidden') && typeof m.innerHTML === 'string' && m.innerHTML.trim() !== '') {
+        _modalStack.push({ html: m.innerHTML, previouslyFocused: _modalPreviouslyFocusedEl, onClose: typeof window !== 'undefined' ? window._modalOnClose : null });
+        if (typeof window !== 'undefined') window._modalOnClose = null;
+    }
     _modalPreviouslyFocusedEl = document.activeElement;
     m.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
-    m.innerHTML = `<div class="fade-up rounded-xl p-6 w-full max-w-lg mx-4" role="dialog" aria-modal="true" tabindex="-1" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto;">${html}</div>`;
-    const dialog = m.querySelector('[role="dialog"]');
-    const heading = dialog?.querySelector('h1, h2, h3');
-    if (heading) {
-        heading.id = heading.id || 'modal-title';
-        dialog.setAttribute('aria-labelledby', heading.id);
-    } else if (dialog) {
-        dialog.setAttribute('aria-label', 'Dialog');
-    }
+    const maxWidth = options.maxWidth || 'max-w-lg', padding = options.noPadding ? 'p-0' : 'p-6', extraStyle = options.style ? ';' + options.style : '';
+    m.innerHTML = `<div class="fade-up rounded-xl ${padding} w-full ${maxWidth} mx-4" role="dialog" aria-modal="true" tabindex="-1" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow-y:auto${extraStyle}">${html}</div>`;
+    const dialog = m.querySelector('[role="dialog"]'), heading = dialog?.querySelector('h1, h2, h3');
+    if (heading) { heading.id = heading.id || 'modal-title'; dialog.setAttribute('aria-labelledby', heading.id); }
+    else if (dialog) dialog.setAttribute('aria-label', 'Dialog');
     enhanceInteractionSemantics(m);
     m.onclick = (e) => { if (e.target === m) closeModal(); };
     document.removeEventListener('keydown', _modalTrapHandler);
     document.addEventListener('keydown', _modalTrapHandler);
     const f = _modalFocusables();
-    if (f.length) f[0].focus();
-    else dialog?.focus();
+    if (f.length) f[0].focus(); else dialog?.focus();
 }
-function closeModal() {
-    const onClose = typeof window !== 'undefined' ? window._modalOnClose : null;
+function closeModal(closeAll = false) {
+    const m = document.getElementById('modal'), onClose = typeof window !== 'undefined' ? window._modalOnClose : null;
     if (typeof window !== 'undefined') window._modalOnClose = null;
-    document.getElementById('modal').className = 'fixed inset-0 z-[90] hidden';
-    document.removeEventListener('keydown', _modalTrapHandler);
+    if (typeof onClose === 'function') { try { onClose(); } catch (e) { console.error('[closeModal onClose]', e); } }
     const prev = _modalPreviouslyFocusedEl;
     _modalPreviouslyFocusedEl = null;
-    if (typeof onClose === 'function') {
-        try { onClose(); } catch (e) { console.error('[closeModal onClose]', e); }
+
+    if (!closeAll && _modalStack.length > 0) {
+        const previousState = _modalStack.pop();
+        if (m) {
+            m.innerHTML = previousState.html;
+            enhanceInteractionSemantics(m);
+            m.onclick = (e) => { if (e.target === m) closeModal(); };
+            document.removeEventListener('keydown', _modalTrapHandler);
+            document.addEventListener('keydown', _modalTrapHandler);
+            if (typeof window !== 'undefined') window._modalOnClose = previousState.onClose;
+            _modalPreviouslyFocusedEl = previousState.previouslyFocused;
+            const f = _modalFocusables();
+            if (f.length) f[0].focus(); else m.querySelector('[role="dialog"]')?.focus();
+        }
+        return;
     }
-    if (prev && typeof prev.focus === 'function' && document.contains(prev)) {
-        try { prev.focus(); } catch (e) {}
-    }
+
+    _modalStack.length = 0;
+    if (m) { m.className = 'fixed inset-0 z-[90] hidden'; m.innerHTML = ''; }
+    document.removeEventListener('keydown', _modalTrapHandler);
+    if (prev && typeof prev.focus === 'function' && document.contains(prev)) { try { prev.focus(); } catch (e) {} }
 }
 
 function _checkHardDeletePermission(msg) {

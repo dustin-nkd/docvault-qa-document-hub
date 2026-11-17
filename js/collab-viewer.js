@@ -1,6 +1,6 @@
 // DocVault team collaboration viewer restrictions module
 (function(root) {
-    const VIEWER_BLOCKED_RE = /\b(showTemplateModal|editDoc|duplicateDoc|showDeleteModal|showEmptyTrashModal|emptyTrash|confirmDelete|hardDeleteDoc|restoreDoc|saveDoc|shareDoc|confirmBatchDelete|confirmBatchAddTag|confirmBatchMoveFolder|confirmBatchBugEdit|saveFocusWorkflow|completeFocusItem|unsnoozeFocusItem|reopenFocusItem)\s*\(/;
+    const VIEWER_BLOCKED_RE = /\b(showTemplateModal|editDoc|duplicateDoc|showDeleteModal|showEmptyTrashModal|emptyTrash|confirmDelete|hardDeleteDoc|restoreDoc|saveDoc|shareDoc|moveDocStatus|confirmBatchDelete|confirmBatchAddTag|confirmBatchMoveFolder|confirmBatchBugEdit|saveFocusWorkflow|completeFocusItem|unsnoozeFocusItem|reopenFocusItem)\s*\(/;
 
     function isViewer() {
         if (root.COLLAB_MODE === false) return false;
@@ -72,6 +72,7 @@
     }
 
     function filterPermissionError(e) {
+        if (!isViewer()) return;
         const r = e?.reason, msg = String(r?.message || r || '');
         if (r?.code === 'permission-denied' || r?.code === 7 || /permission[-_ ]denied|Missing or insufficient permissions/i.test(msg)) {
             e.stopImmediatePropagation?.();

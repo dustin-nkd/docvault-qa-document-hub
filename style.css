@@ -1,8 +1,6 @@
 
 
-/* ============================================
-   DocVault Popup — Premium Dark Theme
-   ============================================ */
+/* DocVault Popup — Premium Dark Theme */
 
 :root {
   --bg: #070b14;
@@ -49,7 +47,7 @@
    and its now-unused Typography rule. Confirmed zero usage of .popup-* /
    .popup selectors anywhere in index.html or js/*.js before removing. */
 
-/* ---- Scrollbar ---- */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
 }
@@ -64,12 +62,8 @@
   background: var(--brd-l);
 }
 
-/* ============================================
-   Search
-   ============================================ */
-/* ============================================
-   Empty / No Results States
-   ============================================ */
+/* Search */
+/* Empty / No Results States */
 .hidden {
   display: none !important;
 }
@@ -924,9 +918,7 @@
 }
 .batch-action-btn:hover { background: var(--card); }
 
-/* ============================================
-   Snapshot Diff View (GitHub-style)
-   ============================================ */
+/* Snapshot Diff View (GitHub-style) */
 .diff-view {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 12px;
@@ -1387,6 +1379,13 @@ button[aria-busy="true"] { cursor:progress !important; }
     --bh-border: #121212;
     --bh-muted: #E0E0E0;
     --bh-card: #FFFFFF;
+    --tx: #121212;
+    --tx-m: #404040;
+    --tx-d: #707070;
+    --bg: #F0F0F0;
+    --bg2: #E6E6E6;
+    --card: #FFFFFF;
+    --brd: #121212;
 }
 
 /* Master Lock Screen in Bauhaus Mode */
@@ -1529,9 +1528,7 @@ button[aria-busy="true"] { cursor:progress !important; }
     background: #E2B215 !important; transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px #121212 !important;
 }
 
-/* ============================================
-   Bauhaus App Shell: Sidebar & Navigation
-   ============================================ */
+/* Bauhaus App Shell: Sidebar & Navigation */
 [data-ui-style="bauhaus"] #sidebar {
     background: #F0F0F0 !important;
     border-color: #121212 !important;
@@ -1624,9 +1621,7 @@ button[aria-busy="true"] { cursor:progress !important; }
     transform: translate(1px, 1px) !important; box-shadow: 0 0 0 0 #121212 !important;
 }
 
-/* ============================================
-   Bauhaus App Shell: Header & Main Canvas
-   ============================================ */
+/* Bauhaus App Shell: Header & Main Canvas */
 [data-ui-style="bauhaus"] #app-header {
     background: #FFFFFF !important; border-color: #121212 !important;
     border-bottom: 4px solid #121212 !important; box-shadow: 0 4px 0 0 #121212 !important;
@@ -1668,9 +1663,7 @@ button[aria-busy="true"] { cursor:progress !important; }
 }
 [data-ui-style="bauhaus"] #content { color: #121212 !important; }
 
-/* ============================================
-   Bauhaus Dashboard Overview
-   ============================================ */
+/* Bauhaus Dashboard Overview */
 [data-ui-style="bauhaus"] .dashboard-hero {
     background: #1040C0 !important; border: 4px solid #121212 !important; border-radius: 0 !important;
     box-shadow: 8px 8px 0 0 #121212 !important; padding: 26px 30px !important;
@@ -1880,9 +1873,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     background: #E2B215 !important;
 }
 
-/* ============================================
-   Bauhaus Document List & Explorer
-   ============================================ */
+/* Bauhaus Document List & Explorer */
 
 /* Document Cards */
 [data-ui-style="bauhaus"] .doc-card {
@@ -2118,9 +2109,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     border-radius: 0 !important; border: 1.5px solid #121212 !important; font-weight: 800 !important;
 }
 
-/* ============================================
-   Bauhaus Document Viewer
-   ============================================ */
+/* Bauhaus Document Viewer */
 
 /* Viewer Shell & Typography */
 [data-ui-style="bauhaus"] #content h1.font-heading {
@@ -2579,9 +2568,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
 [data-ui-style="bauhaus"] .env-linked-cred-item span { color: #121212 !important; font-weight: 800 !important; }
 [data-ui-style="bauhaus"] .env-linked-cred-item:hover { background: #FFF9C4 !important; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 0 #121212 !important; }
 
-/* ============================================
-   Bauhaus Modal Dialogs & Template Picker
-   ============================================ */
+/* Bauhaus Modal Dialogs & Template Picker */
 
 /* Modal Dialog Box */
 [data-ui-style="bauhaus"] #modal [role="dialog"] {
@@ -2655,9 +2642,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     background: #FFF0F0 !important;
 }
 
-/* ============================================
-   Bauhaus Document Editor
-   ============================================ */
+/* Bauhaus Document Editor */
 
 /* Universal Button Tokens in Bauhaus */
 [data-ui-style="bauhaus"] .btn-p {
@@ -3037,9 +3022,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     color: #121212 !important;
 }
 
-/* ============================================
-   Bauhaus Focus Mode (Today / Action Queue)
-   ============================================ */
+/* Bauhaus Focus Mode (Today / Action Queue) */
 
 /* Focus Hero & Counter */
 [data-ui-style="bauhaus"] .focus-hero h3 {
@@ -3279,9 +3262,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     text-transform: uppercase !important;
 }
 
-/* ============================================
-   Bauhaus Traceability Matrix & API Impact
-   ============================================ */
+/* Bauhaus Traceability Matrix & API Impact */
 
 /* Summary Bar */
 [data-ui-style="bauhaus"] .trace-summary-item {
@@ -3563,9 +3544,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     padding: 2px 6px !important;
 }
 
-/* ============================================
-   Bauhaus Activity Log (Audit Timeline)
-   ============================================ */
+/* Bauhaus Activity Log (Audit Timeline) */
 
 /* Activity Day Separator */
 [data-ui-style="bauhaus"] .act-day {
@@ -3680,9 +3659,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     font-weight: 600 !important;
 }
 
-/* ============================================
-   Bauhaus Settings & Workspaces Dialogs
-   ============================================ */
+/* Bauhaus Settings & Workspaces Dialogs */
 
 /* Settings Modal Tabs */
 [data-ui-style="bauhaus"] #modal .flex.gap-1.mb-5.p-1.rounded-lg {
@@ -3854,9 +3831,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     letter-spacing: .04em !important;
 }
 
-/* ============================================
-   Bauhaus Sharing, History & Diff Views
-   ============================================ */
+/* Bauhaus Sharing, History & Diff Views */
 
 /* Snapshot Diff Modal Shell */
 [data-ui-style="bauhaus"] #modal .fade-up.rounded-xl.w-full[style*="max-width:780px"] {
@@ -3954,9 +3929,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     background: #FFFFFF !important;
 }
 
-/* ============================================
-   Bauhaus Search Modal (Ctrl+K)
-   ============================================ */
+/* Bauhaus Search Modal (Ctrl+K) */
 [data-ui-style="bauhaus"] #search-modal [role="dialog"] {
     background: #FFFFFF !important;
     border: 4px solid #121212 !important;
@@ -4060,9 +4033,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     font-family: 'Space Grotesk', sans-serif !important;
 }
 
-/* ============================================
-   Bauhaus Toasts
-   ============================================ */
+/* Bauhaus Toasts */
 [data-ui-style="bauhaus"] #toasts .toast {
     background: #FFFFFF !important;
     border: 3px solid #121212 !important;
@@ -4101,9 +4072,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     color: #121212 !important;
 }
 
-/* ============================================
-   Bauhaus Subfolder & Custom Select Dropdowns
-   ============================================ */
+/* Bauhaus Subfolder & Custom Select Dropdowns */
 [data-ui-style="bauhaus"] #subfolder-dropdown,
 [data-ui-style="bauhaus"] .custom-select-dropdown {
     background: #FFFFFF !important;
@@ -4129,9 +4098,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     color: #121212 !important;
 }
 
-/* ============================================
-   Bauhaus Category Editors: Test Plan, API, Environment, Test Run, Release
-   ============================================ */
+/* Bauhaus Category Editors: Test Plan, API, Environment, Test Run, Release */
 
 /* Linked Test Cases & Runs in Test Plan */
 [data-ui-style="bauhaus"] [aria-labelledby="plan-tcs-label"],
@@ -4418,9 +4385,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     height: 2px !important;
 }
 
-/* ============================================
-   Bauhaus Quality Scorecard & Release Cockpit
-   ============================================ */
+/* Bauhaus Quality Scorecard & Release Cockpit */
 
 [data-ui-style="bauhaus"] .release-cockpit-outcome {
     border: 3px solid #121212 !important;
@@ -4728,9 +4693,7 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     background: #1040C0 !important;
 }
 
-/* ==========================================================================
-   Collaboration Comments Section & Threading
-   ========================================================================== */
+/* Collaboration Comments Section & Threading */
 #collab-comments-section {
     color: var(--tx);
 }
@@ -4894,7 +4857,3 @@ body:has(#guest-banner) #ui-style-toggle-btn {
     border-radius: 0 !important;
     box-shadow: 3px 3px 0 0 #121212 !important;
 }
-
-
-
-
