@@ -64,8 +64,7 @@
         if (!db || typeof db.enablePersistence !== 'function') return;
         if (_persistencePromise) return _persistencePromise;
         _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-            if (err?.code !== 'unimplemented') console.warn(`[CollabStore] enablePersistence ${err?.code || 'warning'}:`, err);
-            if (err?.code !== 'unimplemented') return Promise.reject(err);
+            if (err?.code !== 'unimplemented') { console.warn(`[CollabStore] enablePersistence ${err?.code || 'warning'}:`, err); return Promise.reject(err); }
         });
         return _persistencePromise;
     }
@@ -117,6 +116,8 @@
             else if (typeof root.render === 'function') root.render();
             return;
         }
+        const existingPass = _knownDocs.get(docId)?.password || docs.find(d => d.id === docId)?.password || (s?.editingDoc?.id === docId ? s.editingDoc.password : '');
+        if (remoteDoc.category === 'credential' && existingPass) remoteDoc.password = existingPass;
         _knownDocs.set(docId, { ...remoteDoc });
         if ((remoteDoc.workspaceId || 'default') !== getActiveWs()) {
             const idx = docs.findIndex(d => d.id === docId);
@@ -134,6 +135,7 @@
                     if (sData?.password !== undefined) {
                         remoteDoc.password = sData.password;
                         const known = _knownDocs.get(docId); if (known) known.password = sData.password;
+                        const d = docs.find(x => x.id === docId); if (d) d.password = sData.password;
                         if (s?.view === 'editor' && s.editingDoc?.id === docId && !isEditorDirty()) { s.editingDoc.password = sData.password; if (typeof root.render === 'function') root.render(); }
                     }
                 }).catch(() => {});
@@ -187,7 +189,7 @@
 
         const snapshot = await db.collection('documents').get(), loaded = [];
         _knownDocs.clear();
-        const role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner', snaps = [];
+        const role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner', snaps = [], user = getCurrentUser(), uid = user?.uid;
         snapshot.forEach(d => snaps.push(d));
         for (const docSnap of snaps) {
             const data = (typeof docSnap.data === 'function') ? docSnap.data() : docSnap.data, doc = fromFirestoreDoc(data, docSnap.id);
@@ -196,14 +198,16 @@
                 if (canSecret) {
                     try {
                         const docRef = db.collection('documents').doc(doc.id), sSnap = await docRef.collection('secrets').doc('credential').get();
-                        const sData = (sSnap && typeof sSnap.data === 'function') ? sSnap.data() : sSnap?.data;
-                        if (sData?.password !== undefined) doc.password = sData.password;
-                        else if (data.password) {
-                            doc.password = data.password;
-                            await docRef.collection('secrets').doc('credential').set({ password: data.password, updatedAt: Date.now() });
-                            await docRef.update({ password: '' }).catch(() => {});
-                        } else doc.password = '';
-                    } catch (_) {}
+                        const sData = (sSnap && typeof sSnap.data === 'function') ? sSnap.data() : sSnap?.data, sPass = sData?.password !== undefined ? sData.password : (data.password || '');
+                        if (data.password && uid) {
+                            const nextVer = (typeof data.version === 'number' ? data.version : 1) + 1;
+                            const scrub = toFirestoreDoc({ ...doc, password: '' }, { version: nextVer, createdBy: data.createdBy || doc.createdBy || uid, updatedBy: uid, createdAt: typeof data.createdAt === 'number' ? data.createdAt : (doc.createdAt || Date.now()), updatedAt: Date.now() });
+                            if (typeof db.batch === 'function') { const b = db.batch(); b.set(docRef.collection('secrets').doc('credential'), { password: sPass, updatedAt: Date.now() }); b.set(docRef, scrub); await b.commit(); }
+                            else { await docRef.collection('secrets').doc('credential').set({ password: sPass, updatedAt: Date.now() }); await docRef.set(scrub); }
+                            doc.version = nextVer; doc.updatedBy = uid;
+                        }
+                        doc.password = sPass;
+                    } catch (_) { doc.password = data.password || ''; }
                 } else doc.password = '';
             }
             loaded.push(doc); _knownDocs.set(doc.id, { ...doc });
@@ -252,9 +256,9 @@
             const secretData = (doc.category === 'credential' && canSecret) ? { password: doc.password || '', updatedAt: now } : null;
             try {
                 const docRef = db.collection('documents').doc(doc.id);
+                const sRef = (secretData && typeof docRef.collection === 'function') ? docRef.collection('secrets').doc('credential') : null;
                 if (doc.workspaceId && doc.workspaceId !== 'default' && root.CollabWorkspaces?.batchCreateDoc) {
-                    await root.CollabWorkspaces.batchCreateDoc(db, docRef, data, doc.workspaceId);
-                    if (secretData && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').set(secretData);
+                    await root.CollabWorkspaces.batchCreateDoc(db, docRef, data, doc.workspaceId, sRef, secretData);
                 } else await saveAtomic(docRef, data, secretData);
                 doc.version = 1; doc.createdBy = uid; doc.updatedBy = uid; doc.createdAt = createdAt; doc.updatedAt = updatedAt;
                 _knownDocs.set(doc.id, { ...doc });
@@ -300,16 +304,16 @@
             if (initialKnownIds.has(id) && !targetIds.has(id) && !liveDocs.some(d => d.id === id)) {
                 try {
                     const docRef = db.collection('documents').doc(id);
+                    const sRef = (known?.category === 'credential' && typeof docRef.collection === 'function') ? docRef.collection('secrets').doc('credential') : null;
                     if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) {
-                        if (known.category === 'credential' && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').delete();
-                        await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
+                        await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId, sRef);
                     } else if (typeof db.batch === 'function') {
                         const b = db.batch();
-                        if (known?.category === 'credential' && typeof docRef.collection === 'function') b.delete(docRef.collection('secrets').doc('credential'));
+                        if (sRef) b.delete(sRef);
                         b.delete(docRef);
                         await b.commit();
                     } else {
-                        if (known?.category === 'credential' && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').delete();
+                        if (sRef) await sRef.delete();
                         await docRef.delete();
                     }
                     _knownDocs.delete(id);
@@ -376,12 +380,9 @@
         const counterRef = db.collection('counters').doc('bugs');
         return await db.runTransaction(async tx => {
             const snap = await tx.get(counterRef);
-            let allocated = 1;
-            if (!snap.exists) { tx.set(counterRef, { next: 1 }); } else {
-                const data = (typeof snap.data === 'function') ? snap.data() : snap.data;
-                allocated = ((typeof data?.next === 'number') ? data.next : 0) + 1;
-                tx.update(counterRef, { next: allocated });
-            }
+            const data = snap.exists ? ((typeof snap.data === 'function') ? snap.data() : snap.data) : null;
+            const allocated = data ? (((typeof data.next === 'number') ? data.next : 0) + 1) : 1;
+            if (!snap.exists) tx.set(counterRef, { next: 1 }); else tx.update(counterRef, { next: allocated });
             return allocated;
         });
     }

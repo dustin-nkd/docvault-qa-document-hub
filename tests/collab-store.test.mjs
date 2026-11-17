@@ -1161,5 +1161,91 @@ test('Critical 1.1: Legacy credential password migration on loadDocuments', asyn
     // Root doc password must have been scrubbed
     const rootDoc = ctx.store.get('cred-legacy');
     assert.equal(rootDoc.password, '', 'Root document password must be scrubbed to empty string');
+    assert.equal(rootDoc.version, 2, 'Root doc version must be bumped to pass Firestore update rules');
+    assert.equal(rootDoc.updatedBy, 'owner-1', 'Root doc updatedBy must match authenticated user');
+});
+
+test('Critical 1.1: applyRemoteDoc preserves existing credential secret while refetch is pending', async () => {
+    const ctx = createStoreContext({
+        role: 'editor',
+        user: { uid: 'ed-1' },
+        initialDocs: {
+            'cred-snap': { id: 'cred-snap', title: 'Snap Cred', category: 'credential', password: '', workspaceId: 'default' },
+            'cred-snap/secrets/credential': { password: 'secret-val-initial' }
+        }
+    });
+
+    const docs = await ctx.CollabStore.loadDocuments();
+    const doc = docs.find(d => d.id === 'cred-snap');
+    assert.equal(doc.password, 'secret-val-initial');
+
+    // Simulate remote modification snapshot where fromFirestoreDoc returns password: ''
+    const remoteDoc = {
+        id: 'cred-snap',
+        title: 'Snap Cred Edited Remotely',
+        category: 'credential',
+        password: '',
+        version: 2,
+        updatedAt: Date.now() + 5000,
+        workspaceId: 'default'
+    };
+
+    // applyRemoteDoc must keep the existing password immediately without blanking it
+    ctx.CollabStore.applyRemoteDoc(remoteDoc, 'modified');
+    assert.equal(doc.password, 'secret-val-initial', 'Doc password must not be overwritten with empty string before secret fetch');
+    assert.equal(ctx.CollabStore.getKnownDocs().get('cred-snap').password, 'secret-val-initial');
+});
+
+test('Critical 1.1: Non-default workspace persist creates and deletes secret in atomic batch', async () => {
+    let batchCreateCalled = false, batchCreateExtraRef = null, batchCreateExtraData = null;
+    let batchDeleteCalled = false, batchDeleteExtraRef = null;
+
+    const ctx = createStoreContext({
+        role: 'owner',
+        user: { uid: 'owner-1' },
+        activeWorkspace: 'ws-team'
+    });
+
+    ctx.root.CollabWorkspaces = {
+        batchCreateDoc: async (db, docRef, data, wsId, extraSetRef, extraSetData) => {
+            batchCreateCalled = true;
+            batchCreateExtraRef = extraSetRef;
+            batchCreateExtraData = extraSetData;
+            const b = db.batch();
+            b.set(docRef, data);
+            if (extraSetRef && extraSetData) b.set(extraSetRef, extraSetData);
+            await b.commit();
+        },
+        batchDeleteDoc: async (db, docId, wsId, extraDeleteRef) => {
+            batchDeleteCalled = true;
+            batchDeleteExtraRef = extraDeleteRef;
+            const b = db.batch();
+            b.delete(db.collection('documents').doc(docId));
+            if (extraDeleteRef) b.delete(extraDeleteRef);
+            await b.commit();
+        }
+    };
+
+    const newCred = {
+        id: 'cred-ws',
+        title: 'WS Cred',
+        category: 'credential',
+        password: 'ws-password-123',
+        workspaceId: 'ws-team'
+    };
+
+    await ctx.CollabStore.persist([newCred]);
+    assert.equal(batchCreateCalled, true, 'batchCreateDoc must be invoked for non-default workspace');
+    assert.ok(batchCreateExtraRef, 'batchCreateDoc must receive secret extraSetRef');
+    assert.equal(batchCreateExtraData.password, 'ws-password-123', 'Secret data must contain password');
+    assert.equal(ctx.store.get('cred-ws/secrets/credential')?.password, 'ws-password-123');
+
+    // Test delete in non-default workspace
+    ctx.documents = [];
+    await ctx.CollabStore.persist([]);
+    assert.equal(batchDeleteCalled, true, 'batchDeleteDoc must be invoked for non-default workspace delete');
+    assert.ok(batchDeleteExtraRef, 'batchDeleteDoc must receive secret extraDeleteRef');
+    assert.equal(ctx.store.has('cred-ws'), false);
+    assert.equal(ctx.store.has('cred-ws/secrets/credential'), false);
 });
 
