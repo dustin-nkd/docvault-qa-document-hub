@@ -44,7 +44,7 @@ function createCollabImportContext(customGlobals = {}) {
                 category: doc.category || 'general',
                 content: doc.content || '',
                 username: doc.username || '',
-                password: doc.password || '',
+                password: doc.category === 'credential' ? '' : (doc.password || ''),
                 bugNumber: doc.bugNumber || null,
                 version: meta.version || 1,
                 createdBy: meta.createdBy || 'owner-uid',
@@ -178,11 +178,24 @@ test('Encrypted vault: prompts for master password, decrypts, and preserves cred
     const firestoreSets = [];
     const mockDb = {
         collection: (col) => ({
-            doc: (id) => ({ set: async (data) => firestoreSets.push({ col, id, data }) }),
+            doc: (id) => {
+                const docObj = {
+                    col, id,
+                    set: async (data) => firestoreSets.push({ col, id, data }),
+                    collection: (subCol) => ({
+                        doc: (subId) => ({
+                            col: `${col}/${id}/${subCol}`,
+                            id: subId,
+                            set: async (data) => firestoreSets.push({ col: `${col}/${id}/${subCol}`, id: subId, data })
+                        })
+                    })
+                };
+                return docObj;
+            },
             get: async () => ({ forEach: () => {} })
         }),
         batch: () => ({
-            set: (ref, data) => { firestoreSets.push({ col: 'documents', id: data.id, data }); },
+            set: (ref, data) => { firestoreSets.push({ col: ref?.col || 'documents', id: ref?.id || data?.id, data }); },
             commit: async () => {}
         })
     };
@@ -220,11 +233,15 @@ test('Encrypted vault: prompts for master password, decrypts, and preserves cred
     // 2. Correct password decrypts and imports
     const res = await ctx.CollabImport.importLocalVault({ password: 'correct-password' });
     assert.equal(res.imported, 2);
-    assert.equal(firestoreSets.length, 2);
+    assert.equal(firestoreSets.length, 3);
 
-    const credDoc = firestoreSets.find(s => s.id === 'doc-cred-2');
+    const credDoc = firestoreSets.find(s => s.id === 'doc-cred-2' && s.col === 'documents');
     assert.ok(credDoc);
-    assert.equal(credDoc.data.password, 'decrypted-db-password', 'Credential password must be decrypted before import');
+    assert.equal(credDoc.data.password, '', 'Credential password must not be in root document');
+
+    const credSecret = firestoreSets.find(s => s.col === 'documents/doc-cred-2/secrets' && s.id === 'credential');
+    assert.ok(credSecret, 'Credential secret must be saved to secrets/credential subcollection');
+    assert.equal(credSecret.data.password, 'decrypted-db-password', 'Credential password must be decrypted and stored in subcollection');
 });
 
 test('Existing documents on Firestore are skipped and not overwritten', async () => {

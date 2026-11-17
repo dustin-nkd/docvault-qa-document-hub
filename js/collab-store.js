@@ -1,5 +1,4 @@
-// DocVault team collaboration store module
-// Handles document loading (getDocs), versioned persistence, conflict detection, onSnapshot sync, audit activity, history subcollection, and monotonic bug counter transactions.
+// DocVault team collaboration store module (handles getDocs, versioned persistence, conflict detection, sync, audit, bug counter)
 (function(root) {
     const _knownDocs = new Map();
     let _lastConflict = null, _customDb = null, _customUser = null, _unsubscribeSnapshot = null, _persistencePromise = null;
@@ -27,7 +26,7 @@
         const out = {
             id: doc.id || '', title: doc.title || '', category: doc.category || 'general', subfolder: doc.subfolder || '', status: doc.status || 'active',
             content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [],
-            username: doc.username || '', password: doc.password || '', rotatedAt: (typeof doc.rotatedAt === 'string' && doc.rotatedAt.trim()) ? doc.rotatedAt.trim() : (typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null),
+            username: doc.username || '', password: doc.category === 'credential' ? '' : (doc.password || ''), rotatedAt: (typeof doc.rotatedAt === 'string' && doc.rotatedAt.trim()) ? doc.rotatedAt.trim() : (typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null),
             bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData),
             runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
             taskData: _cleanJson(doc.taskData), assignee: doc.assignee || doc.taskData?.assignee || '', assigneeUid: doc.assigneeUid || doc.taskData?.assigneeUid || '',
@@ -39,8 +38,7 @@
             createdBy: meta.createdBy || doc.createdBy || '', updatedBy: meta.updatedBy || doc.updatedBy || '',
             focusWorkflow: _cleanJson(doc.focusWorkflow), focusWorkflowUpdatedAt: typeof doc.focusWorkflowUpdatedAt === 'number' ? doc.focusWorkflowUpdatedAt : null
         };
-        const wsId = meta.workspaceId || doc.workspaceId;
-        if (typeof wsId === 'string' && wsId) out.workspaceId = wsId;
+        const wsId = meta.workspaceId || doc.workspaceId; if (typeof wsId === 'string' && wsId) out.workspaceId = wsId;
         return _cleanJson(out);
     }
 
@@ -48,8 +46,7 @@
         if (!data) return null;
         const out = {
             id: data.id || docId, title: data.title || '', category: data.category || 'general', subfolder: data.subfolder || '', status: data.status || 'active',
-            content: data.content || '', tags: Array.isArray(data.tags) ? data.tags : [],
-            username: data.username || '', password: data.password || '', rotatedAt: data.rotatedAt || null,
+            content: data.content || '', tags: Array.isArray(data.tags) ? data.tags : [], username: data.username || '', password: data.password || '', rotatedAt: data.rotatedAt || null,
             bugData: data.bugData || null, tcData: data.tcData || null, apiData: data.apiData || null, apiTcData: data.apiTcData || null,
             runData: data.runData || null, envData: data.envData || null, releaseData: data.releaseData || null, tcPlanData: data.tcPlanData || null,
             taskData: data.taskData || null, assignee: data.assignee || data.taskData?.assignee || '', assigneeUid: data.assigneeUid || data.taskData?.assigneeUid || '',
@@ -65,17 +62,15 @@
 
     function notifyConflict(msg = 'Someone else saved this document. Reload to see their version.') {
         _lastConflict = { message: msg, timestamp: Date.now() };
-        if (typeof root.toast === 'function') root.toast(msg, 'error');
-        else if (typeof console !== 'undefined' && console.warn) console.warn('[CollabStore]', msg);
+        if (typeof root.toast === 'function') root.toast(msg, 'error'); else if (typeof console !== 'undefined' && console.warn) console.warn('[CollabStore]', msg);
     }
 
     async function enableOfflinePersistence(db) {
         if (!db || typeof db.enablePersistence !== 'function') return;
         if (_persistencePromise) return _persistencePromise;
         _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-            if (err?.code === 'unimplemented') return;
-            console.warn('[CollabStore] enablePersistence warning:', err);
-            return Promise.reject(err);
+            if (err?.code !== 'unimplemented') console.warn(`[CollabStore] enablePersistence ${err?.code || 'warning'}:`, err);
+            if (err?.code !== 'unimplemented') return Promise.reject(err);
         });
         return _persistencePromise;
     }
@@ -102,9 +97,7 @@
             banner.setAttribute('role', 'alert');
             (document.querySelector('#content .fade-up') || document.getElementById('content'))?.prepend(banner);
         }
-        const reloadAction = typeof actionAttr === 'function'
-            ? actionAttr('reloadCollabDoc', docId)
-            : (typeof escHtml === 'function' ? escHtml('reloadCollabDoc(' + JSON.stringify(docId) + ')') : 'reloadCollabDoc(&quot;' + docId + '&quot;)');
+        const reloadAction = typeof actionAttr === 'function' ? actionAttr('reloadCollabDoc', docId) : (typeof escHtml === 'function' ? escHtml('reloadCollabDoc(' + JSON.stringify(docId) + ')') : 'reloadCollabDoc(&quot;' + docId + '&quot;)');
         banner.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i><span>Updated by someone else</span></div><button class="btn-s text-xs h-7 px-3" data-onclick="${reloadAction}">Reload</button>`;
         if (typeof root.enhanceInteractionSemantics === 'function') root.enhanceInteractionSemantics(banner, false);
     }
@@ -124,7 +117,6 @@
     function applyRemoteDoc(remoteDoc, changeType = 'modified') {
         if (!remoteDoc || !remoteDoc.id) return;
         const docs = getDocuments(), s = getState(), docId = remoteDoc.id;
-
         if (changeType === 'removed') {
             const idx = docs.findIndex(d => d.id === docId);
             if (idx !== -1) docs.splice(idx, 1);
@@ -133,19 +125,15 @@
             else if (typeof root.render === 'function') root.render();
             return;
         }
-
         _knownDocs.set(docId, { ...remoteDoc });
         if ((remoteDoc.workspaceId || 'default') !== getActiveWs()) {
             const idx = docs.findIndex(d => d.id === docId);
             if (idx !== -1) { docs.splice(idx, 1); if (typeof root.render === 'function') root.render(); }
             return;
         }
-
         const idx = docs.findIndex(d => d.id === docId);
-        if (idx !== -1) docs[idx] = remoteDoc;
-        else docs.unshift(remoteDoc);
+        if (idx !== -1) docs[idx] = remoteDoc; else docs.unshift(remoteDoc);
         if (typeof root.normalizeDocTags === 'function') root.normalizeDocTags(docs);
-
         if (s?.view === 'editor' && s.editingDoc?.id === docId) {
             if (isEditorDirty()) showEditorConflictBanner(docId);
             else {
@@ -164,7 +152,6 @@
         if (isGuestMode() || !isCollabMode() || _unsubscribeSnapshot) return;
         const db = getFirestoreDb();
         if (!db || typeof db.collection('documents')?.onSnapshot !== 'function') return;
-
         try {
             _unsubscribeSnapshot = db.collection('documents').onSnapshot(snapshot => {
                 if (!snapshot) return;
@@ -205,10 +192,22 @@
 
         const snapshot = await db.collection('documents').get(), loaded = [];
         _knownDocs.clear();
-        snapshot.forEach(docSnap => {
-            const data = docSnap.data(), doc = fromFirestoreDoc(data, docSnap.id);
-            if (doc) { loaded.push(doc); _knownDocs.set(doc.id, { ...doc }); }
-        });
+        const role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner', snaps = [];
+        snapshot.forEach(d => snaps.push(d));
+        for (const docSnap of snaps) {
+            const data = (typeof docSnap.data === 'function') ? docSnap.data() : docSnap.data, doc = fromFirestoreDoc(data, docSnap.id);
+            if (!doc) continue;
+            if (doc.category === 'credential') {
+                if (canSecret) {
+                    try {
+                        const sSnap = await db.collection('documents').doc(doc.id).collection('secrets').doc('credential').get();
+                        const sData = (sSnap && typeof sSnap.data === 'function') ? sSnap.data() : sSnap?.data;
+                        if (sData?.password) doc.password = sData.password;
+                    } catch (_) {}
+                } else doc.password = '';
+            }
+            loaded.push(doc); _knownDocs.set(doc.id, { ...doc });
+        }
 
         const activeDocs = loaded.filter(d => (d.workspaceId || 'default') === getActiveWs()).map(d => ({ ...d }));
         const normTags = root.normalizeDocTags || (typeof normalizeDocTags === 'function' ? normalizeDocTags : null);
@@ -219,18 +218,26 @@
 
     async function persist(currentDocuments) {
         if (isGuestMode() || !isCollabMode() || !Array.isArray(currentDocuments)) return;
-        const activeWs = getActiveWs(), targetDocs = currentDocuments.slice(), targetIds = new Set(targetDocs.filter(d => d?.id).map(d => d.id));
+        const initialKnownIds = new Set(_knownDocs.keys()), activeWs = getActiveWs(), targetDocs = currentDocuments.slice(), targetIds = new Set(targetDocs.filter(d => d?.id).map(d => d.id));
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
         await enableOfflinePersistence(db);
         const user = getCurrentUser();
         if (!user?.uid) throw new Error('Cannot persist in collab mode: unauthenticated');
-        const uid = user.uid;
+        const uid = user.uid, role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner';
 
         const isDocOversize = (d) => {
             const sz = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(JSON.stringify(d)).length : JSON.stringify(d).length;
             return sz > 900000 ? (root.toast?.('Document exceeds 900,000 bytes limit.', 'error'), true) : false;
+        };
+        const writeSecret = async (d) => {
+            if (d.category === 'credential' && d.password && canSecret) {
+                try {
+                    const docRef = db.collection('documents').doc(d.id);
+                    if (typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').set({ password: d.password, updatedAt: Date.now() });
+                } catch (_) {}
+            }
         };
 
         // 1. New documents (CREATE)
@@ -243,7 +250,8 @@
             try {
                 if (doc.workspaceId && doc.workspaceId !== 'default' && root.CollabWorkspaces?.batchCreateDoc) {
                     await root.CollabWorkspaces.batchCreateDoc(db, db.collection('documents').doc(doc.id), data, doc.workspaceId);
-                } else { await db.collection('documents').doc(doc.id).set(data); }
+                } else await db.collection('documents').doc(doc.id).set(data);
+                await writeSecret(doc);
                 doc.version = 1; doc.createdBy = uid; doc.updatedBy = uid; doc.createdAt = createdAt; doc.updatedAt = updatedAt;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) { if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error'); throw err; }
@@ -264,14 +272,15 @@
 
             try {
                 await db.collection('documents').doc(doc.id).set(data);
+                await writeSecret(doc);
                 doc.version = nextVersion; doc.createdBy = createdBy; doc.updatedBy = uid;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) {
                 const isPermDenied = err?.code === 'permission-denied' || err?.code === 7 || String(err?.message || '').includes('PERMISSION_DENIED') || String(err?.message || '').includes('permission-denied');
                 if (isPermDenied) {
-                    let isVersionMismatch = true;
-                    try { const remoteSnap = await db.collection('documents').doc(doc.id).get(); if (remoteSnap.exists) isVersionMismatch = (remoteSnap.data().version !== known.version); } catch (_) {}
-                    if (isVersionMismatch) { notifyConflict('Someone else saved this document. Reload to see their version.'); continue; }
+                    let isMismatch = true;
+                    try { const snap = await db.collection('documents').doc(doc.id).get(); if (snap.exists) isMismatch = (snap.data().version !== known.version); } catch (_) {}
+                    if (isMismatch) { notifyConflict('Someone else saved this document. Reload to see their version.'); continue; }
                 }
                 if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error');
                 throw err;
@@ -280,13 +289,13 @@
 
         // 3. Disappeared documents (DELETE)
         if (getActiveWs() !== activeWs) return;
+        const liveDocs = getDocuments();
         for (const [id, known] of Array.from(_knownDocs.entries())) {
             if ((known?.workspaceId || 'default') !== activeWs) continue;
-            if (!targetIds.has(id)) {
+            if (initialKnownIds.has(id) && !targetIds.has(id) && !liveDocs.some(d => d.id === id)) {
                 try {
-                    if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) {
-                        await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
-                    } else { await db.collection('documents').doc(id).delete(); }
+                    if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
+                    else await db.collection('documents').doc(id).delete();
                     _knownDocs.delete(id);
                 } catch (err) {
                     if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to delete offline', 'error');
@@ -298,9 +307,8 @@
 
     async function recordActivity(entry, doc) {
         if (isGuestMode() || !isCollabMode() || !entry) return;
-        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role;
-        if (role !== 'editor' && role !== 'owner') return;
-        const user = getCurrentUser(); if (!user?.uid) return;
+        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role, user = getCurrentUser();
+        if ((role !== 'editor' && role !== 'owner') || !user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb(); if (!db) return;
         const actId = String(entry.id || ('act_' + Date.now())), actorEmail = member?.email || user.email || '';
@@ -309,22 +317,18 @@
         const payload = {
             id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated',
             docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '',
-            actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}),
-            ...(actorPhoto ? { actorPhotoUrl: actorPhoto } : {})
+            actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}), ...(actorPhoto ? { actorPhotoUrl: actorPhoto } : {})
         };
         try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
     }
 
     async function saveHistory(doc, meta) {
         if (isGuestMode() || !isCollabMode() || !doc?.id || doc.category === 'credential') return;
-        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role;
-        if (role !== 'editor' && role !== 'owner') return;
-        const user = getCurrentUser();
-        if (!user?.uid) return;
+        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role, user = getCurrentUser();
+        if ((role !== 'editor' && role !== 'owner') || !user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) return;
-
         const histCol = db.collection('documents').doc(doc.id).collection('history');
         try {
             const snap = await histCol.get(), existing = [];
@@ -332,11 +336,9 @@
             existing.sort((a, b) => (b.ts || 0) - (a.ts || 0));
             if (existing.length && existing[0].content === (doc.content || '') && existing[0].title === doc.title) return;
             if (role === 'editor' && existing.length >= 10) return;
-            const snapId = meta?.snapId || ('snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
-            const ts = typeof meta?.ts === 'number' ? meta.ts : Date.now();
-            const savedByName = user.displayName || member?.displayName || member?.name || user.email || 'Team Member';
-            const savedByEmail = user.email || member?.email || '', rawPhoto = user.photoURL || member?.photoURL || member?.photoUrl || '';
-            const savedByPhoto = (typeof rawPhoto === 'string' && /^https:\/\//i.test(rawPhoto)) ? rawPhoto : '';
+            const snapId = meta?.snapId || ('snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), ts = typeof meta?.ts === 'number' ? meta.ts : Date.now();
+            const savedByName = user.displayName || member?.displayName || member?.name || user.email || 'Team Member', savedByEmail = user.email || member?.email || '';
+            const rawPhoto = user.photoURL || member?.photoURL || member?.photoUrl || '', savedByPhoto = (typeof rawPhoto === 'string' && /^https:\/\//i.test(rawPhoto)) ? rawPhoto : '';
             const payload = {
                 id: snapId, ts, title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '',
                 tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '',
@@ -373,7 +375,6 @@
         if (!db) throw new Error('Firestore not available');
         if (!user?.uid) throw new Error('Unauthenticated');
         const counterRef = db.collection('counters').doc('bugs');
-
         return await db.runTransaction(async tx => {
             const snap = await tx.get(counterRef);
             let allocated = 1;

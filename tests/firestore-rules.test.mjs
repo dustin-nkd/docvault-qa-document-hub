@@ -1792,3 +1792,124 @@ test('Branch 15 (notifications): allows any member (including viewer) to create 
     }));
 });
 
+// ---------------------------------------------------------------------------
+// 15. Stage 1 Hotfixes: secrets subcollection & tightened shares
+// ---------------------------------------------------------------------------
+test('Branch 15 (secrets subcollection): allows editor/owner read/write, owner delete, denies viewer and stranger', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('owner-uid').set({ uid: 'owner-uid', role: 'owner' });
+        await db.collection('members').doc('editor-uid').set({ uid: 'editor-uid', role: 'editor' });
+        await db.collection('members').doc('viewer-uid').set({ uid: 'viewer-uid', role: 'viewer' });
+        await db.collection('documents').doc('doc-cred').set({
+            id: 'doc-cred',
+            title: 'DB Credential',
+            category: 'credential',
+            version: 1,
+            createdBy: 'owner-uid',
+            updatedBy: 'owner-uid'
+        });
+        await db.collection('documents').doc('doc-cred').collection('secrets').doc('credential').set({
+            password: 'secret-password-123',
+            updatedAt: 1000
+        });
+    });
+
+    const owner = testEnv.authenticatedContext('owner-uid').firestore();
+    const editor = testEnv.authenticatedContext('editor-uid').firestore();
+    const viewer = testEnv.authenticatedContext('viewer-uid').firestore();
+    const stranger = testEnv.authenticatedContext('stranger-uid').firestore();
+
+    // Editor & owner CAN read secrets
+    const edSnap = await assertSucceeds(editor.collection('documents').doc('doc-cred').collection('secrets').doc('credential').get());
+    assert.equal(edSnap.data().password, 'secret-password-123');
+    await assertSucceeds(owner.collection('documents').doc('doc-cred').collection('secrets').doc('credential').get());
+
+    // Editor & owner CAN write secrets
+    await assertSucceeds(editor.collection('documents').doc('doc-cred').collection('secrets').doc('credential').set({
+        password: 'updated-secret-by-editor',
+        updatedAt: 2000
+    }));
+
+    // Viewer CANNOT read or write secrets
+    await assertFails(viewer.collection('documents').doc('doc-cred').collection('secrets').doc('credential').get());
+    await assertFails(viewer.collection('documents').doc('doc-cred').collection('secrets').doc('credential').set({
+        password: 'hacked',
+        updatedAt: 3000
+    }));
+
+    // Stranger CANNOT read or write secrets
+    await assertFails(stranger.collection('documents').doc('doc-cred').collection('secrets').doc('credential').get());
+    await assertFails(stranger.collection('documents').doc('doc-cred').collection('secrets').doc('credential').set({
+        password: 'hacked',
+        updatedAt: 4000
+    }));
+
+    // Owner CAN delete secrets
+    await assertSucceeds(owner.collection('documents').doc('doc-cred').collection('secrets').doc('credential').delete());
+});
+
+test('Branch 15 (tightened shares rules): validates keys, docId size and ciphertext size', async () => {
+    await seed(async (context) => {
+        const db = context.firestore();
+        await db.collection('meta').doc('team').set({ ownerUid: 'owner-uid', initialized: true });
+        await db.collection('members').doc('editor-uid').set({ uid: 'editor-uid', role: 'editor' });
+    });
+
+    const editor = testEnv.authenticatedContext('editor-uid').firestore();
+
+    // 1. Valid share creation succeeds
+    await assertSucceeds(editor.collection('shares').doc('share-tight-1').set({
+        docId: 'doc-123',
+        title: 'Share Spec',
+        ciphertext: 'valid-encrypted-ciphertext',
+        createdBy: 'editor-uid',
+        createdAt: 1000,
+        updatedAt: 1000,
+        workspaceId: 'default',
+        expiresAt: 2000
+    }));
+
+    // 2. Extra unapproved key fails (e.g. key, password, pat)
+    await assertFails(editor.collection('shares').doc('share-tight-badkey').set({
+        docId: 'doc-123',
+        ciphertext: 'cipher',
+        unapprovedKey: 'malicious-data'
+    }));
+    await assertFails(editor.collection('shares').doc('share-tight-badpwd').set({
+        docId: 'doc-123',
+        ciphertext: 'cipher',
+        password: 'leaked-password'
+    }));
+
+    // 3. Oversized ciphertext (> 600,000 chars) fails
+    const hugeCiphertext = 'a'.repeat(600001);
+    await assertFails(editor.collection('shares').doc('share-tight-huge').set({
+        docId: 'doc-123',
+        ciphertext: hugeCiphertext
+    }));
+
+    // 4. Oversized docId (> 64 chars) or non-string docId fails
+    const hugeDocId = 'd'.repeat(65);
+    await assertFails(editor.collection('shares').doc('share-tight-longdoc').set({
+        docId: hugeDocId,
+        ciphertext: 'cipher'
+    }));
+    await assertFails(editor.collection('shares').doc('share-tight-nonstrdoc').set({
+        docId: 12345,
+        ciphertext: 'cipher'
+    }));
+
+    // 5. Updating with allowed keys and sizes succeeds
+    await assertSucceeds(editor.collection('shares').doc('share-tight-1').update({
+        ciphertext: 'updated-valid-cipher',
+        updatedAt: 1500
+    }));
+
+    // 6. Updating with illegal key fails
+    await assertFails(editor.collection('shares').doc('share-tight-1').update({
+        extraKey: 'illegal'
+    }));
+});
+

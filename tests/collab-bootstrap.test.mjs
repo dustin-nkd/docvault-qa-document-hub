@@ -1196,5 +1196,79 @@ test('Phase 15: banner #debug-err does not receive permission-denied error or tu
     assert.match(debugErr.innerText, /Network transport failed/);
 });
 
+test('Critical 1.3: createTeam uses Firestore batch to write meta/team and members/{uid} atomically', async () => {
+    const store = new Map();
+    let batchCommitted = false;
+    const batchOperations = [];
+
+    const firestoreMock = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => ({ exists: store.has(`${colName}/${docId}`), data: () => store.get(`${colName}/${docId}`) }),
+                set: async (data) => { store.set(`${colName}/${docId}`, data); },
+                delete: async () => { store.delete(`${colName}/${docId}`); }
+            })
+        }),
+        batch: () => ({
+            set: (docRef, data) => {
+                batchOperations.push(data);
+                if (data.ownerUid) store.set('meta/team', data);
+                else if (data.role) store.set(`members/${data.uid}`, data);
+            },
+            commit: async () => {
+                batchCommitted = true;
+            }
+        })
+    };
+
+    const ctx = createBootstrapContext(firestoreMock);
+    const user = { uid: 'owner-batch-1', email: 'owner@example.com', displayName: 'Batch Owner' };
+
+    const res = await ctx.CollabBootstrap.createTeam(firestoreMock, user);
+    assert.equal(res.status, 'owner');
+    assert.equal(batchCommitted, true, 'createTeam must commit a Firestore batch');
+    assert.equal(batchOperations.length, 2, 'Batch must write both meta/team and members/{uid}');
+    assert.ok(store.get('meta/team'), 'meta/team must be created');
+    assert.ok(store.get('members/owner-batch-1'), 'members/{uid} must be created');
+});
+
+test('Critical 1.3: Owner Bootstrap Lockout auto-recreates members/{uid} when missing and ownerUid matches', async () => {
+    const store = new Map([
+        ['meta/team', { ownerUid: 'owner-lockout-uid', name: 'Existing Team', initialized: true }]
+    ]);
+
+    const firestoreMock = {
+        collection: (colName) => ({
+            doc: (docId) => ({
+                get: async () => {
+                    const key = `${colName}/${docId}`;
+                    return { exists: store.has(key), data: () => store.get(key) };
+                },
+                set: async (data) => {
+                    store.set(`${colName}/${docId}`, data);
+                },
+                delete: async () => {
+                    store.delete(`${colName}/${docId}`);
+                }
+            })
+        })
+    };
+
+    const ctx = createBootstrapContext(firestoreMock);
+    const ownerUser = { uid: 'owner-lockout-uid', email: 'owner@vault.com', displayName: 'Owner Person' };
+
+    // initTeamUser should NOT return 'uninvited'; it should recreate the member doc and return 'owner'
+    const result = await ctx.CollabBootstrap.initTeamUser(ownerUser);
+    assert.equal(result.status, 'owner', 'Must return status: owner instead of uninvited');
+    assert.equal(result.role, 'owner');
+
+    const recreated = store.get('members/owner-lockout-uid');
+    assert.ok(recreated, 'members/{uid} must be automatically recreated');
+    assert.equal(recreated.role, 'owner');
+    assert.equal(recreated.name, 'Owner Person');
+    assert.equal(recreated.email, 'owner@vault.com');
+    assert.ok(typeof recreated.joinedAt === 'number', 'Must set joinedAt timestamp');
+});
+
 
 

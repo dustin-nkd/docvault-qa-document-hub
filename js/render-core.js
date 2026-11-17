@@ -1039,16 +1039,19 @@ function _activityDayLabel(ts) {
 }
 
 function _renderActivityRow(entry) {
-    const meta = ACTIVITY_META[entry.type] || { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: entry.type };
+    const rawType = entry.type || 'updated';
+    const isKnown = Boolean(rawType && Object.prototype.hasOwnProperty.call(ACTIVITY_META, rawType));
+    const meta = isKnown ? ACTIVITY_META[rawType] : { icon: 'fa-solid fa-circle', color: 'var(--tx-d)', label: rawType };
     const date = new Date(entry.ts);
     // The relative time is the quick read; the exact stamp stays available on
     // hover instead of being lost entirely.
     const exact = date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+    const actionLabel = isKnown ? escHtml(meta.label) : escHtml(rawType);
     const body = `
-        <span class="act-icon" style="background:${meta.color}1a;" aria-hidden="true"><i class="${meta.icon}" style="color:${meta.color};"></i></span>
+        <span class="act-icon" style="background:${escHtml(meta.color)}1a;" aria-hidden="true"><i class="${escHtml(meta.icon)}" style="color:${escHtml(meta.color)};"></i></span>
         <span class="act-body">
             <span class="act-title">${escHtml(entry.title)}</span>
-            <span class="act-sub"><span class="act-action" style="color:${meta.color};">${meta.label}</span>${entry.note ? ` <span class="act-note">· ${escHtml(entry.note)}</span>` : ''}</span>
+            <span class="act-sub"><span class="act-action" style="color:${escHtml(meta.color)};">${actionLabel}</span>${entry.note ? ` <span class="act-note">· ${escHtml(entry.note)}</span>` : ''}</span>
         </span>
         <time class="act-time" datetime="${date.toISOString()}" title="${escHtml(exact)}">${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</time>`;
     // The whole row is the target when the document still exists, instead of
@@ -1068,8 +1071,9 @@ function renderActivityLog() {
     const filterBar = all.length === 0 ? '' : `<div class="trace-filter-bar" role="group" aria-label="Filter activity by action">
         ${filters.map(type => {
             const isActive = filter === type;
-            const label = type === 'all' ? 'All' : (ACTIVITY_META[type] ? ACTIVITY_META[type].chip : type);
-            return `<button class="trace-filter${isActive ? ' is-active' : ''}" aria-pressed="${isActive}" data-onclick="setActivityFilter('${type}')">${label}<span>${type === 'all' ? all.length : counts[type]}</span></button>`;
+            const isKnown = type !== 'all' && Boolean(ACTIVITY_META[type]);
+            const label = type === 'all' ? 'All' : (isKnown ? ACTIVITY_META[type].chip : type);
+            return `<button class="trace-filter${isActive ? ' is-active' : ''}" aria-pressed="${isActive}" data-onclick="${actionAttr('setActivityFilter', type)}">${escHtml(label)}<span>${type === 'all' ? all.length : counts[type]}</span></button>`;
         }).join('')}
     </div>`;
 

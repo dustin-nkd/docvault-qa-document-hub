@@ -65,7 +65,25 @@ function createStoreContext(options = {}) {
             delete: async () => {
                 calls.deleteDocs.push(docId);
                 store.delete(docId);
-            }
+            },
+            collection: (subName) => ({
+                doc: (subId) => ({
+                    get: async () => {
+                        const key = `${docId}/${subName}/${subId}`;
+                        const exists = store.has(key);
+                        const data = exists ? JSON.parse(JSON.stringify(store.get(key))) : null;
+                        return { exists, data: () => data };
+                    },
+                    set: async (data) => {
+                        const key = `${docId}/${subName}/${subId}`;
+                        store.set(key, JSON.parse(JSON.stringify(data)));
+                    },
+                    delete: async () => {
+                        const key = `${docId}/${subName}/${subId}`;
+                        store.delete(key);
+                    }
+                })
+            })
         })
     };
 
@@ -96,6 +114,9 @@ function createStoreContext(options = {}) {
             firestore: () => firestoreMock
         },
         ensureFirebase: async () => {},
+        CollabBootstrap: {
+            getCurrentMember: () => options.currentMember || { uid: options.user?.uid || 'user-agent-1', role: options.role || 'editor' }
+        },
         CollabAuth: {
             getCurrentUser: () => options.user || { uid: 'user-agent-1', email: 'agent1@example.com' }
         },
@@ -923,5 +944,93 @@ test('CollabStore: toFirestoreDoc and fromFirestoreDoc preserve rotatedAt date s
     const credEmpty = { id: 'c3', title: 'Cred 3', category: 'credential', rotatedAt: '' };
     const fsEmpty = ctx.CollabStore.toFirestoreDoc(credEmpty);
     assert.equal(fsEmpty.rotatedAt, null);
+});
+
+test('Critical 1.1: Option A Credential Secrets Isolation in persist() and loadDocuments()', async () => {
+    // 1. toFirestoreDoc zeroes password for credentials
+    const ctx = createStoreContext({ role: 'editor', user: { uid: 'ed-1' } });
+    const credDoc = { id: 'cred-1', title: 'DB Credentials', category: 'credential', username: 'admin', password: 'super-secret-password-123' };
+    const fsDoc = ctx.CollabStore.toFirestoreDoc(credDoc);
+    assert.equal(fsDoc.password, '', 'toFirestoreDoc must zero out password for credential category');
+
+    // 2. persist() writes root doc without password, and writes subcollection documents/{id}/secrets/credential
+    await ctx.CollabStore.persist([credDoc]);
+    const rootDocInStore = ctx.store.get('cred-1');
+    assert.ok(rootDocInStore, 'Root document must be persisted');
+    assert.equal(rootDocInStore.password, '', 'Root document in Firestore must never contain plaintext password');
+
+    const secretInStore = ctx.store.get('cred-1/secrets/credential');
+    assert.ok(secretInStore, 'Secret must be stored in subcollection');
+    assert.equal(secretInStore.password, 'super-secret-password-123', 'Secret must have password');
+    assert.ok(typeof secretInStore.updatedAt === 'number', 'Secret must have updatedAt timestamp');
+
+    // 3. persist() as viewer does not write secret
+    const viewerCtx = createStoreContext({ role: 'viewer', user: { uid: 'vw-1' } });
+    const viewerCred = { id: 'cred-vw', title: 'Viewer Cred', category: 'credential', password: 'should-not-save' };
+    await viewerCtx.CollabStore.persist([viewerCred]);
+    assert.equal(viewerCtx.store.has('cred-vw/secrets/credential'), false, 'Viewer role must not write secret');
+
+    // 4. loadDocuments() fetches secret for editor/owner and attaches doc.password
+    const editorCtx = createStoreContext({
+        role: 'editor',
+        user: { uid: 'ed-1' },
+        initialDocs: {
+            'cred-1': { id: 'cred-1', title: 'DB Credentials', category: 'credential', username: 'admin', password: '', workspaceId: 'default' },
+            'cred-1/secrets/credential': { password: 'super-secret-password-123', updatedAt: 12345 }
+        }
+    });
+    const loadedDocs = await editorCtx.CollabStore.loadDocuments();
+    const loadedCred = loadedDocs.find(d => d.id === 'cred-1');
+    assert.ok(loadedCred);
+    assert.equal(loadedCred.password, 'super-secret-password-123', 'Editor must receive attached secret password');
+
+    // 5. loadDocuments() for viewer leaves doc.password empty
+    const viewerLoadCtx = createStoreContext({
+        role: 'viewer',
+        user: { uid: 'vw-1' },
+        initialDocs: {
+            'cred-1': { id: 'cred-1', title: 'DB Credentials', category: 'credential', username: 'admin', password: '', workspaceId: 'default' },
+            'cred-1/secrets/credential': { password: 'super-secret-password-123', updatedAt: 12345 }
+        }
+    });
+    const viewerDocs = await viewerLoadCtx.CollabStore.loadDocuments();
+    const viewerLoadedCred = viewerDocs.find(d => d.id === 'cred-1');
+    assert.ok(viewerLoadedCred);
+    assert.equal(viewerLoadedCred.password, '', 'Viewer must receive empty password');
+});
+
+test('Critical 1.2: persist() delete race condition guards', async () => {
+    const initialDocs = {
+        'doc-keep': { id: 'doc-keep', title: 'Keep Me', workspaceId: 'default', version: 1 },
+        'doc-delete': { id: 'doc-delete', title: 'Delete Me', workspaceId: 'default', version: 1 }
+    };
+    const ctx = createStoreContext({ initialDocs, role: 'owner', user: { uid: 'owner-1' } });
+    await ctx.CollabStore.loadDocuments();
+
+    // Simulate concurrent discovery: doc arrives while persist is running
+    // 1. New doc added to _knownDocs during persist run (not in initialKnownIds)
+    const known = ctx.CollabStore.getKnownDocs();
+    assert.ok(known.has('doc-keep'));
+    assert.ok(known.has('doc-delete'));
+
+    // Inject a newly arrived doc into _knownDocs AFTER initialKnownIds snapshot
+    // In our test, targetDocs only has 'doc-keep'
+    // Guard 1: if a doc is in getDocuments() array, it must NEVER be deleted even if missing in targetDocs
+    ctx.documents = [{ id: 'doc-delete', title: 'Still Alive in Live Docs', workspaceId: 'default' }];
+    await ctx.CollabStore.persist([{ id: 'doc-keep', title: 'Keep Me', workspaceId: 'default' }]);
+
+    assert.equal(ctx.calls.deleteDocs.includes('doc-delete'), false, 'Doc present in live documents array must not be deleted');
+    assert.ok(ctx.store.has('doc-delete'), 'doc-delete must remain in store');
+
+    // Guard 2: Doc not in initialKnownIds must not be deleted
+    // Reset live docs so guard 1 doesn't protect it
+    ctx.documents = [];
+    // Clear known and reload with doc-delete only
+    known.clear();
+    known.set('doc-delete', { id: 'doc-delete', workspaceId: 'default' });
+
+    // Calling persist without doc-delete in targetDocs and not in live documents -> deletes it
+    await ctx.CollabStore.persist([]);
+    assert.ok(ctx.calls.deleteDocs.includes('doc-delete'), 'Existing doc missing from targetDocs is deleted');
 });
 

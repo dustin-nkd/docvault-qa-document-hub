@@ -556,6 +556,22 @@ test('Timeline rows: hostile characters in name and email are HTML-escaped', () 
     assert.match(row, /&lt;img/);
 });
 
+test('High 2.2: hostile characters in entry.type / action are HTML-escaped in timeline rows', () => {
+    const { ctx } = createActivityContext({ role: 'editor', initialMembers: [] });
+    ctx.CollabActivity.startListening();
+
+    const row = ctx._renderActivityRow({
+        id: 'act-xss-type',
+        ts: Date.now(),
+        type: '<img src=x onerror=alert(1)>',
+        title: 'XSS Type Test',
+        actorName: 'Alice'
+    });
+
+    assert.doesNotMatch(row, /<img\s+src=x\s+onerror=alert\(1\)>/i, 'entry.type must never interpolate raw unescaped HTML');
+    assert.match(row, /&lt;img src=x onerror=alert\(1\)&gt;/, 'entry.type must be escaped via escHtml');
+});
+
 // ---------------------------------------------------------------------------
 // 4. Snapshot deduplication, client sorting, and replacement
 // ---------------------------------------------------------------------------

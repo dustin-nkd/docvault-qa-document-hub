@@ -170,6 +170,12 @@ service cloud.firestore {
 
         allow delete: if (isMember() && resource.data.authorUid == request.auth.uid) || isTeamOwner();
       }
+
+      // 4d. documents/{id}/secrets/{secretId}: Sensitive credential secrets
+      match /secrets/{secretId} {
+        allow read, write: if isEditorOrOwner();
+        allow delete: if isTeamOwner();
+      }
     }
 
     // 5. activity/{id}: Append-only audit activity log
@@ -198,7 +204,12 @@ service cloud.firestore {
     match /shares/{shareId} {
       allow get: if true;
       allow list: if isMember();
-      allow create, update: if isEditorOrOwner();
+      allow create, update: if isEditorOrOwner() &&
+        request.resource.data.ciphertext is string &&
+        request.resource.data.ciphertext.size() <= 600000 &&
+        request.resource.data.keys().hasOnly(['ciphertext', 'docId', 'title', 'createdBy', 'createdAt', 'updatedAt', 'workspaceId', 'expiresAt']) &&
+        request.resource.data.docId is string &&
+        request.resource.data.docId.size() <= 64;
       allow delete: if isEditorOrOwner();
     }
 
