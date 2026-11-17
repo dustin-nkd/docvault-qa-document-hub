@@ -260,7 +260,7 @@
         root.showModal?.(`<div><h3 class="font-heading font-bold text-lg mb-1" style="color:var(--tx);"><i class="fa-solid fa-layer-group text-[var(--acc)] mr-2"></i>Workspaces</h3><p class="text-sm mb-4" style="color:var(--tx-m);">All workspaces share one team vault.</p><div style="max-height:340px;overflow-y:auto;">${rows}</div><div class="mt-4 pt-4" style="border-top:1px solid var(--brd);"><label class="block text-xs font-semibold tracking-wider uppercase mb-2" style="color:var(--tx-d);">New workspace</label><div class="flex gap-2"><input id="ws-new-name" type="text" class="form-input flex-1" maxlength="${WS_NAME_MAX}" placeholder="e.g. Mobile QA Hub" ${viewer ? 'disabled aria-disabled="true"' : ''}><button class="btn-p shrink-0" ${createDisabled}><i class="fa-solid fa-plus mr-1.5"></i>Create</button></div></div><div class="flex justify-end mt-4"><button class="btn-s" data-onclick="closeModal()">Close</button></div></div>`);
     }
 
-    async function batchCreateDoc(db, docRef, data, wsId) {
+    async function batchCreateDoc(db, docRef, data, wsId, extraSetRef, extraSetData) {
         const wsRef = db.collection('workspaces').doc(wsId);
         let ws = _remoteWorkspaces.find(w => w.id === wsId);
         let cur = (typeof ws?.docCount === 'number') ? ws.docCount : null;
@@ -273,12 +273,13 @@
         const next = cur + 1;
         const batch = db.batch();
         batch.set(docRef, data);
+        if (extraSetRef && extraSetData) batch.set(extraSetRef, extraSetData);
         batch.update(wsRef, { docCount: next, lastDocId: data.id });
         await batch.commit();
         if (ws) ws.docCount = next;
     }
 
-    async function batchDeleteDoc(db, docId, wsId) {
+    async function batchDeleteDoc(db, docId, wsId, extraDeleteRef) {
         const wsRef = db.collection('workspaces').doc(wsId);
         let ws = _remoteWorkspaces.find(w => w.id === wsId);
         let cur = (typeof ws?.docCount === 'number') ? ws.docCount : null;
@@ -291,6 +292,7 @@
         const next = Math.max(0, cur - 1);
         const batch = db.batch();
         batch.delete(db.collection('documents').doc(docId));
+        if (extraDeleteRef) batch.delete(extraDeleteRef);
         batch.update(wsRef, { docCount: next, lastDeletedDocId: docId });
         await batch.commit();
         if (ws) ws.docCount = next;

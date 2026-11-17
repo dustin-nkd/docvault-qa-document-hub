@@ -1,5 +1,4 @@
-// DocVault team collaboration store module
-// Handles document loading (getDocs), versioned persistence, conflict detection, onSnapshot sync, audit activity, history subcollection, and monotonic bug counter transactions.
+// DocVault team collaboration store module (handles getDocs, versioned persistence, conflict detection, sync, audit, bug counter)
 (function(root) {
     const _knownDocs = new Map();
     let _lastConflict = null, _customDb = null, _customUser = null, _unsubscribeSnapshot = null, _persistencePromise = null;
@@ -27,20 +26,16 @@
         const out = {
             id: doc.id || '', title: doc.title || '', category: doc.category || 'general', subfolder: doc.subfolder || '', status: doc.status || 'active',
             content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [],
-            username: doc.username || '', password: doc.password || '', rotatedAt: (typeof doc.rotatedAt === 'string' && doc.rotatedAt.trim()) ? doc.rotatedAt.trim() : (typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null),
-            bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData),
-            runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
+            username: doc.username || '', password: doc.category === 'credential' ? '' : (doc.password || ''), rotatedAt: (typeof doc.rotatedAt === 'string' && doc.rotatedAt.trim()) ? doc.rotatedAt.trim() : (typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null),
+            bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData), runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
             taskData: _cleanJson(doc.taskData), assignee: doc.assignee || doc.taskData?.assignee || '', assigneeUid: doc.assigneeUid || doc.taskData?.assigneeUid || '',
             kanbanStatus: doc.kanbanStatus || '', bugStatus: doc.bugStatus || '', bugStatusEvents: Array.isArray(doc.bugStatusEvents) ? [...doc.bugStatusEvents] : [],
             bugNumber: typeof doc.bugNumber === 'number' ? doc.bugNumber : null, favorite: Boolean(doc.favorite),
-            createdAt: typeof meta.createdAt === 'number' ? meta.createdAt : (typeof doc.createdAt === 'number' ? doc.createdAt : Date.now()),
-            updatedAt: typeof meta.updatedAt === 'number' ? meta.updatedAt : (typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now()),
-            version: typeof meta.version === 'number' ? meta.version : (typeof doc.version === 'number' ? doc.version : 1),
-            createdBy: meta.createdBy || doc.createdBy || '', updatedBy: meta.updatedBy || doc.updatedBy || '',
+            createdAt: typeof meta.createdAt === 'number' ? meta.createdAt : (typeof doc.createdAt === 'number' ? doc.createdAt : Date.now()), updatedAt: typeof meta.updatedAt === 'number' ? meta.updatedAt : (typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now()),
+            version: typeof meta.version === 'number' ? meta.version : (typeof doc.version === 'number' ? doc.version : 1), createdBy: meta.createdBy || doc.createdBy || '', updatedBy: meta.updatedBy || doc.updatedBy || '',
             focusWorkflow: _cleanJson(doc.focusWorkflow), focusWorkflowUpdatedAt: typeof doc.focusWorkflowUpdatedAt === 'number' ? doc.focusWorkflowUpdatedAt : null
         };
-        const wsId = meta.workspaceId || doc.workspaceId;
-        if (typeof wsId === 'string' && wsId) out.workspaceId = wsId;
+        const wsId = meta.workspaceId || doc.workspaceId; if (typeof wsId === 'string' && wsId) out.workspaceId = wsId;
         return _cleanJson(out);
     }
 
@@ -48,15 +43,12 @@
         if (!data) return null;
         const out = {
             id: data.id || docId, title: data.title || '', category: data.category || 'general', subfolder: data.subfolder || '', status: data.status || 'active',
-            content: data.content || '', tags: Array.isArray(data.tags) ? data.tags : [],
-            username: data.username || '', password: data.password || '', rotatedAt: data.rotatedAt || null,
-            bugData: data.bugData || null, tcData: data.tcData || null, apiData: data.apiData || null, apiTcData: data.apiTcData || null,
-            runData: data.runData || null, envData: data.envData || null, releaseData: data.releaseData || null, tcPlanData: data.tcPlanData || null,
+            content: data.content || '', tags: Array.isArray(data.tags) ? data.tags : [], username: data.username || '', password: (data.category === 'credential') ? '' : (data.password || ''), rotatedAt: data.rotatedAt || null,
+            bugData: data.bugData || null, tcData: data.tcData || null, apiData: data.apiData || null, apiTcData: data.apiTcData || null, runData: data.runData || null, envData: data.envData || null, releaseData: data.releaseData || null, tcPlanData: data.tcPlanData || null,
             taskData: data.taskData || null, assignee: data.assignee || data.taskData?.assignee || '', assigneeUid: data.assigneeUid || data.taskData?.assigneeUid || '',
             kanbanStatus: data.kanbanStatus || '', bugStatus: data.bugStatus || '', bugStatusEvents: Array.isArray(data.bugStatusEvents) ? data.bugStatusEvents : [],
             bugNumber: typeof data.bugNumber === 'number' ? data.bugNumber : null, favorite: Boolean(data.favorite),
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(), updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
-            version: typeof data.version === 'number' ? data.version : 1, createdBy: data.createdBy || '', updatedBy: data.updatedBy || '',
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(), updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(), version: typeof data.version === 'number' ? data.version : 1, createdBy: data.createdBy || '', updatedBy: data.updatedBy || '',
             focusWorkflow: data.focusWorkflow || null, focusWorkflowUpdatedAt: typeof data.focusWorkflowUpdatedAt === 'number' ? data.focusWorkflowUpdatedAt : null
         };
         if (typeof data.workspaceId === 'string' && data.workspaceId) out.workspaceId = data.workspaceId;
@@ -65,17 +57,14 @@
 
     function notifyConflict(msg = 'Someone else saved this document. Reload to see their version.') {
         _lastConflict = { message: msg, timestamp: Date.now() };
-        if (typeof root.toast === 'function') root.toast(msg, 'error');
-        else if (typeof console !== 'undefined' && console.warn) console.warn('[CollabStore]', msg);
+        if (typeof root.toast === 'function') root.toast(msg, 'error'); else if (typeof console !== 'undefined' && console.warn) console.warn('[CollabStore]', msg);
     }
 
     async function enableOfflinePersistence(db) {
         if (!db || typeof db.enablePersistence !== 'function') return;
         if (_persistencePromise) return _persistencePromise;
         _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-            if (err?.code === 'unimplemented') return;
-            console.warn('[CollabStore] enablePersistence warning:', err);
-            return Promise.reject(err);
+            if (err?.code !== 'unimplemented') { console.warn(`[CollabStore] enablePersistence ${err?.code || 'warning'}:`, err); return Promise.reject(err); }
         });
         return _persistencePromise;
     }
@@ -95,16 +84,11 @@
         if (typeof document === 'undefined') return;
         let banner = document.getElementById('collab-editor-banner');
         if (!banner) {
-            banner = document.createElement('div');
-            banner.id = 'collab-editor-banner';
-            banner.className = 'collab-editor-banner rounded-lg px-4 py-3 mb-4 flex items-center justify-between gap-3 text-sm';
-            banner.style.cssText = 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;';
-            banner.setAttribute('role', 'alert');
+            banner = document.createElement('div'); banner.id = 'collab-editor-banner'; banner.className = 'collab-editor-banner rounded-lg px-4 py-3 mb-4 flex items-center justify-between gap-3 text-sm';
+            banner.style.cssText = 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;'; banner.setAttribute('role', 'alert');
             (document.querySelector('#content .fade-up') || document.getElementById('content'))?.prepend(banner);
         }
-        const reloadAction = typeof actionAttr === 'function'
-            ? actionAttr('reloadCollabDoc', docId)
-            : (typeof escHtml === 'function' ? escHtml('reloadCollabDoc(' + JSON.stringify(docId) + ')') : 'reloadCollabDoc(&quot;' + docId + '&quot;)');
+        const reloadAction = typeof actionAttr === 'function' ? actionAttr('reloadCollabDoc', docId) : (typeof escHtml === 'function' ? escHtml('reloadCollabDoc(' + JSON.stringify(docId) + ')') : 'reloadCollabDoc(&quot;' + docId + '&quot;)');
         banner.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i><span>Updated by someone else</span></div><button class="btn-s text-xs h-7 px-3" data-onclick="${reloadAction}">Reload</button>`;
         if (typeof root.enhanceInteractionSemantics === 'function') root.enhanceInteractionSemantics(banner, false);
     }
@@ -124,7 +108,6 @@
     function applyRemoteDoc(remoteDoc, changeType = 'modified') {
         if (!remoteDoc || !remoteDoc.id) return;
         const docs = getDocuments(), s = getState(), docId = remoteDoc.id;
-
         if (changeType === 'removed') {
             const idx = docs.findIndex(d => d.id === docId);
             if (idx !== -1) docs.splice(idx, 1);
@@ -133,19 +116,32 @@
             else if (typeof root.render === 'function') root.render();
             return;
         }
-
+        const existingPass = _knownDocs.get(docId)?.password || docs.find(d => d.id === docId)?.password || (s?.editingDoc?.id === docId ? s.editingDoc.password : '');
+        if (remoteDoc.category === 'credential' && existingPass) remoteDoc.password = existingPass;
         _knownDocs.set(docId, { ...remoteDoc });
         if ((remoteDoc.workspaceId || 'default') !== getActiveWs()) {
             const idx = docs.findIndex(d => d.id === docId);
             if (idx !== -1) { docs.splice(idx, 1); if (typeof root.render === 'function') root.render(); }
             return;
         }
-
         const idx = docs.findIndex(d => d.id === docId);
-        if (idx !== -1) docs[idx] = remoteDoc;
-        else docs.unshift(remoteDoc);
+        if (idx !== -1) docs[idx] = remoteDoc; else docs.unshift(remoteDoc);
+        const role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner';
+        if (remoteDoc.category === 'credential' && canSecret) {
+            const db = getFirestoreDb();
+            if (db && typeof db.collection === 'function') {
+                db.collection('documents').doc(docId).collection('secrets').doc('credential').get().then(sSnap => {
+                    const sData = (sSnap && typeof sSnap.data === 'function') ? sSnap.data() : sSnap?.data;
+                    if (sData?.password !== undefined) {
+                        remoteDoc.password = sData.password;
+                        const known = _knownDocs.get(docId); if (known) known.password = sData.password;
+                        const d = docs.find(x => x.id === docId); if (d) d.password = sData.password;
+                        if (s?.view === 'editor' && s.editingDoc?.id === docId && !isEditorDirty()) { s.editingDoc.password = sData.password; if (typeof root.render === 'function') root.render(); }
+                    }
+                }).catch(() => {});
+            }
+        }
         if (typeof root.normalizeDocTags === 'function') root.normalizeDocTags(docs);
-
         if (s?.view === 'editor' && s.editingDoc?.id === docId) {
             if (isEditorDirty()) showEditorConflictBanner(docId);
             else {
@@ -164,31 +160,19 @@
         if (isGuestMode() || !isCollabMode() || _unsubscribeSnapshot) return;
         const db = getFirestoreDb();
         if (!db || typeof db.collection('documents')?.onSnapshot !== 'function') return;
-
         try {
             _unsubscribeSnapshot = db.collection('documents').onSnapshot(snapshot => {
                 if (!snapshot) return;
-                const changes = typeof snapshot.docChanges === 'function' ? snapshot.docChanges() : [];
-                if (changes.length > 0) {
-                    for (const change of changes) {
-                        if (change.doc?.metadata?.hasPendingWrites) continue;
-                        const docId = change.doc?.id; if (!docId) continue;
-                        if (change.type === 'removed') { applyRemoteDoc({ id: docId }, 'removed'); continue; }
-                        const remoteDoc = fromFirestoreDoc(typeof change.doc.data === 'function' ? change.doc.data() : change.doc, docId);
-                        if (remoteDoc) {
-                            const known = _knownDocs.get(docId);
-                            if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, change.type);
-                        }
+                const items = (typeof snapshot.docChanges === 'function' && snapshot.docChanges()?.length) ? snapshot.docChanges() : (snapshot.docs || []);
+                for (const item of items) {
+                    const snap = item.doc || item, docId = snap?.id;
+                    if (!docId || snap.metadata?.hasPendingWrites) continue;
+                    if (item.type === 'removed') { applyRemoteDoc({ id: docId }, 'removed'); continue; }
+                    const remoteDoc = fromFirestoreDoc(typeof snap.data === 'function' ? snap.data() : snap.data, docId);
+                    if (remoteDoc) {
+                        const known = _knownDocs.get(docId);
+                        if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, item.type || 'modified');
                     }
-                } else if (typeof snapshot.forEach === 'function') {
-                    snapshot.forEach(docSnap => {
-                        if (docSnap.metadata?.hasPendingWrites) return;
-                        const docId = docSnap.id, remoteDoc = fromFirestoreDoc(typeof docSnap.data === 'function' ? docSnap.data() : docSnap, docId);
-                        if (remoteDoc) {
-                            const known = _knownDocs.get(docId);
-                            if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, 'modified');
-                        }
-                    });
                 }
             }, err => console.error('[CollabStore] onSnapshot error:', err));
         } catch (err) { console.error('[CollabStore] Failed to attach onSnapshot:', err); }
@@ -205,10 +189,29 @@
 
         const snapshot = await db.collection('documents').get(), loaded = [];
         _knownDocs.clear();
-        snapshot.forEach(docSnap => {
-            const data = docSnap.data(), doc = fromFirestoreDoc(data, docSnap.id);
-            if (doc) { loaded.push(doc); _knownDocs.set(doc.id, { ...doc }); }
-        });
+        const role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner', snaps = [], user = getCurrentUser(), uid = user?.uid;
+        snapshot.forEach(d => snaps.push(d));
+        for (const docSnap of snaps) {
+            const data = (typeof docSnap.data === 'function') ? docSnap.data() : docSnap.data, doc = fromFirestoreDoc(data, docSnap.id);
+            if (!doc) continue;
+            if (doc.category === 'credential') {
+                if (canSecret) {
+                    try {
+                        const docRef = db.collection('documents').doc(doc.id), sSnap = await docRef.collection('secrets').doc('credential').get();
+                        const sData = (sSnap && typeof sSnap.data === 'function') ? sSnap.data() : sSnap?.data, sPass = sData?.password !== undefined ? sData.password : (data.password || '');
+                        if (data.password && uid) {
+                            const nextVer = (typeof data.version === 'number' ? data.version : 1) + 1;
+                            const scrub = toFirestoreDoc({ ...doc, password: '' }, { version: nextVer, createdBy: data.createdBy || doc.createdBy || uid, updatedBy: uid, createdAt: typeof data.createdAt === 'number' ? data.createdAt : (doc.createdAt || Date.now()), updatedAt: Date.now() });
+                            if (typeof db.batch === 'function') { const b = db.batch(); b.set(docRef.collection('secrets').doc('credential'), { password: sPass, updatedAt: Date.now() }); b.set(docRef, scrub); await b.commit(); }
+                            else { await docRef.collection('secrets').doc('credential').set({ password: sPass, updatedAt: Date.now() }); await docRef.set(scrub); }
+                            doc.version = nextVer; doc.updatedBy = uid;
+                        }
+                        doc.password = sPass;
+                    } catch (_) { doc.password = data.password || ''; }
+                } else doc.password = '';
+            }
+            loaded.push(doc); _knownDocs.set(doc.id, { ...doc });
+        }
 
         const activeDocs = loaded.filter(d => (d.workspaceId || 'default') === getActiveWs()).map(d => ({ ...d }));
         const normTags = root.normalizeDocTags || (typeof normalizeDocTags === 'function' ? normalizeDocTags : null);
@@ -219,18 +222,28 @@
 
     async function persist(currentDocuments) {
         if (isGuestMode() || !isCollabMode() || !Array.isArray(currentDocuments)) return;
-        const activeWs = getActiveWs(), targetDocs = currentDocuments.slice(), targetIds = new Set(targetDocs.filter(d => d?.id).map(d => d.id));
+        const initialKnownIds = new Set(_knownDocs.keys()), activeWs = getActiveWs(), targetDocs = currentDocuments.slice(), targetIds = new Set(targetDocs.filter(d => d?.id).map(d => d.id));
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb();
         if (!db) throw new Error('Firestore is not available');
         await enableOfflinePersistence(db);
         const user = getCurrentUser();
         if (!user?.uid) throw new Error('Cannot persist in collab mode: unauthenticated');
-        const uid = user.uid;
+        const uid = user.uid, role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner';
 
         const isDocOversize = (d) => {
             const sz = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(JSON.stringify(d)).length : JSON.stringify(d).length;
             return sz > 900000 ? (root.toast?.('Document exceeds 900,000 bytes limit.', 'error'), true) : false;
+        };
+        const saveAtomic = async (docRef, docData, secretData) => {
+            if (typeof db.batch === 'function') {
+                const b = db.batch(); b.set(docRef, docData);
+                if (secretData && typeof docRef.collection === 'function') b.set(docRef.collection('secrets').doc('credential'), secretData);
+                await b.commit();
+            } else {
+                await docRef.set(docData);
+                if (secretData && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').set(secretData);
+            }
         };
 
         // 1. New documents (CREATE)
@@ -240,10 +253,13 @@
             if (!doc.workspaceId) doc.workspaceId = activeWs;
             const data = toFirestoreDoc(doc, { version: 1, createdBy: uid, updatedBy: uid, createdAt, updatedAt });
             if (isDocOversize(data)) continue;
+            const secretData = (doc.category === 'credential' && canSecret) ? { password: doc.password || '', updatedAt: now } : null;
             try {
+                const docRef = db.collection('documents').doc(doc.id);
+                const sRef = (secretData && typeof docRef.collection === 'function') ? docRef.collection('secrets').doc('credential') : null;
                 if (doc.workspaceId && doc.workspaceId !== 'default' && root.CollabWorkspaces?.batchCreateDoc) {
-                    await root.CollabWorkspaces.batchCreateDoc(db, db.collection('documents').doc(doc.id), data, doc.workspaceId);
-                } else { await db.collection('documents').doc(doc.id).set(data); }
+                    await root.CollabWorkspaces.batchCreateDoc(db, docRef, data, doc.workspaceId, sRef, secretData);
+                } else await saveAtomic(docRef, data, secretData);
                 doc.version = 1; doc.createdBy = uid; doc.updatedBy = uid; doc.createdAt = createdAt; doc.updatedAt = updatedAt;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) { if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error'); throw err; }
@@ -261,17 +277,19 @@
             const createdBy = known.createdBy || doc.createdBy || uid, createdAt = typeof known.createdAt === 'number' ? known.createdAt : (doc.createdAt || Date.now());
             const data = toFirestoreDoc(doc, { version: nextVersion, createdBy, updatedBy: uid, createdAt, updatedAt: doc.updatedAt });
             if (isDocOversize(data)) continue;
+            const secretData = (doc.category === 'credential' && canSecret) ? { password: doc.password || '', updatedAt: doc.updatedAt || Date.now() } : null;
 
             try {
-                await db.collection('documents').doc(doc.id).set(data);
+                const docRef = db.collection('documents').doc(doc.id);
+                await saveAtomic(docRef, data, secretData);
                 doc.version = nextVersion; doc.createdBy = createdBy; doc.updatedBy = uid;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) {
                 const isPermDenied = err?.code === 'permission-denied' || err?.code === 7 || String(err?.message || '').includes('PERMISSION_DENIED') || String(err?.message || '').includes('permission-denied');
                 if (isPermDenied) {
-                    let isVersionMismatch = true;
-                    try { const remoteSnap = await db.collection('documents').doc(doc.id).get(); if (remoteSnap.exists) isVersionMismatch = (remoteSnap.data().version !== known.version); } catch (_) {}
-                    if (isVersionMismatch) { notifyConflict('Someone else saved this document. Reload to see their version.'); continue; }
+                    let isMismatch = true;
+                    try { const snap = await db.collection('documents').doc(doc.id).get(); if (snap.exists) isMismatch = (snap.data().version !== known.version); } catch (_) {}
+                    if (isMismatch) { notifyConflict('Someone else saved this document. Reload to see their version.'); continue; }
                 }
                 if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error');
                 throw err;
@@ -280,13 +298,24 @@
 
         // 3. Disappeared documents (DELETE)
         if (getActiveWs() !== activeWs) return;
+        const liveDocs = getDocuments();
         for (const [id, known] of Array.from(_knownDocs.entries())) {
             if ((known?.workspaceId || 'default') !== activeWs) continue;
-            if (!targetIds.has(id)) {
+            if (initialKnownIds.has(id) && !targetIds.has(id) && !liveDocs.some(d => d.id === id)) {
                 try {
+                    const docRef = db.collection('documents').doc(id);
+                    const sRef = (known?.category === 'credential' && typeof docRef.collection === 'function') ? docRef.collection('secrets').doc('credential') : null;
                     if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) {
-                        await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
-                    } else { await db.collection('documents').doc(id).delete(); }
+                        await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId, sRef);
+                    } else if (typeof db.batch === 'function') {
+                        const b = db.batch();
+                        if (sRef) b.delete(sRef);
+                        b.delete(docRef);
+                        await b.commit();
+                    } else {
+                        if (sRef) await sRef.delete();
+                        await docRef.delete();
+                    }
                     _knownDocs.delete(id);
                 } catch (err) {
                     if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to delete offline', 'error');
@@ -298,33 +327,22 @@
 
     async function recordActivity(entry, doc) {
         if (isGuestMode() || !isCollabMode() || !entry) return;
-        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role;
-        if (role !== 'editor' && role !== 'owner') return;
-        const user = getCurrentUser(); if (!user?.uid) return;
+        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role, user = getCurrentUser();
+        if ((role !== 'editor' && role !== 'owner') || !user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb(); if (!db) return;
-        const actId = String(entry.id || ('act_' + Date.now())), actorEmail = member?.email || user.email || '';
-        const actorName = member?.displayName || user?.displayName || member?.name || member?.email || '';
-        const actorPhoto = (typeof user?.photoURL === 'string' && /^https:\/\//i.test(user.photoURL)) ? user.photoURL : ((typeof member?.photoURL === 'string' && /^https:\/\//i.test(member.photoURL)) ? member.photoURL : '');
-        const payload = {
-            id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated',
-            docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '',
-            actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}),
-            ...(actorPhoto ? { actorPhotoUrl: actorPhoto } : {})
-        };
+        const actId = String(entry.id || ('act_' + Date.now())), actorEmail = member?.email || user.email || '', actorName = member?.displayName || user?.displayName || member?.name || member?.email || '';
+        const rawPhoto = (typeof user?.photoURL === 'string' && /^https:\/\//i.test(user.photoURL)) ? user.photoURL : ((typeof member?.photoURL === 'string' && /^https:\/\//i.test(member.photoURL)) ? member.photoURL : '');
+        const payload = { id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated', docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '', actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}), ...(rawPhoto ? { actorPhotoUrl: rawPhoto } : {}) };
         try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
     }
 
     async function saveHistory(doc, meta) {
         if (isGuestMode() || !isCollabMode() || !doc?.id || doc.category === 'credential') return;
-        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role;
-        if (role !== 'editor' && role !== 'owner') return;
-        const user = getCurrentUser();
-        if (!user?.uid) return;
+        const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role, user = getCurrentUser();
+        if ((role !== 'editor' && role !== 'owner') || !user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
-        const db = getFirestoreDb();
-        if (!db) return;
-
+        const db = getFirestoreDb(); if (!db) return;
         const histCol = db.collection('documents').doc(doc.id).collection('history');
         try {
             const snap = await histCol.get(), existing = [];
@@ -332,56 +350,39 @@
             existing.sort((a, b) => (b.ts || 0) - (a.ts || 0));
             if (existing.length && existing[0].content === (doc.content || '') && existing[0].title === doc.title) return;
             if (role === 'editor' && existing.length >= 10) return;
-            const snapId = meta?.snapId || ('snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
-            const ts = typeof meta?.ts === 'number' ? meta.ts : Date.now();
-            const savedByName = user.displayName || member?.displayName || member?.name || user.email || 'Team Member';
-            const savedByEmail = user.email || member?.email || '', rawPhoto = user.photoURL || member?.photoURL || member?.photoUrl || '';
-            const savedByPhoto = (typeof rawPhoto === 'string' && /^https:\/\//i.test(rawPhoto)) ? rawPhoto : '';
-            const payload = {
-                id: snapId, ts, title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '',
-                tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '',
-                savedBy: user.uid, savedByName, savedByEmail, ...(savedByPhoto ? { savedByPhoto } : {})
-            };
-            await histCol.doc(snapId).set(payload);
-            if (role === 'owner' && existing.length >= 10) {
-                for (const oldSnap of existing.slice(9)) { try { await histCol.doc(oldSnap.id).delete(); } catch (_) {} }
-            }
+            const snapId = meta?.snapId || ('snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), ts = typeof meta?.ts === 'number' ? meta.ts : Date.now();
+            const savedByName = user.displayName || member?.displayName || member?.name || user.email || 'Team Member', savedByEmail = user.email || member?.email || '';
+            const rawPhoto = user.photoURL || member?.photoURL || member?.photoUrl || '', savedByPhoto = (typeof rawPhoto === 'string' && /^https:\/\//i.test(rawPhoto)) ? rawPhoto : '';
+            await histCol.doc(snapId).set({ id: snapId, ts, title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '', savedBy: user.uid, savedByName, savedByEmail, ...(savedByPhoto ? { savedByPhoto } : {}) });
+            if (role === 'owner' && existing.length >= 10) { for (const oldSnap of existing.slice(9)) { try { await histCol.doc(oldSnap.id).delete(); } catch (_) {} } }
         } catch (err) { console.warn('[CollabStore] saveHistory error:', err); }
     }
 
     async function loadHistory(docId) {
         if (isGuestMode() || !isCollabMode() || !docId) return [];
         if (root.ensureFirebase) await root.ensureFirebase();
-        const db = getFirestoreDb();
-        if (!db) return [];
+        const db = getFirestoreDb(); if (!db) return [];
         try {
             const snap = await db.collection('documents').doc(docId).collection('history').get(), items = [];
             snap.forEach(d => { const data = (typeof d.data === 'function') ? d.data() : (d.data || d); items.push({ id: d.id, ...data }); });
-            items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-            return items.slice(0, 10);
+            return items.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 10);
         } catch (err) { console.warn('[CollabStore] loadHistory error:', err); return []; }
     }
 
     async function allocateBugNumber() {
         if (isGuestMode() || !isCollabMode()) {
-            let max = 0;
-            getDocuments().forEach(d => { if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber; });
+            let max = 0; getDocuments().forEach(d => { if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber; });
             return (typeof root.DocStorage !== 'undefined' && root.DocStorage.allocateBugNumber) ? root.DocStorage.allocateBugNumber(max) : max + 1;
         }
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb(), user = getCurrentUser();
-        if (!db) throw new Error('Firestore not available');
-        if (!user?.uid) throw new Error('Unauthenticated');
+        if (!db) throw new Error('Firestore not available'); if (!user?.uid) throw new Error('Unauthenticated');
         const counterRef = db.collection('counters').doc('bugs');
-
         return await db.runTransaction(async tx => {
             const snap = await tx.get(counterRef);
-            let allocated = 1;
-            if (!snap.exists) { tx.set(counterRef, { next: 1 }); } else {
-                const data = (typeof snap.data === 'function') ? snap.data() : snap.data;
-                allocated = ((typeof data?.next === 'number') ? data.next : 0) + 1;
-                tx.update(counterRef, { next: allocated });
-            }
+            const data = snap.exists ? ((typeof snap.data === 'function') ? snap.data() : snap.data) : null;
+            const allocated = data ? (((typeof data.next === 'number') ? data.next : 0) + 1) : 1;
+            if (!snap.exists) tx.set(counterRef, { next: 1 }); else tx.update(counterRef, { next: allocated });
             return allocated;
         });
     }

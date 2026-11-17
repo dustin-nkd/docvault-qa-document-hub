@@ -178,7 +178,8 @@
                 ? root.CollabStore.toFirestoreDoc(doc, { version: 1, createdBy: ownerUid, updatedBy: ownerUid, createdAt, updatedAt })
                 : {
                     id: doc.id, title: doc.title || '', category: doc.category || 'general', subfolder: doc.subfolder || '', status: doc.status || 'active',
-                    content: doc.content || '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [], username: doc.username || '', password: doc.password || '',
+                    content: doc.content || '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [], username: doc.username || '',
+                    password: doc.category === 'credential' ? '' : (doc.password || ''),
                     rotatedAt: doc.rotatedAt || null, bugData: doc.bugData || null, tcData: doc.tcData || null, apiData: doc.apiData || null, apiTcData: doc.apiTcData || null,
                     runData: doc.runData || null, envData: doc.envData || null, releaseData: doc.releaseData || null, tcPlanData: doc.tcPlanData || null,
                     kanbanStatus: doc.kanbanStatus || '', bugStatus: doc.bugStatus || '', bugStatusEvents: Array.isArray(doc.bugStatusEvents) ? [...doc.bugStatusEvents] : [],
@@ -193,25 +194,37 @@
                 continue;
             }
 
-            docsToSave.push({ id: doc.id, payload });
+            const secret = (doc.category === 'credential' && doc.password) ? { password: doc.password, updatedAt: Date.now() } : null;
+            docsToSave.push({ id: doc.id, payload, secret });
         }
 
-        // Batch write with max 400 documents per batch
+        // Dynamic batch writes respecting Firestore 500-op limit (counting doc + secret ops)
         if (docsToSave.length > 0) {
-            const batchSize = 400;
-            for (let i = 0; i < docsToSave.length; i += batchSize) {
-                const chunk = docsToSave.slice(i, i + batchSize);
-                if (typeof db.batch === 'function') {
-                    const batch = db.batch();
-                    for (const item of chunk) {
-                        batch.set(db.collection('documents').doc(item.id), item.payload);
+            let currentBatch = (typeof db.batch === 'function') ? db.batch() : null;
+            let currentOps = 0;
+            for (const item of docsToSave) {
+                const docRef = db.collection('documents').doc(item.id);
+                const itemOps = (item.secret && typeof docRef.collection === 'function') ? 2 : 1;
+                if (currentBatch && (currentOps + itemOps > 400)) {
+                    await currentBatch.commit();
+                    currentBatch = db.batch();
+                    currentOps = 0;
+                }
+                if (currentBatch) {
+                    currentBatch.set(docRef, item.payload);
+                    if (item.secret && typeof docRef.collection === 'function') {
+                        currentBatch.set(docRef.collection('secrets').doc('credential'), item.secret);
                     }
-                    await batch.commit();
+                    currentOps += itemOps;
                 } else {
-                    for (const item of chunk) {
-                        await db.collection('documents').doc(item.id).set(item.payload);
+                    await docRef.set(item.payload);
+                    if (item.secret && typeof docRef.collection === 'function') {
+                        await docRef.collection('secrets').doc('credential').set(item.secret);
                     }
                 }
+            }
+            if (currentBatch && currentOps > 0) {
+                await currentBatch.commit();
             }
         }
 

@@ -4,21 +4,12 @@
 
     function esc(str) {
         if (str == null) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function renderRoleBadge(role) {
-        if (role === 'owner') {
-            return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(59,130,246,0.15);color:var(--acc);border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-crown text-[8px] mr-1"></i>Owner</span>';
-        }
-        if (role === 'editor') {
-            return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-pen text-[8px] mr-1"></i>Editor</span>';
-        }
+        if (role === 'owner') return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(59,130,246,0.15);color:var(--acc);border:1px solid rgba(59,130,246,0.3);"><i class="fa-solid fa-crown text-[8px] mr-1"></i>Owner</span>';
+        if (role === 'editor') return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-pen text-[8px] mr-1"></i>Editor</span>';
         return '<span class="collab-me-badge px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0" style="background:rgba(107,114,128,0.15);color:var(--tx-d);border:1px solid rgba(107,114,128,0.3);"><i class="fa-solid fa-eye text-[8px] mr-1"></i>Viewer</span>';
     }
 
@@ -41,21 +32,14 @@
 
         const icon = btn.querySelector ? btn.querySelector('i') : null;
         if (icon) icon.className = 'fa-solid fa-right-from-bracket';
-
         const span = btn.querySelector ? btn.querySelector('span') : null;
         if (span) span.textContent = 'Sign out';
     }
 
     function removeCollabMe() {
         if (typeof document === 'undefined') return;
-        const el = (typeof document.getElementById === 'function' ? document.getElementById('collab-me') : null) ||
-                   (typeof document.querySelector === 'function' ? document.querySelector('#collab-me') : null);
-        if (!el) return;
-        if (typeof el.remove === 'function') {
-            el.remove();
-        } else if (el.parentNode && typeof el.parentNode.removeChild === 'function') {
-            el.parentNode.removeChild(el);
-        }
+        const el = (typeof document.getElementById === 'function' ? document.getElementById('collab-me') : null) || (typeof document.querySelector === 'function' ? document.querySelector('#collab-me') : null);
+        if (el) { if (typeof el.remove === 'function') el.remove(); else if (el.parentNode) el.parentNode.removeChild(el); }
     }
 
     function renderCollabMe(user, member) {
@@ -66,8 +50,7 @@
         if (typeof document.createElement !== 'function') return;
 
         const displayName = member?.displayName || user?.displayName || member?.email || user?.email || 'Team Member';
-        const email = member?.email || user?.email || '';
-        const roleBadge = renderRoleBadge(member?.role);
+        const email = member?.email || user?.email || '', roleBadge = renderRoleBadge(member?.role);
         const photoUrl = (typeof user?.photoURL === 'string' && user.photoURL.startsWith('https://')) ? user.photoURL : '';
         const avatarHtml = photoUrl
             ? `<img src="${esc(photoUrl)}" alt="${esc(displayName)}" class="collab-me-avatar w-8 h-8 rounded-full object-cover shrink-0" style="border:1px solid var(--brd);">`
@@ -78,13 +61,7 @@
         meEl.className = 'px-3 py-2.5 border-b flex items-center gap-2.5';
         meEl.style.borderColor = 'var(--brd)';
         meEl.innerHTML = `
-            <style>
-                [data-ui-style="bauhaus"] #collab-me { border-bottom: 2px solid #121212 !important; }
-                [data-ui-style="bauhaus"] #collab-me .collab-me-name { color: #121212 !important; }
-                [data-ui-style="bauhaus"] #collab-me .collab-me-email { color: #555555 !important; font-weight: 600 !important; }
-                [data-ui-style="bauhaus"] #collab-me .collab-me-badge { border: 1.5px solid #121212 !important; border-radius: 0 !important; box-shadow: 1px 1px 0 0 #121212 !important; }
-                [data-ui-style="bauhaus"] #collab-me .collab-me-avatar { border: 1.5px solid #121212 !important; border-radius: 0 !important; }
-            </style>
+            <style>[data-ui-style="bauhaus"] #collab-me { border-bottom: 2px solid #121212 !important; } [data-ui-style="bauhaus"] #collab-me .collab-me-name { color: #121212 !important; } [data-ui-style="bauhaus"] #collab-me .collab-me-email { color: #555555 !important; font-weight: 600 !important; } [data-ui-style="bauhaus"] #collab-me .collab-me-badge { border: 1.5px solid #121212 !important; border-radius: 0 !important; box-shadow: 1px 1px 0 0 #121212 !important; } [data-ui-style="bauhaus"] #collab-me .collab-me-avatar { border: 1.5px solid #121212 !important; border-radius: 0 !important; }</style>
             ${avatarHtml}
             <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-1">
@@ -95,13 +72,9 @@
             </div>
         `.trim();
 
-        if (typeof footer.insertBefore === 'function' && footer.firstChild) {
-            footer.insertBefore(meEl, footer.firstChild);
-        } else if (typeof footer.prepend === 'function') {
-            footer.prepend(meEl);
-        } else if (typeof footer.appendChild === 'function') {
-            footer.appendChild(meEl);
-        }
+        if (typeof footer.insertBefore === 'function' && footer.firstChild) footer.insertBefore(meEl, footer.firstChild);
+        else if (typeof footer.prepend === 'function') footer.prepend(meEl);
+        else if (typeof footer.appendChild === 'function') footer.appendChild(meEl);
     }
 
     function getFirestoreDb() {
@@ -117,6 +90,48 @@
         return db;
     }
 
+    async function createTeam(userOrDb, maybeUser) {
+        let db, user;
+        if (userOrDb && typeof userOrDb.collection === 'function') {
+            db = userOrDb; user = maybeUser;
+        } else {
+            user = userOrDb; db = maybeUser || getFirestoreDb();
+        }
+        if (!user) throw new Error('User required to create team');
+        if (!db) throw new Error('Firestore is not available');
+        const now = new Date().toISOString();
+        const teamData = { ownerUid: user.uid, name: 'DocVault Team', createdAt: now, initialized: true };
+        const ownerMember = {
+            uid: user.uid,
+            email: user.email || '',
+            name: user.displayName || user.email || 'Owner',
+            displayName: user.displayName || user.email || 'Team Owner',
+            role: 'owner',
+            joinedAt: Date.now(), createdAt: now, updatedAt: now
+        };
+        try {
+            if (typeof db.batch === 'function') {
+                const batch = db.batch();
+                batch.set(db.collection('meta').doc('team'), teamData);
+                batch.set(db.collection('members').doc(user.uid), ownerMember);
+                await batch.commit();
+            } else if (typeof db.runTransaction === 'function') {
+                await db.runTransaction(async tx => {
+                    tx.set(db.collection('meta').doc('team'), teamData);
+                    tx.set(db.collection('members').doc(user.uid), ownerMember);
+                });
+            } else {
+                await db.collection('meta').doc('team').set(teamData);
+                await db.collection('members').doc(user.uid).set(ownerMember);
+            }
+        } catch (_) {
+            await db.collection('meta').doc('team').set(teamData);
+            await db.collection('members').doc(user.uid).set(ownerMember);
+        }
+        _currentMember = ownerMember;
+        return { status: 'owner', role: 'owner', member: ownerMember };
+    }
+
     async function initTeamUser(user) {
         if (!user) return { status: 'unauthenticated' };
         if (root.ensureFirebase) await root.ensureFirebase();
@@ -126,22 +141,20 @@
             await root.CollabStore.enableOfflinePersistence(db);
         }
 
-        let isTeamInitialized = false;
+        let isTeamInitialized = false, teamData = null;
         try {
             const metaSnap = await db.collection('meta').doc('team').get();
             isTeamInitialized = metaSnap.exists;
+            if (metaSnap.exists) {
+                teamData = (typeof metaSnap.data === 'function') ? metaSnap.data() : metaSnap.data;
+            }
         } catch (err) {
             const isPermissionDenied = err?.code === 'permission-denied' || err?.code === 7 || String(err?.message || '').includes('PERMISSION_DENIED');
             if (isPermissionDenied) isTeamInitialized = true; else throw err;
         }
 
         if (!isTeamInitialized) {
-            const now = new Date().toISOString();
-            await db.collection('meta').doc('team').set({ ownerUid: user.uid, name: 'DocVault Team', createdAt: now, initialized: true });
-            const ownerMember = { uid: user.uid, email: user.email || '', displayName: user.displayName || user.email || 'Team Owner', role: 'owner', createdAt: now, updatedAt: now };
-            await db.collection('members').doc(user.uid).set(ownerMember);
-            _currentMember = ownerMember;
-            return { status: 'owner', role: 'owner', member: ownerMember };
+            return await createTeam(db, user);
         }
 
         let memberSnap = null;
@@ -152,10 +165,31 @@
             _currentMember = memberData;
             if (user.email) {
                 const em = (user.email || '').trim();
-                db.collection('invites').doc(em).delete().catch(() => {});
-                if (em.toLowerCase() !== em) db.collection('invites').doc(em.toLowerCase()).delete().catch(() => {});
+                const d1 = db.collection('invites').doc(em);
+                if (typeof d1?.delete === 'function') d1.delete().catch(() => {});
+                if (em.toLowerCase() !== em) {
+                    const d2 = db.collection('invites').doc(em.toLowerCase());
+                    if (typeof d2?.delete === 'function') d2.delete().catch(() => {});
+                }
             }
             return { status: 'member', role: memberData.role, member: memberData };
+        }
+
+        // Owner Bootstrap Lockout Recovery: if meta/team.ownerUid === user.uid (or team is initialized) and members/{uid} is missing,
+        // automatically recreate the owner member document and continue as owner instead of returning 'uninvited'.
+        if (teamData?.ownerUid === user.uid || (!teamData && isTeamInitialized)) {
+            try {
+                const now = new Date().toISOString();
+                const ownerMember = {
+                    uid: user.uid, role: 'owner',
+                    name: user.displayName || user.email || 'Owner',
+                    displayName: user.displayName || user.email || 'Team Owner',
+                    email: user.email || '', joinedAt: Date.now(), createdAt: now, updatedAt: now
+                };
+                await db.collection('members').doc(user.uid).set(ownerMember);
+                _currentMember = ownerMember;
+                return { status: 'owner', role: 'owner', member: ownerMember };
+            } catch (_) {}
         }
 
         let inviteSnap = null, matchedInviteId = null;
@@ -280,34 +314,11 @@
         return p;
     }
 
-    function loadCollabViewer() {
-        if (root.CollabViewer) { root.CollabViewer.applyViewerRestrictions(); return Promise.resolve(); }
-        let s = {}; s.src = 'js/collab-viewer.js';
-        return _loadScript(s.src).then(() => root.CollabViewer?.applyViewerRestrictions?.());
-    }
-
-    function loadCollabWorkspaces() {
-        if (root.CollabWorkspaces) return Promise.resolve();
-        let s = {}; s.src = 'js/collab-workspaces.js';
-        return _loadScript(s.src);
-    }
-
-    function loadCollabActivity() {
-        if (root.CollabActivity) return Promise.resolve();
-        let s = {}; s.src = 'js/collab-activity.js';
-        return _loadScript(s.src);
-    }
-
-    function loadCollabAssign() {
-        if (root.CollabAssign) return Promise.resolve();
-        let s = {}; s.src = 'js/collab-assign.js';
-        return _loadScript(s.src);
-    }
-
-    function loadCollabComments() {
-        if (root.CollabComments) return Promise.resolve();
-        let s = {}; s.src = 'js/collab-comments.js'; return _loadScript(s.src);
-    }
+    function loadCollabViewer() { if (root.CollabViewer) { root.CollabViewer.applyViewerRestrictions(); return Promise.resolve(); } let s = {}; s.src = 'js/collab-viewer.js'; return _loadScript(s.src).then(() => root.CollabViewer?.applyViewerRestrictions?.()); }
+    function loadCollabWorkspaces() { if (root.CollabWorkspaces) return Promise.resolve(); let s = {}; s.src = 'js/collab-workspaces.js'; return _loadScript(s.src); }
+    function loadCollabActivity() { if (root.CollabActivity) return Promise.resolve(); let s = {}; s.src = 'js/collab-activity.js'; return _loadScript(s.src); }
+    function loadCollabAssign() { if (root.CollabAssign) return Promise.resolve(); let s = {}; s.src = 'js/collab-assign.js'; return _loadScript(s.src); }
+    function loadCollabComments() { if (root.CollabComments) return Promise.resolve(); let s = {}; s.src = 'js/collab-comments.js'; return _loadScript(s.src); }
 
     function start() {
         loadCollabViewer();
@@ -357,6 +368,7 @@
 
     root.CollabBootstrap = {
         initTeamUser,
+        createTeam,
         handleUserAuth,
         start,
         signOut,
