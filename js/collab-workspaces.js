@@ -263,39 +263,68 @@
     async function batchCreateDoc(db, docRef, data, wsId, extraSetRef, extraSetData) {
         const wsRef = db.collection('workspaces').doc(wsId);
         let ws = _remoteWorkspaces.find(w => w.id === wsId);
-        let cur = (typeof ws?.docCount === 'number') ? ws.docCount : null;
-        if (cur === null) {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            if (attempt > 1) {
+                try {
+                    const snap = await (docRef.get({ source: 'server' })).catch(() => docRef.get());
+                    if (snap.exists) {
+                        const d = (typeof snap.data === 'function') ? snap.data() : snap.data;
+                        if (d && d.updatedAt === data.updatedAt && d.version === data.version) return;
+                        throw new Error('Document already exists on server');
+                    }
+                } catch (e) { if (e.message === 'Document already exists on server') throw e; }
+            }
+            let cur = null;
             try {
-                const s = await wsRef.get();
+                const s = await (wsRef.get({ source: 'server' })).catch(() => wsRef.get());
                 cur = (s.exists && typeof s.data()?.docCount === 'number') ? s.data().docCount : 0;
-            } catch (_) { cur = 0; }
+            } catch (_) { cur = (typeof ws?.docCount === 'number') ? ws.docCount : 0; }
+            const next = (cur || 0) + 1;
+            const batch = db.batch();
+            batch.set(docRef, data);
+            if (extraSetRef && extraSetData) batch.set(extraSetRef, extraSetData);
+            batch.update(wsRef, { docCount: next, lastDocId: data.id });
+            try {
+                await batch.commit();
+                if (ws) ws.docCount = next;
+                return;
+            } catch (err) {
+                if (attempt >= 3) throw err;
+                await new Promise(r => setTimeout(r, 100 * Math.pow(2, attempt - 1)));
+            }
         }
-        const next = cur + 1;
-        const batch = db.batch();
-        batch.set(docRef, data);
-        if (extraSetRef && extraSetData) batch.set(extraSetRef, extraSetData);
-        batch.update(wsRef, { docCount: next, lastDocId: data.id });
-        await batch.commit();
-        if (ws) ws.docCount = next;
     }
 
     async function batchDeleteDoc(db, docId, wsId, extraDeleteRef) {
+        const docRef = db.collection('documents').doc(docId);
         const wsRef = db.collection('workspaces').doc(wsId);
         let ws = _remoteWorkspaces.find(w => w.id === wsId);
-        let cur = (typeof ws?.docCount === 'number') ? ws.docCount : null;
-        if (cur === null) {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            if (attempt > 1) {
+                try {
+                    const snap = await (docRef.get({ source: 'server' })).catch(() => docRef.get());
+                    if (!snap.exists) return;
+                } catch (_) {}
+            }
+            let cur = null;
             try {
-                const s = await wsRef.get();
+                const s = await (wsRef.get({ source: 'server' })).catch(() => wsRef.get());
                 cur = (s.exists && typeof s.data()?.docCount === 'number') ? s.data().docCount : 1;
-            } catch (_) { cur = 1; }
+            } catch (_) { cur = (typeof ws?.docCount === 'number') ? ws.docCount : 1; }
+            const next = Math.max(0, (cur || 1) - 1);
+            const batch = db.batch();
+            batch.delete(docRef);
+            if (extraDeleteRef) batch.delete(extraDeleteRef);
+            batch.update(wsRef, { docCount: next, lastDeletedDocId: docId });
+            try {
+                await batch.commit();
+                if (ws) ws.docCount = next;
+                return;
+            } catch (err) {
+                if (attempt >= 3) throw err;
+                await new Promise(r => setTimeout(r, 100 * Math.pow(2, attempt - 1)));
+            }
         }
-        const next = Math.max(0, cur - 1);
-        const batch = db.batch();
-        batch.delete(db.collection('documents').doc(docId));
-        if (extraDeleteRef) batch.delete(extraDeleteRef);
-        batch.update(wsRef, { docCount: next, lastDeletedDocId: docId });
-        await batch.commit();
-        if (ws) ws.docCount = next;
     }
 
     function stopListening() {
