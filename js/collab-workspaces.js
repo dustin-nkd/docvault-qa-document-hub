@@ -267,8 +267,12 @@
             if (attempt > 1) {
                 try {
                     const snap = await (docRef.get({ source: 'server' })).catch(() => docRef.get());
-                    if (snap.exists) return;
-                } catch (_) {}
+                    if (snap.exists) {
+                        const d = (typeof snap.data === 'function') ? snap.data() : snap.data;
+                        if (d && d.updatedAt === data.updatedAt && d.version === data.version) return;
+                        throw new Error('Document already exists on server');
+                    }
+                } catch (e) { if (e.message === 'Document already exists on server') throw e; }
             }
             let cur = null;
             try {

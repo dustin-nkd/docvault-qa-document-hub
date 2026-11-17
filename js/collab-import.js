@@ -156,7 +156,7 @@
         const skippedOversizeIds = [];
         let maxBugNumber = 0;
         for (const doc of localDocs) {
-            if (doc?.category === 'bug' && typeof doc.bugNumber === 'number') {
+            if (doc?.category === 'bug' && typeof doc.bugNumber === 'number' && !Number.isNaN(doc.bugNumber)) {
                 maxBugNumber = Math.max(maxBugNumber, doc.bugNumber);
             }
         }

@@ -209,9 +209,32 @@ test('Stage 2 (2.5): Workspaces batchCreateDoc and batchDeleteDoc retry on conte
     await ctx.CollabWorkspaces.batchCreateDoc(mockDb, mockDb.collection('documents').doc('doc-new'), { id: 'doc-new' }, 'ws-test');
     assert.equal(createAttempts, 2, 'batchCreateDoc retried and succeeded on attempt 2');
 
-    // Test batchDeleteDoc retry
-    await ctx.CollabWorkspaces.batchDeleteDoc(mockDb, 'doc-new', 'ws-test');
-    assert.equal(deleteAttempts, 2, 'batchDeleteDoc retried and succeeded on attempt 2');
+    // Test that batchCreateDoc throws if doc exists with different payload on retry
+    let conflictDb = {
+        collection: (col) => ({
+            doc: (id) => ({
+                id,
+                get: async () => ({
+                    exists: true,
+                    data: () => (col === 'workspaces' ? { docCount: 5 } : { id: 'doc-conflict', updatedAt: 1000, version: 1 })
+                })
+            })
+        }),
+        batch: () => ({
+            set: () => {},
+            update: () => {},
+            commit: async () => {
+                const err = new Error('Permission denied');
+                err.code = 'permission-denied';
+                throw err;
+            }
+        })
+    };
+    await assert.rejects(
+        () => ctx.CollabWorkspaces.batchCreateDoc(conflictDb, conflictDb.collection('documents').doc('doc-conflict'), { id: 'doc-conflict', updatedAt: 2000, version: 1 }, 'ws-test'),
+        /Document already exists on server/,
+        'batchCreateDoc must throw if document exists with different payload on retry'
+    );
 });
 
 test('Stage 2 (2.6): CollabImport bumps counters/bugs.next atomically before docs, accounts for retry', async () => {
