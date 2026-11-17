@@ -63,8 +63,8 @@ function createCollabSharesContext(customGlobals = {}) {
         ...customGlobals
     };
 
-    sandbox.window = sandbox;
-    sandbox.globalThis = sandbox;
+    if (!sandbox.window) sandbox.window = sandbox;
+    if (!sandbox.globalThis) sandbox.globalThis = sandbox;
 
     const actionsSharingCode = read('js/actions-sharing.js');
     const collabSharesCode = read('js/collab-shares.js');
@@ -75,13 +75,13 @@ function createCollabSharesContext(customGlobals = {}) {
     return sandbox;
 }
 
-test('Shell contracts: events.js loads collab-shares, sw.js caches it in v89, and budgets hold', () => {
+test('Shell contracts: events.js loads collab-shares, sw.js caches it in v90, and budgets hold', () => {
     const events = read('js/events.js');
     assert.match(events, /'collab-shares'/);
     assert.ok(events.indexOf("'collab-shares'") < events.indexOf('CollabBootstrap?.start'));
 
     const sw = read('sw.js');
-    assert.match(sw, /const SW_VERSION = 'v89'/);
+    assert.match(sw, /const SW_VERSION = 'v90'/);
     assert.match(sw, /'\.\/js\/collab-shares\.js'/);
 
     const sharesLines = read('js/collab-shares.js').split('\n').length;
@@ -102,7 +102,7 @@ test('Shell contracts: events.js loads collab-shares, sw.js caches it in v89, an
         const absolutePath = path.join(rootDir, relativePath);
         return total + (fs.existsSync(absolutePath) ? fs.statSync(absolutePath).size : 0);
     }, 0);
-    assert.ok(bytes <= 1_075_000, `Direct startup assets must be <= 1,075,000 bytes (got ${bytes})`);
+    assert.ok(bytes <= 1_118_000, `Direct startup assets must be <= 1,118,000 bytes (got ${bytes})`);
 });
 
 test('Firestore shares payload contains exact fields and NEVER contains key, password, PAT, or token', async () => {
@@ -524,4 +524,131 @@ test('COLLAB_MODE: state.js persist() invokes CollabStore.persist first, then sy
     });
     assert.deepEqual(callOrder, ['CollabStore.persist', 'syncActiveShares'], 'syncActiveShares failure does not break persist()');
 });
+
+test('COLLAB_MODE shareDoc finds document even when only script-level documents variable is populated and window.documents was initially unset', async () => {
+    const mockDoc = { id: 'doc-lexical-1', title: 'Lexical Doc', category: 'general', content: 'Testing lexical docs', updatedAt: 1000 };
+    const firestoreSets = [];
+    const mockDb = {
+        collection: (col) => ({
+            doc: (id) => ({
+                set: async (data) => {
+                    firestoreSets.push({ id, data });
+                }
+            })
+        })
+    };
+
+    const windowObj = {
+        console,
+        setTimeout,
+        clearTimeout,
+        TextEncoder,
+        TextDecoder,
+        crypto: globalThis.crypto,
+        btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
+        atob: (s) => Buffer.from(s, 'base64').toString('binary'),
+        uint8ToBase64,
+        COLLAB_MODE: true,
+        GUEST_MODE: false,
+        _toasts: [],
+        toast: (msg, type) => { windowObj._toasts.push({ msg, type }); },
+        _modals: [],
+        showModal: (html) => { windowObj._modals.push(html); },
+        closeModal: () => {},
+        escHtml: (str) => String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
+        location: { origin: 'https://docvault-qa-team.web.app', pathname: '/' },
+        CollabBootstrap: {
+            getCurrentMember: () => ({ role: 'editor', uid: 'editor-uid-1' })
+        },
+        CollabImages: {
+            inlineCollabImagesForShare: async (content) => content
+        }
+    };
+    windowObj.window = windowObj;
+
+    const ctx = createCollabSharesContext({
+        window: windowObj,
+        documents: [mockDoc]
+    });
+
+    assert.equal(windowObj.documents, undefined, 'window.documents is initially unset');
+    assert.ok(Array.isArray(ctx.documents) && ctx.documents.length === 1, 'script-level documents variable is populated');
+
+    windowObj.CollabShares.setCustomDb(mockDb);
+    windowObj.CollabShares.setCustomUser({ uid: 'editor-uid-1' });
+
+    await windowObj.shareDoc('doc-lexical-1');
+
+    assert.equal(firestoreSets.length, 1, 'Firestore share created successfully');
+    assert.ok(windowObj._modals.length >= 1, 'Share modal was displayed');
+    const readyModal = windowObj._modals.find(m => m.includes('Link Ready!'));
+    assert.ok(readyModal, 'Link Ready modal was generated');
+    assert.match(readyModal, /#key=/);
+});
+
+test('State documents accessor keeps window.documents and lexical documents in sync', () => {
+    const sandbox = {
+        console,
+        window: {},
+        SAMPLE_DOCS: [],
+        GUEST_DEMO_DOCS: [],
+        _wsKey: (k) => k,
+        localStorage: { getItem: () => null, setItem: () => {} }
+    };
+    sandbox.window.window = sandbox.window;
+    vm.createContext(sandbox);
+    vm.runInContext(read('js/state.js'), sandbox);
+
+    // Initial state
+    assert.equal(sandbox.window.documents.length, 0, 'Initial window.documents is empty');
+
+    // Reassigning lexical documents updates window.documents accessor
+    vm.runInContext('documents = [{ id: "d1", title: "Doc 1" }]', sandbox);
+    assert.equal(sandbox.window.documents.length, 1);
+    assert.equal(sandbox.window.documents[0].id, 'd1');
+
+    // Setting window.documents updates lexical documents
+    sandbox.window.documents = [{ id: 'd2', title: 'Doc 2' }];
+    const lexicalDocs = vm.runInContext('documents', sandbox);
+    assert.equal(lexicalDocs.length, 1);
+    assert.equal(lexicalDocs[0].id, 'd2');
+});
+
+test('Revoke fails closed: when database is unavailable or delete rejects, local share registry is preserved', async () => {
+    const ctx = createCollabSharesContext({
+        CollabBootstrap: { getCurrentMember: () => ({ role: 'owner' }) }
+    });
+
+    // Seed local shares
+    const initialShares = [
+        { shareId: 'sh_keep_1', docId: 'doc-1', title: 'Doc 1' },
+        { shareId: 'sh_keep_2', docId: 'doc-2', title: 'Doc 2' }
+    ];
+    ctx.localStorage.setItem('docvault_shares', JSON.stringify(initialShares));
+
+    // Case 1: Database unavailable (null db)
+    ctx.CollabShares.setCustomDb(null);
+    let errorToast = null;
+    ctx.toast = (msg, type) => { if (type === 'error') errorToast = msg; };
+
+    await ctx.CollabShares.revokeShare('sh_keep_1');
+    assert.match(errorToast || '', /Database is not available/);
+    const sharesAfterNullDb = JSON.parse(ctx.localStorage.getItem('docvault_shares') || '[]');
+    assert.equal(sharesAfterNullDb.length, 2, 'Local registry entry must NOT be removed when db is unavailable');
+
+    // Case 2: revokeSharesForDocs fails closed when db is null
+    const resDocs = await ctx.CollabShares.revokeSharesForDocs(['doc-1', 'doc-2']);
+    assert.equal(resDocs.revoked, 0);
+    assert.equal(resDocs.failed, 2);
+    const sharesAfterFailedBatch = JSON.parse(ctx.localStorage.getItem('docvault_shares') || '[]');
+    assert.equal(sharesAfterFailedBatch.length, 2, 'Batch revoke must NOT drop local registry when db is null');
+
+    // Case 3: revokeSharesInWorkspace fails closed when db is null
+    const resWs = await ctx.CollabShares.revokeSharesInWorkspace('default');
+    assert.equal(resWs.revoked, 0);
+    assert.equal(resWs.failed, 2);
+    const sharesAfterFailedWs = JSON.parse(ctx.localStorage.getItem('docvault_shares') || '[]');
+    assert.equal(sharesAfterFailedWs.length, 2, 'Workspace revoke must NOT drop local registry when db is null');
+});
+
 

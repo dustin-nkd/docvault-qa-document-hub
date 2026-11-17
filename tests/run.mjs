@@ -27,3 +27,4 @@ import './collab-comments-ui.test.mjs';
 import './collab-assign.test.mjs';
 import './collab-members.test.mjs';
 import './collab-phase2-integrity.test.mjs';
+import './collab-shares.test.mjs';
