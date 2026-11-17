@@ -155,14 +155,28 @@
         const docsToSave = [];
         const skippedOversizeIds = [];
         let maxBugNumber = 0;
+        for (const doc of localDocs) {
+            if (doc?.category === 'bug' && typeof doc.bugNumber === 'number') {
+                maxBugNumber = Math.max(maxBugNumber, doc.bugNumber);
+            }
+        }
+
+        // Reserve/bump bug counter before committing documents so counter is never behind
+        if (maxBugNumber >= 1) {
+            const counterRef = db.collection('counters').doc('bugs');
+            const counterSnap = await counterRef.get();
+            if (!counterSnap.exists) {
+                await counterRef.set({ next: maxBugNumber });
+            } else {
+                const data = (typeof counterSnap.data === 'function') ? counterSnap.data() : counterSnap.data;
+                const cur = typeof data?.next === 'number' ? data.next : 0;
+                if (maxBugNumber > cur) await counterRef.update({ next: maxBugNumber });
+            }
+        }
 
         for (const doc of localDocs) {
             if (!doc || !doc.id) continue;
             if (existingIds.has(doc.id)) continue;
-
-            if (doc.category === 'bug' && typeof doc.bugNumber === 'number') {
-                maxBugNumber = Math.max(maxBugNumber, doc.bugNumber);
-            }
 
             let content = doc.content;
             if (typeof content === 'string' && content.includes('data:image/')) {
@@ -225,23 +239,6 @@
             }
             if (currentBatch && currentOps > 0) {
                 await currentBatch.commit();
-            }
-        }
-
-        // Set or bump bug counter if maxBugNumber >= 1
-        if (maxBugNumber >= 1) {
-            try {
-                const counterRef = db.collection('counters').doc('bugs');
-                const counterSnap = await counterRef.get();
-                if (!counterSnap.exists) {
-                    await counterRef.set({ next: maxBugNumber });
-                } else {
-                    const data = (typeof counterSnap.data === 'function') ? counterSnap.data() : counterSnap.data;
-                    const cur = typeof data?.next === 'number' ? data.next : 0;
-                    if (maxBugNumber > cur) await counterRef.update({ next: maxBugNumber });
-                }
-            } catch (err) {
-                console.warn('[CollabImport] Failed to update bug counter:', err);
             }
         }
 

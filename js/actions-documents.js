@@ -643,6 +643,7 @@ ${respMd ? respMd : ''}`;
     const editingIdx = (state.editingDoc && state.editingDoc.id) ? documents.findIndex(d => d.id === state.editingDoc.id) : -1;
     const prevBugUid = (editingIdx !== -1 && documents[editingIdx].category === 'bug') ? (documents[editingIdx].bugData?.assigneeUid || '') : '';
     const prevTaskUid = (editingIdx !== -1 && documents[editingIdx].category === 'task') ? (documents[editingIdx].assigneeUid || documents[editingIdx].taskData?.assigneeUid || '') : '';
+    let wasRevived = false;
     if (editingIdx !== -1) {
         const idx = editingIdx;
         DocHistory.save(documents[idx]);
@@ -654,12 +655,9 @@ ${respMd ? respMd : ''}`;
         if (cat !== 'apitest') delete documents[idx].apiTcData; if (cat !== 'environment') delete documents[idx].envData;
         if (cat !== 'testplan') delete documents[idx].tcPlanData; if (cat !== 'testcases') delete documents[idx].tcData;
         if (cat !== 'api') delete documents[idx].apiData; if (cat !== 'testrun') delete documents[idx].runData; if (cat !== 'release') delete documents[idx].releaseData;
-        ActivityLog.record('updated', documents[idx]);
         state.editingDoc = { ...documents[idx] };
     } else if (state.editingDoc && state.editingDoc.id) {
-        // The document being edited vanished (deleted on another device / concurrent
-        // sync). Save the edits as a fresh document instead of dereferencing
-        // documents[-1] (which previously produced a broken "?view=undefined" viewer).
+        wasRevived = true;
         const revivedAt = Date.now();
         const revivedBugStatus = cat === 'bug' ? normalizeBugStatusValue(state.editingDoc.bugStatus) : undefined;
         const revivedKanban = cat === 'task' ? (taskKanban || state.editingDoc.kanbanStatus || 'todo') : undefined;
@@ -672,12 +670,15 @@ ${respMd ? respMd : ''}`;
         const newKanban = cat === 'task' ? (taskKanban || 'todo') : undefined;
         const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, assignee: cat === 'task' ? taskAssignee : '', assigneeUid: cat === 'task' ? taskAssigneeUid : '', kanbanStatus: newKanban, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? (await _nextBugNumber()) : undefined, favorite: false, createdAt, updatedAt: createdAt };
         documents.unshift(newDoc);
-        ActivityLog.record('created', newDoc);
         state.editingDoc = { ...newDoc };
         state.category = cat;
     }
-    const saveNotice = editingIdx !== -1 ? { msg: t('docUpdated'), type: 'success' } : (state.editingDoc?.createdAt !== state.editingDoc?.updatedAt ? { msg: 'Original document was removed elsewhere — saved as a new copy.', type: 'info' } : { msg: t('docCreated'), type: 'success' });
-    try { await persist(); } catch (err) { console.error('[saveDoc] persist failed:', err); return; }
+    const saveNotice = editingIdx !== -1 ? { msg: t('docUpdated'), type: 'success' } : (wasRevived ? { msg: 'Original document was removed elsewhere — saved as a new copy.', type: 'info' } : { msg: t('docCreated'), type: 'success' });
+    window.CollabStore?.clearLastConflict?.();
+    try { await persist(); } catch (err) { toast(err?.message || 'Failed to save document', 'error'); return; }
+    if (window.CollabStore?.getLastConflict?.()) return;
+    if (editingIdx !== -1) ActivityLog.record('updated', state.editingDoc);
+    else ActivityLog.record('created', state.editingDoc);
     toast(saveNotice.msg, saveNotice.type);
     state.view = 'viewer';
     if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }

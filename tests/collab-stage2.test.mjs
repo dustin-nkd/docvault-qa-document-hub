@@ -62,7 +62,7 @@ test('Stage 2 (2.3): Secondary tab failed-precondition does not crash initTeamUs
     }
 });
 
-test('Stage 2 (2.4): saveDoc does not toast success or switch to viewer when persist fails', async () => {
+test('Stage 2 (2.4): saveDoc does not toast success or switch to viewer when persist fails or conflicts', async () => {
     const actDocCode = read('js/actions-documents.js');
 
     const toasts = [];
@@ -74,7 +74,9 @@ test('Stage 2 (2.4): saveDoc does not toast success or switch to viewer when per
     let docs = [{ ...state.editingDoc }];
 
     let persistCalled = false;
-    let persistShouldFail = true;
+    let persistConflict = false;
+    let lastConflict = null;
+    let actRecorded = false;
 
     const ctx = {
         window: {},
@@ -101,10 +103,17 @@ test('Stage 2 (2.4): saveDoc does not toast success or switch to viewer when per
             querySelectorAll: () => []
         },
         DocHistory: { save: () => {} },
-        ActivityLog: { record: () => {} },
+        ActivityLog: { record: () => { actRecorded = true; } },
+        CollabStore: {
+            clearLastConflict: () => { lastConflict = null; },
+            getLastConflict: () => lastConflict
+        },
         persist: async () => {
             persistCalled = true;
-            if (persistShouldFail) throw new Error('Network error or conflict');
+            if (persistConflict) {
+                // In production CollabStore.persist, conflict does NOT throw; it sets lastConflict
+                lastConflict = 'Someone else saved this document.';
+            }
         }
     };
     ctx.window = ctx;
@@ -112,20 +121,29 @@ test('Stage 2 (2.4): saveDoc does not toast success or switch to viewer when per
     vm.createContext(ctx);
     vm.runInContext(actDocCode, ctx);
 
-    // Save when persist fails
+    // 1. Save when persist hits version conflict (does not throw, but sets CollabStore conflict)
+    persistConflict = true;
     await ctx.saveDoc();
     assert.equal(persistCalled, true);
-    assert.equal(toasts.some(t => t.msg === 'docUpdated'), false, 'Must NOT toast success when persist fails');
-    assert.equal(state.view, 'editor', 'Must stay in editor view when persist fails');
+    assert.equal(toasts.some(t => t.msg === 'docUpdated'), false, 'Must NOT toast success when conflict occurs');
+    assert.equal(state.view, 'editor', 'Must stay in editor view when conflict occurs');
+    assert.equal(actRecorded, false, 'ActivityLog must NOT be recorded on conflict');
 
-    // Save when persist succeeds
-    persistShouldFail = false;
+    // 2. Save when document was vanished remotely and revived
+    persistConflict = false;
+    state.editingDoc = { id: 'doc-vanished', title: 'Vanished Doc', content: 'Edits', category: 'general', status: 'active', tags: [] };
+    // Not present in documents array
+    docs.length = 0;
+    toasts.length = 0;
+    actRecorded = false;
+
     await ctx.saveDoc();
-    assert.ok(toasts.some(t => t.msg === 'docUpdated'), 'Must toast success when persist succeeds');
-    assert.equal(state.view, 'viewer', 'Must switch to viewer view when persist succeeds');
+    assert.ok(toasts.some(t => t.type === 'info' && t.msg.includes('saved as a new copy')), 'Revived doc must toast info note');
+    assert.equal(state.view, 'viewer');
+    assert.equal(actRecorded, true);
 });
 
-test('Stage 2 (2.5): Workspaces batchCreateDoc retries on contention and succeeds', async () => {
+test('Stage 2 (2.5): Workspaces batchCreateDoc and batchDeleteDoc retry on contention and are idempotent', async () => {
     const wsCode = read('js/collab-workspaces.js');
     const ctx = {
         window: {},
@@ -139,58 +157,86 @@ test('Stage 2 (2.5): Workspaces batchCreateDoc retries on contention and succeed
     vm.runInContext(wsCode, ctx);
 
     let docCountInFirestore = 5;
-    let commitAttempts = 0;
+    let createAttempts = 0;
+    let deleteAttempts = 0;
+    let createdDocExists = false;
 
     const mockDb = {
         collection: (col) => ({
             doc: (id) => ({
+                id,
                 get: async () => ({
-                    exists: true,
+                    exists: col === 'workspaces' ? true : createdDocExists,
                     data: () => ({ docCount: docCountInFirestore })
                 })
             })
         }),
         batch: () => {
             let lastUpdateData = null;
+            let isSet = false, isDel = false;
             return {
-                set: () => {},
+                set: () => { isSet = true; },
+                delete: () => { isDel = true; },
                 update: (ref, data) => { lastUpdateData = data; },
                 commit: async () => {
-                    commitAttempts++;
-                    if (commitAttempts === 1) {
-                        // Simulate concurrent commit from another client
-                        docCountInFirestore = 6;
-                        const err = new Error('Permission denied: docCount mismatch');
-                        err.code = 'permission-denied';
-                        throw err;
+                    if (lastUpdateData?.lastDocId) {
+                        createAttempts++;
+                        if (createAttempts === 1) {
+                            docCountInFirestore = 6;
+                            const err = new Error('Permission denied: docCount mismatch');
+                            err.code = 'permission-denied';
+                            throw err;
+                        }
+                        if (isSet) createdDocExists = true;
+                        assert.equal(lastUpdateData.docCount, 7);
+                    } else if (lastUpdateData?.lastDeletedDocId) {
+                        deleteAttempts++;
+                        if (deleteAttempts === 1) {
+                            docCountInFirestore = 6;
+                            const err = new Error('Permission denied: docCount mismatch on delete');
+                            err.code = 'permission-denied';
+                            throw err;
+                        }
+                        if (isDel) createdDocExists = false;
+                        assert.equal(lastUpdateData.docCount, 5);
                     }
-                    // Second attempt succeeds with new docCount (7)
-                    assert.equal(lastUpdateData.docCount, 7);
                 }
             };
         }
     };
 
     ctx.CollabWorkspaces.setRemoteWorkspaces([{ id: 'ws-test', name: 'Test WS', docCount: 5 }]);
-    await ctx.CollabWorkspaces.batchCreateDoc(mockDb, { id: 'doc-new' }, { id: 'doc-new' }, 'ws-test');
-    assert.equal(commitAttempts, 2, 'Must have retried and succeeded on attempt 2');
+    await ctx.CollabWorkspaces.batchCreateDoc(mockDb, mockDb.collection('documents').doc('doc-new'), { id: 'doc-new' }, 'ws-test');
+    assert.equal(createAttempts, 2, 'batchCreateDoc retried and succeeded on attempt 2');
+
+    // Test batchDeleteDoc retry
+    await ctx.CollabWorkspaces.batchDeleteDoc(mockDb, 'doc-new', 'ws-test');
+    assert.equal(deleteAttempts, 2, 'batchDeleteDoc retried and succeeded on attempt 2');
 });
 
-test('Stage 2 (2.6): CollabImport bumps counters/bugs.next when maxBugNumber is higher', async () => {
+test('Stage 2 (2.6): CollabImport bumps counters/bugs.next atomically before docs, accounts for retry', async () => {
     const importCode = read('js/collab-import.js');
     let counterDoc = { next: 10 };
     let updatedNext = null;
+    let counterFail = false;
 
     const mockDb = {
         collection: (col) => ({
-            get: async () => ({ docs: [], forEach: () => {} }),
+            get: async () => ({
+                docs: [{ id: 'b-old' }],
+                forEach: (fn) => [{ id: 'b-old' }].forEach(fn)
+            }),
             doc: (id) => ({
                 get: async () => ({
                     exists: true,
                     data: () => counterDoc
                 }),
                 set: async (d) => { counterDoc = d; },
-                update: async (d) => { updatedNext = d.next; counterDoc.next = d.next; },
+                update: async (d) => {
+                    if (counterFail) throw new Error('Counter update failed in transaction');
+                    updatedNext = d.next;
+                    counterDoc.next = d.next;
+                },
                 collection: () => ({ doc: () => ({ set: async () => {} }) })
             })
         }),
@@ -198,7 +244,8 @@ test('Stage 2 (2.6): CollabImport bumps counters/bugs.next when maxBugNumber is 
     };
 
     const localDocs = [
-        { id: 'b1', title: 'Bug 25', category: 'bug', bugNumber: 25, workspaceId: 'default' }
+        { id: 'b-old', title: 'Old Bug 15', category: 'bug', bugNumber: 15, workspaceId: 'default' },
+        { id: 'b-new', title: 'New Bug 30', category: 'bug', bugNumber: 30, workspaceId: 'default' }
     ];
 
     const ctx = {
@@ -222,9 +269,19 @@ test('Stage 2 (2.6): CollabImport bumps counters/bugs.next when maxBugNumber is 
     ctx.CollabImport.setDb(mockDb);
     ctx.CollabImport.setUser({ uid: 'owner-uid' });
 
+    // 1. Counter update failure must throw and NOT be swallowed
+    counterFail = true;
+    await assert.rejects(
+        () => ctx.CollabImport.importLocalVault({ documents: localDocs }),
+        /Counter update failed/,
+        'Import must fail if counter cannot be updated'
+    );
+
+    // 2. On retry, maxBugNumber across all localDocs (including b-old with bugNumber 15) must bump counter
+    counterFail = false;
     await ctx.CollabImport.importLocalVault({ documents: localDocs });
-    assert.equal(updatedNext, 25, 'Counter must be bumped to 25');
-    assert.equal(counterDoc.next, 25);
+    assert.equal(updatedNext, 30, 'Counter must be bumped to highest bugNumber (30)');
+    assert.equal(counterDoc.next, 30);
 });
 
 test('Stage 2 (2.8): CollabActivity clearActivityLog chunks deletes in batches of <= 400', async () => {
@@ -236,7 +293,6 @@ test('Stage 2 (2.8): CollabActivity clearActivityLog chunks deletes in batches o
     const mockDb = {
         collection: (col) => ({
             get: async () => {
-                // Generate 650 activity records
                 const docs = [];
                 for (let i = 1; i <= 650; i++) docs.push({ id: `act-${i}` });
                 return {

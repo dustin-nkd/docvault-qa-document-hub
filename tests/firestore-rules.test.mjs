@@ -842,6 +842,11 @@ test('Branch 12 (counters/bugs): allows editor create next: 1, owner create next
     // Owner can create counters/bugs with next: 100 (for Phase 10 import)
     const owner = testEnv.authenticatedContext('owner-uid').firestore();
     await assertSucceeds(owner.collection('counters').doc('bugs').set({ next: 100 }));
+
+    // Owner can update counters/bugs by jumping forward (for Phase 10 import)
+    await assertSucceeds(owner.collection('counters').doc('bugs').update({ next: 200 }));
+    // Owner cannot decrease counter backwards
+    await assertFails(owner.collection('counters').doc('bugs').update({ next: 50 }));
 });
 
 test('Branch 12 (counters/bugs): denies editor create next: 100, editor create other counters, increments not equal to 1, and viewer update', async () => {
