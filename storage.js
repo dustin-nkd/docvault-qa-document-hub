@@ -1780,10 +1780,10 @@ const DocStorage = {
                 d.apiTcData.linkedApiId = '';
                 changed = true;
             } else if (d.category === 'bug' && d.bugData) {
-                if (isOrphan(d.bugData.linkedTc)) { d.bugData.linkedTc = ''; changed = true; }
-                if (isOrphan(d.bugData.foundInTc)) { delete d.bugData.foundInTc; changed = true; }
-                if (isOrphan(d.bugData.foundInRun)) { delete d.bugData.foundInRun; changed = true; }
-                if (isOrphan(d.bugData.duplicateOf)) {
+                if (d.bugData.linkedTc && isOrphan(d.bugData.linkedTc)) { d.bugData.linkedTc = ''; changed = true; }
+                if (d.bugData.foundInTc && isOrphan(d.bugData.foundInTc)) { delete d.bugData.foundInTc; changed = true; }
+                if (d.bugData.foundInRun && isOrphan(d.bugData.foundInRun)) { delete d.bugData.foundInRun; changed = true; }
+                if (d.bugData.duplicateOf && isOrphan(d.bugData.duplicateOf)) {
                     d.bugData.duplicateOf = '';
                     if (d.bugData.resolution === 'duplicate') { d.bugData.resolution = ''; d.bugData.triagedAt = null; }
                     changed = true;

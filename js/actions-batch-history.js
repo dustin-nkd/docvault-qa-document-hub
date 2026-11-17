@@ -453,7 +453,9 @@ function _buildDiffHtml(diff) {
 }
 
 window.showSnapshotDiff = function(id, snapIndex) {
-    const snaps = DocHistory.get(id);
+    const snaps = (window._lastLoadedHistoryDocId === id && Array.isArray(window._lastLoadedHistorySnaps))
+        ? window._lastLoadedHistorySnaps
+        : DocHistory.get(id);
     const snap = snaps[snapIndex];
     if (!snap) return;
     const doc = documents.find(d => d.id === id);
@@ -476,9 +478,7 @@ window.showSnapshotDiff = function(id, snapIndex) {
             <div class="diff-add"><span class="diff-num"></span><span class="diff-num"></span><span class="diff-sign">+</span><span class="diff-code" style="font-weight:600;">${escHtml(doc.title)}</span></div>
         </div>` : '';
 
-    const m = document.getElementById('modal');
-    m.className = 'fixed inset-0 z-[90] flex items-center justify-center modal-bg';
-    m.innerHTML = `<div class="fade-up rounded-xl w-full mx-4" style="background:var(--bg2);border:1px solid var(--brd);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;max-width:780px;">
+    showModal(`
         <div style="padding:14px 18px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:12px;flex-shrink:0;">
             <div style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa-solid fa-code-compare" style="color:#818cf8;font-size:13px;"></i>
@@ -497,14 +497,15 @@ window.showSnapshotDiff = function(id, snapIndex) {
         ${titleBlock}
         <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-d);padding:10px 14px 6px;flex-shrink:0;">Content</div>
         <div style="flex:1;overflow-y:auto;"><div class="diff-view">${_buildDiffHtml(diff)}</div></div>
-    </div>`;
-    m.onclick = (e) => { if (e.target === m) closeModal(); };
+    `, { stack: true, maxWidth: 'max-w-3xl', noPadding: true, style: 'overflow:hidden;display:flex;flex-direction:column;max-width:780px;' });
 };
 
 window.showHistoryPanel = async function(id) {
     const snaps = (window.COLLAB_MODE && typeof DocHistory.load === 'function')
         ? await DocHistory.load(id)
         : DocHistory.get(id);
+    window._lastLoadedHistoryDocId = id;
+    window._lastLoadedHistorySnaps = snaps;
     if (!snaps || !snaps.length) {
         toast('No history yet — snapshots are saved each time you update a document.', 'info');
         return;
@@ -580,7 +581,9 @@ window.showHistoryPanel = async function(id) {
 };
 
 window.restoreSnapshot = async function(id, index) {
-    const snaps = DocHistory.get(id);
+    const snaps = (window._lastLoadedHistoryDocId === id && Array.isArray(window._lastLoadedHistorySnaps))
+        ? window._lastLoadedHistorySnaps
+        : ((window.COLLAB_MODE && typeof DocHistory.load === 'function') ? await DocHistory.load(id) : DocHistory.get(id));
     const snap = snaps[index];
     if (!snap) return;
     const idx = documents.findIndex(d => d.id === id);
@@ -588,7 +591,7 @@ window.restoreSnapshot = async function(id, index) {
     DocHistory.save(documents[idx]);
     documents[idx] = { ...documents[idx], title: snap.title, content: snap.content, tags: snap.tags || [], status: snap.status, subfolder: snap.subfolder || '', updatedAt: Date.now() };
     state.editingDoc = { ...documents[idx] };
-    closeModal();
+    closeModal(true);
     toast('Version restored — current state saved to history.', 'success');
     await persist();
     render();

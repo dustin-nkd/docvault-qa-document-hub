@@ -309,11 +309,12 @@ function _renderCommentCard(doc, c, membersMap, currentUid, isOwner, isReply) {
     const avatarColor = _getCollabAvatarColor(c.authorUid || authorName);
     const role = _getCollabAuthorRole(c.authorUid, membersMap) || c.authorRole || '';
     const dateStr = _formatCommentDate(c.createdAt);
-    const formattedContent = _formatCommentBody(c.content, membersMap);
+    const isDeletedComment = Boolean(c.isDeleted || c.content === '[This comment has been deleted]');
+    const formattedContent = isDeletedComment ? '<span class="italic" style="color:var(--tx-d);">[This comment has been deleted]</span>' : _formatCommentBody(c.content, membersMap);
 
     const isAuthor = Boolean(currentUid && c.authorUid === currentUid);
-    const canEdit = isAuthor;
-    const canDelete = Boolean(currentUid && (c.authorUid === currentUid || isOwner));
+    const canEdit = isAuthor && !isDeletedComment;
+    const canDelete = Boolean(currentUid && (c.authorUid === currentUid || isOwner)) && !isDeletedComment;
 
     const cardClass = isReply
         ? 'collab-comment-card collab-reply-card p-3 rounded-lg border border-[var(--brd)]'
@@ -330,7 +331,7 @@ function _renderCommentCard(doc, c, membersMap, currentUid, isOwner, isReply) {
                     <span class="collab-comment-author font-semibold text-xs" style="color:var(--tx);">${safeEsc(authorName)}</span>
                     ${role ? `<span class="collab-comment-role text-[10px] px-1.5 py-0.5 rounded capitalize" style="background:${isReply ? 'var(--card)' : 'var(--bg2)'};color:var(--tx-m);border:1px solid var(--brd);">${safeEsc(role)}</span>` : ''}
                     <span class="collab-comment-meta text-[11px]" style="color:var(--tx-d);">${dateStr}</span>
-                    ${c.updatedAt ? `<span class="collab-comment-edited text-[10px]" style="color:var(--tx-d);">(edited)</span>` : ''}
+                    ${(!isDeletedComment && c.updatedAt) ? `<span class="collab-comment-edited text-[10px]" style="color:var(--tx-d);">(edited)</span>` : ''}
                 </div>
                 <div id="collab-comment-body-${safeEsc(c.id)}" class="collab-comment-body text-xs sm:text-sm mt-1 mb-2 leading-relaxed" style="color:var(--tx);">${formattedContent}</div>
                 <div id="collab-comment-edit-box-${safeEsc(c.id)}" class="collab-comment-edit-box mt-2 mb-2" style="display:none;">
@@ -615,7 +616,7 @@ rootObj.collabSaveEditComment = async function(docId, commentId) {
         : [];
     try {
         if (rootObj.CollabComments && typeof rootObj.CollabComments.updateComment === 'function') {
-            await rootObj.CollabComments.updateComment(targetDocId, commentId, { content, mentions });
+            await rootObj.CollabComments.updateComment(targetDocId, commentId, { content, mentions }, rootObj.state?.editingDoc);
         }
         rootObj.collabCancelEditComment(commentId);
     } catch (err) {
