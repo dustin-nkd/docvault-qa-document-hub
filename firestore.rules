@@ -202,9 +202,10 @@ service cloud.firestore {
         (isTeamOwner() && request.resource.data.next >= 1) ||
         (isEditorOrOwner() && request.resource.data.next == 1)
       );
-      allow update: if isEditorOrOwner() &&
-        request.resource.data.next is int &&
-        request.resource.data.next == resource.data.next + 1;
+      allow update: if request.resource.data.next is int && (
+        (isEditorOrOwner() && request.resource.data.next == resource.data.next + 1) ||
+        (isTeamOwner() && request.resource.data.next >= resource.data.next)
+      );
       allow delete: if isTeamOwner();
     }
 

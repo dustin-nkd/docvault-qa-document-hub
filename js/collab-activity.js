@@ -249,14 +249,19 @@
                     const db = getFirestoreDb();
                     if (db) {
                         const snap = await db.collection('activity').get();
-                        const batch = typeof db.batch === 'function' ? db.batch() : null;
-                        const deletes = [];
-                        snap.forEach(docSnap => {
-                            if (batch) batch.delete(db.collection('activity').doc(docSnap.id));
-                            else deletes.push(db.collection('activity').doc(docSnap.id).delete());
-                        });
-                        if (batch) await batch.commit();
-                        else await Promise.all(deletes);
+                        const docIds = [];
+                        snap.forEach(d => docIds.push(d.id));
+                        const CHUNK_SIZE = 400;
+                        for (let i = 0; i < docIds.length; i += CHUNK_SIZE) {
+                            const chunk = docIds.slice(i, i + CHUNK_SIZE);
+                            if (typeof db.batch === 'function') {
+                                const b = db.batch();
+                                chunk.forEach(id => b.delete(db.collection('activity').doc(id)));
+                                await b.commit();
+                            } else {
+                                await Promise.all(chunk.map(id => db.collection('activity').doc(id).delete()));
+                            }
+                        }
                     }
                     _store.remoteActivities = [];
                     if (root.state) root.state.activityFilter = 'all';

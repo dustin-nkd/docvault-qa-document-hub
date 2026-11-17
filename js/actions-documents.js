@@ -655,9 +655,7 @@ ${respMd ? respMd : ''}`;
         if (cat !== 'testplan') delete documents[idx].tcPlanData; if (cat !== 'testcases') delete documents[idx].tcData;
         if (cat !== 'api') delete documents[idx].apiData; if (cat !== 'testrun') delete documents[idx].runData; if (cat !== 'release') delete documents[idx].releaseData;
         ActivityLog.record('updated', documents[idx]);
-        toast(t('docUpdated'), 'success');
         state.editingDoc = { ...documents[idx] };
-        state.view = 'viewer';
     } else if (state.editingDoc && state.editingDoc.id) {
         // The document being edited vanished (deleted on another device / concurrent
         // sync). Save the edits as a fresh document instead of dereferencing
@@ -667,9 +665,7 @@ ${respMd ? respMd : ''}`;
         const revivedKanban = cat === 'task' ? (taskKanban || state.editingDoc.kanbanStatus || 'todo') : undefined;
         const revived = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, assignee: cat === 'task' ? taskAssignee : '', assigneeUid: cat === 'task' ? taskAssigneeUid : '', kanbanStatus: revivedKanban, bugStatus: revivedBugStatus, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: revivedBugStatus, ts: revivedAt }] : undefined, bugNumber: cat === 'bug' ? (state.editingDoc.bugNumber || (await _nextBugNumber())) : undefined, favorite: false, createdAt: revivedAt, updatedAt: revivedAt };
         documents.unshift(revived);
-        toast('Original document was removed elsewhere — saved as a new copy.', 'info');
         state.editingDoc = { ...revived };
-        state.view = 'viewer';
         state.category = cat;
     } else {
         const createdAt = Date.now();
@@ -677,18 +673,19 @@ ${respMd ? respMd : ''}`;
         const newDoc = { id: uid(), title, category: cat, subfolder, status, content: finalContent, tags, username, password, rotatedAt, bugData, tcData, apiData, apiTcData, runData, envData, releaseData, tcPlanData, assignee: cat === 'task' ? taskAssignee : '', assigneeUid: cat === 'task' ? taskAssigneeUid : '', kanbanStatus: newKanban, bugStatus: cat === 'bug' ? 'new' : undefined, bugStatusEvents: cat === 'bug' ? [{ type: 'status_changed', from: null, to: 'new', ts: createdAt }] : undefined, bugNumber: cat === 'bug' ? (await _nextBugNumber()) : undefined, favorite: false, createdAt, updatedAt: createdAt };
         documents.unshift(newDoc);
         ActivityLog.record('created', newDoc);
-        toast(t('docCreated'), 'success');
         state.editingDoc = { ...newDoc };
-        state.view = 'viewer';
         state.category = cat;
     }
+    const saveNotice = editingIdx !== -1 ? { msg: t('docUpdated'), type: 'success' } : (state.editingDoc?.createdAt !== state.editingDoc?.updatedAt ? { msg: 'Original document was removed elsewhere — saved as a new copy.', type: 'info' } : { msg: t('docCreated'), type: 'success' });
+    try { await persist(); } catch (err) { console.error('[saveDoc] persist failed:', err); return; }
+    toast(saveNotice.msg, saveNotice.type);
+    state.view = 'viewer';
     if (window.tuiEditor) { try { window.tuiEditor.destroy(); } catch(e) {} }
     if (window.tuiViewer) { try { window.tuiViewer.destroy(); } catch(e) {} window.tuiViewer = null; }
     window.currentViewerDocId = null;
     window.tuiEditor = null;
     state._editorSnapshot = undefined;
     history.replaceState({}, '', _appUrl(state.editingDoc.id));
-    await persist();
     if (cat === 'bug') window.CollabAssign?.notifyAssignment?.({ doc: state.editingDoc, kind: 'bug', signalKey: '', oldUid: prevBugUid, newUid: bugData?.assigneeUid || '' });
     if (cat === 'task') window.CollabAssign?.notifyAssignment?.({ doc: state.editingDoc, kind: 'task', signalKey: '', oldUid: prevTaskUid, newUid: taskAssigneeUid });
     await new Promise(r => setTimeout(() => requestAnimationFrame(r), 60));

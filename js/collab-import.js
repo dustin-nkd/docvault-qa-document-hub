@@ -228,13 +228,17 @@
             }
         }
 
-        // Set bug counter if maxBugNumber >= 1 and counter does not exist yet
+        // Set or bump bug counter if maxBugNumber >= 1
         if (maxBugNumber >= 1) {
             try {
                 const counterRef = db.collection('counters').doc('bugs');
                 const counterSnap = await counterRef.get();
                 if (!counterSnap.exists) {
                     await counterRef.set({ next: maxBugNumber });
+                } else {
+                    const data = (typeof counterSnap.data === 'function') ? counterSnap.data() : counterSnap.data;
+                    const cur = typeof data?.next === 'number' ? data.next : 0;
+                    if (maxBugNumber > cur) await counterRef.update({ next: maxBugNumber });
                 }
             } catch (err) {
                 console.warn('[CollabImport] Failed to update bug counter:', err);

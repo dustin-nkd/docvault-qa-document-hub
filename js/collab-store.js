@@ -64,7 +64,7 @@
         if (!db || typeof db.enablePersistence !== 'function') return;
         if (_persistencePromise) return _persistencePromise;
         _persistencePromise = db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-            if (err?.code !== 'unimplemented') { console.warn(`[CollabStore] enablePersistence ${err?.code || 'warning'}:`, err); return Promise.reject(err); }
+            if (err?.code !== 'unimplemented') { console.warn(`[CollabStore] enablePersistence ${err?.code || 'warning'}:`, err); if (err?.code !== 'failed-precondition') return Promise.reject(err); }
         });
         return _persistencePromise;
     }

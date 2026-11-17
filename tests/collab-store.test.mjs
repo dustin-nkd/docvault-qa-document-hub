@@ -850,7 +850,7 @@ test('loadDocuments() calls normalizeDocTags on loaded documents when available'
     assert.equal(loaded[0].id, 'doc-tags');
 });
 
-test('enableOfflinePersistence logs warning and rejects on failed-precondition, ignores unimplemented', async () => {
+test('enableOfflinePersistence logs warning and ignores failed-precondition (secondary tab) and unimplemented, rejects on others', async () => {
     const warned = [];
     const origWarn = console.warn;
     console.warn = (...args) => { warned.push(args.join(' ')); };
@@ -875,11 +875,22 @@ test('enableOfflinePersistence logs warning and rejects on failed-precondition, 
                 throw err;
             }
         };
-        await assert.rejects(
-            () => ctx2.CollabStore.enableOfflinePersistence(dbPrecondition),
-            /Already initialized/
-        );
+        // Secondary tab failed-precondition must resolve cleanly without rejecting
+        await ctx2.CollabStore.enableOfflinePersistence(dbPrecondition);
         assert.ok(warned.some(w => w.includes('enablePersistence failed-precondition')), 'Must console.warn on failed-precondition');
+
+        const ctx3 = createStoreContext();
+        const dbOtherErr = {
+            enablePersistence: async () => {
+                const err = new Error('Disk full');
+                err.code = 'resource-exhausted';
+                throw err;
+            }
+        };
+        await assert.rejects(
+            () => ctx3.CollabStore.enableOfflinePersistence(dbOtherErr),
+            /Disk full/
+        );
     } finally {
         console.warn = origWarn;
     }
@@ -1202,11 +1213,11 @@ test('Critical 1.1: Non-default workspace persist creates and deletes secret in 
 
     const ctx = createStoreContext({
         role: 'owner',
-        user: { uid: 'owner-1' },
-        activeWorkspace: 'ws-team'
+        user: { uid: 'owner-1' }
     });
+    ctx.getActiveWorkspace = () => ({ id: 'ws-team' });
 
-    ctx.root.CollabWorkspaces = {
+    ctx.CollabWorkspaces = {
         batchCreateDoc: async (db, docRef, data, wsId, extraSetRef, extraSetData) => {
             batchCreateCalled = true;
             batchCreateExtraRef = extraSetRef;
