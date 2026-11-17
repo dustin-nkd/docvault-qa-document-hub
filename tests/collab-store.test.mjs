@@ -63,6 +63,10 @@ function createStoreContext(options = {}) {
                 calls.setDocs.push({ id: docId, data: JSON.parse(JSON.stringify(data)) });
                 store.set(docId, JSON.parse(JSON.stringify(data)));
             },
+            update: async (data) => {
+                const existing = store.get(docId) || {};
+                store.set(docId, { ...existing, ...JSON.parse(JSON.stringify(data)) });
+            },
             delete: async () => {
                 calls.deleteDocs.push(docId);
                 store.delete(docId);
@@ -89,6 +93,29 @@ function createStoreContext(options = {}) {
     };
 
     const firestoreMock = {
+        batch: () => {
+            const ops = [];
+            return {
+                set: (ref, data) => ops.push({ type: 'set', ref, data }),
+                delete: (ref) => ops.push({ type: 'delete', ref }),
+                commit: async () => {
+                    const snapshot = new Map(store);
+                    const callsSnapshot = { setDocs: [...calls.setDocs], deleteDocs: [...calls.deleteDocs] };
+                    try {
+                        for (const op of ops) {
+                            if (op.type === 'set') await op.ref.set(op.data);
+                            else if (op.type === 'delete') await op.ref.delete();
+                        }
+                    } catch (err) {
+                        store.clear();
+                        for (const [k, v] of snapshot.entries()) store.set(k, v);
+                        calls.setDocs = callsSnapshot.setDocs;
+                        calls.deleteDocs = callsSnapshot.deleteDocs;
+                        throw err;
+                    }
+                }
+            };
+        },
         enablePersistence: async (opts) => {
             persistenceCalls.push(opts);
         },
@@ -1073,6 +1100,7 @@ test('Critical 1.1: persist() fails closed when secret write rejects and deletes
         /write denied to secrets/,
         'persist() must throw if secret write fails, preventing silent credential loss'
     );
+    assert.equal(ctx.store.has('cred-fail'), false, 'Root document must NOT be committed if secret write fails');
 
     // 2. Doc delete also purges secret subcollection
     const ctxDel = createStoreContext({
@@ -1103,5 +1131,35 @@ test('Critical 1.1: persist() fails closed when secret write rejects and deletes
     await ctxDel.CollabStore.persist([]); // Deletes cred-to-delete
     assert.ok(ctxDel.calls.deleteDocs.includes('cred-to-delete'), 'Root doc deleted');
     assert.equal(secretDeleted, true, 'Subcollection secret must be deleted when doc is deleted');
+});
+
+test('Critical 1.1: Legacy credential password migration on loadDocuments', async () => {
+    const ctx = createStoreContext({
+        role: 'owner',
+        user: { uid: 'owner-1' },
+        initialDocs: {
+            'cred-legacy': {
+                id: 'cred-legacy',
+                title: 'Legacy Cred',
+                category: 'credential',
+                password: 'legacy-plaintext-password',
+                workspaceId: 'default'
+            }
+        }
+    });
+
+    const docs = await ctx.CollabStore.loadDocuments();
+    const cred = docs.find(d => d.id === 'cred-legacy');
+    assert.ok(cred);
+    assert.equal(cred.password, 'legacy-plaintext-password', 'Loaded doc receives password');
+
+    // Secret must have been created in subcollection
+    const secret = ctx.store.get('cred-legacy/secrets/credential');
+    assert.ok(secret, 'Secret must be migrated to subcollection');
+    assert.equal(secret.password, 'legacy-plaintext-password');
+
+    // Root doc password must have been scrubbed
+    const rootDoc = ctx.store.get('cred-legacy');
+    assert.equal(rootDoc.password, '', 'Root document password must be scrubbed to empty string');
 });
 

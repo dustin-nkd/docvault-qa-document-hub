@@ -27,8 +27,7 @@
             id: doc.id || '', title: doc.title || '', category: doc.category || 'general', subfolder: doc.subfolder || '', status: doc.status || 'active',
             content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [],
             username: doc.username || '', password: doc.category === 'credential' ? '' : (doc.password || ''), rotatedAt: (typeof doc.rotatedAt === 'string' && doc.rotatedAt.trim()) ? doc.rotatedAt.trim() : (typeof doc.rotatedAt === 'number' ? doc.rotatedAt : null),
-            bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData),
-            runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
+            bugData: _cleanJson(doc.bugData), tcData: _cleanJson(doc.tcData), apiData: _cleanJson(doc.apiData), apiTcData: _cleanJson(doc.apiTcData), runData: _cleanJson(doc.runData), envData: _cleanJson(doc.envData), releaseData: _cleanJson(doc.releaseData), tcPlanData: _cleanJson(doc.tcPlanData),
             taskData: _cleanJson(doc.taskData), assignee: doc.assignee || doc.taskData?.assignee || '', assigneeUid: doc.assigneeUid || doc.taskData?.assigneeUid || '',
             kanbanStatus: doc.kanbanStatus || '', bugStatus: doc.bugStatus || '', bugStatusEvents: Array.isArray(doc.bugStatusEvents) ? [...doc.bugStatusEvents] : [],
             bugNumber: typeof doc.bugNumber === 'number' ? doc.bugNumber : null, favorite: Boolean(doc.favorite),
@@ -45,8 +44,7 @@
         const out = {
             id: data.id || docId, title: data.title || '', category: data.category || 'general', subfolder: data.subfolder || '', status: data.status || 'active',
             content: data.content || '', tags: Array.isArray(data.tags) ? data.tags : [], username: data.username || '', password: (data.category === 'credential') ? '' : (data.password || ''), rotatedAt: data.rotatedAt || null,
-            bugData: data.bugData || null, tcData: data.tcData || null, apiData: data.apiData || null, apiTcData: data.apiTcData || null,
-            runData: data.runData || null, envData: data.envData || null, releaseData: data.releaseData || null, tcPlanData: data.tcPlanData || null,
+            bugData: data.bugData || null, tcData: data.tcData || null, apiData: data.apiData || null, apiTcData: data.apiTcData || null, runData: data.runData || null, envData: data.envData || null, releaseData: data.releaseData || null, tcPlanData: data.tcPlanData || null,
             taskData: data.taskData || null, assignee: data.assignee || data.taskData?.assignee || '', assigneeUid: data.assigneeUid || data.taskData?.assigneeUid || '',
             kanbanStatus: data.kanbanStatus || '', bugStatus: data.bugStatus || '', bugStatusEvents: Array.isArray(data.bugStatusEvents) ? data.bugStatusEvents : [],
             bugNumber: typeof data.bugNumber === 'number' ? data.bugNumber : null, favorite: Boolean(data.favorite),
@@ -87,11 +85,8 @@
         if (typeof document === 'undefined') return;
         let banner = document.getElementById('collab-editor-banner');
         if (!banner) {
-            banner = document.createElement('div');
-            banner.id = 'collab-editor-banner';
-            banner.className = 'collab-editor-banner rounded-lg px-4 py-3 mb-4 flex items-center justify-between gap-3 text-sm';
-            banner.style.cssText = 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;';
-            banner.setAttribute('role', 'alert');
+            banner = document.createElement('div'); banner.id = 'collab-editor-banner'; banner.className = 'collab-editor-banner rounded-lg px-4 py-3 mb-4 flex items-center justify-between gap-3 text-sm';
+            banner.style.cssText = 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;'; banner.setAttribute('role', 'alert');
             (document.querySelector('#content .fade-up') || document.getElementById('content'))?.prepend(banner);
         }
         const reloadAction = typeof actionAttr === 'function' ? actionAttr('reloadCollabDoc', docId) : (typeof escHtml === 'function' ? escHtml('reloadCollabDoc(' + JSON.stringify(docId) + ')') : 'reloadCollabDoc(&quot;' + docId + '&quot;)');
@@ -129,8 +124,21 @@
             return;
         }
         const idx = docs.findIndex(d => d.id === docId);
-        if (remoteDoc.category === 'credential' && idx !== -1 && docs[idx].password) remoteDoc.password = docs[idx].password;
         if (idx !== -1) docs[idx] = remoteDoc; else docs.unshift(remoteDoc);
+        const role = root.CollabBootstrap?.getCurrentMember?.()?.role, canSecret = role === 'editor' || role === 'owner';
+        if (remoteDoc.category === 'credential' && canSecret) {
+            const db = getFirestoreDb();
+            if (db && typeof db.collection === 'function') {
+                db.collection('documents').doc(docId).collection('secrets').doc('credential').get().then(sSnap => {
+                    const sData = (sSnap && typeof sSnap.data === 'function') ? sSnap.data() : sSnap?.data;
+                    if (sData?.password !== undefined) {
+                        remoteDoc.password = sData.password;
+                        const known = _knownDocs.get(docId); if (known) known.password = sData.password;
+                        if (s?.view === 'editor' && s.editingDoc?.id === docId && !isEditorDirty()) { s.editingDoc.password = sData.password; if (typeof root.render === 'function') root.render(); }
+                    }
+                }).catch(() => {});
+            }
+        }
         if (typeof root.normalizeDocTags === 'function') root.normalizeDocTags(docs);
         if (s?.view === 'editor' && s.editingDoc?.id === docId) {
             if (isEditorDirty()) showEditorConflictBanner(docId);
@@ -153,27 +161,16 @@
         try {
             _unsubscribeSnapshot = db.collection('documents').onSnapshot(snapshot => {
                 if (!snapshot) return;
-                const changes = typeof snapshot.docChanges === 'function' ? snapshot.docChanges() : [];
-                if (changes.length > 0) {
-                    for (const change of changes) {
-                        if (change.doc?.metadata?.hasPendingWrites) continue;
-                        const docId = change.doc?.id; if (!docId) continue;
-                        if (change.type === 'removed') { applyRemoteDoc({ id: docId }, 'removed'); continue; }
-                        const remoteDoc = fromFirestoreDoc(typeof change.doc.data === 'function' ? change.doc.data() : change.doc, docId);
-                        if (remoteDoc) {
-                            const known = _knownDocs.get(docId);
-                            if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, change.type);
-                        }
+                const items = (typeof snapshot.docChanges === 'function' && snapshot.docChanges()?.length) ? snapshot.docChanges() : (snapshot.docs || []);
+                for (const item of items) {
+                    const snap = item.doc || item, docId = snap?.id;
+                    if (!docId || snap.metadata?.hasPendingWrites) continue;
+                    if (item.type === 'removed') { applyRemoteDoc({ id: docId }, 'removed'); continue; }
+                    const remoteDoc = fromFirestoreDoc(typeof snap.data === 'function' ? snap.data() : snap.data, docId);
+                    if (remoteDoc) {
+                        const known = _knownDocs.get(docId);
+                        if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, item.type || 'modified');
                     }
-                } else if (typeof snapshot.forEach === 'function') {
-                    snapshot.forEach(docSnap => {
-                        if (docSnap.metadata?.hasPendingWrites) return;
-                        const docId = docSnap.id, remoteDoc = fromFirestoreDoc(typeof docSnap.data === 'function' ? docSnap.data() : docSnap, docId);
-                        if (remoteDoc) {
-                            const known = _knownDocs.get(docId);
-                            if (!known || known.version !== remoteDoc.version || known.updatedAt !== remoteDoc.updatedAt) applyRemoteDoc(remoteDoc, 'modified');
-                        }
-                    });
                 }
             }, err => console.error('[CollabStore] onSnapshot error:', err));
         } catch (err) { console.error('[CollabStore] Failed to attach onSnapshot:', err); }
@@ -198,9 +195,14 @@
             if (doc.category === 'credential') {
                 if (canSecret) {
                     try {
-                        const sSnap = await db.collection('documents').doc(doc.id).collection('secrets').doc('credential').get();
+                        const docRef = db.collection('documents').doc(doc.id), sSnap = await docRef.collection('secrets').doc('credential').get();
                         const sData = (sSnap && typeof sSnap.data === 'function') ? sSnap.data() : sSnap?.data;
-                        if (sData?.password) doc.password = sData.password;
+                        if (sData?.password !== undefined) doc.password = sData.password;
+                        else if (data.password) {
+                            doc.password = data.password;
+                            await docRef.collection('secrets').doc('credential').set({ password: data.password, updatedAt: Date.now() });
+                            await docRef.update({ password: '' }).catch(() => {});
+                        } else doc.password = '';
                     } catch (_) {}
                 } else doc.password = '';
             }
@@ -229,13 +231,14 @@
             const sz = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(JSON.stringify(d)).length : JSON.stringify(d).length;
             return sz > 900000 ? (root.toast?.('Document exceeds 900,000 bytes limit.', 'error'), true) : false;
         };
-        const writeSecret = async (d) => {
-            if (d.category === 'credential' && canSecret) {
-                const docRef = db.collection('documents').doc(d.id);
-                if (typeof docRef.collection === 'function') {
-                    if (d.password) await docRef.collection('secrets').doc('credential').set({ password: d.password, updatedAt: Date.now() });
-                    else await docRef.collection('secrets').doc('credential').set({ password: '', updatedAt: Date.now() }).catch(() => {});
-                }
+        const saveAtomic = async (docRef, docData, secretData) => {
+            if (typeof db.batch === 'function') {
+                const b = db.batch(); b.set(docRef, docData);
+                if (secretData && typeof docRef.collection === 'function') b.set(docRef.collection('secrets').doc('credential'), secretData);
+                await b.commit();
+            } else {
+                await docRef.set(docData);
+                if (secretData && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').set(secretData);
             }
         };
 
@@ -246,11 +249,13 @@
             if (!doc.workspaceId) doc.workspaceId = activeWs;
             const data = toFirestoreDoc(doc, { version: 1, createdBy: uid, updatedBy: uid, createdAt, updatedAt });
             if (isDocOversize(data)) continue;
+            const secretData = (doc.category === 'credential' && canSecret) ? { password: doc.password || '', updatedAt: now } : null;
             try {
+                const docRef = db.collection('documents').doc(doc.id);
                 if (doc.workspaceId && doc.workspaceId !== 'default' && root.CollabWorkspaces?.batchCreateDoc) {
-                    await root.CollabWorkspaces.batchCreateDoc(db, db.collection('documents').doc(doc.id), data, doc.workspaceId);
-                } else await db.collection('documents').doc(doc.id).set(data);
-                await writeSecret(doc);
+                    await root.CollabWorkspaces.batchCreateDoc(db, docRef, data, doc.workspaceId);
+                    if (secretData && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').set(secretData);
+                } else await saveAtomic(docRef, data, secretData);
                 doc.version = 1; doc.createdBy = uid; doc.updatedBy = uid; doc.createdAt = createdAt; doc.updatedAt = updatedAt;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) { if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to save offline', 'error'); throw err; }
@@ -268,10 +273,11 @@
             const createdBy = known.createdBy || doc.createdBy || uid, createdAt = typeof known.createdAt === 'number' ? known.createdAt : (doc.createdAt || Date.now());
             const data = toFirestoreDoc(doc, { version: nextVersion, createdBy, updatedBy: uid, createdAt, updatedAt: doc.updatedAt });
             if (isDocOversize(data)) continue;
+            const secretData = (doc.category === 'credential' && canSecret) ? { password: doc.password || '', updatedAt: doc.updatedAt || Date.now() } : null;
 
             try {
-                await db.collection('documents').doc(doc.id).set(data);
-                await writeSecret(doc);
+                const docRef = db.collection('documents').doc(doc.id);
+                await saveAtomic(docRef, data, secretData);
                 doc.version = nextVersion; doc.createdBy = createdBy; doc.updatedBy = uid;
                 _knownDocs.set(doc.id, { ...doc });
             } catch (err) {
@@ -293,9 +299,19 @@
             if ((known?.workspaceId || 'default') !== activeWs) continue;
             if (initialKnownIds.has(id) && !targetIds.has(id) && !liveDocs.some(d => d.id === id)) {
                 try {
-                    if (known?.category === 'credential' && typeof db.collection('documents').doc(id).collection === 'function') await db.collection('documents').doc(id).collection('secrets').doc('credential').delete().catch(() => {});
-                    if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
-                    else await db.collection('documents').doc(id).delete();
+                    const docRef = db.collection('documents').doc(id);
+                    if (known?.workspaceId && known.workspaceId !== 'default' && root.CollabWorkspaces?.batchDeleteDoc) {
+                        if (known.category === 'credential' && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').delete();
+                        await root.CollabWorkspaces.batchDeleteDoc(db, id, known.workspaceId);
+                    } else if (typeof db.batch === 'function') {
+                        const b = db.batch();
+                        if (known?.category === 'credential' && typeof docRef.collection === 'function') b.delete(docRef.collection('secrets').doc('credential'));
+                        b.delete(docRef);
+                        await b.commit();
+                    } else {
+                        if (known?.category === 'credential' && typeof docRef.collection === 'function') await docRef.collection('secrets').doc('credential').delete();
+                        await docRef.delete();
+                    }
                     _knownDocs.delete(id);
                 } catch (err) {
                     if (typeof root.toast === 'function') root.toast(err?.message || 'Failed to delete offline', 'error');
@@ -311,14 +327,9 @@
         if ((role !== 'editor' && role !== 'owner') || !user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb(); if (!db) return;
-        const actId = String(entry.id || ('act_' + Date.now())), actorEmail = member?.email || user.email || '';
-        const actorName = member?.displayName || user?.displayName || member?.name || member?.email || '';
-        const actorPhoto = (typeof user?.photoURL === 'string' && /^https:\/\//i.test(user.photoURL)) ? user.photoURL : ((typeof member?.photoURL === 'string' && /^https:\/\//i.test(member.photoURL)) ? member.photoURL : '');
-        const payload = {
-            id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated',
-            docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '',
-            actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}), ...(actorPhoto ? { actorPhotoUrl: actorPhoto } : {})
-        };
+        const actId = String(entry.id || ('act_' + Date.now())), actorEmail = member?.email || user.email || '', actorName = member?.displayName || user?.displayName || member?.name || member?.email || '';
+        const rawPhoto = (typeof user?.photoURL === 'string' && /^https:\/\//i.test(user.photoURL)) ? user.photoURL : ((typeof member?.photoURL === 'string' && /^https:\/\//i.test(member.photoURL)) ? member.photoURL : '');
+        const payload = { id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated', docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '', actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}), ...(rawPhoto ? { actorPhotoUrl: rawPhoto } : {}) };
         try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
     }
 
@@ -327,8 +338,7 @@
         const member = root.CollabBootstrap?.getCurrentMember?.(), role = member?.role, user = getCurrentUser();
         if ((role !== 'editor' && role !== 'owner') || !user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
-        const db = getFirestoreDb();
-        if (!db) return;
+        const db = getFirestoreDb(); if (!db) return;
         const histCol = db.collection('documents').doc(doc.id).collection('history');
         try {
             const snap = await histCol.get(), existing = [];
@@ -339,41 +349,30 @@
             const snapId = meta?.snapId || ('snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), ts = typeof meta?.ts === 'number' ? meta.ts : Date.now();
             const savedByName = user.displayName || member?.displayName || member?.name || user.email || 'Team Member', savedByEmail = user.email || member?.email || '';
             const rawPhoto = user.photoURL || member?.photoURL || member?.photoUrl || '', savedByPhoto = (typeof rawPhoto === 'string' && /^https:\/\//i.test(rawPhoto)) ? rawPhoto : '';
-            const payload = {
-                id: snapId, ts, title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '',
-                tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '',
-                savedBy: user.uid, savedByName, savedByEmail, ...(savedByPhoto ? { savedByPhoto } : {})
-            };
-            await histCol.doc(snapId).set(payload);
-            if (role === 'owner' && existing.length >= 10) {
-                for (const oldSnap of existing.slice(9)) { try { await histCol.doc(oldSnap.id).delete(); } catch (_) {} }
-            }
+            await histCol.doc(snapId).set({ id: snapId, ts, title: doc.title || '', content: typeof doc.content === 'string' ? doc.content : '', tags: Array.isArray(doc.tags) ? [...doc.tags] : [], status: doc.status || 'active', subfolder: doc.subfolder || '', savedBy: user.uid, savedByName, savedByEmail, ...(savedByPhoto ? { savedByPhoto } : {}) });
+            if (role === 'owner' && existing.length >= 10) { for (const oldSnap of existing.slice(9)) { try { await histCol.doc(oldSnap.id).delete(); } catch (_) {} } }
         } catch (err) { console.warn('[CollabStore] saveHistory error:', err); }
     }
 
     async function loadHistory(docId) {
         if (isGuestMode() || !isCollabMode() || !docId) return [];
         if (root.ensureFirebase) await root.ensureFirebase();
-        const db = getFirestoreDb();
-        if (!db) return [];
+        const db = getFirestoreDb(); if (!db) return [];
         try {
             const snap = await db.collection('documents').doc(docId).collection('history').get(), items = [];
             snap.forEach(d => { const data = (typeof d.data === 'function') ? d.data() : (d.data || d); items.push({ id: d.id, ...data }); });
-            items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-            return items.slice(0, 10);
+            return items.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 10);
         } catch (err) { console.warn('[CollabStore] loadHistory error:', err); return []; }
     }
 
     async function allocateBugNumber() {
         if (isGuestMode() || !isCollabMode()) {
-            let max = 0;
-            getDocuments().forEach(d => { if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber; });
+            let max = 0; getDocuments().forEach(d => { if (d.category === 'bug' && typeof d.bugNumber === 'number' && d.bugNumber > max) max = d.bugNumber; });
             return (typeof root.DocStorage !== 'undefined' && root.DocStorage.allocateBugNumber) ? root.DocStorage.allocateBugNumber(max) : max + 1;
         }
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb(), user = getCurrentUser();
-        if (!db) throw new Error('Firestore not available');
-        if (!user?.uid) throw new Error('Unauthenticated');
+        if (!db) throw new Error('Firestore not available'); if (!user?.uid) throw new Error('Unauthenticated');
         const counterRef = db.collection('counters').doc('bugs');
         return await db.runTransaction(async tx => {
             const snap = await tx.get(counterRef);
