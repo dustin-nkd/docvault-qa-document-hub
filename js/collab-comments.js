@@ -54,9 +54,9 @@
                 if (ancestor) {
                     ancestor.replies.push({ ...item });
                 } else {
-                    const fallback = { ...item, replies: [] };
-                    roots.push(fallback);
-                    if (fallback.id) rootMap.set(fallback.id, fallback);
+                    const placeholder = { id: item.parentId, content: '[This comment has been deleted]', isDeleted: true, createdAt: (item.createdAt || 1) - 1, replies: [{ ...item }] };
+                    roots.push(placeholder);
+                    if (placeholder.id) rootMap.set(placeholder.id, placeholder);
                 }
             }
         }
@@ -307,19 +307,18 @@
         const commentsRef = db.collection('documents').doc(docId).collection('comments');
         const commentRef = commentsRef.doc(commentId);
         let hasReplies = false;
-        try {
-            if (typeof commentsRef.where === 'function') {
+        if (typeof commentsRef.where === 'function') {
+            try {
                 const repliesSnap = await commentsRef.where('parentId', '==', commentId).limit(1).get();
-                hasReplies = !repliesSnap.empty;
+                hasReplies = Boolean(repliesSnap && !repliesSnap.empty);
+            } catch (err) {
+                console.warn('[CollabComments] reply query failed, aborting delete to protect thread:', err);
+                throw err;
             }
-        } catch (_) {}
+        }
 
         if (hasReplies) {
-            await commentRef.update({
-                content: '[This comment has been deleted]',
-                isDeleted: true,
-                updatedAt: Date.now()
-            });
+            await commentRef.update({ content: '[This comment has been deleted]', isDeleted: true, updatedAt: Date.now() });
         } else {
             await commentRef.delete();
         }

@@ -262,7 +262,7 @@ if (typeof window !== 'undefined') window._modalStack = _modalStack;
 function showModal(html, options = {}) {
     const m = document.getElementById('modal');
     if (!m) return;
-    if (!m.classList.contains('hidden') && typeof m.innerHTML === 'string' && m.innerHTML.trim() !== '') {
+    if (options.stack && !m.classList.contains('hidden') && typeof m.innerHTML === 'string' && m.innerHTML.trim() !== '') {
         _modalStack.push({ html: m.innerHTML, previouslyFocused: _modalPreviouslyFocusedEl, onClose: typeof window !== 'undefined' ? window._modalOnClose : null });
         if (typeof window !== 'undefined') window._modalOnClose = null;
     }

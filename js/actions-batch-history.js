@@ -497,7 +497,7 @@ window.showSnapshotDiff = function(id, snapIndex) {
         ${titleBlock}
         <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-d);padding:10px 14px 6px;flex-shrink:0;">Content</div>
         <div style="flex:1;overflow-y:auto;"><div class="diff-view">${_buildDiffHtml(diff)}</div></div>
-    `, { maxWidth: 'max-w-3xl', noPadding: true, style: 'overflow:hidden;display:flex;flex-direction:column;max-width:780px;' });
+    `, { stack: true, maxWidth: 'max-w-3xl', noPadding: true, style: 'overflow:hidden;display:flex;flex-direction:column;max-width:780px;' });
 };
 
 window.showHistoryPanel = async function(id) {

@@ -331,7 +331,7 @@ function _renderCommentCard(doc, c, membersMap, currentUid, isOwner, isReply) {
                     <span class="collab-comment-author font-semibold text-xs" style="color:var(--tx);">${safeEsc(authorName)}</span>
                     ${role ? `<span class="collab-comment-role text-[10px] px-1.5 py-0.5 rounded capitalize" style="background:${isReply ? 'var(--card)' : 'var(--bg2)'};color:var(--tx-m);border:1px solid var(--brd);">${safeEsc(role)}</span>` : ''}
                     <span class="collab-comment-meta text-[11px]" style="color:var(--tx-d);">${dateStr}</span>
-                    ${c.updatedAt ? `<span class="collab-comment-edited text-[10px]" style="color:var(--tx-d);">(edited)</span>` : ''}
+                    ${(!isDeletedComment && c.updatedAt) ? `<span class="collab-comment-edited text-[10px]" style="color:var(--tx-d);">(edited)</span>` : ''}
                 </div>
                 <div id="collab-comment-body-${safeEsc(c.id)}" class="collab-comment-body text-xs sm:text-sm mt-1 mb-2 leading-relaxed" style="color:var(--tx);">${formattedContent}</div>
                 <div id="collab-comment-edit-box-${safeEsc(c.id)}" class="collab-comment-edit-box mt-2 mb-2" style="display:none;">

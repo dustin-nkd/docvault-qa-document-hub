@@ -1,6 +1,6 @@
 // DocVault team collaboration viewer restrictions module
 (function(root) {
-    const VIEWER_BLOCKED_RE = /\b(showTemplateModal|editDoc|duplicateDoc|showDeleteModal|showEmptyTrashModal|emptyTrash|confirmDelete|hardDeleteDoc|restoreDoc|saveDoc|shareDoc|moveDocStatus|confirmBatchDelete|confirmBatchAddTag|confirmBatchMoveFolder|confirmBatchBugEdit|saveFocusWorkflow|completeFocusItem|unsnoozeFocusItem|reopenFocusItem)\s*\(/;
+    const VIEWER_BLOCKED_RE = /\b(showTemplateModal|editDoc|duplicateDoc|showDeleteModal|showEmptyTrashModal|emptyTrash|confirmDelete|hardDeleteDoc|restoreDoc|saveDoc|shareDoc|moveDocStatus|moveCardToColumn|confirmBatchDelete|confirmBatchAddTag|confirmBatchMoveFolder|confirmBatchBugEdit|saveFocusWorkflow|completeFocusItem|unsnoozeFocusItem|reopenFocusItem)\s*\(/;
 
     function isViewer() {
         if (root.COLLAB_MODE === false) return false;

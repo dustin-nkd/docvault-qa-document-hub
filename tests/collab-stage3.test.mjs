@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const rootDir = process.cwd();
 const read = (file) => fs.readFileSync(path.join(rootDir, file), 'utf8');
 
-test('Stage 3 (3.7 & 3.6): CollabViewer blocks moveDocStatus and only filters permission error for viewers', () => {
+test('Stage 3 (3.7 & 3.6): CollabViewer blocks moveDocStatus, moveCardToColumn, and filters rejections only for viewers', () => {
     const viewerCode = read('js/collab-viewer.js');
 
     let currentRole = 'viewer';
@@ -28,8 +28,9 @@ test('Stage 3 (3.7 & 3.6): CollabViewer blocks moveDocStatus and only filters pe
     vm.createContext(ctx);
     vm.runInContext(viewerCode, ctx);
 
-    // 3.7: moveDocStatus must be in VIEWER_BLOCKED_RE
+    // 3.7: moveDocStatus and moveCardToColumn must be in VIEWER_BLOCKED_RE
     assert.ok(ctx.CollabViewer.VIEWER_BLOCKED_RE.test('moveDocStatus("doc-1", "review")'), 'moveDocStatus must be matched by VIEWER_BLOCKED_RE');
+    assert.ok(ctx.CollabViewer.VIEWER_BLOCKED_RE.test('moveCardToColumn("doc-1", "review")'), 'moveCardToColumn must be matched by VIEWER_BLOCKED_RE');
 
     // 3.6: filterPermissionError only stops propagation for viewer
     let stopped = false;
@@ -49,7 +50,7 @@ test('Stage 3 (3.7 & 3.6): CollabViewer blocks moveDocStatus and only filters pe
     assert.equal(stopped, true, 'Viewer permission-denied must be swallowed cleanly');
 });
 
-test('Stage 3 (3.10): Modal stacking allows opening nested modals and restoring previous modal', () => {
+test('Stage 3 (3.10): Modal stacking allows nested modals when stack:true, while preserving in-place replace flows', () => {
     const uiCode = read('js/ui.js');
 
     const modalEl = {
@@ -83,38 +84,46 @@ test('Stage 3 (3.10): Modal stacking allows opening nested modals and restoring 
     vm.createContext(ctx);
     vm.runInContext(uiCode, ctx);
 
-    // Open Modal 1
-    ctx.showModal('<h1>First Modal</h1>');
-    assert.ok(modalEl.innerHTML.includes('First Modal'));
-    assert.equal(ctx._modalStack.length, 0);
-
-    // Open Modal 2 over Modal 1
-    ctx.showModal('<h2>Confirmation Dialog</h2>');
-    assert.ok(modalEl.innerHTML.includes('Confirmation Dialog'));
-    assert.equal(ctx._modalStack.length, 1);
-    assert.ok(ctx._modalStack[0].html.includes('First Modal'));
-
-    // Close Modal 2 -> should restore Modal 1
-    ctx.closeModal();
-    assert.ok(modalEl.innerHTML.includes('First Modal'));
-    assert.equal(ctx._modalStack.length, 0);
-    assert.ok(!modalEl.className.includes('hidden'));
-
-    // Close Modal 1 -> should hide modal
+    // 1. In-place replace flow (e.g. share spinner -> result): stack remains empty
+    ctx.showModal('<h1>Spinner</h1>');
+    assert.ok(modalEl.innerHTML.includes('Spinner'));
+    ctx.showModal('<h1>Result Link</h1>'); // replace without stack: true
+    assert.ok(modalEl.innerHTML.includes('Result Link'));
+    assert.equal(ctx._modalStack.length, 0, 'In-place replace must not push to _modalStack');
     ctx.closeModal();
     assert.ok(modalEl.className.includes('hidden'));
 
-    // Test closeModal(true) closes all stacked modals
+    // 2. Nested modal flow with stack: true (e.g. History -> Diff)
+    ctx.showModal('<h1>Document History</h1>');
+    assert.ok(modalEl.innerHTML.includes('Document History'));
+    assert.equal(ctx._modalStack.length, 0);
+
+    ctx.showModal('<h2>Snapshot Diff</h2>', { stack: true });
+    assert.ok(modalEl.innerHTML.includes('Snapshot Diff'));
+    assert.equal(ctx._modalStack.length, 1);
+    assert.ok(ctx._modalStack[0].html.includes('Document History'));
+
+    // Close Diff -> restores History
+    ctx.closeModal();
+    assert.ok(modalEl.innerHTML.includes('Document History'));
+    assert.equal(ctx._modalStack.length, 0);
+    assert.ok(!modalEl.className.includes('hidden'));
+
+    // Close History -> completely closed
+    ctx.closeModal();
+    assert.ok(modalEl.className.includes('hidden'));
+
+    // 3. closeModal(true) closes all stacked modals
     ctx.showModal('<h1>Base</h1>');
-    ctx.showModal('<h2>Sub 1</h2>');
-    ctx.showModal('<h3>Sub 2</h3>');
+    ctx.showModal('<h2>Sub 1</h2>', { stack: true });
+    ctx.showModal('<h3>Sub 2</h3>', { stack: true });
     assert.equal(ctx._modalStack.length, 2);
     ctx.closeModal(true);
     assert.equal(ctx._modalStack.length, 0);
     assert.ok(modalEl.className.includes('hidden'));
 });
 
-test('Stage 3 (3.1): showSnapshotDiff and restoreSnapshot use _lastLoadedHistorySnaps', async () => {
+test('Stage 3 (3.1): showSnapshotDiff stacks modal and restoreSnapshot restores data', async () => {
     const historyCode = read('js/actions-batch-history.js');
 
     const remoteSnaps = [
@@ -122,6 +131,8 @@ test('Stage 3 (3.1): showSnapshotDiff and restoreSnapshot use _lastLoadedHistory
     ];
 
     let persisted = false;
+    let modalStackOption = null;
+    let closedAll = false;
     const testDoc = { id: 'doc-1', title: 'Current V2', content: 'Modified content', status: 'published', tags: [] };
 
     const ctx = {
@@ -136,8 +147,11 @@ test('Stage 3 (3.1): showSnapshotDiff and restoreSnapshot use _lastLoadedHistory
             },
             save: () => {}
         },
-        showModal: (html) => { ctx.lastModalHtml = html; },
-        closeModal: () => {},
+        showModal: (html, opts) => {
+            ctx.lastModalHtml = html;
+            modalStackOption = opts?.stack;
+        },
+        closeModal: (all) => { if (all) closedAll = true; },
         toast: () => {},
         persist: async () => { persisted = true; },
         render: () => {},
@@ -151,25 +165,26 @@ test('Stage 3 (3.1): showSnapshotDiff and restoreSnapshot use _lastLoadedHistory
     vm.createContext(ctx);
     vm.runInContext(historyCode, ctx);
 
-    // 1. showSnapshotDiff uses remote snapshot
+    // 1. showSnapshotDiff uses remote snapshot and passes stack: true
     ctx.showSnapshotDiff('doc-1', 0);
     assert.ok(ctx.lastModalHtml.includes('Snapshot Diff'));
     assert.ok(ctx.lastModalHtml.includes('Alice'));
+    assert.equal(modalStackOption, true, 'showSnapshotDiff must pass stack: true');
 
-    // 2. restoreSnapshot uses remote snapshot without throwing from DocHistory.get
+    // 2. restoreSnapshot uses remote snapshot, calls closeModal(true), and persists
     await ctx.restoreSnapshot('doc-1', 0);
     assert.equal(ctx.documents[0].title, 'Remote V1');
     assert.equal(ctx.documents[0].content, 'Original content');
+    assert.equal(closedAll, true, 'restoreSnapshot must close all stacked modals');
     assert.equal(persisted, true);
 });
 
-test('Stage 3 (3.2): Collab Mode hydrate executes cleanOrphanedDocReferences', async () => {
+test('Stage 3 (3.2): Collab Mode hydrate runs cleanOrphanedDocReferences without stripping cross-workspace docs', async () => {
     const stateCode = read('js/state.js');
 
-    let cleaned = false;
+    let cleanedWithExistingIds = 'not_called';
     const testDocs = [
-        { id: 'run-1', category: 'testrun', runData: { targetIds: ['tc-valid', 'tc-deleted'] } },
-        { id: 'tc-valid', category: 'testcase', title: 'Valid Case' }
+        { id: 'run-1', category: 'testrun', runData: { targetIds: ['tc-in-other-ws'] } }
     ];
 
     const ctx = {
@@ -179,13 +194,9 @@ test('Stage 3 (3.2): Collab Mode hydrate executes cleanOrphanedDocReferences', a
         },
         normalizeDocTags: () => {},
         DocStorage: {
-            cleanOrphanedDocReferences: (docs, del, activeIds) => {
-                cleaned = true;
-                assert.ok(activeIds.has('run-1'));
-                assert.ok(activeIds.has('tc-valid'));
-                assert.ok(!activeIds.has('tc-deleted'));
-                docs[0].runData.targetIds = docs[0].runData.targetIds.filter(id => activeIds.has(id));
-                return true;
+            cleanOrphanedDocReferences: (docs, del, existingIds) => {
+                cleanedWithExistingIds = existingIds;
+                return false;
             }
         },
         state: {},
@@ -197,8 +208,7 @@ test('Stage 3 (3.2): Collab Mode hydrate executes cleanOrphanedDocReferences', a
     vm.runInContext(stateCode, ctx);
 
     await ctx.hydrate();
-    assert.equal(cleaned, true, 'cleanOrphanedDocReferences must be called in Collab Mode hydrate');
-    assert.deepEqual(ctx.documents[0].runData.targetIds, ['tc-valid'], 'Orphan reference tc-deleted must be cleaned');
+    assert.equal(cleanedWithExistingIds, undefined, 'Collab Mode hydrate must not pass workspace activeIds as existingIds filter');
 });
 
 test('Stage 3 (3.3): removeMember revokes pending invite for member email', async () => {
@@ -239,7 +249,7 @@ test('Stage 3 (3.3): removeMember revokes pending invite for member email', asyn
     assert.ok(deletedDocs.includes('invites/bob@team.com'), 'invites/bob@team.com must be deleted');
 });
 
-test('Stage 3 (3.4 & Low 2): Comments byte limit, mention notifications on edit, and thread tombstones', async () => {
+test('Stage 3 (3.4 & Low 2): Comments byte limit, mention notifications on edit, thread tombstones & orphan protection', async () => {
     const commentsCode = read('js/collab-comments.js');
 
     const updatedDocs = [];
@@ -265,9 +275,10 @@ test('Stage 3 (3.4 & Low 2): Comments byte limit, mention notifications on edit,
                     }),
                     where: (field, op, val) => ({
                         limit: () => ({
-                            get: async () => ({
-                                empty: val === 'cmt-has-replies' ? false : true
-                            })
+                            get: async () => {
+                                if (val === 'cmt-query-error') throw new Error('Network error on reply check');
+                                return { empty: val === 'cmt-has-replies' ? false : true };
+                            }
                         })
                     })
                 })
@@ -314,9 +325,26 @@ test('Stage 3 (3.4 & Low 2): Comments byte limit, mention notifications on edit,
     assert.ok(tombstone, 'Comment with replies must be tombstoned');
     assert.equal(tombstone.data.content, '[This comment has been deleted]');
 
-    // 4. deleteComment hard-deletes when no replies exist
+    // 4. deleteComment safely aborts and does NOT hard delete if reply query fails
+    await assert.rejects(
+        async () => ctx.CollabComments.deleteComment('doc-1', 'cmt-query-error'),
+        /Network error on reply check/
+    );
+    assert.ok(!deletedDocs.includes('cmt-query-error'), 'Comment must not be deleted if reply check query fails');
+
+    // 5. deleteComment hard-deletes when no replies exist
     await ctx.CollabComments.deleteComment('doc-1', 'cmt-no-replies');
     assert.ok(deletedDocs.includes('cmt-no-replies'), 'Comment without replies must be deleted');
+
+    // 6. buildCommentTree creates placeholder parent for orphaned replies instead of promoting them to roots
+    const tree = ctx.CollabComments.buildCommentTree([
+        { id: 'reply-1', parentId: 'deleted-parent', content: 'Orphan reply', createdAt: 200 }
+    ]);
+    assert.equal(tree.length, 1);
+    assert.equal(tree[0].id, 'deleted-parent');
+    assert.equal(tree[0].isDeleted, true);
+    assert.equal(tree[0].replies.length, 1);
+    assert.equal(tree[0].replies[0].id, 'reply-1');
 });
 
 test('Stage 3 (Low 5): Activity record generates unique actId with random suffix', async () => {
