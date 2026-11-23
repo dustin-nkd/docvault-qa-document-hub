@@ -29,6 +29,9 @@ function createTestRunViewerContext(initialDocs = [], sharedView = false, mockDo
         vm.runInContext(code, context, { filename: file });
     }
     context._currentDocs = initialDocs;
+    context.DocStorage = { save: async () => {} };
+    context.enhanceInteractionSemantics = () => {};
+    context._restoreFaviconState = () => {};
     vm.runInContext('documents = _currentDocs;', context);
     vm.runInContext(`state.sharedView = ${Boolean(sharedView)};`, context);
 
@@ -50,7 +53,8 @@ function createTestRunViewerContext(initialDocs = [], sharedView = false, mockDo
             context._tcId = tcId;
             return vm.runInContext('_traceRunOutcome(_run, _tcId)', context);
         },
-        toggleAllTestRunCases: () => vm.runInContext('window.toggleAllTestRunCases()', context)
+        toggleAllTestRunCases: () => vm.runInContext('window.toggleAllTestRunCases()', context),
+        context
     };
 }
 
@@ -454,4 +458,98 @@ test('Test Run view: window.toggleAllTestRunCases toggles details open state, la
     assert.doesNotThrow(() => {
         ctx.toggleAllTestRunCases();
     });
+});
+
+test('Test Run view: preserves collapsed accordion state across step status updates and handles toggle state', async () => {
+    const tc1 = { id: 'tc-1', title: 'TC 1', category: 'testcases', status: 'published', tcData: { steps: [{ action: 'Step 1', expected: 'Exp 1' }] } };
+    const tc2 = { id: 'tc-2', title: 'TC 2', category: 'testcases', status: 'published', tcData: { steps: [{ action: 'Step 2', expected: 'Exp 2' }] } };
+    const tc3 = { id: 'tc-3', title: 'TC 3', category: 'testcases', status: 'published', tcData: { steps: [{ action: 'Step 3', expected: 'Exp 3' }] } };
+    const run = {
+        id: 'run-multi',
+        title: 'Multi Case Run',
+        category: 'testrun',
+        status: 'published',
+        runData: {
+            targetIds: ['tc-1', 'tc-2', 'tc-3'],
+            snapshot: {
+                'tc-1': [{ action: 'Step 1', expected: 'Exp 1' }],
+                'tc-2': [{ action: 'Step 2', expected: 'Exp 2' }],
+                'tc-3': [{ action: 'Step 3', expected: 'Exp 3' }]
+            },
+            results: {}
+        }
+    };
+
+    const d1 = { tagName: 'DETAILS', open: false, getAttribute: (k) => k === 'data-tc-id' ? 'tc-1' : null };
+    const d2 = { tagName: 'DETAILS', open: true, getAttribute: (k) => k === 'data-tc-id' ? 'tc-2' : null };
+    const d3 = { tagName: 'DETAILS', open: false, getAttribute: (k) => k === 'data-tc-id' ? 'tc-3' : null };
+    const label = { textContent: 'Collapse all' };
+    const icon = { className: 'fa-solid fa-chevron-up' };
+    const casesRoot = {
+        children: [d1, d2, d3],
+        getAttribute: (k) => k === 'data-run-id' ? 'run-multi' : null
+    };
+    const contentEl = { innerHTML: '', id: 'content' };
+    const mockElements = {
+        'content': contentEl,
+        'testrun-cases': casesRoot,
+        'testrun-toggle-all-label': label,
+        'testrun-toggle-all-icon': icon
+    };
+    const listeners = {};
+    const mockDoc = {
+        getElementById: id => mockElements[id] || null,
+        addEventListener: (event, fn) => {
+            listeners[event] = fn;
+        }
+    };
+
+    const ctx = createTestRunViewerContext([tc1, tc2, tc3, run], false, mockDoc);
+
+    // 1. Render when DOM has tc-1 & tc-3 collapsed, and tc-2 open:
+    const html = ctx.render(run, false);
+
+    assert.match(html, /<details\s+class="[^"]*"[^>]*data-tc-id="tc-1"\s+id="testrun-tc-tc-1">/);
+    assert.match(html, /<details\s+open\s+class="[^"]*"[^>]*data-tc-id="tc-2"\s+id="testrun-tc-tc-2">/);
+    assert.match(html, /<details\s+class="[^"]*"[^>]*data-tc-id="tc-3"\s+id="testrun-tc-tc-3">/);
+    assert.equal((html.match(/<details open/g) || []).length, 1);
+    assert.ok(html.includes('Collapse all'));
+
+    // 2. When all are collapsed via DOM:
+    d2.open = false;
+    const htmlAllCollapsed = ctx.render(run, false);
+    assert.equal((htmlAllCollapsed.match(/<details open/g) || []).length, 0);
+    assert.ok(htmlAllCollapsed.includes('Expand all'));
+    assert.ok(htmlAllCollapsed.includes('fa-chevron-down'));
+
+    // 3. Fallback when #testrun-cases container is absent (e.g. view navigation restored):
+    delete mockElements['testrun-cases'];
+    vm.runInContext("state._testRunOpen = { 'run-multi': { 'tc-1': false, 'tc-2': true, 'tc-3': false } };", ctx.context || ctx);
+    const htmlFromState = ctx.render(run, false);
+    assert.match(htmlFromState, /<details\s+class="[^"]*"[^>]*data-tc-id="tc-1"/);
+    assert.match(htmlFromState, /<details\s+open\s+class="[^"]*"[^>]*data-tc-id="tc-2"/);
+    assert.match(htmlFromState, /<details\s+class="[^"]*"[^>]*data-tc-id="tc-3"/);
+    assert.equal((htmlFromState.match(/<details open/g) || []).length, 1);
+    assert.ok(htmlFromState.includes('Collapse all'));
+
+    // 4. Document-level 'toggle' capture event listener updates state and toggle-all label/icon:
+    mockElements['testrun-cases'] = casesRoot;
+    assert.equal(typeof listeners['toggle'], 'function', 'registers toggle listener on document');
+    const mockDetails = {
+        tagName: 'DETAILS',
+        open: false,
+        getAttribute: k => (k === 'data-tc-id' ? 'tc-2' : null),
+        closest: sel => (sel === '#testrun-cases' ? casesRoot : null)
+    };
+    listeners['toggle']({ target: mockDetails });
+    const storedState = vm.runInContext('state._testRunOpen', ctx.context || ctx);
+    assert.equal(storedState['run-multi']['tc-2'], false, 'toggle listener records tc-2 closed in state._testRunOpen');
+    assert.equal(label.textContent, 'Expand all', 'toggle listener updates button to Expand all when all are closed');
+    assert.equal(icon.className, 'fa-solid fa-chevron-down', 'toggle listener updates button icon to chevron-down');
+
+    // 5. Direct invocation of window.updateTestRunStep updates step result:
+    vm.runInContext("state.view = 'viewer'; state.editingDoc = documents.find(d => d.id === 'run-multi');", ctx.context || ctx);
+    await vm.runInContext("window.updateTestRunStep('run-multi', 'tc-2', 0, 'pass');", ctx.context || ctx);
+    const updatedRun = vm.runInContext("documents.find(d => d.id === 'run-multi')", ctx.context || ctx);
+    assert.equal(updatedRun.runData.results['tc-2'][0], 'pass', 'updateTestRunStep sets step status');
 });
