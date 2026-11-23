@@ -405,7 +405,7 @@ window.syncTestRunCaseSnapshot = async function(runDocId, tcId) {
         }
         run.updatedAt = Date.now();
         if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
-        closeModal();
+        if (hasRecorded) closeModal();
         await persist();
         renderContent();
         toast(`Synced "${tc.title}" with latest steps${hasRecorded ? ' (recorded results reset)' : ''}.`, 'success');
@@ -442,8 +442,9 @@ window.syncAllTestRunCaseSnapshots = async function(runDocId) {
 
     const targetIds = run.runData.targetIds || [];
     const targets = documents.filter(d => targetIds.includes(d.id) && (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted');
+    const norm = steps => (steps || []).map(s => ({ action: s.action || '', expected: s.expected || '' }));
     const isDrifted = tc => !!run.runData?.snapshot?.[tc.id]
-        && JSON.stringify(run.runData.snapshot[tc.id]) !== JSON.stringify(_liveCaseSteps(tc));
+        && JSON.stringify(norm(run.runData.snapshot[tc.id])) !== JSON.stringify(norm(_liveCaseSteps(tc)));
     const driftedTargets = targets.filter(isDrifted);
 
     if (driftedTargets.length === 0) {
@@ -465,7 +466,7 @@ window.syncAllTestRunCaseSnapshots = async function(runDocId) {
         });
         run.updatedAt = Date.now();
         if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
-        closeModal();
+        if (anyRecorded) closeModal();
         await persist();
         renderContent();
         toast(`Synced ${count} changed test case${count !== 1 ? 's' : ''} with latest steps.`, 'success');
@@ -888,7 +889,7 @@ ${respMd ? respMd : ''}`;
                         const currentSnap = d.runData.snapshot?.[savedDocId] || [];
                         if (JSON.stringify(currentSnap) !== JSON.stringify(normalizedNewSnap)) {
                             if (!d.runData.snapshot) d.runData.snapshot = {};
-                            d.runData.snapshot[savedDocId] = normalizedNewSnap;
+                            d.runData.snapshot[savedDocId] = normalizedNewSnap.map(s => ({ ...s }));
                             d.updatedAt = Date.now();
                         }
                     }

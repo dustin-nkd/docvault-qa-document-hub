@@ -480,9 +480,10 @@ ${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
         targets.sort((a, b) => targetIds.indexOf(a.id) - targetIds.indexOf(b.id));
     }
     // Render against snapshot captured when run was saved (US-103).
+    const norm = steps => (steps || []).map(s => ({ action: s.action || '', expected: s.expected || '' }));
     const stepsOf = tc => (doc.runData?.snapshot?.[tc.id] || _liveCaseSteps(tc));
     const isDrifted = tc => !!doc.runData?.snapshot?.[tc.id]
-        && JSON.stringify(doc.runData.snapshot[tc.id]) !== JSON.stringify(_liveCaseSteps(tc));
+        && JSON.stringify(norm(doc.runData.snapshot[tc.id])) !== JSON.stringify(norm(_liveCaseSteps(tc)));
     const driftedCount = targets.filter(isDrifted).length;
 
     let passCount = 0, failCount = 0, blockedCount = 0, untestedCount = 0;
@@ -584,7 +585,7 @@ ${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
 <div class="flex items-center gap-2">
 <label class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);" title="Sort test cases in run">
 <i class="fa-solid fa-arrow-down-short-wide" style="font-size:11px;"></i>
-<select id="testrun-sort-select" class="form-input text-xs py-1 px-2 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);color:var(--tx);" data-onchange="setTestRunSort('${escHtml(doc.id)}', this.value)">
+<select id="testrun-sort-select" class="form-input text-xs py-1 px-2 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);color:var(--tx);" data-onchange="setTestRunSort(${escHtml(JSON.stringify(doc.id))}, this.value)">
 <option value="added"${currentSort === 'added' ? ' selected' : ''}>Order Added</option>
 <option value="name-asc"${currentSort === 'name-asc' ? ' selected' : ''}>Name (A-Z)</option>
 <option value="name-desc"${currentSort === 'name-desc' ? ' selected' : ''}>Name (Z-A)</option>
@@ -618,7 +619,7 @@ ${!state.sharedView ? `<button type="button" id="btn-quick-add-tc" class="btn-s 
 <span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
 ${drifted ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1.5" style="background:rgba(245,158,11,0.12);color:#f59e0b;" title="This test case was edited after this run was recorded. Results reflect the steps at run time."><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> TC changed</span>` : ''}
 <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-auto" style="background:${outcomeBgs[caseOutcome]};color:${outcomeColors[caseOutcome]};">${t(caseOutcome)}</span>
-${state.sharedView ? '' : `<button class="btn-s text-xs" data-onclick="viewDoc('${escHtml(tc.id)}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
+${state.sharedView ? '' : `<button class="btn-s text-xs" data-onclick="${actionAttr('viewDoc', tc.id)}" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
 </div>
 </summary>
 <div class="bg-transparent p-4">
