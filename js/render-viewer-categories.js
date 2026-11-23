@@ -152,14 +152,45 @@ function toggleAllTestRunCases() {
     const label = document.getElementById('testrun-toggle-all-label');
     if (!root || !label) return;
     const expand = label.textContent === 'Expand all';
+    const runId = root.getAttribute ? root.getAttribute('data-run-id') : null;
+    const st = typeof state !== 'undefined' ? state : null;
+    if (st && runId) {
+        if (!st._testRunOpen) st._testRunOpen = {};
+        st._testRunOpen[runId] = {};
+    }
     Array.from(root.children).forEach(node => {
-        if (node.tagName === 'DETAILS') node.open = expand;
+        if (node.tagName === 'DETAILS') {
+            node.open = expand;
+            const tcId = node.getAttribute ? node.getAttribute('data-tc-id') : null;
+            if (st && runId && tcId) st._testRunOpen[runId][tcId] = expand;
+        }
     });
     label.textContent = expand ? 'Collapse all' : 'Expand all';
     const icon = document.getElementById('testrun-toggle-all-icon');
     if (icon) icon.className = expand ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
 }
 window.toggleAllTestRunCases = toggleAllTestRunCases;
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('toggle', (e) => {
+        const target = e.target;
+        if (!target || target.tagName !== 'DETAILS') return;
+        const root = target.closest ? target.closest('#testrun-cases') : null;
+        const runId = root?.getAttribute ? root.getAttribute('data-run-id') : null;
+        const tcId = target.getAttribute ? target.getAttribute('data-tc-id') : null;
+        if (runId && tcId && typeof state !== 'undefined') {
+            if (!state._testRunOpen) state._testRunOpen = {};
+            if (!state._testRunOpen[runId]) state._testRunOpen[runId] = {};
+            state._testRunOpen[runId][tcId] = target.open;
+            const allCases = Array.from(root.children || []).filter(n => n.tagName === 'DETAILS');
+            const allCollapsed = allCases.length > 0 && allCases.every(n => !n.open);
+            const label = document.getElementById('testrun-toggle-all-label');
+            const icon = document.getElementById('testrun-toggle-all-icon');
+            if (label) label.textContent = allCollapsed ? 'Expand all' : 'Collapse all';
+            if (icon) icon.className = allCollapsed ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up';
+        }
+    }, true);
+}
 
 function renderApiTestViewer(doc) {
     const tc = doc.apiTcData || {};
@@ -502,13 +533,24 @@ ${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
             ['fail', 'bg-rose-500 text-white', 'fa-xmark', 'Fail', true],
             ['blocked', 'bg-amber-500 text-white', 'fa-ban', 'Block', false]
         ];
+        const existingCases = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? document.getElementById('testrun-cases') : null;
+        const isSameRun = existingCases && (typeof existingCases.getAttribute === 'function' ? existingCases.getAttribute('data-run-id') : null) === doc.id;
+        const openMap = (typeof state !== 'undefined' && state._testRunOpen?.[doc.id]) ? { ...state._testRunOpen[doc.id] } : {};
+        if (isSameRun) {
+            Array.from(existingCases.children || []).forEach(n => {
+                const tcId = n.tagName === 'DETAILS' && typeof n.getAttribute === 'function' ? n.getAttribute('data-tc-id') : null;
+                if (tcId) openMap[tcId] = Boolean(n.open);
+            });
+        }
+        const hasPrior = isSameRun || (typeof state !== 'undefined' && Boolean(state._testRunOpen?.[doc.id]));
+        const allCollapsed = hasPrior && targets.length > 0 && targets.every(tc => openMap[tc.id] === false);
         html += `<div class="flex justify-end mb-3">
 <button type="button" id="testrun-toggle-all" class="btn-s text-xs flex items-center gap-1.5" data-onclick="toggleAllTestRunCases()">
-<i id="testrun-toggle-all-icon" class="fa-solid fa-chevron-up" style="font-size:11px;" aria-hidden="true"></i>
-<span id="testrun-toggle-all-label">Collapse all</span>
+<i id="testrun-toggle-all-icon" class="fa-solid ${allCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}" style="font-size:11px;" aria-hidden="true"></i>
+<span id="testrun-toggle-all-label">${allCollapsed ? 'Expand all' : 'Collapse all'}</span>
 </button>
 </div>
-<div class="space-y-4" id="testrun-cases">`;
+<div class="space-y-4" id="testrun-cases" data-run-id="${doc.id}">`;
         const outcomeColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
         const outcomeBgs = { pass: 'rgba(16,185,129,0.12)', fail: 'rgba(239,68,68,0.12)', blocked: 'rgba(245,158,11,0.12)', untested: 'rgba(122,139,168,0.1)' };
         const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
@@ -517,7 +559,8 @@ ${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
         const drifted = isDrifted(tc);
         const tcNote = results[tc.id]?.note || '';
         const caseOutcome = _runCaseOutcome(steps, results[tc.id]);
-        html += `<details open class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);">
+        const isOpen = hasPrior && openMap[tc.id] !== undefined ? openMap[tc.id] : true;
+        html += `<details ${isOpen ? 'open ' : ''}class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);" data-tc-id="${tc.id}" id="testrun-tc-${tc.id}">
 <summary class="px-4 py-3" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
 <div class="flex items-center gap-3">
 <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
