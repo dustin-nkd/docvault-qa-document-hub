@@ -581,17 +581,22 @@ ${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
         }
         const hasPrior = isSameRun || (typeof state !== 'undefined' && Boolean(state._testRunOpen?.[doc.id]));
         const allCollapsed = hasPrior && targets.length > 0 && targets.every(tc => openMap[tc.id] === false);
+        const sortOptions = [
+            { value: 'added', label: 'Order Added' },
+            { value: 'name-asc', label: 'Name (A-Z)' },
+            { value: 'name-desc', label: 'Name (Z-A)' },
+            { value: 'time', label: 'Date Created' }
+        ];
+        const selectFn = typeof renderSelect === 'function' ? renderSelect : (typeof window !== 'undefined' ? window.renderSelect : null);
+        const sortSelectHtml = typeof selectFn === 'function'
+            ? selectFn('testrun-sort-select', sortOptions, currentSort, '!pl-7 text-xs !w-auto min-w-[145px] py-1.5', `setTestRunSort('${doc.id}', this.value)`, 'Sort test cases in run')
+            : `<select id="testrun-sort-select" class="form-input text-xs py-1 px-2 rounded-lg" data-onchange="setTestRunSort(${escHtml(JSON.stringify(doc.id))}, this.value)">${sortOptions.map(o => `<option value="${o.value}"${currentSort === o.value ? ' selected' : ''}>${o.label}</option>`).join('')}</select>`;
         html += `<div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
 <div class="flex items-center gap-2">
-<label class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);" title="Sort test cases in run">
-<i class="fa-solid fa-arrow-down-short-wide" style="font-size:11px;"></i>
-<select id="testrun-sort-select" class="form-input text-xs py-1 px-2 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);color:var(--tx);" data-onchange="setTestRunSort(${escHtml(JSON.stringify(doc.id))}, this.value)">
-<option value="added"${currentSort === 'added' ? ' selected' : ''}>Order Added</option>
-<option value="name-asc"${currentSort === 'name-asc' ? ' selected' : ''}>Name (A-Z)</option>
-<option value="name-desc"${currentSort === 'name-desc' ? ' selected' : ''}>Name (Z-A)</option>
-<option value="time"${currentSort === 'time' ? ' selected' : ''}>Date Created</option>
-</select>
-</label>
+<div class="relative flex items-center" title="Sort test cases in run">
+<i class="fa-solid fa-arrow-down-short-wide absolute left-2.5 z-10 pointer-events-none text-[11px]" style="color:var(--tx-m);" aria-hidden="true"></i>
+${sortSelectHtml}
+</div>
 ${!state.sharedView && driftedCount > 0 ? `<button type="button" id="btn-sync-all-tc" class="btn-s text-xs flex items-center gap-1.5 text-amber-500 hover:text-amber-400" data-onclick="${actionAttr('syncAllTestRunCaseSnapshots', doc.id)}" title="Sync all changed test case steps with latest definitions"><i class="fa-solid fa-arrows-rotate" style="font-size:11px;"></i> Sync All (${driftedCount})</button>` : ''}
 </div>
 <div class="flex items-center gap-2 ml-auto">
