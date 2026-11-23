@@ -157,8 +157,7 @@
                     });
                     const max = (typeof ActivityLog !== 'undefined' ? ActivityLog.MAX : (root.ActivityLog?.MAX || 200));
                     _store.remoteActivities = Array.from(byId.values())
-                        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-                        .slice(0, max);
+                        .sort((a, b) => (b.ts || 0) - (a.ts || 0));
                     if (root.state?.view === 'activity' && typeof root.renderContent === 'function') {
                         root.renderContent();
                     }
@@ -182,6 +181,8 @@
         _store.membersMap.clear();
     }
 
+    const getActiveWsId = () => { try { const id = root.localStorage?.getItem('docvault_active_workspace'); if (id && /^[a-z0-9][a-z0-9-]{0,31}$/.test(id)) return id; } catch (_) {} return (typeof root.getActiveWorkspace === 'function' ? root.getActiveWorkspace()?.id : null) || 'default'; };
+
     function wrapRenderers() {
         // Wrap ActivityLog.getAll directly on the lexical ActivityLog object
         const targetLog = typeof ActivityLog !== 'undefined' ? ActivityLog : (typeof root !== 'undefined' && root.ActivityLog ? root.ActivityLog : null);
@@ -189,7 +190,9 @@
             const origGetAll = targetLog.getAll;
             targetLog.getAll = function() {
                 if (isCollabMode()) {
-                    return [..._store.remoteActivities];
+                    const ws = getActiveWsId();
+                    const max = (typeof ActivityLog !== 'undefined' ? ActivityLog.MAX : (root.ActivityLog?.MAX || 200));
+                    return _store.remoteActivities.filter(a => (a.workspaceId || 'default') === ws).slice(0, max);
                 }
                 return origGetAll ? origGetAll.call(this) : [];
             };
@@ -246,11 +249,10 @@
                 }
                 if (typeof root.closeModal === 'function') root.closeModal();
                 try {
-                    const db = getFirestoreDb();
+                    const ws = getActiveWsId(), db = getFirestoreDb();
                     if (db) {
-                        const snap = await db.collection('activity').get();
-                        const docIds = [];
-                        snap.forEach(d => docIds.push(d.id));
+                        const snap = await db.collection('activity').get(), docIds = [];
+                        snap.forEach(d => { const data = typeof d.data === 'function' ? d.data() : (d.data || d); if (((data && data.workspaceId) || 'default') === ws) docIds.push(d.id); });
                         const CHUNK_SIZE = 400;
                         for (let i = 0; i < docIds.length; i += CHUNK_SIZE) {
                             const chunk = docIds.slice(i, i + CHUNK_SIZE);
@@ -263,7 +265,7 @@
                             }
                         }
                     }
-                    _store.remoteActivities = [];
+                    _store.remoteActivities = _store.remoteActivities.filter(a => ((a.workspaceId || 'default') !== ws));
                     if (root.state) root.state.activityFilter = 'all';
                     if (typeof root.renderContent === 'function') root.renderContent();
                     if (typeof root.toast === 'function') root.toast('Activity log cleared.', 'info');

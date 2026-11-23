@@ -66,7 +66,8 @@ const maintainabilityBudgets = {
     // boards, traceability and the activity timeline. Splitting it would break
     // the rule that a caller and its markup ship in one file (see the
     // actions-sharing.js note), since renderContent() dispatches to all of them.
-    'js/render-core.js': 1760,
+    // Raised to 1820 for test case outcome aggregation & breakdown in dashboard metrics.
+    'js/render-core.js': 1820,
     // Holds renderSelect() and its full combobox implementation (ARIA state,
     // arrow/Home/End/Escape/type-ahead). Every dropdown in the app renders
     // through it, and its callers span four files, so the keyboard contract has

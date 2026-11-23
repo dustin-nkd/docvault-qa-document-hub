@@ -804,6 +804,105 @@ test('Lifecycle: CollabBootstrap.signOut calls CollabActivity.stopListening', as
     assert.equal(stopped, true, 'signOut must invoke CollabActivity.stopListening()');
 });
 
+test('Workspace Isolation: CollabActivity isolates activities to active workspace', async () => {
+    const { ctx, activityStore, fireActivitySnap, localStore, toasts } = createActivityContext({ role: 'owner' });
+    ctx.CollabActivity.startListening();
+
+    // Populate activityStore with activities across two workspaces: 'ws-alpha' and 'ws-beta'
+    activityStore.set('act-alpha-1', {
+        id: 'act-alpha-1',
+        ts: 1000,
+        type: 'created',
+        title: 'Alpha Doc',
+        workspaceId: 'ws-alpha',
+        actorEmail: 'owner@example.com'
+    });
+    activityStore.set('act-beta-1', {
+        id: 'act-beta-1',
+        ts: 2000,
+        type: 'created',
+        title: 'Beta Doc',
+        workspaceId: 'ws-beta',
+        actorEmail: 'owner@example.com'
+    });
+    activityStore.set('act-default-1', {
+        id: 'act-default-1',
+        ts: 3000,
+        type: 'created',
+        title: 'Default Doc',
+        actorEmail: 'owner@example.com'
+    });
+    fireActivitySnap();
+
+    // In default workspace (localStorage active workspace unset)
+    const defaultActs = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(defaultActs.length, 1, 'Default workspace only sees default/legacy activities');
+    assert.equal(defaultActs[0].id, 'act-default-1');
+
+    // Switch to ws-alpha
+    localStore.set('docvault_active_workspace', 'ws-alpha');
+    const alphaActs = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(alphaActs.length, 1, 'ws-alpha only sees ws-alpha activities');
+    assert.equal(alphaActs[0].id, 'act-alpha-1');
+
+    // Switch to ws-beta
+    localStore.set('docvault_active_workspace', 'ws-beta');
+    const betaActs = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(betaActs.length, 1, 'ws-beta only sees ws-beta activities');
+    assert.equal(betaActs[0].id, 'act-beta-1');
+
+    // Clear activities while in ws-beta
+    await ctx.clearActivityLog();
+    assert.equal(activityStore.has('act-beta-1'), false, 'ws-beta activity was deleted');
+    assert.equal(activityStore.has('act-alpha-1'), true, 'ws-alpha activity was preserved');
+    assert.equal(activityStore.has('act-default-1'), true, 'default activity was preserved');
+    assert.ok(toasts.some(t => t.msg === 'Activity log cleared.' && t.type === 'info'), 'Must toast success on clearing');
+
+    // Post-clear memory check: ws-beta in-memory list is cleared, while ws-alpha remains populated immediately
+    const postClearBeta = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(postClearBeta.length, 0, 'ws-beta memory list is immediately empty without waiting for snapshot');
+    localStore.set('docvault_active_workspace', 'ws-alpha');
+    const postClearAlpha = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(postClearAlpha.length, 1, 'ws-alpha memory list was preserved');
+});
+
+test('Workspace Isolation: >200 total activities across workspaces does not starve non-default workspaces', () => {
+    const { ctx, activityStore, fireActivitySnap, localStore } = createActivityContext({ role: 'editor' });
+    ctx.CollabActivity.startListening();
+
+    // 150 activities in ws-alpha, 150 in ws-beta
+    for (let i = 1; i <= 150; i++) {
+        activityStore.set(`alpha-${i}`, { id: `alpha-${i}`, ts: i * 10, type: 'updated', title: `Alpha ${i}`, workspaceId: 'ws-alpha' });
+        activityStore.set(`beta-${i}`, { id: `beta-${i}`, ts: i * 10 + 5, type: 'updated', title: `Beta ${i}`, workspaceId: 'ws-beta' });
+    }
+    fireActivitySnap();
+
+    localStore.set('docvault_active_workspace', 'ws-alpha');
+    const alphaList = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(alphaList.length, 150, 'ws-alpha gets all 150 activities without being starved by ws-beta');
+
+    localStore.set('docvault_active_workspace', 'ws-beta');
+    const betaList = vm.runInContext('ActivityLog.getAll()', ctx);
+    assert.equal(betaList.length, 150, 'ws-beta gets all 150 activities without being starved by ws-alpha');
+});
+
+test('CollabStore.recordActivity: tags document workspaceId in activity payload', async () => {
+    const { ctx, activityStore, localStore } = createActivityContext({
+        role: 'editor',
+        uid: 'user-ws-test',
+        displayName: 'Ws Editor',
+        email: 'wseditor@example.com'
+    });
+    localStore.set('docvault_active_workspace', 'ws-team');
+
+    const doc = { id: 'doc-ws', title: 'Scoped Doc', category: 'general', workspaceId: 'ws-team' };
+    await vm.runInContext("ActivityLog.record('created', doc, { note: 'Workspace tag test' })", Object.assign(ctx, { doc }));
+
+    assert.equal(activityStore.size, 1);
+    const entry = Array.from(activityStore.values())[0];
+    assert.equal(entry.workspaceId, 'ws-team', 'Payload must record workspaceId');
+});
+
 test('Maintainability: line budgets and js/render-core.js integrity hold', () => {
     const actLines = read('js/collab-activity.js').split(/\r?\n/).length;
     assert.ok(actLines <= 300, `js/collab-activity.js exceeds 300 lines (got ${actLines})`);

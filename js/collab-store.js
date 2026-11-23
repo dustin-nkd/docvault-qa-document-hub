@@ -331,9 +331,9 @@
         if ((role !== 'editor' && role !== 'owner') || !user?.uid) return;
         if (root.ensureFirebase) await root.ensureFirebase();
         const db = getFirestoreDb(); if (!db) return;
-        const actId = String(entry.id || ('act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8))), actorEmail = member?.email || user.email || '', actorName = member?.displayName || user?.displayName || member?.name || member?.email || '';
+        const actId = String(entry.id || ('act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8))), actorEmail = member?.email || user.email || '', actorName = member?.displayName || user?.displayName || member?.name || member?.email || '', wsId = doc?.workspaceId || entry?.workspaceId || getActiveWs();
         const rawPhoto = (typeof user?.photoURL === 'string' && /^https:\/\//i.test(user.photoURL)) ? user.photoURL : ((typeof member?.photoURL === 'string' && /^https:\/\//i.test(member.photoURL)) ? member.photoURL : '');
-        const payload = { id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated', docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '', actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}), ...(rawPhoto ? { actorPhotoUrl: rawPhoto } : {}) };
+        const payload = { id: actId, ts: typeof entry.ts === 'number' ? entry.ts : Date.now(), action: entry.type || 'updated', type: entry.type || 'updated', docId: doc?.id || entry.docId || '', title: doc?.title || entry.title || '', category: doc?.category || entry.category || '', workspaceId: wsId, actorUid: user.uid, actorName, actorEmail, ...(typeof entry.note === 'string' ? { note: entry.note } : {}), ...(rawPhoto ? { actorPhotoUrl: rawPhoto } : {}) };
         try { await db.collection('activity').doc(actId).set(payload); } catch (err) { console.warn('[CollabStore] recordActivity error:', err); }
     }
 

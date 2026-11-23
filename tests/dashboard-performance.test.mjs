@@ -7,17 +7,25 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-function loadDashboardCache() {
+function loadDashboardCache(opts = {}) {
+    const store = new Map(Object.entries(opts.localStorage || {}));
     const context = vm.createContext({
         console,
         window: {},
+        __testStore: store,
+        localStorage: {
+            getItem: k => store.get(k) || null,
+            setItem: (k, v) => store.set(k, String(v)),
+            removeItem: k => store.delete(k)
+        },
         state: { trendsRange: 90 },
         debounce: callback => callback
     });
     const source = fs.readFileSync(path.join(root, 'js/render-core.js'), 'utf8') +
         '\n;globalThis.__dashboardPerformanceTest = {' +
         'cacheKey: _dashboardCacheKey, ttl: DASHBOARD_CACHE_TTL_MS,' +
-        'setRange: value => { state.trendsRange = value; }' +
+        'setRange: value => { state.trendsRange = value; },' +
+        'setWorkspace: ws => { __testStore.set("docvault_active_workspace", ws); }' +
         '};';
     vm.runInContext(source, context, { filename: 'js/render-core.js' });
     return context.__dashboardPerformanceTest;
@@ -239,4 +247,174 @@ test('Test coverage card with 200 cases and 199 in run (rounded pct 100%) still 
     assert.match(html, /Large Module/);
     assert.match(html, /1 not in a run/);
     assert.doesNotMatch(html, /All cases are in a run\./);
+});
+
+test('Dashboard Test Pass Rate: calculates case-level outcomes and includes untested cases in total', () => {
+    const docs = [
+        {
+            id: 'tc-1',
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [{ action: 'Step 1', expected: 'Pass' }, { action: 'Step 2', expected: 'Pass' }] }
+        },
+        {
+            id: 'tc-2',
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [{ action: 'Step 1', expected: 'Pass' }] }
+        },
+        {
+            id: 'tc-3',
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [{ action: 'Step 1', expected: 'Pass' }] }
+        },
+        {
+            id: 'tc-4',
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [{ action: 'Step 1', expected: 'Pass' }] }
+        },
+        {
+            id: 'run-1',
+            category: 'testrun',
+            status: 'active',
+            runData: {
+                targetIds: ['tc-1', 'tc-2', 'tc-3', 'tc-4'],
+                results: {
+                    // tc-1: all steps pass -> outcome 'pass'
+                    'tc-1': { 0: 'pass', 1: 'pass' },
+                    // tc-2: failed step -> outcome 'fail'
+                    'tc-2': { 0: 'fail' },
+                    // tc-3: blocked step -> outcome 'blocked'
+                    'tc-3': { 0: 'blocked' }
+                    // tc-4: unexecuted -> outcome 'untested'
+                }
+            }
+        }
+    ];
+
+    const render = createDashboardRenderer(docs);
+    const html = render();
+
+    // 1 pass out of 4 total test cases = 25% (not 50%!)
+    assert.match(html, />25%<\/strong>/, 'Pass rate must be 25% (1 pass out of 4 targeted test cases)');
+    assert.match(html, /Across 1 run/, 'Subtitle references runs count');
+    // Legend must display breakdown
+    assert.match(html, />Pass<\/em><b>1<\/b>/i);
+    assert.match(html, />Fail<\/em><b>1<\/b>/i);
+    assert.match(html, />Blocked<\/em><b>1<\/b>/i);
+    assert.match(html, />Untested<\/em><b>1<\/b>/i);
+});
+
+test('Dashboard Test Pass Rate: partial steps executed in a case without failure is untested, not pass', () => {
+    const docs = [
+        {
+            id: 'tc-1',
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [{ action: 'Step 1', expected: 'Pass' }, { action: 'Step 2', expected: 'Pass' }] }
+        },
+        {
+            id: 'tc-2',
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [{ action: 'Step 1', expected: 'Pass' }] }
+        },
+        {
+            id: 'run-1',
+            category: 'testrun',
+            status: 'active',
+            runData: {
+                targetIds: ['tc-1', 'tc-2'],
+                results: {
+                    // tc-1: only step 0 passed, step 1 untested -> case is untested!
+                    'tc-1': { 0: 'pass' }
+                    // tc-2: untested
+                }
+            }
+        }
+    ];
+
+    const render = createDashboardRenderer(docs);
+    const html = render();
+
+    // 0 passed cases out of 2 = 0%
+    assert.match(html, />0%<\/strong>/, 'Pass rate must be 0% when no test case has completed all passing steps');
+    assert.match(html, />Untested<\/em><b>2<\/b>/i);
+});
+
+test('Dashboard Test Pass Rate: 1 passed case out of 10 targeted cases computes exactly 10%, not 100%', () => {
+    const docs = [];
+    const targetIds = [];
+    for (let i = 1; i <= 10; i++) {
+        const id = `tc-metric-${i}`;
+        targetIds.push(id);
+        docs.push({
+            id,
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [{ action: 'Action', expected: 'Pass' }] }
+        });
+    }
+    docs.push({
+        id: 'run-ten',
+        category: 'testrun',
+        status: 'active',
+        runData: {
+            targetIds,
+            results: {
+                // Only tc-metric-1 is executed and passed
+                'tc-metric-1': { 0: 'pass' }
+            }
+        }
+    });
+
+    const render = createDashboardRenderer(docs);
+    const html = render();
+
+    // 1 / 10 = 10%
+    assert.match(html, />10%<\/strong>/, 'Pass rate must be 10%, not 100%');
+    assert.match(html, />Pass<\/em><b>1<\/b>/i);
+    assert.match(html, />Untested<\/em><b>9<\/b>/i);
+});
+
+test('Dashboard Test Pass Rate: test case with no steps defined evaluates to untested, matching test-run viewer', () => {
+    const docs = [
+        {
+            id: 'tc-no-steps',
+            category: 'testcases',
+            status: 'active',
+            tcData: { steps: [] }
+        },
+        {
+            id: 'run-nostep',
+            category: 'testrun',
+            status: 'active',
+            runData: {
+                targetIds: ['tc-no-steps'],
+                results: {
+                    'tc-no-steps': { 0: 'pass' }
+                }
+            }
+        }
+    ];
+
+    const render = createDashboardRenderer(docs);
+    const html = render();
+
+    // 0 passed, 1 untested -> 0%
+    assert.match(html, />0%<\/strong>/);
+    assert.match(html, />Untested<\/em><b>1<\/b>/i);
+});
+
+test('Dashboard cache key invalidates when switching active workspace in localStorage', () => {
+    const api = loadDashboardCache();
+    const docs = [{ id: 'doc-cache-test', createdAt: 100, updatedAt: 200 }];
+    const now = api.ttl * 10 + 100;
+
+    const keyDefault = api.cacheKey(docs, now);
+    api.setWorkspace('ws-new');
+    const keyNewWs = api.cacheKey(docs, now);
+    assert.notEqual(keyDefault, keyNewWs, 'Cache key must invalidate across workspaces');
 });
