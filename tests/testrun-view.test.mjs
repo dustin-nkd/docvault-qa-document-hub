@@ -33,6 +33,7 @@ function createTestRunViewerContext(initialDocs = [], sharedView = false, mockDo
         'js/utils.js',
         'js/state.js',
         'js/render-core.js',
+        'js/render-editor.js',
         'js/render-viewer-categories.js',
         'js/render-viewer.js',
         'js/actions-documents.js'
@@ -598,6 +599,9 @@ test('Test Run viewer supports custom sorting (added, name-asc, name-desc, time)
     // Default 'added' sort preserves targetIds order: tc-b, tc-a, tc-c
     let html = ctx.render(run1);
     assert.ok(html.includes('id="testrun-sort-select"'), 'renders sort selector');
+    assert.ok(html.includes('id="testrun-sort-select-display"'), 'renders custom select display input');
+    assert.ok(html.includes('id="testrun-sort-select-dropdown"'), 'renders custom select dropdown list');
+    assert.ok(html.includes('fa-arrow-down-short-wide'), 'renders sort icon');
     assert.ok(html.includes('id="btn-quick-add-tc"'), 'renders quick add button');
     let bIdx = html.indexOf('id="testrun-tc-tc-b"');
     let aIdx = html.indexOf('id="testrun-tc-tc-a"');
