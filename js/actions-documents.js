@@ -274,6 +274,150 @@ window._updateTestRunTcCount = function() {
     el.textContent = checked > 0 ? `${checked} selected` : '';
 };
 
+window._filterQuickAddTcList = function(query) {
+    const q = (query || '').toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll('.quick-add-tc-row').forEach(row => {
+        const match = (row.getAttribute('data-filter-key') || '').includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    const empty = document.getElementById('quick-add-tc-empty');
+    if (empty) empty.classList.toggle('hidden', !(q && visible === 0));
+};
+
+window._updateQuickAddCount = function() {
+    const checked = document.querySelectorAll('.quick-add-tc-cb:checked').length;
+    const btn = document.getElementById('btn-confirm-quick-add');
+    const label = document.getElementById('quick-add-tc-count');
+    if (label) label.textContent = `${checked} selected`;
+    if (btn) {
+        btn.disabled = checked === 0;
+        btn.textContent = checked > 0 ? `Add (${checked}) to Run` : 'Add to Run';
+    }
+};
+
+window.openQuickAddTestRunCaseModal = function(runDocId) {
+    const runDoc = documents.find(d => d.id === runDocId);
+    if (!runDoc || runDoc.category !== 'testrun') return;
+    const targetSet = new Set(runDoc.runData?.targetIds || []);
+    const available = documents.filter(d => (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted' && !targetSet.has(d.id));
+
+    showModal(`
+        <div class="p-1">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b" style="border-color:var(--brd);">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-play-circle text-base" style="color:var(--c-testrun);"></i>
+                    <h3 class="font-heading font-bold text-base" style="color:var(--tx);">Quick Add Test Cases</h3>
+                </div>
+                <span class="text-xs" style="color:var(--tx-m);">${available.length} available</span>
+            </div>
+            ${available.length === 0 ? `
+                <div class="text-center py-8" style="color:var(--tx-d);">
+                    <i class="fa-solid fa-check-double text-2xl mb-2 opacity-40"></i>
+                    <p class="text-sm">All available test cases are already included in this run.</p>
+                </div>
+                <div class="flex justify-end mt-4"><button class="btn-s" data-onclick="closeModal()">Close</button></div>
+            ` : `
+                <div class="search-w mb-2">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="quick-add-tc-search" class="form-input text-sm" placeholder="Filter by title, module, or tags…" data-oninput="_filterQuickAddTcList(this.value)">
+                </div>
+                <div id="quick-add-tc-list" class="space-y-1 max-h-72 overflow-y-auto p-1.5 mb-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd);">
+                    ${available.map(tc => {
+                        const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
+                        const mod = tc.tcData?.module || tc.apiTcData?.module || '';
+                        const filterKey = `${tc.title} ${mod} ${(tc.tags || []).join(' ')}`.toLowerCase();
+                        return `
+                        <label class="quick-add-tc-row flex items-center gap-3 p-2 rounded-lg cursor-pointer ui-hover-card" data-filter-key="${escHtml(filterKey)}" style="border-bottom:1px solid var(--brd);transition:background .15s;">
+                            <input type="checkbox" class="form-checkbox quick-add-tc-cb" value="${tc.id}" data-onchange="_updateQuickAddCount()">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium truncate" style="color:var(--tx);">${escHtml(tc.title)}</div>
+                                <div class="text-[11px] flex items-center gap-2 mt-0.5" style="color:var(--tx-d);">
+                                    ${mod ? `<span class="truncate">${escHtml(mod)}</span> &middot; ` : ''}
+                                    <span>${steps.length} ${steps.length === 1 ? 'step' : 'steps'}</span>
+                                    <span class="st-badge st-${tc.status}">${tc.status}</span>
+                                </div>
+                            </div>
+                        </label>`;
+                    }).join('')}
+                    <div id="quick-add-tc-empty" class="hidden text-center text-sm py-4" style="color:var(--tx-d);">No test cases match your filter.</div>
+                </div>
+                <div class="flex items-center justify-between pt-2">
+                    <span id="quick-add-tc-count" class="text-xs font-medium" style="color:var(--tx-m);">0 selected</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn-s" data-onclick="closeModal()">Cancel</button>
+                        <button type="button" id="btn-confirm-quick-add" class="btn-p" data-onclick="confirmQuickAddTestCases('${runDocId}')" disabled>Add to Run</button>
+                    </div>
+                </div>
+            `}
+        </div>
+    `);
+    setTimeout(() => document.getElementById('quick-add-tc-search')?.focus(), 50);
+};
+
+window.confirmQuickAddTestCases = async function(runDocId) {
+    const selected = Array.from(document.querySelectorAll('.quick-add-tc-cb:checked')).map(cb => cb.value);
+    if (!selected.length) return;
+    const runDoc = documents.find(d => d.id === runDocId);
+    if (!runDoc || runDoc.category !== 'testrun') return;
+    if (!runDoc.runData) runDoc.runData = { targetIds: [] };
+    if (!Array.isArray(runDoc.runData.targetIds)) runDoc.runData.targetIds = [];
+    if (!runDoc.runData.snapshot) runDoc.runData.snapshot = {};
+    selected.forEach(tcId => {
+        if (!runDoc.runData.targetIds.includes(tcId)) {
+            runDoc.runData.targetIds.push(tcId);
+            const tc = documents.find(d => d.id === tcId);
+            if (tc) {
+                const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
+                runDoc.runData.snapshot[tcId] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+            }
+        }
+    });
+    runDoc.updatedAt = Date.now();
+    if (state.editingDoc?.id === runDocId) state.editingDoc = { ...runDoc };
+    closeModal();
+    await persist();
+    renderContent();
+    toast(`Added ${selected.length} test case${selected.length > 1 ? 's' : ''} to run.`, 'success');
+};
+
+window.syncTestRunCaseSnapshot = async function(runDocId, tcId) {
+    if (state.sharedView) return;
+    const run = documents.find(d => d.id === runDocId);
+    const tc = documents.find(d => d.id === tcId);
+    if (!run?.runData || !tc) return;
+    if (!run.runData.snapshot) run.runData.snapshot = {};
+    const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
+    run.runData.snapshot[tcId] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+    run.updatedAt = Date.now();
+    if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
+    await persist();
+    renderContent();
+    toast(`Synced "${tc.title}" with latest steps.`, 'success');
+};
+
+window.syncAllTestRunCaseSnapshots = async function(runDocId) {
+    if (state.sharedView) return;
+    const run = documents.find(d => d.id === runDocId);
+    if (!run?.runData) return;
+    if (!run.runData.snapshot) run.runData.snapshot = {};
+    let count = 0;
+    (run.runData.targetIds || []).forEach(tcId => {
+        const tc = documents.find(d => d.id === tcId);
+        if (tc) {
+            const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
+            run.runData.snapshot[tcId] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+            count++;
+        }
+    });
+    run.updatedAt = Date.now();
+    if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
+    await persist();
+    renderContent();
+    toast(`Synced ${count} test case${count !== 1 ? 's' : ''} with latest steps.`, 'success');
+};
+
 // Snapshot test case step definitions so recorded results remain aligned.
 function _buildRunSnapshot(targetIds) {
     const snapshot = {};
@@ -656,6 +800,21 @@ ${respMd ? respMd : ''}`;
         if (cat !== 'testplan') delete documents[idx].tcPlanData; if (cat !== 'testcases') delete documents[idx].tcData;
         if (cat !== 'api') delete documents[idx].apiData; if (cat !== 'testrun') delete documents[idx].runData; if (cat !== 'release') delete documents[idx].releaseData;
         state.editingDoc = { ...documents[idx] };
+        if (cat === 'testcases' || cat === 'apitest') {
+            const savedDocId = documents[idx].id;
+            const liveSteps = (cat === 'apitest' ? apiTcData?.steps : tcData?.steps) || [];
+            documents.forEach(d => {
+                if (d.category === 'testrun' && d.status !== 'deleted' && d.runData?.targetIds?.includes(savedDocId)) {
+                    const res = d.runData.results?.[savedDocId] || {};
+                    const hasExecuted = Object.keys(res).some(k => k !== 'note' && ['pass', 'fail', 'blocked'].includes(res[k]));
+                    if (!hasExecuted) {
+                        if (!d.runData.snapshot) d.runData.snapshot = {};
+                        d.runData.snapshot[savedDocId] = liveSteps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+                        d.updatedAt = Date.now();
+                    }
+                }
+            });
+        }
     } else if (state.editingDoc && state.editingDoc.id) {
         wasRevived = true;
         const revivedAt = Date.now();

@@ -10,11 +10,23 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function createTestRunViewerContext(initialDocs = [], sharedView = false, mockDocument = null) {
     const context = vm.createContext({
         console,
+        setTimeout,
+        clearTimeout,
+        requestAnimationFrame: (cb) => setTimeout(cb, 0),
         window: {},
-        document: mockDocument || { getElementById: () => null },
-        state: { sharedView },
+        history: { pushState: () => {}, replaceState: () => {} },
+        document: mockDocument || { getElementById: () => null, querySelectorAll: () => [] },
+        state: { sharedView, view: 'viewer' },
         URLSearchParams,
-        location: { search: '' }
+        location: { search: '' },
+        showModal: (html) => { context._modalHtml = html; },
+        closeModal: () => { context._modalClosed = true; },
+        persist: async () => { context._persisted = true; },
+        toast: (msg, type) => { context._lastToast = { msg, type }; },
+        _renderTrends: () => '',
+        _appUrl: (id) => `?doc=${id}`,
+        ActivityLog: { record: () => {} },
+        render: () => {}
     });
     const scripts = [
         'js/constants.js',
@@ -22,7 +34,8 @@ function createTestRunViewerContext(initialDocs = [], sharedView = false, mockDo
         'js/state.js',
         'js/render-core.js',
         'js/render-viewer-categories.js',
-        'js/render-viewer.js'
+        'js/render-viewer.js',
+        'js/actions-documents.js'
     ];
     for (const file of scripts) {
         const code = fs.readFileSync(path.join(root, file), 'utf8');
@@ -32,6 +45,8 @@ function createTestRunViewerContext(initialDocs = [], sharedView = false, mockDo
     context.DocStorage = { save: async () => {} };
     context.enhanceInteractionSemantics = () => {};
     context._restoreFaviconState = () => {};
+    context.renderContent = () => { context._rendered = true; };
+    context.render = () => { context._rendered = true; };
     vm.runInContext('documents = _currentDocs;', context);
     vm.runInContext(`state.sharedView = ${Boolean(sharedView)};`, context);
 
@@ -552,4 +567,184 @@ test('Test Run view: preserves collapsed accordion state across step status upda
     await vm.runInContext("window.updateTestRunStep('run-multi', 'tc-2', 0, 'pass');", ctx.context || ctx);
     const updatedRun = vm.runInContext("documents.find(d => d.id === 'run-multi')", ctx.context || ctx);
     assert.equal(updatedRun.runData.results['tc-2'][0], 'pass', 'updateTestRunStep sets step status');
+});
+
+test('Test Run viewer supports custom sorting (added, name-asc, name-desc, time)', () => {
+    const tcB = { id: 'tc-b', title: 'Beta Flow', category: 'testcases', status: 'published', createdAt: 2000, tcData: { steps: [{ action: 'Do B', expected: 'B OK' }] } };
+    const tcA = { id: 'tc-a', title: 'Alpha Flow', category: 'testcases', status: 'published', createdAt: 3000, tcData: { steps: [{ action: 'Do A', expected: 'A OK' }] } };
+    const tcC = { id: 'tc-c', title: 'Gamma Flow', category: 'testcases', status: 'published', createdAt: 1000, tcData: { steps: [{ action: 'Do C', expected: 'C OK' }] } };
+    const run = {
+        id: 'run-sort',
+        title: 'Run Sorting Test',
+        category: 'testrun',
+        status: 'published',
+        runData: {
+            targetIds: ['tc-b', 'tc-a', 'tc-c'],
+            results: {}
+        }
+    };
+    const ctx = createTestRunViewerContext([tcB, tcA, tcC, run]);
+
+    // Default 'added' sort preserves targetIds order: tc-b, tc-a, tc-c
+    let html = ctx.render(run);
+    assert.ok(html.includes('id="testrun-sort-select"'), 'renders sort selector');
+    assert.ok(html.includes('id="btn-quick-add-tc"'), 'renders quick add button');
+    let bIdx = html.indexOf('id="testrun-tc-tc-b"');
+    let aIdx = html.indexOf('id="testrun-tc-tc-a"');
+    let cIdx = html.indexOf('id="testrun-tc-tc-c"');
+    assert.ok(bIdx < aIdx && aIdx < cIdx, 'default order matches targetIds: b -> a -> c');
+
+    // Name A-Z: tc-a, tc-b, tc-c
+    vm.runInContext("window.setTestRunSort('name-asc')", ctx.context);
+    html = ctx.render(run);
+    bIdx = html.indexOf('id="testrun-tc-tc-b"');
+    aIdx = html.indexOf('id="testrun-tc-tc-a"');
+    cIdx = html.indexOf('id="testrun-tc-tc-c"');
+    assert.ok(aIdx < bIdx && bIdx < cIdx, 'name-asc orders Alpha -> Beta -> Gamma');
+
+    // Name Z-A: tc-c, tc-b, tc-a
+    vm.runInContext("window.setTestRunSort('name-desc')", ctx.context);
+    html = ctx.render(run);
+    bIdx = html.indexOf('id="testrun-tc-tc-b"');
+    aIdx = html.indexOf('id="testrun-tc-tc-a"');
+    cIdx = html.indexOf('id="testrun-tc-tc-c"');
+    assert.ok(cIdx < bIdx && bIdx < aIdx, 'name-desc orders Gamma -> Beta -> Alpha');
+
+    // Date Created: tc-c (1000), tc-b (2000), tc-a (3000)
+    vm.runInContext("window.setTestRunSort('time')", ctx.context);
+    html = ctx.render(run);
+    bIdx = html.indexOf('id="testrun-tc-tc-b"');
+    aIdx = html.indexOf('id="testrun-tc-tc-a"');
+    cIdx = html.indexOf('id="testrun-tc-tc-c"');
+    assert.ok(cIdx < bIdx && bIdx < aIdx, 'time orders by createdAt ascending');
+});
+
+test('Test Run viewer renders quick-add test cases modal and confirms addition', async () => {
+    const tc1 = { id: 'tc-1', title: 'Login Flow', category: 'testcases', status: 'published', tcData: { steps: [{ action: 'Login', expected: 'OK' }] } };
+    const tc2 = { id: 'tc-2', title: 'Payment Flow', category: 'testcases', status: 'published', tcData: { steps: [{ action: 'Pay', expected: 'Receipt' }] } };
+    const run = {
+        id: 'run-qa',
+        title: 'Smoke Run',
+        category: 'testrun',
+        status: 'published',
+        runData: {
+            targetIds: ['tc-1'],
+            results: {}
+        }
+    };
+    const ctx = createTestRunViewerContext([tc1, tc2, run]);
+
+    // Open quick add modal
+    vm.runInContext("window.openQuickAddTestRunCaseModal('run-qa')", ctx.context);
+    assert.ok(ctx.context._modalHtml, 'modal rendered');
+    assert.ok(ctx.context._modalHtml.includes('Payment Flow'), 'includes unadded test case tc-2');
+    assert.ok(!ctx.context._modalHtml.includes('Login Flow'), 'excludes already-included test case tc-1');
+
+    // Confirm quick add with mock DOM checkboxes
+    const mockElements = {
+        querySelectorAll: (sel) => {
+            if (sel === '.quick-add-tc-cb:checked') {
+                return [{ value: 'tc-2' }];
+            }
+            return [];
+        }
+    };
+    ctx.context.document.querySelectorAll = mockElements.querySelectorAll;
+    await vm.runInContext("window.confirmQuickAddTestCases('run-qa')", ctx.context);
+
+    assert.ok(run.runData.targetIds.includes('tc-2'), 'tc-2 added to targetIds');
+    assert.ok(run.runData.snapshot['tc-2'], 'snapshot created for tc-2');
+    assert.equal(run.runData.snapshot['tc-2'][0].action, 'Pay');
+    assert.equal(ctx.context._modalClosed, true, 'modal closed');
+});
+
+test('Test Run step synchronization: drifted snapshot triggers sync buttons, and saveDoc auto-syncs unexecuted runs', async () => {
+    const tcLive = {
+        id: 'tc-drift',
+        title: 'Checkout Flow',
+        category: 'testcases',
+        status: 'published',
+        tcData: {
+            steps: [
+                { action: 'Updated Step 1 Action', expected: 'Updated Step 1 Expected' },
+                { action: 'New Step 2 Action', expected: 'New Step 2 Expected' }
+            ]
+        }
+    };
+    const runExecuted = {
+        id: 'run-executed',
+        title: 'Executed Run',
+        category: 'testrun',
+        status: 'published',
+        runData: {
+            targetIds: ['tc-drift'],
+            snapshot: {
+                'tc-drift': [{ action: 'Old Step 1 Action', expected: 'Old Step 1 Expected' }]
+            },
+            results: {
+                'tc-drift': { 0: 'pass' }
+            }
+        }
+    };
+    const runUnexecuted = {
+        id: 'run-unexecuted',
+        title: 'Unexecuted Run',
+        category: 'testrun',
+        status: 'published',
+        runData: {
+            targetIds: ['tc-drift'],
+            snapshot: {
+                'tc-drift': [{ action: 'Old Step 1 Action', expected: 'Old Step 1 Expected' }]
+            },
+            results: {}
+        }
+    };
+
+    const ctx = createTestRunViewerContext([tcLive, runExecuted, runUnexecuted]);
+
+    // 1. In executed run, drift badge and sync buttons appear
+    let html = ctx.render(runExecuted);
+    assert.ok(html.includes('TC changed'), 'displays TC changed badge');
+    assert.ok(html.includes('Sync latest'), 'displays Sync latest button on case');
+    assert.ok(html.includes('Sync All (1)'), 'displays Sync All toolbar button');
+
+    // 2. Manual sync on executed run updates snapshot to latest
+    await vm.runInContext("window.syncTestRunCaseSnapshot('run-executed', 'tc-drift')", ctx.context);
+    assert.equal(runExecuted.runData.snapshot['tc-drift'].length, 2);
+    assert.equal(runExecuted.runData.snapshot['tc-drift'][0].action, 'Updated Step 1 Action');
+
+    // 3. Auto-sync via saveDoc for unexecuted runs:
+    // Reset unexecuted run snapshot to old
+    runUnexecuted.runData.snapshot['tc-drift'] = [{ action: 'Old Action', expected: 'Old Expected' }];
+    runExecuted.runData.snapshot['tc-drift'] = [{ action: 'Freeze Action', expected: 'Freeze Expected' }];
+
+    // Set up mock DOM for editing tcLive in saveDoc
+    const mockElements = {
+        'ed-title': { value: 'Checkout Flow', trim: () => 'Checkout Flow' },
+        'ed-subfolder': { value: '', trim: () => '' },
+        'ed-cat': { value: 'testcases' },
+        'ed-status': { value: 'published' },
+        'ed-tc-module': { value: 'Checkout' },
+        'ed-tc-precond': { value: '' },
+        'ed-tc-data': { value: '' }
+    };
+    ctx.context.document.getElementById = (id) => mockElements[id] || null;
+    ctx.context.document.querySelectorAll = (sel) => {
+        if (sel === '.tc-step-row') {
+            return [
+                {
+                    querySelector: (sub) => sub === '.tc-step-action' ? { value: 'Auto-synced Step 1', trim: () => 'Auto-synced Step 1' } : { value: 'Auto-synced Expected 1', trim: () => 'Auto-synced Expected 1' }
+                }
+            ];
+        }
+        return [];
+    };
+    ctx.context.getEditorMarkdown = () => '';
+    vm.runInContext("state.editingDoc = documents.find(d => d.id === 'tc-drift');", ctx.context);
+    await vm.runInContext("saveDoc()", ctx.context);
+
+    // Unexecuted run was automatically updated
+    assert.equal(runUnexecuted.runData.snapshot['tc-drift'][0].action, 'Auto-synced Step 1', 'unexecuted run snapshot auto-updated');
+    // Executed run preserved its snapshot (freeze)
+    assert.equal(runExecuted.runData.snapshot['tc-drift'][0].action, 'Freeze Action', 'executed run snapshot preserved');
 });

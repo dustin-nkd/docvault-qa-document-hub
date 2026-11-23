@@ -40,9 +40,10 @@ test('dashboard startup excludes the editor runtime and stays within its direct 
     // 1_075_000 for disabling credential card navigation and static card styles.
     // 1_115_000 for Team Edition comments UI rendering, viewer integration, mention dropdowns, and Bauhaus styling,
     // 1_118_000 for workspace persist race guard, owner-only trash delete, and 128-bit cryptographic share IDs, and
-    // 1_130_000 for multi-account history sync and GitHub-style diff compare modal, and
-    // 1_135_000 for Test Run execution accordion state preservation across step status updates.
-    assert.ok(bytes <= 1_135_000, `Dashboard direct startup assets exceed 1135 KB: ${bytes} bytes`);
+    // 1_130_000 for multi-account history sync and GitHub-style diff compare modal,
+    // 1_135_000 for Test Run execution accordion state preservation across step status updates, and
+    // 1_148_000 for Test Run quick-add test cases modal, custom sorting controls, and step synchronization.
+    assert.ok(bytes <= 1_148_000, `Dashboard direct startup assets exceed 1148 KB: ${bytes} bytes`);
 });
 
 test('editor runtime remains offline-capable and is loaded through one shared lazy promise', () => {

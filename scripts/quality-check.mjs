@@ -59,9 +59,9 @@ const maintainabilityBudgets = {
     'js/actions-sharing.js': 420,
     'js/actions-imports.js': 650,
     'js/actions-settings.js': 460,
-    // Raised from 750 so saving an API test case can rebuild its runnable step
-    // in the same save path as the other category payloads.
-    'js/actions-documents.js': 753,
+    // Raised from 753 for Test Run quick-add test cases modal, live snapshot sync,
+    // and test case edit propagation across active runs.
+    'js/actions-documents.js': 920,
     // The largest renderer in the app: dashboard, document list, both Kanban
     // boards, traceability and the activity timeline. Splitting it would break
     // the rule that a caller and its markup ship in one file (see the
@@ -82,10 +82,9 @@ const maintainabilityBudgets = {
     // documents: comment card rendering, reply trees, mention dropdown, and
     // event dispatchers.
     'js/render-viewer.js': 750,
-    // Raised from 850 for the API test case viewer. It has to ship beside the
-    // other category viewers so a cached shell cannot pair an old viewer with
-    // the new case shape.
-    'js/render-viewer-categories.js': 868,
+    // Raised from 868 for Test Run sorting controls (by name/time), quick-add
+    // test cases trigger, and drifted step sync actions.
+    'js/render-viewer-categories.js': 890,
     'js/actions-focus.js': 240,
     // Raised from 380 for registry sync. The data half lives in storage.js next
     // to the GitHub plumbing it needs; what stays here is the UI reaction to a
