@@ -393,20 +393,32 @@ function _getDashboardMetrics(docs) {
     const bugLifecycle = { new: 0, open: 0, 'in-progress': 0, resolved: 0, retest: 0, verified: 0, closed: 0 };
     bugs.forEach(b => { const s = _normBugStatus(b.bugStatus); if (bugLifecycle[s] !== undefined) bugLifecycle[s]++; });
 
-    // Test run pass/fail/blocked aggregated across all runs
+    // Test run pass/fail/blocked/untested aggregated by Test Cases across active runs
     const runs = docs.filter(d => d.category === 'testrun');
-    let rPass = 0, rFail = 0, rBlocked = 0, rTotal = 0;
+    const docMap = new Map(docs.map(d => [d.id, d]));
+    let rPass = 0, rFail = 0, rBlocked = 0, rUntested = 0, rTotal = 0;
     runs.forEach(run => {
-        if (!run.runData?.results) return;
-        Object.values(run.runData.results).forEach(tcRes => {
-            if (typeof tcRes !== 'object' || Array.isArray(tcRes)) return;
-            Object.entries(tcRes).forEach(([k, v]) => {
-                if (k === 'note') return;
-                rTotal++;
-                if (v === 'pass') rPass++;
-                else if (v === 'fail') rFail++;
-                else if (v === 'blocked') rBlocked++;
-            });
+        const targetIds = Array.isArray(run.runData?.targetIds) && run.runData.targetIds.length > 0
+            ? run.runData.targetIds
+            : Object.keys(run.runData?.results || {});
+        targetIds.forEach(tcId => {
+            const tc = docMap.get(tcId);
+            const snapshotSteps = run.runData?.snapshot?.[tcId];
+            const liveSteps = tc?.category === 'apitest' ? tc?.apiTcData?.steps : tc?.tcData?.steps;
+            const steps = Array.isArray(snapshotSteps) ? snapshotSteps : (Array.isArray(liveSteps) ? liveSteps : []);
+            const row = run.runData?.results?.[tcId];
+            let outcome = 'untested';
+            if (steps.length > 0) {
+                const values = steps.map((_, i) => (row && row[i]) || 'untested');
+                if (values.includes('fail')) outcome = 'fail';
+                else if (values.includes('blocked')) outcome = 'blocked';
+                else if (values.every(v => v === 'pass')) outcome = 'pass';
+            }
+            rTotal++;
+            if (outcome === 'pass') rPass++;
+            else if (outcome === 'fail') rFail++;
+            else if (outcome === 'blocked') rBlocked++;
+            else rUntested++;
         });
     });
 
@@ -453,7 +465,7 @@ function _getDashboardMetrics(docs) {
         .sort((a, b) => (b.uncovered - a.uncovered) || (a.pct - b.pct) || a.name.localeCompare(b.name))
         .slice(0, 3);
 
-    return { bugs, openBugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rTotal, tasks, board, stale, tcs, coverage, criticalAging };
+    return { bugs, openBugs, bugSev, bugLifecycle, runs, rPass, rFail, rBlocked, rUntested, rTotal, tasks, board, stale, tcs, coverage, criticalAging };
 }
 
 function _renderInsightCards(m) {
@@ -477,7 +489,8 @@ function _renderInsightCards(m) {
     const resultParts = [
         { label: t('pass'), count: m.rPass, color: '#34d399' },
         { label: t('fail'), count: m.rFail, color: '#f87171' },
-        { label: t('blocked'), count: m.rBlocked, color: '#fb923c' }
+        { label: t('blocked'), count: m.rBlocked, color: '#fb923c' },
+        { label: t('untested'), count: m.rUntested || 0, color: 'var(--tx-d)' }
     ];
     const defectParts = [
         { label: t('dbActiveBugs'), count: m.openBugs.length, color: '#f87171' },
@@ -651,7 +664,9 @@ function _dashboardCacheKey(docs, now = Date.now()) {
         );
     });
     const range = state.trendsRange != null ? state.trendsRange : 90;
-    return [docs.length, latestRevision, range, Math.floor(now / DASHBOARD_CACHE_TTL_MS)].join(':');
+    let ws = 'default';
+    try { ws = (typeof localStorage !== 'undefined' && localStorage.getItem('docvault_active_workspace')) || 'default'; } catch (_) {}
+    return [ws, docs.length, latestRevision, range, Math.floor(now / DASHBOARD_CACHE_TTL_MS)].join(':');
 }
 
 function renderDashboard() {

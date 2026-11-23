@@ -527,6 +527,7 @@ const ActivityLog = {
         if (!doc) return;
         let entries;
         try { entries = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch { entries = []; }
+        const currentWs = doc.workspaceId || (typeof localStorage !== 'undefined' && localStorage.getItem('docvault_active_workspace')) || 'default';
         const entry = {
             id: this._genId(),
             ts: Date.now(),
@@ -534,6 +535,7 @@ const ActivityLog = {
             docId: doc.id,
             title: doc.title,
             category: doc.category,
+            workspaceId: currentWs,
             ...meta
         };
         entries.unshift(entry);
