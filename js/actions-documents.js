@@ -298,6 +298,7 @@ window._updateQuickAddCount = function() {
 };
 
 window.openQuickAddTestRunCaseModal = function(runDocId) {
+    if (state.sharedView) return;
     const runDoc = documents.find(d => d.id === runDocId);
     if (!runDoc || runDoc.category !== 'testrun') return;
     const targetSet = new Set(runDoc.runData?.targetIds || []);
@@ -330,13 +331,13 @@ window.openQuickAddTestRunCaseModal = function(runDocId) {
                         const filterKey = `${tc.title} ${mod} ${(tc.tags || []).join(' ')}`.toLowerCase();
                         return `
                         <label class="quick-add-tc-row flex items-center gap-3 p-2 rounded-lg cursor-pointer ui-hover-card" data-filter-key="${escHtml(filterKey)}" style="border-bottom:1px solid var(--brd);transition:background .15s;">
-                            <input type="checkbox" class="form-checkbox quick-add-tc-cb" value="${tc.id}" data-onchange="_updateQuickAddCount()">
+                            <input type="checkbox" class="form-checkbox quick-add-tc-cb" value="${escHtml(tc.id)}" data-onchange="_updateQuickAddCount()">
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium truncate" style="color:var(--tx);">${escHtml(tc.title)}</div>
                                 <div class="text-[11px] flex items-center gap-2 mt-0.5" style="color:var(--tx-d);">
                                     ${mod ? `<span class="truncate">${escHtml(mod)}</span> &middot; ` : ''}
                                     <span>${steps.length} ${steps.length === 1 ? 'step' : 'steps'}</span>
-                                    <span class="st-badge st-${tc.status}">${tc.status}</span>
+                                    <span class="st-badge st-${escHtml(tc.status)}">${escHtml(tc.status)}</span>
                                 </div>
                             </div>
                         </label>`;
@@ -347,7 +348,7 @@ window.openQuickAddTestRunCaseModal = function(runDocId) {
                     <span id="quick-add-tc-count" class="text-xs font-medium" style="color:var(--tx-m);">0 selected</span>
                     <div class="flex items-center gap-2">
                         <button type="button" class="btn-s" data-onclick="closeModal()">Cancel</button>
-                        <button type="button" id="btn-confirm-quick-add" class="btn-p" data-onclick="confirmQuickAddTestCases('${runDocId}')" disabled>Add to Run</button>
+                        <button type="button" id="btn-confirm-quick-add" class="btn-p" data-onclick="${actionAttr('confirmQuickAddTestCases', runDocId)}" disabled>Add to Run</button>
                     </div>
                 </div>
             `}
@@ -357,6 +358,7 @@ window.openQuickAddTestRunCaseModal = function(runDocId) {
 };
 
 window.confirmQuickAddTestCases = async function(runDocId) {
+    if (state.sharedView) return;
     const selected = Array.from(document.querySelectorAll('.quick-add-tc-cb:checked')).map(cb => cb.value);
     if (!selected.length) return;
     const runDoc = documents.find(d => d.id === runDocId);
@@ -364,37 +366,72 @@ window.confirmQuickAddTestCases = async function(runDocId) {
     if (!runDoc.runData) runDoc.runData = { targetIds: [] };
     if (!Array.isArray(runDoc.runData.targetIds)) runDoc.runData.targetIds = [];
     if (!runDoc.runData.snapshot) runDoc.runData.snapshot = {};
+    let addedCount = 0;
     selected.forEach(tcId => {
         if (!runDoc.runData.targetIds.includes(tcId)) {
-            runDoc.runData.targetIds.push(tcId);
-            const tc = documents.find(d => d.id === tcId);
+            const tc = documents.find(d => d.id === tcId && (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted');
             if (tc) {
+                runDoc.runData.targetIds.push(tcId);
                 const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
                 runDoc.runData.snapshot[tcId] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+                addedCount++;
             }
         }
     });
+    if (!addedCount) return;
     runDoc.updatedAt = Date.now();
     if (state.editingDoc?.id === runDocId) state.editingDoc = { ...runDoc };
     closeModal();
     await persist();
     renderContent();
-    toast(`Added ${selected.length} test case${selected.length > 1 ? 's' : ''} to run.`, 'success');
+    toast(`Added ${addedCount} test case${addedCount > 1 ? 's' : ''} to run.`, 'success');
 };
 
 window.syncTestRunCaseSnapshot = async function(runDocId, tcId) {
     if (state.sharedView) return;
     const run = documents.find(d => d.id === runDocId);
-    const tc = documents.find(d => d.id === tcId);
+    const tc = documents.find(d => d.id === tcId && (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted');
     if (!run?.runData || !tc) return;
-    if (!run.runData.snapshot) run.runData.snapshot = {};
-    const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
-    run.runData.snapshot[tcId] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
-    run.updatedAt = Date.now();
-    if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
-    await persist();
-    renderContent();
-    toast(`Synced "${tc.title}" with latest steps.`, 'success');
+
+    const res = run.runData.results?.[tcId] || {};
+    const hasRecorded = Object.keys(res).length > 0;
+
+    const doSync = async () => {
+        if (!run.runData.snapshot) run.runData.snapshot = {};
+        const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
+        run.runData.snapshot[tcId] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+        if (hasRecorded && run.runData.results) {
+            delete run.runData.results[tcId];
+        }
+        run.updatedAt = Date.now();
+        if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
+        closeModal();
+        await persist();
+        renderContent();
+        toast(`Synced "${tc.title}" with latest steps${hasRecorded ? ' (recorded results reset)' : ''}.`, 'success');
+    };
+
+    if (hasRecorded) {
+        showModal(`
+            <div class="p-2 space-y-4">
+                <div class="flex items-center gap-2 text-amber-500 font-heading font-bold text-base">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Reset Results and Sync Steps?</span>
+                </div>
+                <p class="text-sm leading-relaxed" style="color:var(--tx-m);">
+                    This test case has recorded results in this run. Updating the step definitions to the latest version will reset previous results for <strong>${escHtml(tc.title)}</strong> so step evidence remains strictly aligned with new step text.
+                </p>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-s" data-onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn-p bg-amber-600 hover:bg-amber-700 text-white" id="btn-confirm-sync-single">Reset &amp; Sync</button>
+                </div>
+            </div>
+        `);
+        const confirmBtn = document.getElementById('btn-confirm-sync-single');
+        if (confirmBtn) confirmBtn.onclick = () => doSync();
+    } else {
+        await doSync();
+    }
 };
 
 window.syncAllTestRunCaseSnapshots = async function(runDocId) {
@@ -402,20 +439,59 @@ window.syncAllTestRunCaseSnapshots = async function(runDocId) {
     const run = documents.find(d => d.id === runDocId);
     if (!run?.runData) return;
     if (!run.runData.snapshot) run.runData.snapshot = {};
-    let count = 0;
-    (run.runData.targetIds || []).forEach(tcId => {
-        const tc = documents.find(d => d.id === tcId);
-        if (tc) {
+
+    const targetIds = run.runData.targetIds || [];
+    const targets = documents.filter(d => targetIds.includes(d.id) && (d.category === 'testcases' || d.category === 'apitest') && d.status !== 'deleted');
+    const isDrifted = tc => !!run.runData?.snapshot?.[tc.id]
+        && JSON.stringify(run.runData.snapshot[tc.id]) !== JSON.stringify(_liveCaseSteps(tc));
+    const driftedTargets = targets.filter(isDrifted);
+
+    if (driftedTargets.length === 0) {
+        toast('All test cases in this run are already up to date.', 'info');
+        return;
+    }
+
+    const anyRecorded = driftedTargets.some(tc => Object.keys(run.runData.results?.[tc.id] || {}).length > 0);
+
+    const doSyncAll = async () => {
+        let count = 0;
+        driftedTargets.forEach(tc => {
             const steps = tc?.category === 'apitest' ? (tc.apiTcData?.steps || []) : (tc?.tcData?.steps || []);
-            run.runData.snapshot[tcId] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+            run.runData.snapshot[tc.id] = steps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
+            if (run.runData.results?.[tc.id]) {
+                delete run.runData.results[tc.id];
+            }
             count++;
-        }
-    });
-    run.updatedAt = Date.now();
-    if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
-    await persist();
-    renderContent();
-    toast(`Synced ${count} test case${count !== 1 ? 's' : ''} with latest steps.`, 'success');
+        });
+        run.updatedAt = Date.now();
+        if (state.editingDoc?.id === runDocId) state.editingDoc = { ...run };
+        closeModal();
+        await persist();
+        renderContent();
+        toast(`Synced ${count} changed test case${count !== 1 ? 's' : ''} with latest steps.`, 'success');
+    };
+
+    if (anyRecorded) {
+        showModal(`
+            <div class="p-2 space-y-4">
+                <div class="flex items-center gap-2 text-amber-500 font-heading font-bold text-base">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Reset Results and Sync All Changed Cases?</span>
+                </div>
+                <p class="text-sm leading-relaxed" style="color:var(--tx-m);">
+                    ${driftedTargets.length} test case${driftedTargets.length !== 1 ? 's have' : ' has'} modified step definitions outside this run. Syncing will reset recorded results for these changed cases to prevent result misalignment.
+                </p>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-s" data-onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn-p bg-amber-600 hover:bg-amber-700 text-white" id="btn-confirm-sync-all">Reset &amp; Sync All (${driftedTargets.length})</button>
+                </div>
+            </div>
+        `);
+        const confirmBtn = document.getElementById('btn-confirm-sync-all');
+        if (confirmBtn) confirmBtn.onclick = () => doSyncAll();
+    } else {
+        await doSyncAll();
+    }
 };
 
 // Snapshot test case step definitions so recorded results remain aligned.
@@ -803,14 +879,18 @@ ${respMd ? respMd : ''}`;
         if (cat === 'testcases' || cat === 'apitest') {
             const savedDocId = documents[idx].id;
             const liveSteps = (cat === 'apitest' ? apiTcData?.steps : tcData?.steps) || [];
+            const normalizedNewSnap = liveSteps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
             documents.forEach(d => {
                 if (d.category === 'testrun' && d.status !== 'deleted' && d.runData?.targetIds?.includes(savedDocId)) {
                     const res = d.runData.results?.[savedDocId] || {};
-                    const hasExecuted = Object.keys(res).some(k => k !== 'note' && ['pass', 'fail', 'blocked'].includes(res[k]));
+                    const hasExecuted = Object.keys(res).length > 0;
                     if (!hasExecuted) {
-                        if (!d.runData.snapshot) d.runData.snapshot = {};
-                        d.runData.snapshot[savedDocId] = liveSteps.map(s => ({ action: s.action || '', expected: s.expected || '' }));
-                        d.updatedAt = Date.now();
+                        const currentSnap = d.runData.snapshot?.[savedDocId] || [];
+                        if (JSON.stringify(currentSnap) !== JSON.stringify(normalizedNewSnap)) {
+                            if (!d.runData.snapshot) d.runData.snapshot = {};
+                            d.runData.snapshot[savedDocId] = normalizedNewSnap;
+                            d.updatedAt = Date.now();
+                        }
                     }
                 }
             });

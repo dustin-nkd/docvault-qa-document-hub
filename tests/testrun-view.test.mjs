@@ -569,13 +569,13 @@ test('Test Run view: preserves collapsed accordion state across step status upda
     assert.equal(updatedRun.runData.results['tc-2'][0], 'pass', 'updateTestRunStep sets step status');
 });
 
-test('Test Run viewer supports custom sorting (added, name-asc, name-desc, time)', () => {
+test('Test Run viewer supports custom sorting (added, name-asc, name-desc, time) per-run', () => {
     const tcB = { id: 'tc-b', title: 'Beta Flow', category: 'testcases', status: 'published', createdAt: 2000, tcData: { steps: [{ action: 'Do B', expected: 'B OK' }] } };
     const tcA = { id: 'tc-a', title: 'Alpha Flow', category: 'testcases', status: 'published', createdAt: 3000, tcData: { steps: [{ action: 'Do A', expected: 'A OK' }] } };
     const tcC = { id: 'tc-c', title: 'Gamma Flow', category: 'testcases', status: 'published', createdAt: 1000, tcData: { steps: [{ action: 'Do C', expected: 'C OK' }] } };
-    const run = {
-        id: 'run-sort',
-        title: 'Run Sorting Test',
+    const run1 = {
+        id: 'run-sort-1',
+        title: 'Run Sorting Test 1',
         category: 'testrun',
         status: 'published',
         runData: {
@@ -583,10 +583,20 @@ test('Test Run viewer supports custom sorting (added, name-asc, name-desc, time)
             results: {}
         }
     };
-    const ctx = createTestRunViewerContext([tcB, tcA, tcC, run]);
+    const run2 = {
+        id: 'run-sort-2',
+        title: 'Run Sorting Test 2',
+        category: 'testrun',
+        status: 'published',
+        runData: {
+            targetIds: ['tc-b', 'tc-a', 'tc-c'],
+            results: {}
+        }
+    };
+    const ctx = createTestRunViewerContext([tcB, tcA, tcC, run1, run2]);
 
     // Default 'added' sort preserves targetIds order: tc-b, tc-a, tc-c
-    let html = ctx.render(run);
+    let html = ctx.render(run1);
     assert.ok(html.includes('id="testrun-sort-select"'), 'renders sort selector');
     assert.ok(html.includes('id="btn-quick-add-tc"'), 'renders quick add button');
     let bIdx = html.indexOf('id="testrun-tc-tc-b"');
@@ -594,34 +604,50 @@ test('Test Run viewer supports custom sorting (added, name-asc, name-desc, time)
     let cIdx = html.indexOf('id="testrun-tc-tc-c"');
     assert.ok(bIdx < aIdx && aIdx < cIdx, 'default order matches targetIds: b -> a -> c');
 
-    // Name A-Z: tc-a, tc-b, tc-c
-    vm.runInContext("window.setTestRunSort('name-asc')", ctx.context);
-    html = ctx.render(run);
+    // Name A-Z on run1: tc-a, tc-b, tc-c
+    vm.runInContext("window.setTestRunSort('run-sort-1', 'name-asc')", ctx.context);
+    html = ctx.render(run1);
     bIdx = html.indexOf('id="testrun-tc-tc-b"');
     aIdx = html.indexOf('id="testrun-tc-tc-a"');
     cIdx = html.indexOf('id="testrun-tc-tc-c"');
     assert.ok(aIdx < bIdx && bIdx < cIdx, 'name-asc orders Alpha -> Beta -> Gamma');
 
-    // Name Z-A: tc-c, tc-b, tc-a
-    vm.runInContext("window.setTestRunSort('name-desc')", ctx.context);
-    html = ctx.render(run);
+    // Run 2 still retains default 'added' sort (per-run sort isolation)
+    let html2 = ctx.render(run2);
+    bIdx = html2.indexOf('id="testrun-tc-tc-b"');
+    aIdx = html2.indexOf('id="testrun-tc-tc-a"');
+    cIdx = html2.indexOf('id="testrun-tc-tc-c"');
+    assert.ok(bIdx < aIdx && aIdx < cIdx, 'run2 remains in added order');
+
+    // Name Z-A on run1: tc-c, tc-b, tc-a
+    vm.runInContext("window.setTestRunSort('run-sort-1', 'name-desc')", ctx.context);
+    html = ctx.render(run1);
     bIdx = html.indexOf('id="testrun-tc-tc-b"');
     aIdx = html.indexOf('id="testrun-tc-tc-a"');
     cIdx = html.indexOf('id="testrun-tc-tc-c"');
     assert.ok(cIdx < bIdx && bIdx < aIdx, 'name-desc orders Gamma -> Beta -> Alpha');
 
     // Date Created: tc-c (1000), tc-b (2000), tc-a (3000)
-    vm.runInContext("window.setTestRunSort('time')", ctx.context);
-    html = ctx.render(run);
+    vm.runInContext("window.setTestRunSort('run-sort-1', 'time')", ctx.context);
+    html = ctx.render(run1);
     bIdx = html.indexOf('id="testrun-tc-tc-b"');
     aIdx = html.indexOf('id="testrun-tc-tc-a"');
     cIdx = html.indexOf('id="testrun-tc-tc-c"');
     assert.ok(cIdx < bIdx && bIdx < aIdx, 'time orders by createdAt ascending');
+
+    // Unknown sort value falls back safely to 'added'
+    vm.runInContext("window.setTestRunSort('run-sort-1', 'invalid-sort')", ctx.context);
+    html = ctx.render(run1);
+    bIdx = html.indexOf('id="testrun-tc-tc-b"');
+    aIdx = html.indexOf('id="testrun-tc-tc-a"');
+    cIdx = html.indexOf('id="testrun-tc-tc-c"');
+    assert.ok(bIdx < aIdx && aIdx < cIdx, 'fallback to added order on unknown sort');
 });
 
-test('Test Run viewer renders quick-add test cases modal and confirms addition', async () => {
+test('Test Run viewer renders quick-add test cases modal and confirms addition with guards', async () => {
     const tc1 = { id: 'tc-1', title: 'Login Flow', category: 'testcases', status: 'published', tcData: { steps: [{ action: 'Login', expected: 'OK' }] } };
     const tc2 = { id: 'tc-2', title: 'Payment Flow', category: 'testcases', status: 'published', tcData: { steps: [{ action: 'Pay', expected: 'Receipt' }] } };
+    const tcDel = { id: 'tc-del', title: 'Deleted Flow', category: 'testcases', status: 'deleted', tcData: { steps: [{ action: 'Old', expected: 'Old' }] } };
     const run = {
         id: 'run-qa',
         title: 'Smoke Run',
@@ -632,19 +658,29 @@ test('Test Run viewer renders quick-add test cases modal and confirms addition',
             results: {}
         }
     };
-    const ctx = createTestRunViewerContext([tc1, tc2, run]);
+    const ctx = createTestRunViewerContext([tc1, tc2, tcDel, run]);
 
-    // Open quick add modal
+    // 1. Guard against shared view
+    vm.runInContext("state.sharedView = true;", ctx.context);
+    ctx.context._modalHtml = null;
+    vm.runInContext("window.openQuickAddTestRunCaseModal('run-qa')", ctx.context);
+    assert.equal(ctx.context._modalHtml, null, 'shared view blocks openQuickAddTestRunCaseModal');
+    await vm.runInContext("window.confirmQuickAddTestCases('run-qa')", ctx.context);
+    assert.deepEqual(run.runData.targetIds, ['tc-1'], 'shared view blocks confirmQuickAddTestCases');
+
+    // 2. Open quick add modal in normal view
+    vm.runInContext("state.sharedView = false;", ctx.context);
     vm.runInContext("window.openQuickAddTestRunCaseModal('run-qa')", ctx.context);
     assert.ok(ctx.context._modalHtml, 'modal rendered');
     assert.ok(ctx.context._modalHtml.includes('Payment Flow'), 'includes unadded test case tc-2');
     assert.ok(!ctx.context._modalHtml.includes('Login Flow'), 'excludes already-included test case tc-1');
+    assert.ok(!ctx.context._modalHtml.includes('Deleted Flow'), 'excludes deleted test case');
 
-    // Confirm quick add with mock DOM checkboxes
+    // 3. Confirm quick add with mock DOM checkboxes
     const mockElements = {
         querySelectorAll: (sel) => {
             if (sel === '.quick-add-tc-cb:checked') {
-                return [{ value: 'tc-2' }];
+                return [{ value: 'tc-2' }, { value: 'tc-del' }];
             }
             return [];
         }
@@ -653,6 +689,7 @@ test('Test Run viewer renders quick-add test cases modal and confirms addition',
     await vm.runInContext("window.confirmQuickAddTestCases('run-qa')", ctx.context);
 
     assert.ok(run.runData.targetIds.includes('tc-2'), 'tc-2 added to targetIds');
+    assert.ok(!run.runData.targetIds.includes('tc-del'), 'deleted test case excluded from addition');
     assert.ok(run.runData.snapshot['tc-2'], 'snapshot created for tc-2');
     assert.equal(run.runData.snapshot['tc-2'][0].action, 'Pay');
     assert.equal(ctx.context._modalClosed, true, 'modal closed');
@@ -702,21 +739,33 @@ test('Test Run step synchronization: drifted snapshot triggers sync buttons, and
 
     const ctx = createTestRunViewerContext([tcLive, runExecuted, runUnexecuted]);
 
-    // 1. In executed run, drift badge and sync buttons appear
+    // 1. In executed run, drift badge and sync buttons appear in body
     let html = ctx.render(runExecuted);
-    assert.ok(html.includes('TC changed'), 'displays TC changed badge');
-    assert.ok(html.includes('Sync latest'), 'displays Sync latest button on case');
+    assert.ok(html.includes('TC changed'), 'displays TC changed badge in summary');
+    assert.ok(html.includes('Sync latest'), 'displays Sync latest button inside card body');
     assert.ok(html.includes('Sync All (1)'), 'displays Sync All toolbar button');
 
-    // 2. Manual sync on executed run updates snapshot to latest
+    // 2. Manual sync on executed run prompts confirmation and resets results to prevent misalignment
+    ctx.context._modalHtml = null;
+    const syncSingleBtn = { onclick: null };
+    ctx.context.document.getElementById = (id) => (id === 'btn-confirm-sync-single' ? syncSingleBtn : null);
     await vm.runInContext("window.syncTestRunCaseSnapshot('run-executed', 'tc-drift')", ctx.context);
-    assert.equal(runExecuted.runData.snapshot['tc-drift'].length, 2);
-    assert.equal(runExecuted.runData.snapshot['tc-drift'][0].action, 'Updated Step 1 Action');
+    assert.ok(ctx.context._modalHtml?.includes('Reset Results and Sync Steps?'), 'prompts confirmation before resetting executed results');
+    assert.equal(typeof syncSingleBtn.onclick, 'function', 'attaches confirm handler');
 
-    // 3. Auto-sync via saveDoc for unexecuted runs:
+    // Confirm the reset and sync
+    await syncSingleBtn.onclick();
+    assert.equal(runExecuted.runData.snapshot['tc-drift'].length, 2, 'snapshot updated to 2 steps');
+    assert.equal(runExecuted.runData.snapshot['tc-drift'][0].action, 'Updated Step 1 Action');
+    assert.equal(runExecuted.runData.results['tc-drift'], undefined, 'recorded results cleared so old indexes do not sit on new steps');
+
+    // 3. Auto-sync via saveDoc for unexecuted runs vs executed runs:
     // Reset unexecuted run snapshot to old
     runUnexecuted.runData.snapshot['tc-drift'] = [{ action: 'Old Action', expected: 'Old Expected' }];
+    const initialRunTimestamp = 123456789;
+    runUnexecuted.updatedAt = initialRunTimestamp;
     runExecuted.runData.snapshot['tc-drift'] = [{ action: 'Freeze Action', expected: 'Freeze Expected' }];
+    runExecuted.runData.results['tc-drift'] = { note: 'Had note' };
 
     // Set up mock DOM for editing tcLive in saveDoc
     const mockElements = {
@@ -745,6 +794,12 @@ test('Test Run step synchronization: drifted snapshot triggers sync buttons, and
 
     // Unexecuted run was automatically updated
     assert.equal(runUnexecuted.runData.snapshot['tc-drift'][0].action, 'Auto-synced Step 1', 'unexecuted run snapshot auto-updated');
+    assert.notEqual(runUnexecuted.updatedAt, initialRunTimestamp, 'updatedAt was bumped when snapshot changed');
     // Executed run preserved its snapshot (freeze)
     assert.equal(runExecuted.runData.snapshot['tc-drift'][0].action, 'Freeze Action', 'executed run snapshot preserved');
+
+    // 4. No-op test case save does NOT bump run.updatedAt when steps did not change:
+    const stampAfterFirstSave = runUnexecuted.updatedAt;
+    await vm.runInContext("saveDoc()", ctx.context);
+    assert.equal(runUnexecuted.updatedAt, stampAfterFirstSave, 'run.updatedAt NOT bumped when steps are unchanged');
 });

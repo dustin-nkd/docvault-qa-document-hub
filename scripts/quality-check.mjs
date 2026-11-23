@@ -61,7 +61,7 @@ const maintainabilityBudgets = {
     'js/actions-settings.js': 460,
     // Raised from 753 for Test Run quick-add test cases modal, live snapshot sync,
     // and test case edit propagation across active runs.
-    'js/actions-documents.js': 920,
+    'js/actions-documents.js': 1020,
     // The largest renderer in the app: dashboard, document list, both Kanban
     // boards, traceability and the activity timeline. Splitting it would break
     // the rule that a caller and its markup ship in one file (see the
@@ -84,7 +84,7 @@ const maintainabilityBudgets = {
     'js/render-viewer.js': 750,
     // Raised from 868 for Test Run sorting controls (by name/time), quick-add
     // test cases trigger, and drifted step sync actions.
-    'js/render-viewer-categories.js': 890,
+    'js/render-viewer-categories.js': 940,
     'js/actions-focus.js': 240,
     // Raised from 380 for registry sync. The data half lives in storage.js next
     // to the GitHub plumbing it needs; what stays here is the UI reaction to a

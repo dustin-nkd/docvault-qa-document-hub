@@ -171,8 +171,24 @@ function toggleAllTestRunCases() {
 }
 window.toggleAllTestRunCases = toggleAllTestRunCases;
 
-function setTestRunSort(sort) {
-    if (typeof state !== 'undefined') state._testRunSort = sort;
+function setTestRunSort(runIdOrSort, maybeSort) {
+    let runId = null;
+    let sort = runIdOrSort;
+    if (maybeSort !== undefined) {
+        runId = runIdOrSort;
+        sort = maybeSort;
+    }
+    const allowed = ['added', 'name-asc', 'name-desc', 'time'];
+    const validSort = allowed.includes(sort) ? sort : 'added';
+    if (typeof state !== 'undefined') {
+        if (!state._testRunSort || typeof state._testRunSort !== 'object') state._testRunSort = {};
+        if (runId) {
+            state._testRunSort[runId] = validSort;
+        } else {
+            if (state.editingDoc?.id) state._testRunSort[state.editingDoc.id] = validSort;
+            state._testRunSortDefault = validSort;
+        }
+    }
     if (typeof renderContent === 'function') renderContent();
 }
 window.setTestRunSort = setTestRunSort;
@@ -450,7 +466,10 @@ ${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
     const results = doc.runData?.results || {};
     const targetIds = doc.runData?.targetIds || [];
     let targets = documents.filter(d => targetIds.includes(d.id) && d.status !== 'deleted');
-    const currentSort = (typeof state !== 'undefined' && state._testRunSort) || 'added';
+    const sortMap = (typeof state !== 'undefined' && typeof state._testRunSort === 'object' && state._testRunSort !== null) ? state._testRunSort : {};
+    const currentSort = ['added', 'name-asc', 'name-desc', 'time'].includes(sortMap[doc.id])
+        ? sortMap[doc.id]
+        : (['added', 'name-asc', 'name-desc', 'time'].includes(state?._testRunSortDefault) ? state._testRunSortDefault : 'added');
     if (currentSort === 'name-asc') {
         targets.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     } else if (currentSort === 'name-desc') {
@@ -565,24 +584,24 @@ ${hasNotes ? `<div class="${(allProps.length || hasCreds) ? 'mt-5' : ''}">
 <div class="flex items-center gap-2">
 <label class="text-xs flex items-center gap-1.5" style="color:var(--tx-m);" title="Sort test cases in run">
 <i class="fa-solid fa-arrow-down-short-wide" style="font-size:11px;"></i>
-<select id="testrun-sort-select" class="form-input text-xs py-1 px-2 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);color:var(--tx);" data-onchange="setTestRunSort(this.value)">
+<select id="testrun-sort-select" class="form-input text-xs py-1 px-2 rounded-lg" style="background:var(--bg2);border:1px solid var(--brd);color:var(--tx);" data-onchange="setTestRunSort('${escHtml(doc.id)}', this.value)">
 <option value="added"${currentSort === 'added' ? ' selected' : ''}>Order Added</option>
 <option value="name-asc"${currentSort === 'name-asc' ? ' selected' : ''}>Name (A-Z)</option>
 <option value="name-desc"${currentSort === 'name-desc' ? ' selected' : ''}>Name (Z-A)</option>
 <option value="time"${currentSort === 'time' ? ' selected' : ''}>Date Created</option>
 </select>
 </label>
-${!state.sharedView && driftedCount > 0 ? `<button type="button" id="btn-sync-all-tc" class="btn-s text-xs flex items-center gap-1.5 text-amber-500 hover:text-amber-400" data-onclick="syncAllTestRunCaseSnapshots('${doc.id}')" title="Sync all changed test case steps with latest definitions"><i class="fa-solid fa-arrows-rotate" style="font-size:11px;"></i> Sync All (${driftedCount})</button>` : ''}
+${!state.sharedView && driftedCount > 0 ? `<button type="button" id="btn-sync-all-tc" class="btn-s text-xs flex items-center gap-1.5 text-amber-500 hover:text-amber-400" data-onclick="${actionAttr('syncAllTestRunCaseSnapshots', doc.id)}" title="Sync all changed test case steps with latest definitions"><i class="fa-solid fa-arrows-rotate" style="font-size:11px;"></i> Sync All (${driftedCount})</button>` : ''}
 </div>
 <div class="flex items-center gap-2 ml-auto">
-${!state.sharedView ? `<button type="button" id="btn-quick-add-tc" class="btn-s text-xs flex items-center gap-1.5" data-onclick="openQuickAddTestRunCaseModal('${doc.id}')" title="Quickly add test cases without editing document"><i class="fa-solid fa-plus" style="font-size:11px;"></i> Add Test Case</button>` : ''}
+${!state.sharedView ? `<button type="button" id="btn-quick-add-tc" class="btn-s text-xs flex items-center gap-1.5" data-onclick="${actionAttr('openQuickAddTestRunCaseModal', doc.id)}" title="Quickly add test cases without editing document"><i class="fa-solid fa-plus" style="font-size:11px;"></i> Add Test Case</button>` : ''}
 <button type="button" id="testrun-toggle-all" class="btn-s text-xs flex items-center gap-1.5" data-onclick="toggleAllTestRunCases()">
 <i id="testrun-toggle-all-icon" class="fa-solid ${allCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}" style="font-size:11px;" aria-hidden="true"></i>
 <span id="testrun-toggle-all-label">${allCollapsed ? 'Expand all' : 'Collapse all'}</span>
 </button>
 </div>
 </div>
-<div class="space-y-4" id="testrun-cases" data-run-id="${doc.id}">`;
+<div class="space-y-4" id="testrun-cases" data-run-id="${escHtml(doc.id)}">`;
         const outcomeColors = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', untested: 'var(--tx-d)' };
         const outcomeBgs = { pass: 'rgba(16,185,129,0.12)', fail: 'rgba(239,68,68,0.12)', blocked: 'rgba(245,158,11,0.12)', untested: 'rgba(122,139,168,0.1)' };
         const statusLabels = { pass: '<i class="fa-solid fa-check mr-1"></i>Pass', fail: '<i class="fa-solid fa-xmark mr-1"></i>Fail', blocked: '<i class="fa-solid fa-ban mr-1"></i>Blocked', untested: 'Untested' };
@@ -592,17 +611,24 @@ ${!state.sharedView ? `<button type="button" id="btn-quick-add-tc" class="btn-s 
         const tcNote = results[tc.id]?.note || '';
         const caseOutcome = _runCaseOutcome(steps, results[tc.id]);
         const isOpen = hasPrior && openMap[tc.id] !== undefined ? openMap[tc.id] : true;
-        html += `<details ${isOpen ? 'open ' : ''}class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);" data-tc-id="${tc.id}" id="testrun-tc-${tc.id}">
+        html += `<details ${isOpen ? 'open ' : ''}class="rounded-xl overflow-hidden" style="border:1px solid var(--brd);" data-tc-id="${escHtml(tc.id)}" id="testrun-tc-${escHtml(tc.id)}">
 <summary class="px-4 py-3" style="background:var(--bg2);border-bottom:1px solid var(--brd);">
 <div class="flex items-center gap-3">
 <span class="w-2 h-2 rounded-full shrink-0" style="background:var(--c-tc);"></span>
 <span class="font-medium text-sm" style="color:var(--tx);">${escHtml(tc.title)}</span>
-${drifted ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1.5" style="background:rgba(245,158,11,0.12);color:#f59e0b;" title="This test case was edited after this run was recorded. Results reflect the steps at run time."><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> TC changed${!state.sharedView ? ` &middot; <button type="button" class="hover:underline font-bold" data-onclick="syncTestRunCaseSnapshot('${doc.id}', '${tc.id}')" title="Sync with latest test case definition">Sync latest</button>` : ''}</span>` : ''}
+${drifted ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1.5" style="background:rgba(245,158,11,0.12);color:#f59e0b;" title="This test case was edited after this run was recorded. Results reflect the steps at run time."><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> TC changed</span>` : ''}
 <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-auto" style="background:${outcomeBgs[caseOutcome]};color:${outcomeColors[caseOutcome]};">${t(caseOutcome)}</span>
-${state.sharedView ? '' : `<button class="btn-s text-xs" data-onclick="viewDoc('${tc.id}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
+${state.sharedView ? '' : `<button class="btn-s text-xs" data-onclick="viewDoc('${escHtml(tc.id)}')" title="View Test Case"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`}
 </div>
 </summary>
 <div class="bg-transparent p-4">
+${drifted ? `<div class="mb-3 p-3 rounded-lg flex items-center justify-between gap-3 text-xs" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:var(--tx);">
+<div class="flex items-center gap-2">
+<i class="fa-solid fa-triangle-exclamation text-amber-500 shrink-0"></i>
+<span>Step definitions changed outside this run. Recorded results reflect the snapshot at run time.</span>
+</div>
+${!state.sharedView ? `<button type="button" class="btn-s text-xs shrink-0 flex items-center gap-1 font-semibold text-amber-500 hover:text-amber-400" data-onclick="${actionAttr('syncTestRunCaseSnapshot', doc.id, tc.id)}"><i class="fa-solid fa-arrows-rotate" style="font-size:10px;"></i> Sync latest</button>` : ''}
+</div>` : ''}
 ${steps.length === 0 ? `<div class="text-xs" style="color:var(--tx-m);">No steps defined.</div>` :
 steps.map((step, idx) => {
 const status = results[tc.id]?.[idx] || 'untested';
